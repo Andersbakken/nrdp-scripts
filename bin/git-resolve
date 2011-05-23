@@ -1,0 +1,113 @@
+#!/bin/sh
+
+TEST=
+editor="$EDITOR"
+STRATEGY=e
+STAT=false
+ADD=true
+PROMPT=true
+[ -z "$editor" ] && editor=vim
+
+while [ "$#" -gt 0 ]; do
+   case $1 in
+   -au) STRATEGY=au ;;
+   -ay) STRATEGY=ay ;;
+   --stat|-stat) STAT=true ;;
+   --no-add|-no-add) ADD=false ;;
+   --no-prompt|-no-prompt) PROMPT=false ;;
+   -dry) TEST=echo ;;
+   esac  
+   shift
+done
+
+COUNT=0
+for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`; do
+   merged=false
+   if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
+       merged=false
+   else
+       echo "$file already merged!"
+       merged=true;
+   fi
+   if [ "$STAT" = "true" ]; then
+       BEG=`grep "^<<<<<<< " "$file" | wc -l`
+       MID=`grep "^=======" "$file" | wc -l`
+       END=`grep "^>>>>>>> " "$file" | wc -l`
+       if [ "$BEG" = "$MID" ] && [ "$BEG" = "$END" ]; then
+           echo "${file}: $BEG conflicts"
+       else
+           echo "${file}: Mismatched conflicts! (${BEG}:${MID}:${END})"
+       fi
+       continue
+   fi
+   while [ "$merged" = "false" ]; do
+      if [ "$PROMPT" = "true" ]; then
+          echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, accept yours(ay), (s)kip: "
+          read cmd
+      else
+          echo "$file unmerged!"
+      fi
+      [ -z "$cmd" ] && cmd=$STRATEGY
+      case $cmd in
+      d|diff) git diff $file ;;
+      e|edit) 
+              tmp=`mktemp`
+	      cp $file $tmp
+              edit=yes
+	      while true; do
+                  if [ "$edit" = "yes" ]; then
+                      if ! $editor $tmp; then
+		          echo "Unable to spawn editor!!"
+		          break;
+                      fi
+                      edit=no
+                  fi
+	          echo -n "Accept: [d]iff, [y]es, (n)o, (c)ancel: "
+		  read accpt
+		  [ -z "$accpt" ] && accpt=y
+		  case $accpt in
+                  d|diff) diff -du $file $tmp ;;
+		  c|cancel) break ;;
+		  y|yes)
+                      sure=y
+                      if grep "^<<<<<<< " "$tmp" >/dev/null 2>&1 || grep "^=======" "$tmp" >/dev/null 2>&1 || grep "^>>>>>>> " "$tmp" >/dev/null 2>&1; then
+                          echo -n "This leaves in merge markers, are you sure: [y]es, (n)o: "
+                          read sure
+                          [ -z "sure" ] && sure=y
+                      fi
+                      if [ "$sure" = "yes" ] || [ "$sure" = "y" ]; then
+                          merged=true
+                          $TEST mv $tmp $file
+                          break 2
+                      fi
+		      ;;
+                  n|no) edit=yes ;;
+                  *) ;;
+                  esac
+               done ;;
+      au) merged=true; 
+          tmp=`mktemp`
+          git cat-file blob ":2:$file" >$tmp 2>/dev/null
+	  $TEST mv $tmp $file
+	  break ;;
+      ay) merged=true;
+          tmp=`mktemp` 
+          git cat-file blob ":3:$file" >$tmp 2>/dev/null
+	  $TEST mv $tmp $file
+	  break ;;
+      s|skip) break;;
+      *) echo "Unknown command!" ;;
+      esac
+   done
+   if [ "$merged" = "true" ] && [ "$ADD" = "true" ]; then
+       $TEST git add -f $file
+   else
+       COUNT=$((COUNT+1))
+   fi
+done
+if [ "$COUNT" = 0 ]; then
+   echo "No files left unresolved"
+else
+   echo "$COUNT files left unresolved"
+fi
+

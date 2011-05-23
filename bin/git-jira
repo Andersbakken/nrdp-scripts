@@ -1,0 +1,55 @@
+#!/bin/sh
+
+GITCOMMIT=
+P4COMMIT=
+RESOLVE=no
+MESSAGE=
+TEST=
+
+while [ "$#" -gt 0 ]; do
+   OPT="$1"
+   case $OPT in
+   -test) TEST="echo" ;;
+   -resolve) RESOLVE=yes ;;
+   -m) shift; MESSAGE="$1" ;;
+   -p4) shift; P4COMMIT="$1" ;;
+   *)
+      if [ -z "$GITCOMMIT" ]; then
+          GITCOMMIT="$1"
+      elif [ -z "$P4COMMIT" ]; then
+          P4COMMIT="$1"
+      else
+          echo "Huh"
+      fi ;;
+   esac
+   shift
+done
+[ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
+echo "Git: $GITCOMMIT"
+[ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
+if [ -z "$P4COMMIT" ]; then
+   echo "Cannot find p4 commit for $GITCOMMIT!"
+   exit 2
+fi
+if ! which jira >/dev/null 2>&1; then
+   echo "Cannot find jira commandline!"
+   exit 2
+fi
+
+GITMESSAGE=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+RETURN="$?"
+#echo "'$GITMESSAGE': $RETURN"
+if [ -z "$GITMESSAGE" ] || [ "$RETURN" != "1" ]; then
+   echo "$GITCOMMIT not found!"
+elif echo "$GITMESSAGE" | grep '^\[[^ ]*-[0-9]*\] ' >/dev/null 2>&1; then
+   JIRA=`echo "$GITMESSAGE" | sed 's,^\[\([^ ]*-[0-9]*\)\].*,\1,g'`
+   echo "Jira: $JIRA"
+   if [ -n "$MESSAGE" ]; then
+      $TEST jira comment "$JIRA" "$MESSAGE"
+   elif [ -n "$P4COMMIT" ]; then
+      $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10]"
+   fi
+   [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
+else
+    echo "Unable to determine JIRA ticket!"
+fi
