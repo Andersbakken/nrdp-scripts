@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ -x "$HOME/personal-bin/jira-cli-4.2/jira" ]; then
+    ARGS=
+    if [ -n "$JIRAHOST" ]; then
+       ARGS="-s $JIRAHOST"
+    fi
+    PYTHONPATH=$HOME/personal-bin/jira-cli-4.2/python-suds-0.3.9/:$PYTHONPATH $HOME/personal-bin/jira-cli-4.2/jira $ARGS "$@"
+else
+    echo "Need to get your jira together!"
+    exit 1
+fi
