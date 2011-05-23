@@ -1,5 +1,6 @@
 #!/bin/sh
 
+[ -z "$JIRAHOST" ] && export JIRAHOST="http://jira.netflix.com"
 if [ -x "$HOME/personal-bin/jira-cli-4.2/jira" ]; then
     ARGS=
     if [ -n "$JIRAHOST" ]; then
