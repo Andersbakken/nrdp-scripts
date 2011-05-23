@@ -51,7 +51,7 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
       case $cmd in
       d|diff) git diff $file ;;
       e|edit) 
-              tmp=`mktemp`
+              tmp=`mktemp -t XXXX`
 	      cp $file $tmp
               edit=yes
 	      while true; do
@@ -86,12 +86,12 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
                   esac
                done ;;
       au) merged=true; 
-          tmp=`mktemp`
+          tmp=`mktemp -t XXXX`
           git cat-file blob ":2:$file" >$tmp 2>/dev/null
 	  $TEST mv $tmp $file
 	  break ;;
       ay) merged=true;
-          tmp=`mktemp` 
+          tmp=`mktemp -t XXXX`
           git cat-file blob ":3:$file" >$tmp 2>/dev/null
 	  $TEST mv $tmp $file
 	  break ;;
