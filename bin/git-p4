@@ -1058,13 +1058,13 @@ class P4Change(Command):
                 if settings:
                     print "Change: %s -> %s" % (change, settings['change']);
                 else:
-                    print "No known change for GIT: " + change
+                    print >> sys.stderr, "No known change for GIT: " + change
             else:
                 logOpts = "--all --no-merges --grep='\\[git-p4:.*change *= *" + change + "'";
                 if(not self.verbose):
                     logOpts += " --pretty=format:'Change: %h -> " + change + "'"
                     if os.system("git log " + logOpts) != 0:
-                        print "No known change for P4: " + change
+                        print >> sys.stderr, "No known change for P4: " + change
         return True
 
 class P4Sync(Command):
