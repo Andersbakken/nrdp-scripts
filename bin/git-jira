@@ -10,8 +10,8 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    -test) TEST="echo" ;;
-   -resolve) RESOLVE=yes ;;
-   -m) shift; MESSAGE="$1" ;;
+   --resolve|-r|-resolve) RESOLVE=yes ;;
+   --message|-m) shift; MESSAGE="$1" ;;
    -p4) shift; P4COMMIT="$1" ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
@@ -27,10 +27,10 @@ done
 [ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
 echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
-if [ -z "$P4COMMIT" ]; then
-   echo "Cannot find p4 commit for $GITCOMMIT!"
-   exit 2
-fi
+#if [ -z "$P4COMMIT" ]; then
+#   echo "Cannot find p4 commit for $GITCOMMIT!"
+#   exit 2
+#i
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
    exit 2
