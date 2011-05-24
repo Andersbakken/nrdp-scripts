@@ -11,20 +11,26 @@ if ! which jira >/dev/null 2>&1; then
    exit 2
 fi
 
+usage() {
+  echo "Help!!"
+  exit 3
+}
+
 while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
-   -test) TEST="echo" ;;
+   --test|-test) TEST="echo" ;;
    --resolve|-r|-resolve) RESOLVE=yes ;;
    --message|-m) shift; MESSAGE="$1" ;;
    -p4) shift; P4COMMIT="$1" ;;
+   -help) usage ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
           GITCOMMIT="$1"
       elif [ -z "$P4COMMIT" ]; then
           P4COMMIT="$1"
       else
-          echo "Huh"
+          usage
       fi ;;
    esac
    shift
@@ -34,14 +40,15 @@ done
 echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
 
-GITMESSAGE=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
-RETURN="$?"
-#echo "'$GITMESSAGE': $RETURN"
-if [ -z "$GITMESSAGE" ] || [ "$RETURN" != "1" ]; then
-   echo "$GITCOMMIT not found!"
-elif echo "$GITMESSAGE" | grep '^\[[^ ]*-[0-9]*\] ' >/dev/null 2>&1; then
-   JIRA=`echo "$GITMESSAGE" | sed 's,^\[\([^ ]*-[0-9]*\)\].*,\1,g'`
+DESCRIPTION=
+[ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
+[ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+if [ -z "$DESCRIPTION" ]; then
+   echo "Description not found!"
+elif echo "$DESCRIPTION" | grep '^\[[^ ]*-[0-9]*\] ' >/dev/null 2>&1; then
+   JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]*-[0-9]*\)\].*,\1,g'`
    echo "Jira: $JIRA"
+   jira login
    if [ -n "$MESSAGE" ]; then
       $TEST jira comment "$JIRA" "$MESSAGE"
    elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
