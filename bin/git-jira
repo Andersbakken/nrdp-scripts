@@ -6,6 +6,11 @@ RESOLVE=no
 MESSAGE=
 TEST=
 
+if ! which jira >/dev/null 2>&1; then
+   echo "Cannot find jira commandline!"
+   exit 2
+fi
+
 while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
@@ -24,17 +29,10 @@ while [ "$#" -gt 0 ]; do
    esac
    shift
 done
+[ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
 [ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
 echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
-#if [ -z "$P4COMMIT" ]; then
-#   echo "Cannot find p4 commit for $GITCOMMIT!"
-#   exit 2
-#i
-if ! which jira >/dev/null 2>&1; then
-   echo "Cannot find jira commandline!"
-   exit 2
-fi
 
 GITMESSAGE=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
 RETURN="$?"
@@ -46,7 +44,7 @@ elif echo "$GITMESSAGE" | grep '^\[[^ ]*-[0-9]*\] ' >/dev/null 2>&1; then
    echo "Jira: $JIRA"
    if [ -n "$MESSAGE" ]; then
       $TEST jira comment "$JIRA" "$MESSAGE"
-   elif [ -n "$P4COMMIT" ]; then
+   elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
       $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10]"
    fi
    [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
