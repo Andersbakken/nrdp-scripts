@@ -35,6 +35,7 @@ while [ "$#" -gt 0 ]; do
    esac
    shift
 done
+
 [ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
 [ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
 echo "Git: $GITCOMMIT"
@@ -44,17 +45,26 @@ DESCRIPTION=
 [ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
 [ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
 if [ -z "$DESCRIPTION" ]; then
-   echo "Description not found!"
-elif echo "$DESCRIPTION" | grep '^\[[^ ]*-[0-9]*\] ' >/dev/null 2>&1; then
-   JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]*-[0-9]*\)\].*,\1,g'`
-   echo "Jira: $JIRA"
-   jira login
-   if [ -n "$MESSAGE" ]; then
-      $TEST jira comment "$JIRA" "$MESSAGE"
-   elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
-      $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10]"
-   fi
-   [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
+    echo "Description not found!"
 else
-    echo "Unable to determine JIRA ticket!"
+    JIRA=""
+    if echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
+        JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
+    elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
+        JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+    fi
+
+    if [ -z "$JIRA" ]; then
+        echo "Unable to determine JIRA ticket!"
+    else
+        echo "Jira: $JIRA"
+        jira cat "$JIRA"
+        if [ -n "$MESSAGE" ]; then
+            $TEST jira comment "$JIRA" "$MESSAGE"
+        elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
+            $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10]"
+        fi
+        [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
+    fi
 fi
+exit 0
