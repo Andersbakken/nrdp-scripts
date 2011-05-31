@@ -62,7 +62,8 @@ else
         if [ -n "$MESSAGE" ]; then
             $TEST jira comment "$JIRA" "$MESSAGE"
         elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
-            $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10]"
+            TEXT=`echo "$DESCRIPTION" | cut -d" " -f2-`
+            $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $TEXT"
         fi
         [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
     fi
