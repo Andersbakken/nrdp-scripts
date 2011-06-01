@@ -2,6 +2,7 @@
 
 GITCOMMIT=
 P4COMMIT=
+COMMENT=no
 RESOLVE=no
 MESSAGE=
 TEST=
@@ -20,9 +21,10 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    --test|-test) TEST="echo" ;;
-   --resolve|-r|-resolve) RESOLVE=yes ;;
-   --message|-m) shift; MESSAGE="$1" ;;
-   -p4) shift; P4COMMIT="$1" ;;
+   --comment|-comment) COMMENT=yes ;;
+   --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
+   --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
+   --p4|-p4) shift; P4COMMIT="$1" ;;
    -help) usage ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
@@ -58,14 +60,17 @@ else
         echo "Unable to determine JIRA ticket!"
     else
         echo "Jira: $JIRA"
-        jira cat "$JIRA"
-        if [ -n "$MESSAGE" ]; then
-            $TEST jira comment "$JIRA" "$MESSAGE"
-        elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
-            TEXT=`echo "$DESCRIPTION" | cut -d" " -f2-`
-            $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $TEXT"
+        $TEST jira cat "$JIRA"
+        if [ "$COMMENT" = "yes" ]; then
+            if [ -n "$MESSAGE" ]; then
+                $TEST jira comment "$JIRA" "$MESSAGE"
+            elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
+                $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $TEXT"
+            fi
         fi
-        [ "$RESOLVE" = "yes" ] && $TEST jira resolve "$JIRA"
+        if [ "$RESOLVE" = "yes" ]; then
+            $TEST jira resolve "$JIRA"
+        fi
     fi
 fi
 exit 0
