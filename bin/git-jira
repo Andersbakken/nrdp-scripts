@@ -2,10 +2,14 @@
 
 GITCOMMIT=
 P4COMMIT=
-COMMENT=no
-RESOLVE=no
 MESSAGE=
 TEST=
+JIRA=
+
+INTERACTIVE=no
+COMMENT=maybe
+RESOLVE=maybe
+
 
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
@@ -21,9 +25,11 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    --test|-test) TEST="echo" ;;
-   --comment|-comment) COMMENT=yes ;;
+   --comment|-c|-comment) COMMENT=yes ;;
+   --interactive|-i) INTERACTIVE=yes ;;
    --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
    --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
+   --jira|-j) shift; JIRA="$1" ;;
    --p4|-p4) shift; P4COMMIT="$1" ;;
    -help) usage ;;
    *)
@@ -43,34 +49,54 @@ done
 echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
 
-DESCRIPTION=
-[ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
-[ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
-if [ -z "$DESCRIPTION" ]; then
+if [ -z "$JIRA" ]; then
+  DESCRIPTION=
+  [ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
+  [ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+  if [ -z "$DESCRIPTION" ]; then
     echo "Description not found!"
+  elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
+    JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
+  elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
+   JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+  fi
+fi
+if [ -z "$JIRA" ]; then
+  #echo "Unable to determine JIRA ticket!"
+  true
 else
-    JIRA=""
-    if echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
-    elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+  echo "Jira: $JIRA"
+  $TEST jira cat "$JIRA"
+  if [ "$INTERACTIVE" = "yes" ]; then
+      if [ "$COMMENT" = "maybe" ]; then
+          COMMENT=no
+          echo -n "Comment? "
+          read input
+          if [ "$input" = "r" ]; then
+              COMMENT=yes
+              [ "$RESOLVE" = "maybe" ] && RESOLVE=yes
+          elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+              COMMENT=yes
+          fi
+      fi
+      if [ "$RESOLVE" = "maybe" ]; then
+          RESOLVE=no
+          echo -n "Resolve? "
+          read input
+          if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+              RESOLVE=yes
+          fi
+      fi
+  fi
+  if [ "$COMMENT" = "yes" ]; then
+    if [ -n "$MESSAGE" ]; then
+      $TEST jira comment "$JIRA" "$MESSAGE"
+    elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
+      $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $DESCRIPTION"
     fi
-
-    if [ -z "$JIRA" ]; then
-        echo "Unable to determine JIRA ticket!"
-    else
-        echo "Jira: $JIRA"
-        $TEST jira cat "$JIRA"
-        if [ "$COMMENT" = "yes" ]; then
-            if [ -n "$MESSAGE" ]; then
-                $TEST jira comment "$JIRA" "$MESSAGE"
-            elif [ -n "$P4COMMIT" ] && ! jira comments "$JIRA" | grep $P4COMMIT >/dev/null 2>&1; then
-                $TEST jira comment "$JIRA" "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $TEXT"
-            fi
-        fi
-        if [ "$RESOLVE" = "yes" ]; then
-            $TEST jira resolve "$JIRA"
-        fi
-    fi
+  fi
+  if [ "$RESOLVE" = "yes" ]; then
+    $TEST jira resolve "$JIRA"
+  fi
 fi
 exit 0

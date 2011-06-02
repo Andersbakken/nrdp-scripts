@@ -1,0 +1,2 @@
+#!/bin/sh
+git jira --comment -i $1 --p4 $2
