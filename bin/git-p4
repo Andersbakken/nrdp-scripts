@@ -199,6 +199,8 @@ def getP4Branches(p4Branches, srcDepotPath, dstDepotPath):
                 newBranch["destination"] = destination
                 newBranch["name"] = p4Branch
                 newBranch["options"] = gitOptions
+                if verbose:
+                    print "Branch: %s (getP4Branches1)" % destination
                 knownBranches[destination] = newBranch
 
                 lostAndFoundBranches.discard(destination)
@@ -212,6 +214,8 @@ def getP4Branches(p4Branches, srcDepotPath, dstDepotPath):
         newBranch = {}
         newBranch["source"] = found
         newBranch["destination"] = found
+        if verbose:
+            print "Branch: %s (getP4Branches2)" % found
         knownBranches[found] = newBranch
 
     if verbose:
@@ -1520,6 +1524,16 @@ class P4Sync(Command):
             name = self.knownBranches[branch]["name"]
         return name
 
+    def gitCreateP4Branch(self, branch):
+        name = self.gitBranchName(branch)
+        gitBranch = name
+        p4Branch = self.refPrefix + name
+        if gitBranchExists(p4Branch):
+            system("git config git-p4." + name + ".branch " + self.p4BranchName(branch))
+            if not gitBranchExists(gitBranch):
+                print "Branch %s -> %s" % (gitBranch, p4Branch)
+                system("git branch -t %s %s" % (gitBranch, p4Branch))
+
     def gitBranchName(self, branch):
         name = self.p4BranchOption(branch, "branch")
         if len(name) <= 0:
@@ -1948,14 +1962,9 @@ class P4Sync(Command):
 
         if self.detectBranches and self.importBranches:
             for branch in self.knownBranches:
-                name = self.gitBranchName(branch)
-                gitBranch = name
-		p4Branch = self.refPrefix + name
-                if gitBranchExists(p4Branch):
-                    system("git config git-p4." + name + ".branch " + self.p4BranchName(branch))
-		    if not gitBranchExists(gitBranch):
-		        print "Branch %s -> %s" % (gitBranch, p4Branch)
-		        system("git branch -t %s %s" % (gitBranch, p4Branch))
+                self.gitCreateP4Branch(branch)
+        else:
+            self.gitCreateP4Branch("master")
 
         return True
 
