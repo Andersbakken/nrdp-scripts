@@ -47,10 +47,11 @@ if ( $line !~ /^Perforce/ ) {
 
 sub findBranch {
     my ($path) = @_;
+    my $ret;
     foreach $branch (keys %targetBranch) {
-      return $branch if( $path =~ /^\/\/$branch/ );
+        $ret = $branch if( $path =~ /^\/\/$branch/ && length($branch) > length($ret))
     }
-    return undef;
+    return $ret;
 }
 
 sub findTargetBranch {
@@ -65,7 +66,8 @@ sub findTargetBranch {
         print STDERR " (If this is a valid branch, please add it to the targetBranch list)\n";
         exit(1);
     }
-
+    #printf "Oi: $fromBranch -> $toBranch\n";
+    return $toBranch;
 }
 
 sub usage {
