@@ -1,0 +1,5 @@
+#!/bin/sh
+if grep '^ *\[git-p4: ' "$1" >/dev/null 2>&1; then
+   echo "Removing GIT-P4 magic!!!" >&2
+   sed -e 's,^ *\[git-p4: .*\]$,,g' -i "$1"
+fi
