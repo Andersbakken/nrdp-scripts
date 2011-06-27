@@ -1049,26 +1049,63 @@ class P4Change(Command):
         self.verbose = False
         self.isWindows = (platform.system() == "Windows")
 
+    def lookupFromGitChange(self, change):
+        log = extractLogMessageFromGitCommit(change)
+        settings =  extractSettingsGitLog(log)
+        if settings:
+            return settings['change'];
+        return False;
+
+    def lookupFromP4Change(self, change):
+        logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + change + "'";
+        result = read_pipe("git log %s" % logOpts, ignore_error=True).strip();
+        if result and len(result):
+            return result;
+        return False;
+
+    def lookupChange(self, change):
+        git = not self.p4Change;
+        if re.match("[^0-9]", change):
+            git = True
+        if git:
+            return self.lookupFromGitChange(change);
+        return self.lookupFromP4Change(change);
+
     def run(self, args):
         if len(args) < 1:
             return False
         for change in args:
-            git = not self.p4Change;
-            if re.match("[^0-9]", change):
-                git = True
-            if git:
-                log = extractLogMessageFromGitCommit(change)
-                settings =  extractSettingsGitLog(log)
-                if settings:
-                    print "Change: %s -> %s" % (change, settings['change']);
-                else:
-                    print >> sys.stderr, "No known change for GIT: " + change
+            mappedChange = self.lookupChange(change);
+            if mappedChange:
+                print "Change: %s -> %s" % (change, mappedChange);
             else:
-                logOpts = "--all --no-merges --grep='\\[git-p4:.*change *= *" + change + "'";
-                if(not self.verbose):
-                    logOpts += " --pretty=format:'Change: %h -> " + change + "'"
-                    if os.system("git log " + logOpts) != 0:
-                        print >> sys.stderr, "No known change for P4: " + change
+                print >> sys.stderr, "No known change for: " + change;
+        return True
+
+class P4Integrate(P4Change):
+    def __init__(self):
+        P4Change.__init__(self)
+        self.options = [
+                optparse.make_option("--commit", dest="commit", action="store_true"),
+        ]
+        self.commit = False
+        self.description = "Integrate a change in."
+
+    def run(self, args):
+        if len(args) < 1:
+            return False
+        for change in args:
+            gitChange = change;
+            if not re.match("[^0-9]", change):
+                gitChange = self.lookupFromP4Change(change);
+            if(gitChange):
+                cpOpts = "";
+                if(not self.commit):
+                    cpOpts = " -n";
+                if os.system("git cherry-pick " + cpOpts + " " + gitChange) != 0:
+                    print >> sys.stderr, "Unable to cherry-pick: " + gitChange;
+            else:
+                print >> sys.stderr, "Unable to locate: " + change;
         return True
 
 class P4Sync(Command):
@@ -2175,6 +2212,7 @@ commands = {
     "submit" : P4Submit,
     "commit" : P4Submit,
     "sync" : P4Pull,
+    "integrate" : P4Integrate,
     "fetch" : P4Sync,
     "rebase" : P4Rebase,
     "pull" : P4Pull,
