@@ -9,7 +9,7 @@ JIRA=
 INTERACTIVE=no
 COMMENT=maybe
 RESOLVE=maybe
-
+CREATE=no
 
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
@@ -17,7 +17,16 @@ if ! which jira >/dev/null 2>&1; then
 fi
 
 usage() {
-  echo "Help!!"
+  echo "Usage: $1 [args] [git-commit]"
+  echo
+  echo "Args:"
+  echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
+  echo " --interactive, -i   : Ask before commenting/resolving"
+  echo " --resolve, -r       : Resolve JIRA ticket as well was commenting"
+  echo " --jira, -j <ticket> : Use <ticket> instead of calculated from commit message"
+  echo " --p4 <p4-commit>    : Use <p4-commit> instead of calculating from commit message"
+  echo
+  echo "If no [git-commit] is provided then the last commit from $(whoami) will be used instead"
   exit 3
 }
 
@@ -25,20 +34,21 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    --test|-test) TEST="echo" ;;
+   --create|-create) CREATE=yes ;;
    --comment|-c|-comment) COMMENT=yes ;;
    --interactive|-i) INTERACTIVE=yes ;;
    --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
    --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
    --jira|-j) shift; JIRA="$1" ;;
    --p4|-p4) shift; P4COMMIT="$1" ;;
-   -help) usage ;;
+   -help) usage $0 ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
           GITCOMMIT="$1"
       elif [ -z "$P4COMMIT" ]; then
           P4COMMIT="$1"
       else
-          usage
+          usage $0
       fi ;;
    esac
    shift
@@ -61,7 +71,51 @@ if [ -z "$JIRA" ]; then
    JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
   fi
 fi
-if [ -z "$JIRA" ]; then
+if [ "$CREATE" = "yes" ]; then
+  #project
+  JIRA_PROJECT=""
+  [ -n "$JIRA" ] && JIRA_PROJECT=`echo $JIRA | cut -d'-' -f1`
+  if [ -z "$JIRA_PROJECT" ]; then
+      echo "=================================================="
+      echo -n "Project: "
+      read JIRA_PROJECT
+  fi
+  if [ -z "$JIRA_PROJECT" ]; then
+      echo "Must supply a PROJECT!"
+      exit 1
+  fi
+  #summary
+  echo "=================================================="
+  echo "Default Summary: $DESCRIPTION"
+  echo -n "Summary: "
+  read JIRA_SUMMARY
+  [ -z "$JIRA_SUMMARY" ] && JIRA_SUMMARY="$DESCRIPTION"
+  #description
+  echo "=================================================="
+  echo -n "Description: "
+  read JIRA_DESCRIPTION
+
+  JIRA_CREATED=
+  if [ -n "$TEST" ]; then
+      $TEST jira create -p \"$JIRA_PROJECT\" -s \"$JIRA_SUMMARY\" -d \"$JIRA_DESCRIPTION\" -e \"\"
+  else
+      JIRA_CREATED=`jira create -p "$JIRA_PROJECT" -s "$JIRA_SUMMARY" -d "$JIRA_DESCRIPTION" -e "" | tail -1`
+      if echo "$JIRA_CREATED" | grep 'Created issue' >/dev/null 2>&1; then
+          JIRA_CREATED=`echo $JIRA_CREATED | sed "s,^Created issue ,,"`
+      else
+          JIRA_CREATED=
+      fi
+  fi
+  echo "Created: $JIRA_CREATED"
+  #DESCRIPTION_FILE=`mktemp`
+  #if [ -z "$JIRA" ]; then
+  #    echo "$DESCRIPTION" | sed -e "s,^ *,,g" -e "s,$JIRA,$CREATED_JIRA,g" >"$DESCRIPTION_FILE"
+  #else
+  #    echo "[$JIRA_CREATED] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
+  #fi
+  #[ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
+  #$TEST git commit -c "$GIT_COMMIT" -F "$DESCRIPTION_FILE"
+elif [ -z "$JIRA" ]; then
   #echo "Unable to determine JIRA ticket!"
   true
 else
