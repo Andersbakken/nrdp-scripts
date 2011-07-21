@@ -1,5 +1,13 @@
 #!/bin/bash
 
+if test "x$EDITOR" = "x$0" ; then
+    # The script was launched as an $EDITOR from git rebase -i.
+    # Modify the pick line to an edit line and just exit.
+    sed -e '1,$s/^pick '"$SHORT_SHA1 /edit $SHORT_SHA1 /" < "$1" >/tmp/editcommit$$
+    mv /tmp/editcommit$$ "$1"
+    exit 0
+fi
+
 GITCOMMIT=
 P4COMMIT=
 MESSAGE=
@@ -10,6 +18,7 @@ INTERACTIVE=no
 COMMENT=maybe
 RESOLVE=maybe
 CREATE=no
+MOVE=no
 
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
@@ -34,7 +43,8 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    --test|-test) TEST="echo" ;;
-   --create|-create) CREATE=yes ;;
+   --create|-create) CREATE=yes; REWORD=yes ;;
+   --move|-move|--reword|-reword) REWORD=yes ;;
    --comment|-c|-comment) COMMENT=yes ;;
    --interactive|-i) INTERACTIVE=yes ;;
    --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
@@ -59,18 +69,25 @@ done
 echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
 
-if [ -z "$JIRA" ]; then
-  DESCRIPTION=
-  [ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
-  [ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
-  if [ -z "$DESCRIPTION" ]; then
-    echo "Description not found!"
-  elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-    JIRA=`echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' 2>/dev/null | head -1 | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
-  elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-   JIRA=`echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' 2> /dev/null | head -1 | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
-  fi
+DESCRIPTION=
+[ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
+[ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+
+if [ -z "$JIRA" ] && [ "$REWORD" = "no" ]; then
+    if [ -z "$DESCRIPTION" ]; then
+        echo "Description not found!"
+    elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
+        JIRA=`echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' 2>/dev/null | head -1 | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
+    elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
+        JIRA=`echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' 2> /dev/null | head -1 | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+    fi
 fi
+
+if [ -n "$TEST" ] || true; then
+    echo "Description: $DESCRIPTION"
+    echo "Jira: $JIRA"
+fi
+
 if [ "$CREATE" = "yes" ]; then
   #project
   JIRA_PROJECT=""
@@ -95,31 +112,61 @@ if [ "$CREATE" = "yes" ]; then
   echo -n "Description: "
   read JIRA_DESCRIPTION
 
-  JIRA_CREATED=
+  JIRA=
   if [ -n "$TEST" ]; then
       $TEST jira create -p \"$JIRA_PROJECT\" -s \"$JIRA_SUMMARY\" -d \"$JIRA_DESCRIPTION\" -e \"\"
   else
       JIRA_CREATED=`jira create -p "$JIRA_PROJECT" -s "$JIRA_SUMMARY" -d "$JIRA_DESCRIPTION" -e "" | tail -1`
       if echo "$JIRA_CREATED" | grep 'Created issue' >/dev/null 2>&1; then
-          JIRA_CREATED=`echo $JIRA_CREATED | sed "s,^Created issue ,,"`
-      else
-          JIRA_CREATED=
+          JIRA=`echo $JIRA_CREATED | sed "s,^Created issue ,,"`
       fi
   fi
-  echo "Created: $JIRA_CREATED"
-  #DESCRIPTION_FILE=`mktemp`
-  #if [ -z "$JIRA" ]; then
-  #    echo "$DESCRIPTION" | sed -e "s,^ *,,g" -e "s,$JIRA,$CREATED_JIRA,g" >"$DESCRIPTION_FILE"
-  #else
-  #    echo "[$JIRA_CREATED] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
-  #fi
-  #[ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
-  #$TEST git commit -c "$GIT_COMMIT" -F "$DESCRIPTION_FILE"
-elif [ -z "$JIRA" ]; then
-  #echo "Unable to determine JIRA ticket!"
-  true
-else
-  echo "Jira: $JIRA"
+  echo "Created: $JIRA"
+fi
+
+if [ "$REWORD" = "yes" ] && [ -n "$P4COMMIT" ]; then
+  echo "Cannot reword as this commit has been pushed into P4!"
+elif [ "$REWORD" = "yes" ]; then
+  DESCRIPTION_FILE=`mktemp`
+  if [ -z "$JIRA" ]; then
+      [ -n "$JIRA_MYBUGS" ] && $TEST jira report "$JIRA_MYBUGS"
+      echo -n "JIRA? "
+      read JIRA
+      echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
+  fi
+  if [ -z "$JIRA" ] || echo "$DESCRIPTION" | grep "$JIRA" >/dev/null 2>&1; then
+      DESCRIPTION_FILE=
+  elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
+      echo "$DESCRIPTION" | sed "s,^\[\([^ ]\+-[0-9]\+\)\],[$JIRA],g" >"$DESCRIPTION_FILE"
+  elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
+      echo "$DESCRIPTION" | sed "s,^\([^ ]\+-[0-9]\+\): ,$JIRA: ,g" >"$DESCRIPTION_FILE"
+  else
+      echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
+  fi
+  if [ -n "$DESCRIPTION_FILE" ]; then
+      [ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
+
+      OLDEDITOR="$EDITOR"
+      export EDITOR="$0"
+      export SHORT_SHA1=`git rev-parse --short "$GITCOMMIT"`
+      if ! $TEST git rebase --preserve-merges -i "${GITCOMMIT}^"; then
+          echo "Unable to rebase for reword!"
+          return 1
+      fi
+      export EDITOR="$OLDEDITOR"
+
+      [ -n "$DESCRIPTION_FILE" ] && "$EDITOR" "$DESCRIPTION_FILE"
+      DESCRIPTION=`cat "$DESCRIPTION_FILE"`
+      if [ -z "$DESCRIPTION" ]; then
+          echo "Aborted with empty description!"
+      else
+          $TEST git commit --amend -F "$DESCRIPTION_FILE"
+      fi
+      $TEST git rebase --continue
+  fi
+fi
+
+if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
   $TEST jira cat "$JIRA"
   if [ "$INTERACTIVE" = "yes" ]; then
       if [ "$COMMENT" = "maybe" ]; then
