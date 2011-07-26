@@ -48,7 +48,7 @@ for(("all", "pending")) {
         }
         my $branch = "chromium_" . $columns{os} . "_" . $columns{channel} . "_" . $m;
         my $version_column = ($m eq "all") ? $columns{current_version} : $columns{version};
-        print "Updating: $branch -> $version_column ($git_revision)\n";
+        print "Updating: $branch -> $version_column (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
         system("git branch -f $branch $git_revision >/dev/null 2>&1");
         system("git tag -f -m \"$branch ($url)\" chromium_" . $version_column . " $git_revision >/dev/null 2>&1");
     }
