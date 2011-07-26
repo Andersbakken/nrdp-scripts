@@ -1,0 +1,89 @@
+#!/bin/bash
+
+
+dotgit=`git rev-parse --git-dir 2>/dev/null`
+
+if [ -z "$dotgit" ]; then 
+    echo "Not in a git repo"
+    exit 1
+fi
+TMPFILE="$dotgit/.GIT_FREBASE_FROM_BRANCH"
+toBranch=`git symbolic-ref HEAD 2>/dev/null | awk -F/ '{print $NF}'`
+generateTagName()
+{
+    echo frebase_last_${toBranch}_${fromBranch} | sed -e 's,[/ ],_,g'
+}
+frebase_finish()
+{
+    test -n "$toBranch" && git branch -f $toBranch && git checkout $toBranch
+    git tag -f $tagname -m "Tag for frebase $toBranch $fromBranch" "$fromBranch"
+}
+fromBranch=
+while [ -n "$1" ]; do
+    case $1 in 
+        --continue)
+            if [ -n "$fromBranch" ]; then
+                echo "Invalid arguments. Can't specify a from with --continue"
+                exit 1
+            fi
+            if [ ! -e "$TMPFILE" ]; then
+                echo "No frebase in progress!"
+                exit 1
+            fi
+            if git rebase --continue | sed -e 's,rebase,frebase,g'; then
+                toBranch=`head -1 $TMPFILE`
+                fromBranch=`tail -1 $TMPFILE`
+                tagname=`generateTagName`
+                frebase_finish
+                exit 0
+            fi
+            exit $?
+            ;;
+        --abort)
+            if [ -n "$fromBranch" ]; then
+                echo "Invalid arguments. Can't specify a from with --abort"
+                exit 1
+            fi
+            if [ ! -e "$TMPFILE" ]; then
+                echo "No frebase in progress!"
+                exit 1
+            fi
+            git rebase --abort | sed -e 's,rebase,frebase,g'
+            toBranch=`head -1 $TMPFILE`
+            rm -f "$TMPFILE"
+            test -n "$toBranch" && git checkout "$toBranch"
+            exit 0
+            ;;
+        *)
+            if [ -n "$fromBranch" ]; then
+                echo "Invalid arguments. from branch already set"
+                exit 1
+            fi
+            fromBranch="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$fromBranch" ]; then
+    echo "No from specified. Usage: git frebase origin/foobar"
+    exit 1
+fi
+
+if ! git rev-parse "$fromBranch" &>/dev/null; then
+    echo "$fromBranch doesn't seem to be a valid rev"
+    exit 1
+fi
+tagname=`generateTagName`
+echo "$toBranch" > "$TMPFILE" ### check if it exists?
+echo "$fromBranch" >> "$TMPFILE"
+
+if ! git rev-parse "$tagname" >/dev/null 2>&1;  then
+    git rebase --onto HEAD --root "$fromBranch" #| sed -e 's,rebase,frebase,g'
+else
+    git rebase --onto HEAD "$tagname" "$fromBranch" #| sed -e 's,rebase,frebase,g'
+fi
+
+if [ $? = "0" ]; then
+    frebase_finish
+fi
