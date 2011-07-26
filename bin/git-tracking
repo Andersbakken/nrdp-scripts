@@ -1,0 +1,10 @@
+#!/bin/sh
+
+branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+echo "$branch" | grep "(" --quiet && exit 1
+remote="`git config \"branch.$branch.remote\"`"
+test -z "$remote" && exit 1
+merge="`git config \"branch.$branch.merge\" | awk -F/ '{print $NF}'`"
+test -z "$merge" && exit 1
+echo "$remote/$merge"
+exit 0

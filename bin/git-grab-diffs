@@ -1,0 +1,16 @@
+#!/bin/sh
+
+count=$1
+dir=$2
+out=$3
+test -z "$dir" && dir=.
+test -z "$count" && count=100
+test -z "$out" && out=.
+
+num=1
+for i in `git log --reverse -n $count --pretty=oneline $dir | awk '{print $1}'`; do
+    file=`printf "%s/patch_%05d_%s" $out $num $i`
+    num=`expr $num + 1`
+    git show $i > $file
+    #echo $file
+done

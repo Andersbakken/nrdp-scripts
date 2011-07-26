@@ -1,0 +1,10 @@
+#!/bin/sh 
+
+if git config -l | grep "^svn-remote" --quiet; then
+    git svn fetch
+fi
+if git branch -r | grep --quiet p4/master; then
+    git p4 fetch
+fi
+
+git fetch --all

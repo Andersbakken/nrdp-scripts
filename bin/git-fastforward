@@ -1,0 +1,22 @@
+#!/bin/sh
+
+branch="`$HOME/dev/private/scripts/git-tracking`"
+if [ -n "$branch" ]; then
+    git merge --ff-only "$branch"
+elif git config -l | grep "^svn-remote" --quiet; then
+    if [ -n "`git log git-svn..master`" ]; then
+        echo "Your branches have diverged"
+    elif ! git status | grep --quiet "^nothing to commit"; then
+        echo "Index is dirty"
+    else
+        git svn rebase
+    fi
+elif [ -n "`git config git-p4.client`" ]; then
+    if [ -n "`git log p4/master..master`" ]; then
+        echo "Your branches have diverged"
+    elif ! git status | grep --quiet "^nothing to commit"; then
+        echo "Index is dirty"
+    else
+        git p4 rebase
+    fi
+fi

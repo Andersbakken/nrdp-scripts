@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ -n "$1" ]; then
+    echo "Due to suckiness this script takes no arguments. Go to the PWD you want to revert"
+    exit 1
+fi
+
+git diff "$PWD" > "/tmp/git-revert-PWD-diff.`basename $PWD``date +%s`"
+git status "$PWD" | grep "^#	modified:   [^.]" | sed -e 's,^#	modified:   \(.*\)$,\1,' | while read i; do 
+    #echo git checkout "$i"
+    git checkout "$i"
+done

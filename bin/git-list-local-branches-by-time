@@ -1,0 +1,19 @@
+#!/bin/bash
+
+dir=$PWD
+switch="-t"
+while [ -n "$1" ]; do
+    if [ -d "$1" ]; then
+        dir=$1
+    elif [ "$1" = "-r" ]; then
+        switch="${switch}r"
+    else
+        echo "What do I do with '$1'?"
+        exit 1
+    fi
+    shift
+done
+
+gitdir=`git dot-git-directory $dir`
+test -d "$gitdir" || exit 1
+/bin/ls "$switch" "$gitdir/refs/heads" | while read i; do echo $i; done

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+dir=$PWD
+dotgit=".git"
+while [ -n "$1" ]; do
+    if [ -d "$1" ]; then
+        dir=$1
+    elif [ "$1" = "--root" ]; then
+        unset dotgit
+    else
+        echo "What do I do with '$1'?"
+        exit 1
+    fi
+    shift
+done
+
+while [ -n "$dir" ]; do
+    test -f "$dir/.git/config" && break;
+    dir=`echo $dir | sed -e 's,/[^/]*$,,'`
+done
+if [ -d "$dir" ]; then
+    echo "${dir}/$dotgit"
+    exit 0
+else
+    echo "Not a git repo" >&2
+    exit 1
+fi

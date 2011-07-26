@@ -1,0 +1,14 @@
+#!/bin/sh
+
+test -z "$1" && exit 1
+normal=`tempfile`
+dashw=`tempfile`
+
+git diff "$1" > "$normal"
+git diff -w "$1" > "$dashw"
+
+if ! diff "$normal" "$dashw" > /dev/null; then 
+    cat "$1" > "$1.bak"
+    git checkout "$1"
+    patch -p1 < "$dashw"
+fi

@@ -1,0 +1,50 @@
+#!/bin/sh
+
+COMMAND=`basename $0 | sed 's,^git-,,'`
+
+die() {
+   echo $1 >&2
+   exit 1
+}
+
+if [ "$1" = "pop" ] || [ "$COMMAND" = "unfstash" ]; then
+    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
+    [ -z "$ref" ] && die "No fstash!"
+    commit=`echo $ref | awk '{print $1}'`
+    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
+    if git cherry-pick -n "$commit"; then
+	echo "Applied: $commit"
+	git reflog delete "$spec"
+	git status
+    fi
+elif [ "$1" = "apply" ]; then
+    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
+    [ -z "$ref" ] && die "No fstash!"
+    commit=`echo $ref | awk '{print $1}'`
+    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
+    if git cherry-pick -n "$commit"; then
+	echo "Applied: $commit"
+	git status
+    fi
+elif [ "$1" = "delete" ]; then
+    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
+    [ -z "$ref" ] && die "No fstash!"
+    commit=`echo $ref | awk '{print $1}'`
+    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
+    echo "Deleted: $commit"
+    git reflog delete "$spec"
+elif [ "$1" = "list" ]; then
+    for stash in `git reflog | grep git-fstash | awk '{print $1}'`; do
+	echo "git-fstash: $stash"
+	[ "$2" = "-v" ] && git diff-tree --stat -M $stash~ $stash
+    done
+else
+    [ "$1" = "save" ] && shift
+    MSG="git-fstash"
+    [ "$#" -gt 0 ] && MSG="${MSG}: $@"
+    git commit -a -m "$MSG" >/dev/null 2>&1 || die "Nothing to fstash"
+    commit=`git rev-parse HEAD`
+    git diff-tree --stat -M HEAD HEAD~ | grep -v "files changed" | sed "s,^ \([^ ].*\) |.*$,\1,g" | while read file; do git show "HEAD~1:$file" >"$file" 2>/dev/null || rm -f "$file"; git reset HEAD~1 -- "$file"; done
+    git reset --soft HEAD~1
+    echo "Stashed: $commit"
+fi

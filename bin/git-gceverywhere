@@ -1,0 +1,10 @@
+#!/bin/sh
+
+dir="$1"
+test -z "$dir" && dir=$HOME/dev
+
+find "$dir" -maxdepth 3 -type d -name ".git" | sort | while read i; do
+    test -L "$i/config" && continue
+    echo "$i"
+    cd "$i/.." && git gc
+done
