@@ -377,8 +377,15 @@ def isValidGitDir(path):
 def parseRevision(ref):
     return read_pipe("git rev-parse %s" % ref).strip()
 
-def extractLogMessageFromGitCommit(commit):
-    logMessage = ""
+def extractEmailFromAuthor(author):
+    m = re.search (r"<([^@]*@[^\)]*)>", author)
+    if m:
+        return m.group(1)
+    return False
+
+def extractSettingsCommit(commit):
+    values = {}
+    values["log"] = ""
 
     ## fixme: title is first line of commit, not 1st paragraph.
     foundTitle = False
@@ -386,10 +393,16 @@ def extractLogMessageFromGitCommit(commit):
        if not foundTitle:
            if len(log) == 1:
                foundTitle = True
+           else:
+               m = re.match("^([^ ]*) (.*)$", log)
+               if m:
+                   values[m.group(1)] = m.group(2);
            continue
+       values["log"] += log
+    return values
 
-       logMessage += log
-    return logMessage
+def extractLogMessageFromGitCommit(commit):
+    return extractSettingsCommit(commit)["log"]
 
 def extractSettingsGitLog(log):
     values = {}
@@ -633,12 +646,14 @@ class P4Submit(Command):
                 optparse.make_option("--verbose", dest="verbose", action="store_true"),
                 optparse.make_option("--pull",  dest="pull", action="store_true"),
                 optparse.make_option("--origin", dest="origin"),
-                optparse.make_option("-c", dest="commit"),                                
+                optparse.make_option("-c", dest="commit"),
+                optparse.make_option("-n", dest="confirmCommit", action="store_false"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
         ]
         self.description = "Submit changes from git to the perforce depot."
         self.usage += " [name of git branch to submit into perforce depot]"
         self.interactive = True
+        self.confirmCommit = True
         self.pull = False
         self.origin = ""
         self.commit = ""        
@@ -707,6 +722,7 @@ class P4Submit(Command):
     def applyCommit(self, id):
         print "Applying %s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id))
         p4commit = False
+        who = False
         diffOpts = ("", "-M")[self.detectRename]
         diff = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (diffOpts, id, id))
         filesToAdd = set()
@@ -791,7 +807,14 @@ class P4Submit(Command):
             mode = filesToChangeExecBit[f]
             setP4ExecBit(f, mode)
 
-        logMessage = extractLogMessageFromGitCommit(id)
+        commitInfo = extractSettingsCommit(id)
+        logMessage = commitInfo["log"];
+        if "author" in commitInfo:
+            who = commitInfo["author"]
+        elif "commiter" in commitInfo:
+            who = commitInfo["commiter"]
+        if who and extractEmailFromAuthor(who) != gitConfig("user.email"):
+            logMessage = "Author: " + who + "\n" + logMessage
         logMessage = logMessage.strip()
 
         template = self.prepareSubmitTemplate()
@@ -832,13 +855,13 @@ class P4Submit(Command):
                 editor = os.environ.get("EDITOR")
             else:
                 editor = read_pipe("git var GIT_EDITOR").strip()
-            system(editor + " " + fileName)
-
             response = "y"
-            if os.stat(fileName).st_mtime <= mtime:
-                response = "x"
-                while response != "y" and response != "n":
-                    response = raw_input("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ")
+            if self.confirmCommit:
+                system(editor + " " + fileName)
+                if os.stat(fileName).st_mtime <= mtime:
+                    response = "x"
+                    while response != "y" and response != "n":
+                        response = raw_input("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ")
 
             if response == "y":
                 tmpFile = open(fileName, "rb")
@@ -1098,12 +1121,16 @@ class P4Integrate(P4Change):
             gitChange = change;
             if not re.match("[^0-9]", change):
                 gitChange = self.lookupFromP4Change(change);
+            print "Integrating: %s -> %s" % (change, gitChange);
             if(gitChange):
                 cpOpts = "";
                 if(not self.commit):
                     cpOpts = " -n";
                 if os.system("git cherry-pick " + cpOpts + " " + gitChange) != 0:
                     print >> sys.stderr, "Unable to cherry-pick: " + gitChange;
+                    break
+                elif(not self.commit):
+                    print "Integrated: git commit -c %s" % gitChange;
             else:
                 print >> sys.stderr, "Unable to locate: " + change;
         return True
