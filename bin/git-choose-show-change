@@ -1,0 +1,72 @@
+#!/bin/sh
+
+file=
+number=40
+changes="changes"
+if [ -e "$1" ]; then
+    echo "File: $1"
+    changes="changes $1"
+    shift
+elif [ "$1" = "p4" ]; then
+    changes="p4 changes"
+    shift
+elif [ "$1" = "mine" ]; then
+    changes="mychanges"
+    shift
+elif [ "$1" = "stash" ]; then
+    changes="stash list"
+    shift
+elif git branch | grep "^\** *$1\$" >/dev/null 2>&1; then
+    echo "Local Branch: $1"
+    changes="changes $1"
+    shift
+elif git branch -r | grep "^\** *$1\$" >/dev/null 2>&1; then
+    echo "Remote Branch: $1"
+    changes="changes $1"
+elif git remote | grep "^$1\$" >/dev/null 2>&1; then
+    branch=`git branch | grep '^\*' | sed "s,\* ,,"`
+    echo "Remote: $1 ($branch)"
+    changes="changes $1/$branch..$branch"
+elif [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    echo "$0: [mode] [file] [count]"
+    echo "Modes:"
+    echo "  p4"
+    echo "  stash"
+    echo "  pulled"
+    echo "  mine"
+    echo "  mychanges"
+    for branch in `git branch | sed "s,^\* *,,"`; do
+	[ -n "$branch" ] && echo "  $branch (lbranch)"
+    done
+    for branch in `git branch -r | sed "s,^\* *,,"`; do
+	[ -n "$branch" ] && echo "  $branch (rbranch)"
+    done
+    for remote in `git remote`; do
+	[ -n "$remote" ] && echo "  $remote (remote)"
+    done
+    exit 0
+elif echo "$1" | grep "^-[0-9]*" >/dev/null 2>&1; then
+    number=`echo $1 | sed "s,^-,,"`
+    shift
+elif [ -n "$1" ]; then
+    changes="$1"
+    shift
+fi
+if [ -e "$1" ]; then
+    file="$1"
+    shift
+fi
+if [ -n "$1" ] && echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
+    number=`echo $1 | sed "s,^-,,g"`
+    shift
+fi
+
+while true; do
+    #echo "git $changes"
+    change=`$HOME/bin/choose.pl -$number -a -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
+    if [ -n "$change" ]; then
+      git show "$change"
+    else
+      break;
+    fi
+done
