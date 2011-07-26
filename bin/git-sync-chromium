@@ -12,6 +12,16 @@ if(system("git svn fetch") != 0 || $?) {
     die "Not setup for svn fetch?";
 }
 
+sub git_exec {
+    my ($exe) = $@;
+    my $output;
+    if(open(EXE, "git " . $exe . "|")) {
+        $output = <EXE>;
+        close(EXE);
+    }
+    return $output;
+}
+
 for(("all", "pending")) {
     my $m = $_;
     print "Fetching: $m\n";
@@ -39,17 +49,22 @@ for(("all", "pending")) {
             $columns{$column} = shift @c;
         }
 
-        my $git_revision;
-
-        if(open(GIT_REVISION, "git svn find-rev r" . $columns{base_webkit_revision} . "|")) {
-            $git_revision = <GIT_REVISION>;
-            chomp $git_revision;
-            close(GIT_REVISION);
-        }
-        my $branch = "chromium_" . $columns{os} . "_" . $columns{channel} . "_" . $m;
         my $version_column = ($m eq "all") ? $columns{current_version} : $columns{version};
-        print "Updating: $branch -> $version_column (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
-        system("git branch -f $branch $git_revision >/dev/null 2>&1");
-        system("git tag -f -m \"$branch ($url)\" chromium_" . $version_column . " $git_revision >/dev/null 2>&1");
+        my $git_revision = git_exec("svn find-rev r" . $columns{base_webkit_revision});
+        chomp $git_revision;
+
+        my $branch = "chromium_" . $columns{os} . "_" . $columns{channel} . "_" . $m;
+        my $branch_oldsha = git_exec("show-ref -s " . $branch);
+        chomp $branch_oldsha;
+
+        my $tag = "chromium_" . $version_column;
+        my $tag_oldsha = git_exec("show-ref -s " . $tag);
+        chomp $tag_oldsha;
+
+        if(!($tag_oldsha eq $git_revision) || !($branch_oldsha eq $git_revision)) {
+            print "Updating(${branch_oldsha}::${tag_oldsha}): $branch -> $version_column (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
+            system("git branch -f $branch $git_revision >/dev/null 2>&1");
+            system("git tag -f -m \"$branch ($url)\" $tag $git_revision >/dev/null 2>&1");
+        }
     }
 }
