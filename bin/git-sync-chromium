@@ -13,12 +13,13 @@ if(system("git svn fetch") != 0 || $?) {
 }
 
 sub git_exec {
-    my ($exe) = $@;
+    my ($exe) = @_;
     my $output;
     if(open(EXE, "git " . $exe . "|")) {
         $output = <EXE>;
         close(EXE);
     }
+    #print "$exe -> $output\n";
     return $output;
 }
 
@@ -54,17 +55,17 @@ for(("all", "pending")) {
         chomp $git_revision;
 
         my $branch = "chromium_" . $columns{os} . "_" . $columns{channel} . "_" . $m;
-        my $branch_oldsha = git_exec("show-ref -s " . $branch);
+        my $branch_oldsha = git_exec("show-ref -s $branch");
         chomp $branch_oldsha;
 
         my $tag = "chromium_" . $version_column;
-        my $tag_oldsha = git_exec("show-ref -s " . $tag);
+        my $tag_oldsha = git_exec("rev-parse --verify ${tag}^{commit}");
         chomp $tag_oldsha;
-
-        if(!($tag_oldsha eq $git_revision) || !($branch_oldsha eq $git_revision)) {
-            print "Updating(${branch_oldsha}::${tag_oldsha}): $branch -> $version_column (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
-            system("git branch -f $branch $git_revision >/dev/null 2>&1");
+ 
+        if($ARGV[0] eq "-f" || !($tag_oldsha eq $git_revision) || !($branch_oldsha eq $git_revision)) {
+            print "Updating(${branch_oldsha}::${tag_oldsha}): $branch -> $tag (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
             system("git tag -f -m \"$branch ($url)\" $tag $git_revision >/dev/null 2>&1");
-        }
+            system("git branch -f $branch $git_revision >/dev/null 2>&1");
+       }
     }
 }
