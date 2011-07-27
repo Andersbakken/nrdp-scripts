@@ -6,5 +6,9 @@ remote="`git config \"branch.$branch.remote\"`"
 test -z "$remote" && exit 1
 merge="`git config \"branch.$branch.merge\" | awk -F/ '{print $NF}'`"
 test -z "$merge" && exit 1
-echo "$remote/$merge"
+if [ -z "$remote" ] || [ "$remote" = "." ]; then
+  echo "$merge"
+else
+  echo "$remote/$merge"
+fi
 exit 0
