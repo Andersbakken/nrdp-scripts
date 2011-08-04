@@ -12,6 +12,17 @@ if(system("git svn fetch") != 0 || $?) {
     die "Not setup for svn fetch?";
 }
 
+my $force = 0;
+my $verbose = 0;
+while(@ARGV) {
+    my $option = shift @ARGV;
+    if($option eq "-v") {
+        $verbose = 1;
+    } elsif($option eq "-f") {
+        $force = 1;
+    }
+}
+
 sub git_exec {
     my ($exe) = @_;
     my $output;
@@ -23,11 +34,35 @@ sub git_exec {
     return $output;
 }
 
+sub update_branch {
+    my ($branch_n, $tag_n, $svn_revision) = @_;
+
+    my $git_revision = git_exec("svn find-rev r" . $svn_revision);
+    chomp $git_revision;
+
+    my $branch = "chromium_" . $branch_n;
+    my $branch_oldsha = git_exec("show-ref -s $branch");
+    chomp $branch_oldsha;
+
+    my $tag = "chromium_" . $tag_n;
+    my $tag_oldsha = git_exec("rev-parse --verify ${tag}^{commit}");
+    chomp $tag_oldsha;
+
+    print "branch=$branch tag=$tag revision=($svn_revision->$git_revision\n" if($verbose);
+
+    if($force || !($tag_oldsha eq $git_revision) || !($branch_oldsha eq $git_revision)) {
+        print "Updating(${branch_oldsha}::${tag_oldsha}): $branch -> $tag (${git_revision}::$svn_revision)\n";
+        system("git tag -f -m \"$branch\" $tag $git_revision >/dev/null 2>&1");
+        system("git branch -f $branch $git_revision >/dev/null 2>&1");
+    }
+}
+
+#release channels from chromium
 for(("all", "pending")) {
     my $m = $_;
-    print "Fetching: $m\n";
 
     my $url = "http://omahaproxy.appspot.com/$m";
+    print "Fetching: $m ($url)\n";
     my $req = GET($url);
     my $ua = new LWP::UserAgent;
     my $response = $ua->request($req);
@@ -49,23 +84,54 @@ for(("all", "pending")) {
             my $column = $_;
             $columns{$column} = shift @c;
         }
-
-        my $version_column = ($m eq "all") ? $columns{current_version} : $columns{version};
-        my $git_revision = git_exec("svn find-rev r" . $columns{base_webkit_revision});
-        chomp $git_revision;
-
-        my $branch = "chromium_" . $columns{os} . "_" . $columns{channel} . "_" . $m;
-        my $branch_oldsha = git_exec("show-ref -s $branch");
-        chomp $branch_oldsha;
-
-        my $tag = "chromium_" . $version_column;
-        my $tag_oldsha = git_exec("rev-parse --verify ${tag}^{commit}");
-        chomp $tag_oldsha;
- 
-        if($ARGV[0] eq "-f" || !($tag_oldsha eq $git_revision) || !($branch_oldsha eq $git_revision)) {
-            print "Updating(${branch_oldsha}::${tag_oldsha}): $branch -> $tag (${git_revision}::" . $columns{base_webkit_revision} . ")\n";
-            system("git tag -f -m \"$branch ($url)\" $tag $git_revision >/dev/null 2>&1");
-            system("git branch -f $branch $git_revision >/dev/null 2>&1");
-       }
+        update_branch($columns{os} . "_" . $columns{channel} . "_" . $m,
+                      ($m eq "all") ? $columns{current_version} : $columns{version},
+                      $columns{base_webkit_revision});
     }
 }
+
+#trunk on chromium
+{
+    print "Fetching: trunk\n";
+    my $trunk_version;
+    {
+        my $version_url = "http://src.chromium.org/viewvc/chrome/trunk/src/chrome/VERSION";
+        my $req = GET($version_url);
+        my $ua = new LWP::UserAgent;
+        my $response = $ua->request($req);
+        if($response->code != 200) {
+            print "Unable to fetch VERSION!\n";
+        } else {
+            my $raw = $response->content;
+            my %pieces;
+            for(split(/\n/, $raw)) {
+                my $line = $_;
+                $pieces{$1} = $2 if($line =~ /^([^ ]*) *= *([^ ]*)$/);
+            }
+            $trunk_version = $pieces{"MAJOR"} . "." . $pieces{"MINOR"} . "." . $pieces{"BUILD"} . "." . $pieces{"PATCH"};
+        }
+    }
+    my $trunk_revision;
+    {
+        my $revision_url = "http://src.chromium.org/viewvc/chrome/trunk/src/DEPS";
+        my $req = GET($revision_url);
+        my $ua = new LWP::UserAgent;
+        my $response = $ua->request($req);
+        if($response->code != 200) {
+            print "Unable to fetch REVISION!\n";
+        } else {
+            my $raw = $response->content;
+            my %pieces;
+            for(split(/\n/, $raw)) {
+                my $line = $_;
+                if($line =~ /^ *\"webkit_revision\": *\"([0-9]*)\", *$/) {
+                    $trunk_revision = $1;
+                    last;
+                }
+            }
+        }
+    }
+    update_branch("trunk", $trunk_version, $trunk_revision);
+}
+
+
