@@ -109,15 +109,14 @@ def p4_read_pipe(c, ignore_error=False):
     real_cmd = p4_build_cmd(c)
     return read_pipe(real_cmd, ignore_error)
 
-def read_pipe_lines(c):
+def read_pipe_lines(c, ignore_error=False):
     if verbose:
         sys.stderr.write('Reading pipe: %s\n' % c)
     ## todo: check return status
     pipe = os.popen(c, 'rb')
     val = pipe.readlines()
-    if pipe.close():
+    if pipe.close() and not ignore_error:
         die('Command failed: %s' % c)
-
     return val
 
 def p4_read_pipe_lines(c):
@@ -125,11 +124,14 @@ def p4_read_pipe_lines(c):
     real_cmd = p4_build_cmd(c)
     return read_pipe_lines(real_cmd)
 
-def system(cmd):
+def system(cmd, ignore_error=False):
     if verbose:
         sys.stderr.write("executing %s\n" % cmd)
     if os.system(cmd) != 0:
-        die("command failed: %s" % cmd)
+        if not ignore_error:
+            die("command failed: %s" % cmd)
+        return False
+    return True
 
 def p4_system(cmd):
     """Specifically invoke p4 as the system command. """
@@ -430,9 +432,7 @@ def extractSettingsGitLog(log):
     return values
 
 def gitBranchExists(branch):
-    proc = subprocess.Popen(["git", "rev-parse", branch],
-                            stderr=subprocess.PIPE, stdout=subprocess.PIPE);
-    return proc.wait() == 0;
+    return read_pipe("git rev-parse --verify -q %s" % branch, True)
 
 _gitConfig = {}
 def gitConfig(key):
@@ -1179,10 +1179,12 @@ class P4Sync(Command):
         self.isWindows = (platform.system() == "Windows")
         self.keepRepoPath = False
         self.depotPaths = None
+        self.importProcess = None
         self.p4BranchesInGit = []
         self.cloneExclude = []
         self.useClientSpec = False
         self.clientSpecDirs = []
+        self.importNewBranches = []
 
         if gitConfig("git-p4.detectBranches") == "true":
             self.detectBranches = True
@@ -1583,7 +1585,7 @@ class P4Sync(Command):
         return ""
 
     def p4BranchName(self, branch):
-        name = ""
+        name = branch
         if branch in self.knownBranches and "name" in self.knownBranches[branch]:
             name = self.knownBranches[branch]["name"]
         return name
@@ -1593,7 +1595,8 @@ class P4Sync(Command):
         gitBranch = name
         p4Branch = self.refPrefix + name
         if gitBranchExists(p4Branch):
-            system("git config git-p4." + name + ".branch " + self.p4BranchName(branch))
+            if not gitConfig("git-p4." + branch + ".branch"):
+                system("git config git-p4." + name + ".branch " + self.p4BranchName(branch))
             if not gitBranchExists(gitBranch):
                 print "Branch %s -> %s" % (gitBranch, p4Branch)
                 system("git branch -t %s %s" % (gitBranch, p4Branch))
@@ -1604,6 +1607,8 @@ class P4Sync(Command):
             name = self.p4BranchName(branch)
         if branch == "main" or branch.endswith("_main") or name == "main" or name.endswith("_main"):
             name = "master"
+        if len(name) <= 0:
+            name = branch
         return name
 
     def gitRefForBranch(self, branch):
@@ -1618,9 +1623,14 @@ class P4Sync(Command):
         if self.verbose:
             print "looking in ref " + ref + " for change %s using bisect..." % change
 
-        earliestCommit = ""
-        latestCommit = parseRevision(ref)
+        if not read_pipe("git rev-parse --verify %s" % ref, True):
+            return ""
 
+        latestCommit = read_pipe("git rev-parse %s" % ref).strip();
+        if len(latestCommit) == 0:
+            return ""
+
+        earliestCommit = ""
         while True:
             if self.verbose:
                 print "trying: earliest %s latest %s" % (earliestCommit, latestCommit)
@@ -1645,11 +1655,31 @@ class P4Sync(Command):
 
         return ""
 
+    def openFastImport(self):
+        assert not self.importProcess
+        self.importProcess = subprocess.Popen(["git", "fast-import"],
+                                              stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE);
+        self.gitOutput = self.importProcess.stdout
+        self.gitStream = self.importProcess.stdin
+        self.gitError = self.importProcess.stderr
+
+    def flushFastImport(self):
+        self.gitStream.write("checkpoint\n\n");
+        self.gitStream.flush();
+
+    def closeFastImport(self):
+        assert self.importProcess
+        self.gitStream.close()
+        if self.importProcess.wait() != 0:
+            die("fast-import failed: %s" % self.gitError.read())
+        self.gitOutput.close()
+        self.gitError.close()
+
     def importNewBranch(self, branch, maxChange):
         # make fast-import flush all changes to disk and update the refs using the checkpoint
         # command so that we can try to find the branch parent in the git history
-        self.gitStream.write("checkpoint\n\n");
-        self.gitStream.flush();
+        self.flushFastImport()
         branchPrefix = self.depotPaths[0] + branch + "/"
         range = ""
         if maxChange != 0:
@@ -1812,6 +1842,9 @@ class P4Sync(Command):
         self.changeRange = ""
         self.initialParent = ""
         self.previousDepotPaths = []
+        detectBranchesRoot = gitConfig("git-p4.detectBranchesRoot")
+        if detectBranchesRoot:
+            self.previousDepotPaths.append(detectBranchesRoot)
 
         # map from branch depot path to parent branch
         self.knownBranches = {}
@@ -1860,15 +1893,12 @@ class P4Sync(Command):
             p4Change = 0
             for branch in self.p4BranchesInGit:
                 logMsg =  extractLogMessageFromGitCommit(self.refPrefix + branch)
-
                 settings = extractSettingsGitLog(logMsg)
-
                 self.readOptions(settings)
                 if (settings.has_key('depot-paths')
                     and settings.has_key ('change')):
                     change = int(settings['change']) + 1
                     p4Change = max(p4Change, change)
-
                     depotPaths = sorted(settings['depot-paths'])
                     if self.previousDepotPaths == []:
                         self.previousDepotPaths = depotPaths
@@ -1879,9 +1909,7 @@ class P4Sync(Command):
                                 if cur[i] <> prev[i]:
                                     i = i - 1
                                     break
-
                             paths.append (cur[:i + 1])
-
                         self.previousDepotPaths = paths
 
             if p4Change > 0:
@@ -1965,64 +1993,69 @@ class P4Sync(Command):
 
         self.tz = "%+03d%02d" % (- time.timezone / 3600, ((- time.timezone % 3600) / 60))
 
-        importProcess = subprocess.Popen(["git", "fast-import"],
-                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE);
-        self.gitOutput = importProcess.stdout
-        self.gitStream = importProcess.stdin
-        self.gitError = importProcess.stderr
-
-        if revision:
-            self.importHeadRevision(revision)
+        if len(self.importNewBranches) >= 1:
+            for importNewBranchName in self.importNewBranches:
+                for branch in self.knownBranches:
+                    name = self.gitBranchName(branch)
+                    if name != importNewBranchName:
+                        continue
+                    print "Creating branch %s" % (branch)
+                    self.openFastImport()
+                    self.importNewBranch(branch, "#head")
+                    self.closeFastImport()
         else:
-            changes = []
+           self.openFastImport()
 
-            if len(self.changesFile) > 0:
-                output = open(self.changesFile).readlines()
-                changeSet = set()
-                for line in output:
-                    changeSet.add(int(line))
+           if revision:
+               self.importHeadRevision(revision)
+           else:
+               changes = []
 
-                for change in changeSet:
-                    changes.append(change)
+               if len(self.changesFile) > 0:
+                   output = open(self.changesFile).readlines()
+                   changeSet = set()
+                   for line in output:
+                       changeSet.add(int(line))
 
-                changes.sort()
-            else:
-                if self.verbose:
-                    print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
-                                                              self.changeRange)
-                changes = p4ChangesForPaths(self.depotPaths, self.changeRange)
+                   for change in changeSet:
+                       changes.append(change)
 
-                if len(self.maxChanges) > 0:
-                    changes = changes[:min(int(self.maxChanges), len(changes))]
+                   changes.sort()
+               else:
+                   if self.verbose:
+                       print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
+                                                                 self.changeRange)
+                   changes = p4ChangesForPaths(self.depotPaths, self.changeRange)
 
-            if len(changes) == 0:
-                if not self.silent:
-                    print "No changes to import!"
-	    else:
-                if not self.silent and not self.detectBranches:
-                    print "Import destination: %s" % self.branch
-                self.importChanges(changes)
-		if not self.silent:
-                    print ""
-		    if len(self.updatedBranches) > 0:
-                        print "Updated branches: "
-                        for branch in self.updatedBranches:
-                            print "  %s (%s -> %s)" % (branch, self.p4BranchName(branch), self.gitBranchName(branch))
+                   if len(self.maxChanges) > 0:
+                       changes = changes[:min(int(self.maxChanges), len(changes))]
 
-        if self.detectBranches and self.importBranches:
-            for branch in self.knownBranches:
-                name = self.gitBranchName(branch)
-		p4Branch = self.refPrefix + name
-                if not gitBranchExists(p4Branch):
-                    print "Doing initial import of branch %s" % (p4Branch)
-		    self.importNewBranch(branch, "#head")
+               if len(changes) == 0:
+                   if not self.silent:
+                       print "No changes to import!"
+     	       else:
+                   if not self.silent and not self.detectBranches:
+                       print "Import destination: %s" % self.branch
+                   self.importChanges(changes)
+   		   if not self.silent:
+                       print ""
+                       if len(self.updatedBranches) > 0:
+                          print "Updated branches: "
+                          for branch in self.updatedBranches:
+                              print "  %s (%s -> %s)" % (branch, self.p4BranchName(branch), self.gitBranchName(branch))
 
-        self.gitStream.close()
-        if importProcess.wait() != 0:
-            die("fast-import failed: %s" % self.gitError.read())
-        self.gitOutput.close()
-        self.gitError.close()
+           self.closeFastImport()
+
+           if self.detectBranches and self.importBranches:
+               for branch in self.knownBranches:
+                   name = self.gitBranchName(branch)
+   		   p4Branch = self.refPrefix + name
+                   if not gitBranchExists(p4Branch):
+                       print "Creating missing branch %s" % (p4Branch)
+                       self.openFastImport()
+  		       self.importNewBranch(branch, "#head")
+                       self.closeFastImport()
+
 
         if self.detectBranches and self.importBranches:
             for branch in self.knownBranches:
@@ -2134,6 +2167,8 @@ class P4Clone(P4Sync):
         self.gitdir = os.getcwd() + "/.git"
         if not P4Sync.run(self, depotPaths):
             return False
+        if self.detectBranches:
+            system("git config git-p4.detectBranchesRoot " + depotPaths[0])
 
         if self.branch != "master":
             if self.importIntoRemotes:
@@ -2213,6 +2248,35 @@ class P4Pull(P4Sync):
             os.system(doUnstash)
         return True
 
+class P4Branch(P4Sync):
+    def __init__(self):
+        P4Sync.__init__(self)
+        self.options += [
+            optparse.make_option("-d", dest="deleteBranch", action="store_true"),
+            optparse.make_option("-D", dest="deleteBranch", action="store_true"),
+        ]
+        self.deleteBranch = False
+
+    def run(self, args):
+        if len(args) < 1:
+            return False
+
+        if self.deleteBranch:
+            for gitBranch in args:
+                system("git config --unset git-p4.%s.branch" % gitBranch, True)
+                system("git branch -D %s" % gitBranch, True)
+                system("git branch -r -D p4/%s" % gitBranch, True)
+        else:
+            self.importBranches = True
+            for gitBranch in args:
+                if(gitBranchExists(gitBranch)):
+                    print "Branch already exists: %s" % gitBranch
+                else:
+                    self.importNewBranches.append(gitBranch)
+            if len(self.importNewBranches) < 1 or not P4Sync.run(self, []):
+                return True
+        return True
+
 class HelpFormatter(optparse.IndentedHelpFormatter):
     def __init__(self):
         optparse.IndentedHelpFormatter.__init__(self)
@@ -2245,7 +2309,8 @@ commands = {
     "pull" : P4Pull,
     "clone" : P4Clone,
     "rollback" : P4RollBack,
-    "branches" : P4Branches
+    "branches" : P4Branches,
+    "branch" : P4Branch
 }
 
 
