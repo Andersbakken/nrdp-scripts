@@ -6,6 +6,7 @@ count_tilde() {
     return 0
 }
 
+TEST=
 GIT_SHOW=file
 if [ "$1" = "-q" ]; then
     GIT_SHOW=no
@@ -47,11 +48,11 @@ while [ "$#" -gt 0 ]; do
     [ -z "$COMMITISH" ] && COMMITISH="HEAD"
     echo "Print: $FILE @ $COMMITISH"
     if [ "$GIT_SHOW" = "file" ]; then
-        git show "${COMMITISH}:${SUBDIR}${FILE}"
+        $TEST git show "${COMMITISH}:${SUBDIR}${FILE}"
     elif [ "$GIT_SHOW" = "blame" ]; then
-        git blame "${COMMITISH}" -- "${FILE}"
+        $TEST git blame "${COMMITISH}" -- "${FILE}"
     elif [ "$GIT_SHOW" = "commit" ]; then
-        git show "${COMMITISH}"
+        $TEST git show "${COMMITISH}"
     fi
 done
 

@@ -65,6 +65,9 @@ while [ -n "$1" ]; do
     shift
 done
 
+[ -z "$fromBranch" ] && fromBranch=`git config branch.$toBranch.frebase`
+[ -z "$fromBranch" ] && fromBranch=`git config frebase.$toBranch.from`
+
 if [ -z "$fromBranch" ]; then
     echo "No from specified. Usage: git frebase origin/foobar"
     exit 1
@@ -78,12 +81,10 @@ tagname=`generateTagName`
 echo "$toBranch" > "$TMPFILE" ### check if it exists?
 echo "$fromBranch" >> "$TMPFILE"
 
+FINISHED=no
 if ! git rev-parse "$tagname" >/dev/null 2>&1;  then
-    git rebase --onto HEAD --root "$fromBranch" #| sed -e 's,rebase,frebase,g'
+    git rebase --onto HEAD --root "$fromBranch" && FINISHED=yes
 else
-    git rebase --onto HEAD "$tagname" "$fromBranch" #| sed -e 's,rebase,frebase,g'
+    git rebase --onto HEAD "$tagname" "$fromBranch" && FINISHED=yes
 fi
-
-if [ $? = "0" ]; then
-    frebase_finish
-fi
+[ "$FINISHED" = "yes" ] && frebase_finish

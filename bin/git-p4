@@ -647,7 +647,7 @@ class P4Submit(Command):
                 optparse.make_option("--pull",  dest="pull", action="store_true"),
                 optparse.make_option("--origin", dest="origin"),
                 optparse.make_option("-c", dest="commit"),
-                optparse.make_option("-n", dest="confirmCommit", action="store_false"),
+                optparse.make_option("-a", dest="confirmCommit", action="store_false"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
         ]
         self.description = "Submit changes from git to the perforce depot."

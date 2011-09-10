@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 if test "x$EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
@@ -18,7 +18,7 @@ INTERACTIVE=no
 COMMENT=maybe
 RESOLVE=maybe
 CREATE=no
-MOVE=no
+REWORD=no
 
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
@@ -66,20 +66,20 @@ done
 
 [ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
 [ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
-echo "Git: $GITCOMMIT"
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
 
 DESCRIPTION=
 [ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
 [ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+echo "Git: $GITCOMMIT ($P4COMMIT)"
 
 if [ -z "$JIRA" ] && [ "$REWORD" = "no" ]; then
     if [ -z "$DESCRIPTION" ]; then
         echo "Description not found!"
     elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' 2>/dev/null | head -1 | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
+        JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
     elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' 2> /dev/null | head -1 | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+        JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
     fi
 fi
 

@@ -37,7 +37,7 @@ sub git_exec {
 sub update_branch {
     my ($branch_n, $tag_n, $svn_revision) = @_;
 
-    my $git_revision = git_exec("svn find-rev r${svn_revision} trunk");
+    my $git_revision = git_exec("svn find-rev r${svn_revision} refs/remotes/trunk");
     chomp $git_revision;
 
     my $branch = "chromium_" . $branch_n;
