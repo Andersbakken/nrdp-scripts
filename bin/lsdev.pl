@@ -368,7 +368,7 @@ if($display_only eq "current") { #display just the name of the directory request
         for(my $i = 0; $i <= $#matches; ++$i) {
             my $match = $matches[$i];
             if($match =~ /\//) {
-                if(!defined($rest_dir) && !$root && $root_dir) {
+                if(!defined($rest_dir) && !$root) {
                     $rest_dir = $match;
                 } else {
                     display "Illegal match: $match\n";

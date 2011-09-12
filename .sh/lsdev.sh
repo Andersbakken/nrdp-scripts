@@ -65,7 +65,7 @@ adddev() {
 
 #lsdev
 lsdev() {
-   "$HOME/bin/lsdev.pl" "$@"
+   "lsdev.pl" "$@"
 }
 lsd() {
    OPTS="$@"
@@ -144,11 +144,33 @@ alias cdd=cddev
 
 complete-cddev ()
 {
-   args=`echo ${COMP_WORDS[@]} | cut -d " " -f 2-`
-   match=`lsdev -a -l $args 2>&1 | awk '{print $2}'`
-   if [ -n "$match" ]; then
-       COMPREPLY=($match)
-   fi
+    local cur=${COMP_WORDS[${COMP_CWORD}]}
+    if [ $COMP_CWORD = 1 ]; then
+        local matches="`lsdev -a -l ${cur} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
+        if [ -z "$matches" ]; then
+            return;
+        elif [ "$matches" != "$cur" ]; then
+            COMPREPLY=(${matches[@]})
+        fi
+    elif [ $COMP_CWORD = 2 ]; then
+        first="${COMP_WORDS[1]}"
+        local realdir=`lsdev -a -l "$first" 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        if [ `echo "$realdir" | wc -l` = 1 ]; then # single match
+            local slash=""
+            echo $cur | grep "^/" --quiet || slash="/"
+            #local resolved=`echo $cur | sed -e "s,^$first,$realdir,
+            #echo "dir for $first is $realdir"
+            echo cur is "$cur"  > /tmp/log
+            echo "realdir/cur is $realdir/$cur" >> /tmp/log
+            echo compgen -d "$realdir/$cur" | sed -e "s,^$realdir,," -e 's,\/*$,/,' >> /tmp/log
+            #matches=`compgen -d "${realdir}${slash}${cur}" | sed -e "s,^${realdir},," -e 's,\/*$,/,'`
+            _filedir $cur
+            #echo "matches is $matches" >> /tmp/log
+            #COMPREPLY=(${matches[*]})
+        fi
+    else
+        COMPREPLY=(balle)
+    fi
 }
 
 complete -F complete-cddev cdd cddev
