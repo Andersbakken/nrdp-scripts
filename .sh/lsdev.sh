@@ -144,7 +144,10 @@ alias cdd=cddev
 
 complete-cddev ()
 {
-    local cur=${COMP_WORDS[${COMP_CWORD}]}
+    local cur 
+    COMPREPLY=()
+    _get_comp_words_by_ref cur
+    #local cur=${COMP_WORDS[${COMP_CWORD}]}
     if [ $COMP_CWORD = 1 ]; then
         local matches="`lsdev -a -l ${cur} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
         if [ -z "$matches" ]; then
@@ -156,20 +159,11 @@ complete-cddev ()
         first="${COMP_WORDS[1]}"
         local realdir=`lsdev -a -l "$first" 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
         if [ `echo "$realdir" | wc -l` = 1 ]; then # single match
-            local slash=""
-            echo $cur | grep "^/" --quiet || slash="/"
-            #local resolved=`echo $cur | sed -e "s,^$first,$realdir,
-            #echo "dir for $first is $realdir"
-            echo cur is "$cur"  > /tmp/log
-            echo "realdir/cur is $realdir/$cur" >> /tmp/log
-            echo compgen -d "$realdir/$cur" | sed -e "s,^$realdir,," -e 's,\/*$,/,' >> /tmp/log
-            #matches=`compgen -d "${realdir}${slash}${cur}" | sed -e "s,^${realdir},," -e 's,\/*$,/,'`
-            _filedir $cur
-            #echo "matches is $matches" >> /tmp/log
-            #COMPREPLY=(${matches[*]})
+            arg=$cur
+            local dir=`echo $cur | sed -e 's,[^/]*$,,'`
+            matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
+            COMPREPLY=(`compgen -W "$matches" "$cur"`)
         fi
-    else
-        COMPREPLY=(balle)
     fi
 }
 
