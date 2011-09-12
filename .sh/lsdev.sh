@@ -149,21 +149,17 @@ complete-cddev ()
     COMPREPLY=()
     local nondirs=()
     local idx=1
-    local arg
-    local hasargs
     while [ $idx -lt ${#COMP_WORDS[@]} ]; do
-        arg="${COMP_WORDS[${idx}]}"
-        #echo "$idx ${COMP_WORDS[${idx}]}" >> /tmp/log
+        local arg="${COMP_WORDS[${idx}]}"
         if echo "$arg" | grep --quiet /; then
             test -z "$cur" && return
         elif test -n "$arg"; then
             nondirs=(${nondirs[@]} $arg)
-            hasargs=1
         fi
         idx=$((idx + 1))
     done
     local realdir
-    if [ -n "$hasargs" -a -z "$cur" ]; then
+    if [ "${#nondirs[@]}" -ge 0 -a -z "$cur" ]; then
         realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
         if [ `echo "$realdir" | wc -l` != 1 ]; then 
             realdir=
@@ -176,7 +172,6 @@ complete-cddev ()
     fi
 
     if [ -n "$realdir" ]; then
-        #local dir=`echo $cur | sed -e 's,[^/]*$,,'`
         COMPREPLY=(`compgen -d $realdir/$cur | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`)
         if [ ${#COMPREPLY[@]} = 1 ]; then
             COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}foo)
