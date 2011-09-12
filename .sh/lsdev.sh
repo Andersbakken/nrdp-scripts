@@ -162,14 +162,23 @@ complete-cddev ()
         fi
         idx=$((idx + 1))
     done
-
-    if [ -n "$hasargs" -a -z "$cur" ] || echo "$cur" | grep --quiet /; then
-        local realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
-        if [ `echo "$realdir" | wc -l` = 1 ]; then # single match
-            local dir=`echo $cur | sed -e 's,[^/]*$,,'`
-            matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
-            COMPREPLY=(`compgen -W "$matches" "$cur"`)
+    local realdir
+    if [ -n "$hasargs" -a -z "$cur" ]; then
+        realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        if [ `echo "$realdir" | wc -l` != 1 ]; then 
+            realdir=
         fi
+    elif echo "$cur" | grep --quiet /; then
+        realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        if [ `echo "$realdir" | wc -l` != 1 ]; then 
+            return
+        fi
+    fi
+
+    if [ -n "$realdir" ]; then
+        local dir=`echo $cur | sed -e 's,[^/]*$,,'`
+        matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
+        COMPREPLY=(`compgen -W "$matches" "$cur"`)
     else
         local matches="`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
         if [ -z "$matches" ]; then
