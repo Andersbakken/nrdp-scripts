@@ -176,9 +176,11 @@ complete-cddev ()
     fi
 
     if [ -n "$realdir" ]; then
-        local dir=`echo $cur | sed -e 's,[^/]*$,,'`
-        matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
-        COMPREPLY=(`compgen -W "$matches" "$cur"`)
+        #local dir=`echo $cur | sed -e 's,[^/]*$,,'`
+        COMPREPLY=(`compgen -d $realdir/$cur | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`)
+        if [ ${#COMPREPLY[@]} = 1 ]; then
+            COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}foo)
+        fi
     else
         local matches="`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
         if [ -z "$matches" ]; then
