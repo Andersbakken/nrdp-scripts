@@ -144,25 +144,38 @@ alias cdd=cddev
 
 complete-cddev ()
 {
-    local cur 
-    COMPREPLY=()
+    local cur
     _get_comp_words_by_ref cur
-    #local cur=${COMP_WORDS[${COMP_CWORD}]}
-    if [ $COMP_CWORD = 1 ]; then
-        local matches="`lsdev -a -l ${cur} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
+    COMPREPLY=()
+    local nondirs=()
+    local idx=1
+    local arg
+    local hasargs
+    while [ $idx -lt ${#COMP_WORDS[@]} ]; do
+        arg="${COMP_WORDS[${idx}]}"
+        #echo "$idx ${COMP_WORDS[${idx}]}" >> /tmp/log
+        if echo "$arg" | grep --quiet /; then
+            test -z "$cur" && return
+        elif test -n "$arg"; then
+            nondirs=(${nondirs[@]} $arg)
+            hasargs=1
+        fi
+        idx=$((idx + 1))
+    done
+
+    if [ -n "$hasargs" -a -z "$cur" ] || echo "$cur" | grep --quiet /; then
+        local realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        if [ `echo "$realdir" | wc -l` = 1 ]; then # single match
+            local dir=`echo $cur | sed -e 's,[^/]*$,,'`
+            matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
+            COMPREPLY=(`compgen -W "$matches" "$cur"`)
+        fi
+    else
+        local matches="`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
         if [ -z "$matches" ]; then
             return;
         elif [ "$matches" != "$cur" ]; then
             COMPREPLY=(${matches[@]})
-        fi
-    elif [ $COMP_CWORD = 2 ]; then
-        first="${COMP_WORDS[1]}"
-        local realdir=`lsdev -a -l "$first" 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
-        if [ `echo "$realdir" | wc -l` = 1 ]; then # single match
-            arg=$cur
-            local dir=`echo $cur | sed -e 's,[^/]*$,,'`
-            matches=`find "$realdir/$dir" -maxdepth 2 -type d | grep -v "/\." | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`
-            COMPREPLY=(`compgen -W "$matches" "$cur"`)
         fi
     fi
 }
