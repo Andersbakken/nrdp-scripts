@@ -142,6 +142,18 @@ cddev() {
 }
 alias cdd=cddev
 
+makedev() {
+    DIR=`lsdev -w $@`
+    if [ -n "$DIR" ]; then
+      echo "$DIR"
+      make -C "$DIR" && return 1
+    else
+      echo "Not found."
+      return 1
+    fi
+}
+alias mdd=makedev
+
 complete-cddev ()
 {
     local cur="${COMP_WORDS[$COMP_CWORD]}"
@@ -185,4 +197,4 @@ complete-cddev ()
     fi
 }
 
-complete -F complete-cddev cdd cddev
+complete -F complete-cddev cdd cddev mdd makedev editdev edd
