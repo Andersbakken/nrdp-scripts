@@ -144,8 +144,7 @@ alias cdd=cddev
 
 complete-cddev ()
 {
-    local cur
-    _get_comp_words_by_ref cur
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
     COMPREPLY=()
     local nondirs=()
     local idx=1
@@ -174,7 +173,7 @@ complete-cddev ()
     if [ -n "$realdir" ]; then
         COMPREPLY=(`compgen -d $realdir/$cur | sed -e 's,//*,/,g' -e "s,^$realdir,," -e 's,/*$,/,'`)
         if [ ${#COMPREPLY[@]} = 1 ]; then
-            COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}foo)
+            COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}non-existing-dir)
         fi
     else
         local matches="`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
