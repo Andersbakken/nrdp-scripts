@@ -101,6 +101,7 @@ sub findAncestor {
     $dir = Cwd::cwd() unless(defined($dir));
     for( ; $dir; $dir = dirname($dir)) {
         my $r = "$dir/$file";
+        $r =~ s,//+,,g;
         return $r if(-e $r);
         last if(length($dir) <= 1);
     }
