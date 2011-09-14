@@ -1,6 +1,6 @@
 #!/bin/sh
 
-branch="`$HOME/dev/private/scripts/git-tracking`"
+branch=`git tracking`
 if [ -n "$branch" ]; then
     git merge --ff-only "$branch"
 elif git config -l | grep "^svn-remote" --quiet; then

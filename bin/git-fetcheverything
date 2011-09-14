@@ -3,13 +3,11 @@
 dir="$1"
 test -z "$dir" && dir=$HOME/dev
 fetchall=`which git-fetchall`
-test -x "$fetchall" || fetchall=/home/anders/dev/private/scripts/git-fetchall
 
 if [ ! -x "$fetchall" ]; then
     echo "Can't find git-fetchall"
     exit 1
 fi
-
 
 find "$dir" -maxdepth 3 -type d -name ".git" | sort | while read i; do 
     test -L "$i/config" && continue

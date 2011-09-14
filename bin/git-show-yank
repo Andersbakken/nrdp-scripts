@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ -z $@ ]; then
-    arg=`$HOME/dev/private/scripts/yank | head -n 1`
+    arg=`yank | head -n 1`
 else
     arg=$1
 fi
