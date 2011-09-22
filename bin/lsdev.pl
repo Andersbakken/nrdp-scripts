@@ -13,6 +13,7 @@ my $read_devdir_list = 1;
 my $detect_builds_list = 1;
 my $display_only;
 my $display_help = 0;
+my $answer;
 
 my $src_prefix = "src_";
 my $build_prefix = "build_";
@@ -29,6 +30,12 @@ while(@ARGV) {
         $root = 1;
     } elsif($option eq "-d") {
         $read_devdir_list = -1;
+    } elsif($option eq "-tp") {
+        $answer = "path";
+    } elsif($option eq "-tn") {
+        $answer = "name";
+    } elsif($option eq "-ta") {
+        $answer = "all";
     } elsif($option eq "-a") {
         $read_devdir_list = 2;
     } elsif($option eq "-m") {
@@ -46,14 +53,26 @@ while(@ARGV) {
     }
 }
 
-$read_devdir_list = 3 if($display_only eq "current");
+if($display_only eq "current") {
+    $read_devdir_list = 3;
+    $answer = "name" if(!defined($answer));
+} elsif($display_only eq "list") {
+    $answer = "all" if(!defined($answer));
+} else {
+    $answer = "path" if(!defined($answer));
+}
 $display_only = "default" if(!defined($display_only) &&
                              $#matches == 0 && $matches[0] eq "-");
 
 
 sub answer {
-    foreach(@_) {
-        print STDOUT $_;
+    my ($name, $path) = @_;
+    if($answer eq "all") {
+        print STDOUT "$name [$path]\n";
+    } elsif($answer eq "name") {
+        print STDOUT "$name\n";
+    } elsif($answer eq "path") {
+        print STDOUT "$path\n";
     }
 }
 
@@ -335,10 +354,10 @@ if($display_only eq "current") { #display just the name of the directory request
     }
     for($current = canonicalize($current); $current;
         $current = dirname($current)) {
-        my $answer = $roots_names{$current};
-        display "Trying: $current -> $answer\n" if($verbose);
-        if(defined($answer)) {
-            answer "$answer\n";
+        my $root_name = $roots_names{$current};
+        display "Trying: $current -> $root_name\n" if($verbose);
+        if(defined($current)) {
+            answer($root_name, $current);
             last;
         }
         last if(length($current) <= 1);
@@ -413,7 +432,7 @@ if($display_only eq "current") { #display just the name of the directory request
         for(my $i = 0; $i < @choices; ++$i) {
             my $root = canonicalize($choices[$i]);
             my $root_name = $roots_names{$root};
-            display "[", $i + 1, "] $root_name [$root]\n";
+            answer($root_name, $root);
         }
     } elsif($#choices == 0) {
         $index = 0;
@@ -431,23 +450,27 @@ if($display_only eq "current") { #display just the name of the directory request
         $index -= 1;
     }
     if(defined($index)) {
-        my $answer = canonicalize($choices[$index]);
+        my $root_dir = canonicalize($choices[$index]);
+        my $root_name = $roots_names{$root_dir};
+
+        my $dir = $root_dir;
         if(defined($rest_dir)) {
-            my $rest_cd_dir = "$answer/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($answer);
+            my $rest_cd_dir = "$dir/$rest_dir";
+            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($dir);
                 $current = dirname($current)) {
                 if(-d $current) {
-                    $answer = $current;
+                    $dir = $current;
                     last;
                 }
             }
         }
-        answer "$answer\n";
+        answer($root_name, $dir);
+
         if($write_default_file && -d "$shadows_dir") {
             my $shadows_default = "$root_dir/.shadows_default";
             if(open(SHADOWS_DEFAULT, ">$shadows_default")) {
-                #display "Writing $shadows_default -> $answer\n";
-                print SHADOWS_DEFAULT "$answer\n";
+                #display "Writing $shadows_default -> $dir\n";
+                print SHADOWS_DEFAULT "$dir\n";
                 close(SHADOWS_DEFAULT);
             }
         }

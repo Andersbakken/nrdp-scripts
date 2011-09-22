@@ -133,6 +133,7 @@ setdev() {
 }
 cddev() {
     DIR=`lsdev -w $@`
+    [ -z "$DIR" ] && [ "$#" = "1" ] && [ -d "$1" ] && DIR="$1"
     if [ -n "$DIR" ]; then
       echo "$DIR"
       cd "$DIR" && return 0
@@ -171,12 +172,12 @@ complete-cddev ()
     done
     local realdir
     if [ "${#nondirs[@]}" -ge 0 -a -z "$cur" ]; then
-        realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
         if [ `echo "$realdir" | wc -l` != 1 ]; then 
             realdir=
         fi
     elif echo "$cur" | grep --quiet /; then
-        realdir=`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $3}' | sed -e 's,^.,,' -e 's,\/*.$,,'`
+        realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
         if [ `echo "$realdir" | wc -l` != 1 ]; then 
             return
         fi
@@ -188,7 +189,7 @@ complete-cddev ()
             COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}non-existing-dir)
         fi
     else
-        local matches="`lsdev -a -l ${nondirs[@]} 2>&1 | awk '{print $2}' | sed -e 's,$, ,'`"
+        local matches=`lsdev -tn -a -l ${nondirs[@]} 2>&1`
         if [ -z "$matches" ]; then
             return;
         elif [ "$matches" != "$cur" ]; then
