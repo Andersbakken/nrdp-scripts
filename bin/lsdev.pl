@@ -356,7 +356,7 @@ if($display_only eq "current") { #display just the name of the directory request
         $current = dirname($current)) {
         my $root_name = $roots_names{$current};
         display "Trying: $current -> $root_name\n" if($verbose);
-        if(defined($current)) {
+        if(defined($root_name)) {
             answer($root_name, $current);
             last;
         }
