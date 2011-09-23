@@ -24,6 +24,13 @@ while [ "$#" -gt 0 ]; do
    esac  
    shift
 done
+GITDIR=`git rev-parse --git-dir`
+if [ -z "$GITDIR" ]; then
+    echo "You're not running in a git repository"
+    exit 1
+fi
+
+test -z "$AFTER" && test -d "$GITDIR/rebase-apply/" && AFTER=rebase
 
 COUNT=0
 for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`; do
