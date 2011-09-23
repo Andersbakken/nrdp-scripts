@@ -2,11 +2,12 @@
 
 TEST=
 AFTER=
-editor="$EDITOR"
+editor="$GIT_RESOLVE_EDITOR"
 STRATEGY=e
 STAT=false
 ADD=true
 PROMPT=true
+[ -z "$editor" ] && editor=$EDITOR
 [ -z "$editor" ] && editor=vim
 
 while [ "$#" -gt 0 ]; do
@@ -53,7 +54,14 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
       fi
       [ -z "$cmd" ] && cmd=$STRATEGY
       case $cmd in
-      d|diff) git diff $file ;;
+      d|diff) 
+          tmpupstream=`mktemp -t XXXX`
+          tmpyours=`mktemp -t XXXX`
+
+          git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+          git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
+          diff -du "$tmpupstream" "$tmpyours"
+          ;;
       e|edit) 
               tmp=`mktemp -t XXXX`
 	      cp $file $tmp
@@ -70,7 +78,12 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
 		  read accpt
 		  [ -z "$accpt" ] && accpt=y
 		  case $accpt in
-                  d|diff) diff -du $file $tmp ;;
+                  d|diff) 
+                      tmpupstream=`mktemp -t XXXX`
+
+                      git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+                      diff -du "$tmpupstream" "$tmp"
+                      ;;
 		  c|cancel) break ;;
 		  y|yes)
                       sure=y
