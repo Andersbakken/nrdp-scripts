@@ -2,11 +2,12 @@
 
 TEST=
 AFTER=
-editor="$GIT_RESOLVE_EDITOR"
 STRATEGY=e
 STAT=false
 ADD=true
 PROMPT=true
+editor="$GIT_RESOLVE_EDITOR"
+[ -z "$editor" ] && editor=`git config core.editor`
 [ -z "$editor" ] && editor=$EDITOR
 [ -z "$editor" ] && editor=vim
 
