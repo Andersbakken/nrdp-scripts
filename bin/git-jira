@@ -29,6 +29,7 @@ usage() {
   echo "Usage: $1 [args] [git-commit]"
   echo
   echo "Args:"
+  echo " --create            : Create a bug for a change"
   echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
   echo " --interactive, -i   : Ask before commenting/resolving"
   echo " --resolve, -r       : Resolve JIRA ticket as well was commenting"
@@ -51,7 +52,7 @@ while [ "$#" -gt 0 ]; do
    --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
    --jira|-j) shift; JIRA="$1" ;;
    --p4|-p4) shift; P4COMMIT="$1" ;;
-   -help) usage $0 ;;
+   -help|-h) usage $0 ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
           GITCOMMIT="$1"
@@ -116,6 +117,7 @@ if [ "$CREATE" = "yes" ]; then
   if [ -n "$TEST" ]; then
       $TEST jira create -p \"$JIRA_PROJECT\" -s \"$JIRA_SUMMARY\" -d \"$JIRA_DESCRIPTION\" -e \"\"
   else
+      jira login
       JIRA_CREATED=`jira create -p "$JIRA_PROJECT" -s "$JIRA_SUMMARY" -d "$JIRA_DESCRIPTION" -e "" | tail -1`
       if echo "$JIRA_CREATED" | grep 'Created issue' >/dev/null 2>&1; then
           JIRA=`echo $JIRA_CREATED | sed "s,^Created issue ,,"`
