@@ -14,6 +14,7 @@ my $detect_builds_list = 1;
 my $display_only;
 my $display_help = 0;
 my $answer;
+my $cwd = Cwd::cwd();
 
 my $src_prefix = "src_";
 my $build_prefix = "build_";
@@ -28,6 +29,8 @@ while(@ARGV) {
         $write_default_file = 1;
     } elsif($option eq "-r") {
         $root = 1;
+    } elsif($option eq "-c") {
+        $cwd = shift @ARGV;
     } elsif($option eq "-d") {
         $read_devdir_list = -1;
     } elsif($option eq "-tp") {
@@ -117,7 +120,7 @@ sub uniq {
 
 sub findAncestor {
     my ($file, $dir) = @_;
-    $dir = Cwd::cwd() unless(defined($dir));
+    $dir = $cwd unless(defined($dir));
     for( ; $dir; $dir = dirname($dir)) {
         my $r = "$dir/$file";
         $r =~ s,//+,,g;
@@ -346,7 +349,7 @@ foreach(keys(%dev_roots)) {
 if($display_only eq "current") { #display just the name of the directory request
     my $current;
     if($#matches == -1) {
-        $current = Cwd::cwd();
+        $current = $cwd;
     } elsif($#matches == 0 && $matches[0] eq "-") {
         $current = $default_dir;
     } else {
@@ -423,7 +426,7 @@ if($display_only eq "current") { #display just the name of the directory request
     }
 
     if(!defined($rest_dir) && !$root && $root_dir) {
-        my $current = Cwd::cwd();
+        my $current = $cwd;
         $rest_dir = $1 if($current =~ /^$root_dir\/(.*)/);
     }
 
