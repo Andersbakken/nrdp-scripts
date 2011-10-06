@@ -225,7 +225,6 @@ sub findFileMap {
 my %roots_names;
 my @roots;
 
-my $shadows_dir;
 my $default_dir;
 my $root_dir;
 my %dev_roots = parseFileMap(glob("~/.dev_directories"));
@@ -247,28 +246,19 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
 }
 
 #figure out all the shadows listed in my relevent source dir
-if(my $shadows_file = findAncestor(".shadows", $shadows_dir)) {
+if(my $shadows_file = findAncestor(".shadows")) {
     display " Found $shadows_file!\n" if($verbose);
     my $shadows_file_dir = dirname($shadows_file);
-    $shadows_dir = $shadows_file_dir unless(defined($shadows_dir));
+    my $shadows_dir = $shadows_file_dir;
     $project_name = findFileMap($shadows_dir, \%dev_roots) unless(defined($project_name));
     my %shadows_roots = parseFileMap("$shadows_file");
     $read_devdir_list = -2 if($read_devdir_list == 1 ||
                              ($#matches == 0 && $matches[0] eq "-"));
-    $root_dir = $shadows_file_dir unless(defined($root_dir));
-
     unless(defined($default_dir)) {
-        my $shadows_default = "$shadows_dir/.shadows_default";
-        if(open(SHADOWS_DEFAULT, "<$shadows_default")) {
-            $default_dir = <SHADOWS_DEFAULT>;
-            chomp($default_dir);
-            close(SHADOWS_DEFAULT);
-        } else {
-            my @shadows_roots_keys = keys %shadows_roots;
-            $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
-        }
+        my @shadows_roots_keys = keys %shadows_roots;
+        $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
     }
-
+    $root_dir = $shadows_file_dir unless(defined($root_dir));
     $roots_names{$shadows_dir} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
     display __LINE__, ": Named Root [", $roots_names{$shadows_dir}, "] -> [$shadows_dir]\n" if($verbose);
     push(@roots, $shadows_dir);
@@ -289,6 +279,18 @@ if(my $src_marker = findAncestor("configure")) {
     $read_devdir_list = -2 if($read_devdir_list == 1 ||
                              ($#matches == 0 && $matches[0] eq "-"));
     $root_dir = dirname($src_marker) unless(defined($root_dir));
+}
+
+#figure out default
+unless(defined($default_dir)) {
+    if(my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir)) {
+        display " Found $lsdev_default_file!\n" if($verbose);
+        if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
+            $default_dir = <LSDEV_DEFAULT>;
+            chomp($default_dir);
+            close(LSDEV_DEFAULT);
+        }
+    }
 }
 
 #process anything that looks like a build
@@ -469,12 +471,17 @@ if($display_only eq "current") { #display just the name of the directory request
         }
         answer($root_name, $dir);
 
-        if($write_default_file && -d "$shadows_dir") {
-            my $shadows_default = "$root_dir/.shadows_default";
-            if(open(SHADOWS_DEFAULT, ">$shadows_default")) {
-                #display "Writing $shadows_default -> $dir\n";
-                print SHADOWS_DEFAULT "$dir\n";
-                close(SHADOWS_DEFAULT);
+        if($write_default_file) {
+            my @lsdev_defaults;
+            push(@lsdev_defaults, glob("~/.lsdev_default"));
+            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && !($root_dir eq $dir));
+            foreach(@lsdev_defaults) {
+                my $lsdev_default = $_;
+                if(open(LSDEV_DEFAULT, ">$lsdev_default")) {
+                    display "Writing $lsdev_default -> $dir\n" if($verbose);
+                    print LSDEV_DEFAULT "$dir\n";
+                    close(LSDEV_DEFAULT);
+                }
             }
         }
     }
