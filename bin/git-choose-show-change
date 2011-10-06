@@ -2,7 +2,7 @@
 
 file=
 number=40
-changes="changes"
+changes="log --pretty=format:'%h %s [%an]' --no-merges"
 if [ -e "$1" ]; then
     echo "File: $1"
     changes="changes $1"
@@ -63,7 +63,7 @@ fi
 
 while true; do
     #echo "git $changes"
-    change=`$HOME/bin/choose.pl -$number -a -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
+    change=`choose.pl -$number -a -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
     if [ -n "$change" ]; then
       git show "$change"
     else
