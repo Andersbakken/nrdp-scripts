@@ -283,10 +283,13 @@ if(my $src_marker = findAncestor("configure")) {
 
 #figure out default
 unless(defined($default_dir)) {
-    if(my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir)) {
+    my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir);
+    $lsdev_default_file = glob("~/.lsdev_default") unless($lsdev_default_file);
+    if($lsdev_default_file && -e $lsdev_default_file) {
         display " Found $lsdev_default_file!\n" if($verbose);
         if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
             $default_dir = <LSDEV_DEFAULT>;
+            display "   Default $default_dir\n" if($verbose);
             chomp($default_dir);
             close(LSDEV_DEFAULT);
         }
