@@ -123,7 +123,7 @@ sub findAncestor {
     $dir = $cwd unless(defined($dir));
     for( ; $dir; $dir = dirname($dir)) {
         my $r = "$dir/$file";
-        $r =~ s,//+,,g;
+        $r =~ s,//+,/,g;
         return $r if(-e $r);
         last if(length($dir) <= 1);
     }
@@ -185,7 +185,7 @@ sub canonicalize {
     return $result;
 }
 
-sub parseFileMap {
+sub parseConfig {
     my ($file) = @_;
     my %result;
     display "Processing: $file\n" if($verbose);
@@ -193,13 +193,22 @@ sub parseFileMap {
         while(my $line = <FILE>) {
             chomp($line);
             if($line =~ /^([^#].*)=(.*)$/) {
-                my $name = $1;
-                my $path = canonicalize($2, dirname($file));
-                display " Mapped: $name -> $path\n" if($verbose);
-                $result{$name} = $path;
+                $result{$1} = $2;
             }
         }
         close(FILE);
+    }
+    return %result;
+}
+
+sub parseFileMap {
+    my ($file) = @_;
+    my %result = parseConfig($file);
+    foreach(keys %result ) {
+        my $name = $_;
+        my $path = canonicalize($result{$name}, dirname($file));
+        display " Mapped: $name -> $path\n" if($verbose);
+        $result{$name} = $path;
     }
     return %result;
 }
@@ -219,6 +228,18 @@ sub findFileMap {
         }
     }
     display " FindFileMap: $find -> $result\n" if($verbose);
+    return $result;
+}
+
+sub getProjectName {
+    my ($path) = @_;
+    my $result;
+    my $lsdev_config_file = "$path/.lsdev_config";
+    if(-e $lsdev_config_file) {
+        my %config = parseConfig($lsdev_config_file);
+        $result = $config{"name"};
+    }
+    display " ProjectName: $path -> $result\n" if($verbose);
     return $result;
 }
 
@@ -305,17 +326,23 @@ if(defined($dev_roots{builds})) {
             my $build_dir = "$builds/$subdir";
             my $src_dir = processBuildDir($build_dir) if(-d $build_dir);
             if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
-                my $project_name = findFileMap($src_dir, \%dev_roots);
-                $project_name = basename($src_dir) unless(defined($project_name));
+                my $project_name = getProjectName($src_dir);
+                unless(defined($project_name)) {
+                    $project_name = findFileMap($src_dir, \%dev_roots);
+                    $project_name = basename($src_dir) unless(defined($project_name));
+                    #$project_name .= "_detect";
+                }
                 if(defined($project_name)) {
                     display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
                     #src side
-                    $roots_names{$src_dir} = "${src_prefix}${project_name}_detect";
+                    $roots_names{$src_dir} = "${src_prefix}${project_name}";
                     display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
                     push(@roots, $src_dir);
                     display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
                     #build side
-                    $roots_names{$build_dir} = "${build_prefix}${project_name}_detect_${subdir}";
+                    my $shadow_name = getProjectName($build_dir);
+                    $shadow_name = "$subdir" unless(defined($shadow_name));
+                    $roots_names{$build_dir} = "${build_prefix}${project_name}_${shadow_name}";
                     display __LINE__, ": Named Root [", $roots_names{$build_dir}, "] -> [$build_dir]\n" if($verbose);
                     push(@roots, $build_dir);
                     display __LINE__, ": Pushed Root [$build_dir]\n" if($verbose);
@@ -429,6 +456,7 @@ if($display_only eq "current") { #display just the name of the directory request
             push @choices, $root if(defined($root));
         }
     }
+    @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
 
     if(!defined($rest_dir) && !$root && $root_dir) {
         my $current = $cwd;
