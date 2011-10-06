@@ -38,7 +38,7 @@ elif [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     for branch in `git branch | sed "s,^\* *,,"`; do
 	[ -n "$branch" ] && echo "  $branch (lbranch)"
     done
-    for branch in `git branch -r | sed "s,^\* *,,"`; do
+    for branch in `git branch -r | grep -ve '->' | sed "s,^\* *,,"`; do
 	[ -n "$branch" ] && echo "  $branch (rbranch)"
     done
     for remote in `git remote`; do
