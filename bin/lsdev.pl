@@ -486,31 +486,31 @@ if($display_only eq "current") { #display just the name of the directory request
         $index -= 1;
     }
     if(defined($index)) {
-        my $root_dir = canonicalize($choices[$index]);
-        my $root_name = $roots_names{$root_dir};
+        my $ans_root_dir = canonicalize($choices[$index]);
+        my $ans_root_name = $roots_names{$ans_root_dir};
 
-        my $dir = $root_dir;
+        my $ans_dir = $ans_root_dir;
         if(defined($rest_dir)) {
-            my $rest_cd_dir = "$dir/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($dir);
+            my $rest_cd_dir = "$ans_dir/$rest_dir";
+            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($ans_dir);
                 $current = dirname($current)) {
                 if(-d $current) {
-                    $dir = $current;
+                    $ans_dir = $current;
                     last;
                 }
             }
         }
-        answer($root_name, $dir);
+        answer($ans_root_name, $ans_dir);
 
         if($write_default_file) {
             my @lsdev_defaults;
             push(@lsdev_defaults, glob("~/.lsdev_default"));
-            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && !($root_dir eq $dir));
+            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && !($root_dir eq $ans_dir));
             foreach(@lsdev_defaults) {
                 my $lsdev_default = $_;
                 if(open(LSDEV_DEFAULT, ">$lsdev_default")) {
-                    display "Writing $lsdev_default -> $dir\n" if($verbose);
-                    print LSDEV_DEFAULT "$dir\n";
+                    display "Writing $lsdev_default -> $ans_dir\n" if($verbose);
+                    print LSDEV_DEFAULT "$ans_dir\n";
                     close(LSDEV_DEFAULT);
                 }
             }
