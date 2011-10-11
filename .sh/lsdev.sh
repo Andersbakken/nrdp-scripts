@@ -189,12 +189,9 @@ complete-cddev ()
             COMPREPLY=(${COMPREPLY[@]} ${COMPREPLY}non-existing-dir)
         fi
     else
-        local matches=`lsdev -tn -a -l ${nondirs[@]} 2>&1`
-        if [ -z "$matches" ]; then
-            return;
-        elif [ "$matches" != "$cur" ]; then
-            COMPREPLY=(${matches[@]})
-        fi
+        COMPREPLY=()
+        local words="`lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.]\+, ,g' | xargs | sort -u`"
+        COMPREPLY=( $(compgen -W "${words}" -- ${cur}) )
     fi
 }
 
