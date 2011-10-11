@@ -173,12 +173,12 @@ complete-cddev ()
     local realdir
     if [ "${#nondirs[@]}" -ge 0 -a -z "$cur" ]; then
         realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
-        if [ `echo "$realdir" | wc -l` != 1 ]; then 
+        if [ `echo "$realdir" | wc -w` != 1 ]; then 
             realdir=
         fi
     elif echo "$cur" | grep --quiet /; then
         realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
-        if [ `echo "$realdir" | wc -l` != 1 ]; then 
+        if [ `echo "$realdir" | wc -w` != 1 ]; then 
             return
         fi
     fi
