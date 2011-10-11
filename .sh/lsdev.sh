@@ -1,10 +1,12 @@
-adddev() {
+add_lsdev() {
   DIR=
   NAME=
   FORCE=no
   ACTION=add
+  FILE=
   while [ "$#" -gt 0 ]; do
      case "$1" in
+     -file) shift; FILE="$1" ;;
      -f) FORCE=yes ;;
      -d) ACTION=del ;;
      *)
@@ -17,6 +19,10 @@ adddev() {
      esac
      shift
   done
+  if [ -z "$FILE" ]; then
+      echo "No file specified!"
+      return 1
+  fi
   if echo "$DIR" | grep '^-' >/dev/null 2>&1; then
       ACTION=del
       DIR=`echo "$DIR" | sed 's,^-,,'`
@@ -24,43 +30,44 @@ adddev() {
   fi
   [ -n "$DIR" ] && [ -z "$NAME" ] && NAME=`basename $DIR`
 
-  if [ "$FORCE" != "yes" ]; then
-      CONFIG_FILE=`findancestor config.status`
-      if [ -n "$CONFIG_FILE" ]; then
-          echo "In build tree. ($CONFIG_FILE)"
-          return 1
-      fi
-  fi
-
-  SHADOWS_FILE=`findancestor .shadows`
   if [ "$ACTION" = "del" ]; then
-      if [ -z "$SHADOWS_FILE" ]; then
+      if [ -z "$FILE" ]; then
           echo "No shadows."
-      elif grep "^${DIR}=" "$SHADOWS_FILE" >/dev/null 2>&1; then
-          echo "Removed. ${SHADOWS_FILE}"
-          sed -e "s,^${DIR}=.*\$,," -e "/^$/d" -i "$SHADOWS_FILE"
-      elif grep "^.*=${DIR}\$" "$SHADOWS_FILE" >/dev/null 2>&1; then
-          echo "Removed. ${SHADOWS_FILE}"
-          sed -e "s,^.*=${DIR}\$,," -e "/^$/d" -i "$SHADOWS_FILE"
+      elif grep "^${DIR}=" "$FILE" >/dev/null 2>&1; then
+          echo "Removed. ${FILE}"
+          sed -e "s,^${DIR}=.*\$,," -e "/^$/d" -i "$FILE"
+      elif grep "^.*=${DIR}\$" "$FILE" >/dev/null 2>&1; then
+          echo "Removed. ${FILE}"
+          sed -e "s,^.*=${DIR}\$,," -e "/^$/d" -i "$FILE"
       else
-          echo "Not found. ${SHADOWS_FILE}"
+          echo "Not found. ${FILE}"
       fi
   else
       if [ -z "$DIR" ] || [ ! -d "$DIR" ]; then
           echo "adddev dir [name]"
           return 1
       fi
-      [ -z "$SHADOWS_FILE" ] && SHADOWS_FILE="$PWD/.shadows"
-      if grep "^${NAME}=$DIR\$" "$SHADOWS_FILE" >/dev/null 2>&1; then
-          echo "Unchanged. ($SHADOWS_FILE)"
-      elif grep "^${NAME}=" "$SHADOWS_FILE" >/dev/null 2>&1; then
-          echo "Changed. ($SHADOWS_FILE)"
-          sed -e "s,^${NAME}=\.*$,$NAME=$DIR," -i "$SHADOWS_FILE"
+      if grep "^${NAME}=$DIR\$" "$FILE" >/dev/null 2>&1; then
+          echo "Unchanged. ($FILE)"
+      elif grep "^${NAME}=" "$FILE" >/dev/null 2>&1; then
+          echo "Changed. ($FILE)"
+          sed -e "s,^${NAME}=\.*$,$NAME=$DIR," -i "$FILE"
       else
-          echo "Added. ($SHADOWS_FILE)"
-          echo "${NAME}=${DIR}" >>"$SHADOWS_FILE"
+          echo "Added. ($FILE)"
+          echo "${NAME}=${DIR}" >>"$FILE"
       fi
   fi
+}
+
+adddev() {
+  FILE="$HOME/.dev_directories"
+  add_lsdev -file "$FILE" "$@"
+}
+
+addbuild() {
+  FILE=`findancestor .shadows`
+  [ -z "$FILE" ] && FILE="$PWD/.shadows"
+  add_lsdev -file "$FILE" "$@"
 }
 
 #lsdev
