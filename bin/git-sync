@@ -2,21 +2,9 @@
 
 GITDIR=`git rev-parse --git-dir`
 if git config -l | grep "^svn-remote" --quiet; then
-    if [ -n "`git log git-svn..master`" ]; then
-        echo "Your branches have diverged"
-    elif ! git status | grep --quiet "^nothing to commit"; then
-        echo "Index is dirty"
-    else
-        git svn update
-    fi
+    git svn update
 elif [ -d "$GITDIR/refs/remotes/p4" ]; then
-    if [ -n "`git log p4/master..master`" ]; then
-        echo "Your branches have diverged"
-    elif ! git status | grep --quiet "^nothing to commit"; then
-        echo "Index is dirty"
-    else
-        git p4 sync
-    fi
+    git p4 sync
 else
     git pull
 fi
