@@ -1,0 +1,34 @@
+#!/bin/sh
+
+TEST=
+COMMAND=
+DEVS=
+
+while [ "$#" -gt 0 ]; do
+  OPT="$1"
+  shift
+  case $OPT in
+  -dry) TEST="echo" ;;
+  --*) COMMAND=`echo $OPT | sed "s,^--,,g"` ;;
+  *)
+     if [ -z "$COMMAND" ] && [ "$#" = "0" ]; then
+        COMMAND="$OPT"
+     else
+        DEVS="$DEVS $OPT"
+     fi ;;
+  esac
+done
+
+
+if [ -z "$COMMAND" ]; then
+   echo "No command provided!"
+   exit 1
+fi
+
+for dir in `lsdev.pl -l -tp $DEVS`; do
+   if [ -d "$dir" ] && [ -d "$dir/.git" ]; then
+      echo "Processing: $dir ($COMMAND)"
+      cd "$dir"
+      $TEST git $COMMAND
+   fi
+done
