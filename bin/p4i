@@ -2,33 +2,35 @@
 #
 # Integrate a change from the current branch through to the main equivalent
 
-$abort = 0;
-$P4 = "p4";
-$maxChanges = 30;
+use strict;
 
-$userName = $ENV{P4USER};
+my $abort = 0;
+my $P4 = "p4";
+my $maxChanges = 30;
+
+my $userName = $ENV{P4USER};
 unless(defined($userName)) {
   $userName = `whoami`;
   chomp $userName;
 }
 
-$checkmissing = 0;
-$targetBranch = undef;
-$change = 0;
-$all = 0;
-$ask = 1;
-$force = 0;
-$ignoredeleted = 0;
-$resolve = 1;
-$verbose = 0;
+my $checkmissing = 0;
+my %targetBranch = undef;
+my @changes = ();
+my $all = 0;
+my $ask = 1;
+my $force = 0;
+my $ignoredeleted = 0;
+my $resolve = 1;
+my $verbose = 0;
 
 # Simplify program name, if it is a path.
-$orig_argv0 = $0; #save the old $0
+my $orig_argv0 = $0; #save the old $0
 $0 =~ s/.*(\\|\/)//;
 
 #known branches
 if( open( BRANCHES, "<" . $ENV{HOME} . "/.p4i_branches" ) ) {
-    while( $branch = <BRANCHES> ) {  
+    while( my $branch = <BRANCHES> ) {
         chomp( $branch );
 	next if( $branch eq "" );
         my @parts = split( /->/, $branch );
@@ -37,35 +39,34 @@ if( open( BRANCHES, "<" . $ENV{HOME} . "/.p4i_branches" ) ) {
     close( BRANCHES );
 }
 
-open( P4, "$P4 -V |") || die "$0: Couldn't exec $P4: $!\n";
-$line = <P4>;
-close( P4 );
-chomp( $line );
-if ( $line !~ /^Perforce/ ) {
-    die "$0: $P4 -V isn't p4? Returned: \"$line\"\n";
+{
+    open( P4, "$P4 -V |") || die "$0: Couldn't exec $P4: $!\n";
+    my $line = <P4>;
+    close( P4 );
+    chomp( $line );
+    if ( $line !~ /^Perforce/ ) {
+        die "$0: $P4 -V isn't p4? Returned: \"$line\"\n";
+    }
 }
 
 sub findBranch {
     my ($path) = @_;
     my $ret;
-    foreach $branch (keys %targetBranch) {
+    foreach my $branch (keys %targetBranch) {
         $ret = $branch if( $path =~ /^\/\/$branch/ && length($branch) > length($ret))
     }
     return $ret;
 }
 
 sub findTargetBranch {
-    return $targetBranch if(defined($targetBranch));
-
     my ($fromBranch) = @_;
-    if (defined($targetBranch{$fromBranch})) {
-        $toBranch = $targetBranch{$fromBranch};
-    } else {
+    if (!defined($targetBranch{$fromBranch})) {
         print STDERR " ** Error: No target branch found for $fromBranch.\n";
         print STDERR "           All results would be bogus, cannot continue\n";
         print STDERR " (If this is a valid branch, please add it to the targetBranch list)\n";
         exit(1);
     }
+    my $toBranch = $targetBranch{$fromBranch};
     #printf "Oi: $fromBranch -> $toBranch\n";
     return $toBranch;
 }
@@ -106,16 +107,15 @@ while ( @ARGV ) {
 	$resolve = 0;
     } elsif ( $arg eq "--verbose" ) {
 	$verbose = 1;
-    } elsif ( $change == 0 && $arg =~ /^\d+$/ ) {
-	$change = $arg;
-    } elsif ( !defined( $targetBranch ) && $arg =~ /\// ) {
-        $targetBranch = $arg;
+    } elsif ( $arg =~ /^\d+$/ ) {
+        push @changes, $arg;
     } else {
         print "Unknown command: \"$arg\"\n";
 	usage;
     }
 }
 
+my $p4UserCmd;
 if (defined $userName && $userName ne "") {
     $p4UserCmd = "-u $userName";
 } else {
@@ -123,20 +123,25 @@ if (defined $userName && $userName ne "") {
     $userName = "all";
 }
 
-if( $checkmissing ) { #just look for missing
+if ( $#changes == -1 ) { # Get your latest change list
+    my $change = findLastChange();
+    push @changes, $change;
+    print "Discovered change: $change\n";
+}
 
+if( $checkmissing ) { #just look for missing
     # Figure out which branch we're checking from and to
     # Files not matching these will be ignored, and not checked
     open( P4, "$P4 where $checkmissing |") || die "$0: Couldn't exec $P4: $!\n";
     my $checkBranch = <P4>;
     close(P4);
-    @whereComponents = split (/[^\\] /, $checkBranch); #non-escaped spaces
-    $fromBranch = findBranch($whereComponents[0]);
+    my @whereComponents = split (/[^\\] /, $checkBranch); #non-escaped spaces
+    my $fromBranch = findBranch($whereComponents[0]);
     my $toBranch = findTargetBranch( $fromBranch );
     
     # Finding files to check for integration
     open( P4, "$P4 changes $p4UserCmd -m 1024 $checkmissing |") || die "$0: Couldn't exec $P4: $!\n";
-    while( $description = <P4> ) {
+    while( my $description = <P4> ) {
 	chop $description;
 	next unless($description);
 	next unless($description =~ /Change ([0-9]+) on.*/);
@@ -146,7 +151,7 @@ if( $checkmissing ) { #just look for missing
 	my @files;
 	my @ignoredFiles;
 	open( P4DESC, "$P4 -ztag describe $change |") || die "$0: Couldn't exec $P4: $!\n";
-	while( $line = <P4DESC> ) {
+	while( my $line = <P4DESC> ) {
 	    if ( $line =~ /\.\.\. depotFile[0-9]+ (\/\/.*\/[^\r\n]*)/ ) {
 		my $file = $1;
 		my $file_branch = findBranch( $file );
@@ -162,20 +167,21 @@ if( $checkmissing ) { #just look for missing
         my $numIgnored = $#ignoredFiles + 1;
         if ($numIgnored && $verbose) {
             print "Change $change contains $numIgnored files not in integration path (ignored):\n";
-            foreach $file (@ignoredFiles) {
+            foreach my $file (@ignoredFiles) {
                 print "   $file\n";
             }
         }
 
 	#check which has not been integrated
 	my @not_integrated;
-	foreach $file (@files) {
+	foreach my $file (@files) {
 	    open( P4CHANG, "$P4 changes -m $maxChanges \"//$toBranch/$file\"|" ) ||
 		die "$0: Couldn't exec $P4: $!\n";
-	    while( $line = <P4CHANG> ) {
+	    while( my $line = <P4CHANG> ) {
 		chop $line;
 		last unless($line =~ /Change ([0-9]+) on.*/);
-		my $pot_change = $1, $pot_file = 0;
+		my $pot_change = $1;
+                my $pot_file = 0;
 		last if($pot_change < $change);
 		open( P4DESC, "$P4 -ztag describe $pot_change|" ) || die "$0: Couldn't exec $P4: $!\n";
 		while( $line = <P4DESC>) {
@@ -201,7 +207,7 @@ if( $checkmissing ) { #just look for missing
 		print "Change $change is not integrated! $shortDesc\n";
 	    } else {
 		print "Change $change is not fully integrated: $shortDesc\n";
-		foreach $file (@not_integrated) {
+		foreach my $file (@not_integrated) {
 		    print "   $file\n";
 		}
 	    }
@@ -211,324 +217,324 @@ if( $checkmissing ) { #just look for missing
     exit(0)
 }
 
-if ( $change == 0 ) { # Get your latest change list
-   $change = findLastChange();
-   print "Discovered change: $change\n";
-}
+sub p4i {
+    my ($change) = @_;
+    my @fromBranchFiles = ();
+    my @fromBranchRevisions = ();
+    my @changeDescription = ();
+    my %alldone;
+    # We don't want the "Affected files ..." section in the description any more,
+    # so we use this to tell us when we're reading change description, and when
+    # we're reading the files.
+    my $readingDescription = 1;
+    # For discarding the empty line after the "Change n by user@client" line.
+    my $eatNextEmptyLine = 0;
 
-@fromBranchFiles = ();
-@changeDescription = ();
-# We don't want the "Affected files ..." section in the description any more,
-# so we use this to tell us when we're reading change description, and when
-# we're reading the files.
-$readingDescription = 1;
-# For discarding the empty line after the "Change n by user@client" line.
-$eatNextEmptyLine = 0;
-
-# Man, this loop is getting kinda hairy.
-open( P4, "$P4 describe -s $change |") || die "$0: Couldn't exec $P4: $!\n";
-while( $line = <P4> ) {
-    if ( $line =~ /\s*p4i integration$/ ) {
-	next;
+    # Man, this loop is getting kinda hairy.
+    open( P4, "$P4 describe -s $change |") || die "$0: Couldn't exec $P4: $!\n";
+    while( my $line = <P4> ) {
+        if ( $line =~ /\s*p4i integration$/ ) {
+            next;
+        }
+        if ( $line =~ /^Change [0-9]+ by .* on [0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/ ) {
+            $eatNextEmptyLine = 1;
+            next;
+        }
+        if ( $eatNextEmptyLine && ( $line =~ /^\s*$/ ) ) {
+            $eatNextEmptyLine = 0;
+            next;
+        }
+        if ( $line =~ /^Affected files \.\.\./ ) {
+            $readingDescription = 0;
+        } elsif ( $readingDescription ) {
+            push( @changeDescription, $line );
+        } elsif ( $line =~ /^\.\.\. (\/\/.*)\#([0-9]+)/ ) {
+            push( @fromBranchFiles, $1 );
+            push( @fromBranchRevisions, $2 );
+        }
     }
-    if ( $line =~ /^Change [0-9]+ by .* on [0-9]{4}\/[0-9]{2}\/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}$/ ) {
-	$eatNextEmptyLine = 1;
-	next;
+    close( P4 );
+    # The last line is blank, so discard it.
+    pop( @changeDescription );
+    foreach my $changeLine (@changeDescription) {
+        $changeLine =~ s/^[\t ]//;
     }
-    if ( $eatNextEmptyLine && ( $line =~ /^\s*$/ ) ) {
-	$eatNextEmptyLine = 0;
-	next;
+
+    if ( $#fromBranchFiles == -1 ) {
+        die "$0: No files found in changelist";
     }
-    if ( $line =~ /^Affected files \.\.\./ ) {
-	$readingDescription = 0;
-    } elsif ( $readingDescription ) {
-	push( @changeDescription, $line );
-    } elsif ( $line =~ /^\.\.\. (\/\/.*)\#([0-9]+)/ ) {
-	push( @fromBranchFiles, $1 );
-	push( @fromBranchRevisions, $2 );
+
+    my $fromBranch = findBranch( $fromBranchFiles[0] );
+    my $toBranch = findTargetBranch( $fromBranch );
+
+    print "Merging from $fromBranch to $toBranch\n";
+    if ( $fromBranch eq $toBranch ) {
+        die "Can't merge file to itself!\n";
     }
-}
-close( P4 );
-# The last line is blank, so discard it.
-pop( @changeDescription );
-foreach $changeLine (@changeDescription) {
-    $changeLine =~ s/^[\t ]//;
-}
 
-if ( $#fromBranchFiles == -1 ) {
-    die "$0: No files found in changelist";
-}
-
-$fromBranch = findBranch( $fromBranchFiles[0] );
-$toBranch = findTargetBranch( $fromBranch );
-
-print "Merging from $fromBranch to $toBranch\n";
-if ( $fromBranch eq $toBranch ) {
-    die "Can't merge file to itself!\n";
-}
-
-foreach $file ( @fromBranchFiles ) {
-    my $fileBranch = findBranch( $file );
-    if ( !$force && $fileBranch ne $fromBranch ) {
-	print STDERR "File $file on branch $fileBranch, not $fromBranch\n";
-	$abort = 1;
+    foreach my $file ( @fromBranchFiles ) {
+        my $fileBranch = findBranch( $file );
+        if ( !$force && $fileBranch ne $fromBranch ) {
+            print STDERR "File $file on branch $fileBranch, not $fromBranch\n";
+            $abort = 1;
+        }
     }
-}
 
-if ( $abort ) {
-    die "$0: Exiting; not all files from same product/on same branch";
-}
-
-@toBranchFiles = ();
-foreach $file ( @fromBranchFiles ) {
-    my $filePart = substr $file, length( $fromBranch )+2;
-    $filePart = "//" . $toBranch . $filePart;
-    push( @toBranchFiles, $filePart );
-}
-
-# Check all files are closed
-$files = join( " ", map { "\"$_\"" } @toBranchFiles );
-print "Checking files are closed: $files\n";
-# Unbelievable... p4 writes this file list to stderr!?
-$linecount = 0;
-open( P4, "$P4 opened $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
-while ( $line = <P4> ) {
-    $linecount++;
-    chomp( $line );
-    ($file, $message) = split( m/ - /, $line );
-    $message =~ s/[\r\n]//g;
-    if ( $message ne "file(s) not opened on this client." ) {
-	print STDERR "File $file is open; \"$message\"\n";
-	$abort = 1;
+    if ( $abort ) {
+        die "$0: Exiting; not all files from same product/on same branch";
     }
-}
-close( P4 );
 
-if ( !$linecount ) {
-    die "$0: No lines read while checking all files closed.\n";
-}
-
-if ( $abort ) {
-    die "$0: Exiting; not all files were closed.\n";
-}
-
-# Check all files are up-to-date newly added
-
-print "Checking files are up-to-date: $files\n";
-$linecount = 0;
-open( P4, "$P4 sync -n $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
-while ( $line = <P4> ) {
-    $linecount++;
-    chomp( $line );
-    ($file, $message) = split( m/ - /, $line );
-    $message =~ s/[\r\n]//g;
-    if ( $message ne "file(s) up-to-date."
-      && $message ne "no such file(s)." ) {
-	print STDERR "File $file is not up-to-date; \"$message\"\n";
-	$abort = 1;
+    my @toBranchFiles = ();
+    foreach my $file ( @fromBranchFiles ) {
+        my $filePart = substr $file, length( $fromBranch )+2;
+        $filePart = "//" . $toBranch . $filePart;
+        push( @toBranchFiles, $filePart );
     }
-}
-close( P4 );
 
-if ( !$linecount ) {
-    die "$0: No lines read while checking all files up-to-date.\n";
-}
-
-if ( $abort ) {
-    die "$0: Exiting; not all files up-to-date.\n";
-}
-
-print "Checking for gaps in integration: $files\n";
-for ( $count = 0; $count < @fromBranchFiles; $count++ ) {
-    $linecount = 0;
-
-    my $p4cmd = "$P4 integrate -d -n \"$fromBranchFiles[$count]\@$change\" \"$toBranchFiles[$count]\"";
-    open( P4, "$p4cmd |") || die "$0: Couldn't exec $P4: $!\n";
-    $fileOK = 0;
-    LINE: while ( $line = <P4> ) {
-	$linecount++;
-	chomp( $line );
-	($file, $message) = split( m/ - /, $line );
+    # Check all files are closed
+    my $files = join( " ", map { "\"$_\"" } @toBranchFiles );
+    print "Checking files are closed: $files\n";
+    # Unbelievable... p4 writes this file list to stderr!?
+    my $linecount = 0;
+    open( P4, "$P4 opened $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
+    while ( my $line = <P4> ) {
+        $linecount++;
+        chomp( $line );
+        my ($file, $message) = split( m/ - /, $line );
         $message =~ s/[\r\n]//g;
-	if ( $message =~ m/can't branch from.*without -d.*flag/ ) {
-	    print STDERR "$toBranchFiles[$count] has been deleted, ";
-	    if ( $ignoredeleted ) {
-		print STDERR "skipping.\n";
-	    } else {
-		print STDERR "aborting.\n";
-		$abort = 1;
-	    }
-	    last LINE;
-	}
-	unless(defined($targetBranch)) {
-	  if ( $message ne "integrate from $fromBranchFiles[$count]#".$fromBranchRevisions[$count]
-	       && $message ne "branch/sync from $fromBranchFiles[$count]#".$fromBranchRevisions[$count]
-	       && $message ne "delete from $fromBranchFiles[$count]#".$fromBranchRevisions[$count] ) {
-	    print STDERR "Gaps in integration of $file: \"$message\"\n";
-	    $message =~ s/.*\#([0-9]+),\#([0-9]+)/$1 $2/g;
-	    ($start, $end) = split( " ", $message );
-	    printNeededRevisions( $fromBranchFiles[$count], $toBranchFiles[$count], $change, $start, $end);
-	    $abort = 1;
-	  } else {
-	    $fileOK = 1;
-	  }
-	} else {
-	    $fileOK = 1;
-	  }
+        if ( $message ne "file(s) not opened on this client." ) {
+            print STDERR "File $file is open; \"$message\"\n";
+            $abort = 1;
+        }
     }
     close( P4 );
-    if ( $fileOK ) {
-	@fromFiles = ( @fromFiles, $fromBranchFiles[$count] );
-	@toFiles = ( @toFiles, $toBranchFiles[$count] );
-    }
+
     if ( !$linecount ) {
-	open( P4, "$p4cmd 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
-	if ( <P4> =~ /all revision.s. already integrated./ ) {
-	    # OK (probably had to be done manually)
-	    $alldone{$toBranchFiles[$count]}++;
-	} else {
-	    die "$0: No lines read while checking $fromBranchFiles[$count]\@$change for gaps in integration\n";
-	}
+        die "$0: No lines read while checking all files closed.\n";
     }
 
-}
+    if ( $abort ) {
+        die "$0: Exiting; not all files were closed.\n";
+    }
 
-@fromBranchFiles = @fromFiles;
-@toBranchFiles = @toFiles;
+    # Check all files are up-to-date newly added
 
-
-if ( $abort ) {
-    die "$0: p4 indicated gaps in integration";
-}
-
-# Now do the integrate
-
-print "Integrating: $files\n";
-for ( $count = 0; $count < @fromBranchFiles; $count++ ) {
+    print "Checking files are up-to-date: $files\n";
     $linecount = 0;
-    open( P4, "$P4 integrate -d \"$fromBranchFiles[$count]\@$change\" \"$toBranchFiles[$count]\" |") || die "$0: Couldn't exec $P4: $!\n";
-    while ( $line = <P4> ) {
-	$linecount++;
-	chomp( $line );
-	# Discard revisions here.
-	$line =~ s/\#[0-9]+//g;
-        $line =~ s/[\r\n]//g;
-	if ( $line ne "$toBranchFiles[$count] - integrate from $fromBranchFiles[$count]"
-	  && $line ne "$toBranchFiles[$count] - branch/sync from $fromBranchFiles[$count]"
-	  && $line ne "$toBranchFiles[$count] - delete from $fromBranchFiles[$count]" ) {
-	    print STDERR "$P4 returned unexpected line \"$line\"\n";
-	    $abort = 1;
-	}
+    open( P4, "$P4 sync -n $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
+    while ( my $line = <P4> ) {
+        $linecount++;
+        chomp( $line );
+        my ($file, $message) = split( m/ - /, $line );
+        $message =~ s/[\r\n]//g;
+        if ( $message ne "file(s) up-to-date."
+             && $message ne "no such file(s)." ) {
+            print STDERR "File $file is not up-to-date; \"$message\"\n";
+            $abort = 1;
+        }
     }
     close( P4 );
 
-    if ( !$linecount && !$alldone{$toBranchFiles[$count]} ) {
-	die "$0: No lines read while integrating $fromBranchFiles[$count]\@$change\n";
+    if ( !$linecount ) {
+        die "$0: No lines read while checking all files up-to-date.\n";
     }
 
-}
+    if ( $abort ) {
+        die "$0: Exiting; not all files up-to-date.\n";
+    }
 
-if ( $abort ) {
-    die "$0: p4 integrate failed on some file(s)";
-}
+    my @fromFiles;
+    my @toFiles;
+    print "Checking for gaps in integration: $files\n";
+    for ( my $count = 0; $count < @fromBranchFiles; $count++ ) {
+        $linecount = 0;
 
-# Now the complicated bit. Doing the resolution.
+        my $p4cmd = "$P4 integrate -d -n \"$fromBranchFiles[$count]\@$change\" \"$toBranchFiles[$count]\"";
+        open( P4, "$p4cmd |") || die "$0: Couldn't exec $P4: $!\n";
+        my $fileOK = 0;
+      LINE: while ( my $line = <P4> ) {
+          $linecount++;
+          chomp( $line );
+          my ($file, $message) = split( m/ - /, $line );
+          $message =~ s/[\r\n]//g;
+          if ( $message =~ m/can't branch from.*without -d.*flag/ ) {
+              print STDERR "$toBranchFiles[$count] has been deleted, ";
+              if ( $ignoredeleted ) {
+                  print STDERR "skipping.\n";
+              } else {
+                  print STDERR "aborting.\n";
+                  $abort = 1;
+              }
+              last LINE;
+          }
+          if ( $message ne "integrate from $fromBranchFiles[$count]#".$fromBranchRevisions[$count]
+               && $message ne "branch/sync from $fromBranchFiles[$count]#".$fromBranchRevisions[$count]
+               && $message ne "delete from $fromBranchFiles[$count]#".$fromBranchRevisions[$count] ) {
+              print STDERR "Gaps in integration of $file: \"$message\"\n";
+              $message =~ s/.*\#([0-9]+),\#([0-9]+)/$1 $2/g;
+              my ($start, $end) = split( " ", $message );
+              printNeededRevisions( $fromBranchFiles[$count], $toBranchFiles[$count], $change, $start, $end);
+              $abort = 1;
+          } else {
+              $fileOK = 1;
+          }
+      }
+        close( P4 );
+        if ( $fileOK ) {
+            @fromFiles = ( @fromFiles, $fromBranchFiles[$count] );
+            @toFiles = ( @toFiles, $toBranchFiles[$count] );
+        }
+        if ( !$linecount ) {
+            open( P4, "$p4cmd 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
+            if ( <P4> =~ /all revision.s. already integrated./ ) {
+                # OK (probably had to be done manually)
+                $alldone{$toBranchFiles[$count]}++;
+            } else {
+                die "$0: No lines read while checking $fromBranchFiles[$count]\@$change for gaps in integration\n";
+            }
+        }
 
-@filesToResolve = @toBranchFiles;
-while ( @filesToResolve ) {
-    $files = join( " ", map { "\"$_\"" } @filesToResolve );
-    $linecount = 0;
-    if ( $resolve ) {
-	open( P4, "$P4 resolve -am $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
-	while ( $line = <P4> ) {
-	    $linecount++;
-	    chomp( $line );
-	    if ( $line =~ /^\/\// ) {
-		($file, $message) = split( m/ - /, $line);
-		if ( $message eq "resolve skipped." ) {
-		    push ( @skippedFiles, $file );
-		    print "File $file skipped: $message\n";
-		} else {
-		    print "File $file accepted\n";
-		}
-	    }
-	}
-	close( P4 );
-    } else {
-	for my $file ( @filesToResolve ) {
+    }
+
+    @fromBranchFiles = @fromFiles;
+    @toBranchFiles = @toFiles;
+
+
+    if ( $abort ) {
+        die "$0: p4 indicated gaps in integration";
+    }
+
+    # Now do the integrate
+    my $count = 0;
+    print "Integrating: $files\n";
+    for ( ; $count < @fromBranchFiles; $count++ ) {
+        $linecount = 0;
+        open( P4, "$P4 integrate -d \"$fromBranchFiles[$count]\@$change\" \"$toBranchFiles[$count]\" |") || die "$0: Couldn't exec $P4: $!\n";
+        while ( my $line = <P4> ) {
             $linecount++;
-	    push(@skippedFiles, $file);
-	}
-    }
-    if ( $#skippedFiles > -1 ) {
-	print "Skipped these files: ".join( "\n", @skippedFiles )."\n";
-	print "Please resolve these files manually, and then press enter.\n";
-	$line = <STDIN>;
+            chomp( $line );
+            # Discard revisions here.
+            $line =~ s/\#[0-9]+//g;
+            $line =~ s/[\r\n]//g;
+            if ( $line ne "$toBranchFiles[$count] - integrate from $fromBranchFiles[$count]"
+                 && $line ne "$toBranchFiles[$count] - branch/sync from $fromBranchFiles[$count]"
+                 && $line ne "$toBranchFiles[$count] - delete from $fromBranchFiles[$count]" ) {
+                print STDERR "$P4 returned unexpected line \"$line\"\n";
+                $abort = 1;
+            }
+        }
+        close( P4 );
+
+        if ( !$linecount && !$alldone{$toBranchFiles[$count]} ) {
+            die "$0: No lines read while integrating $fromBranchFiles[$count]\@$change\n";
+        }
+
     }
 
-    if ( !$linecount && !$alldone{$toBranchFiles[$count]} ) {
-	die "$0: No lines read while resolving $files\n";
+    if ( $abort ) {
+        die "$0: p4 integrate failed on some file(s)";
     }
 
-    if ( $resolve ) {
-        @filesToResolve = @skippedFiles;
+    # Now the complicated bit. Doing the resolution.
+    my @filesToResolve = @toBranchFiles;
+    my @skippedFiles;
+    while ( @filesToResolve ) {
+        $files = join( " ", map { "\"$_\"" } @filesToResolve );
+        $linecount = 0;
+        if ( $resolve ) {
+            open( P4, "$P4 resolve -am $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
+            while ( my $line = <P4> ) {
+                $linecount++;
+                chomp( $line );
+                if ( $line =~ /^\/\// ) {
+                    my ($file, $message) = split( m/ - /, $line);
+                    if ( $message eq "resolve skipped." ) {
+                        push ( @skippedFiles, $file );
+                        print "File $file skipped: $message\n";
+                    } else {
+                        print "File $file accepted\n";
+                    }
+                }
+            }
+            close( P4 );
+        } else {
+            for my $file ( @filesToResolve ) {
+                $linecount++;
+                push(@skippedFiles, $file);
+            }
+        }
+        if ( $#skippedFiles > -1 ) {
+            print "Skipped these files: ".join( "\n", @skippedFiles )."\n";
+            print "Please resolve these files manually, and then press enter.\n";
+            my $line = <STDIN>;
+        }
+
+        if ( !$linecount && !$alldone{$toBranchFiles[$count]} ) {
+            die "$0: No lines read while resolving $files\n";
+        }
+
+        if ( $resolve ) {
+            @filesToResolve = @skippedFiles;
+        } else {
+            @filesToResolve = ();
+        }
+        @skippedFiles = ();
+    }
+
+    my $action;
+    if ( $ask ) {
+        print "Enter y to submit change, anything else to create changelist: ";
+        my $confirm = <STDIN>;
+
+        if ( $confirm =~ /^[Yy]/ ) {
+            $action = "submit";
+        } else {
+            $action = "change";
+        }
     } else {
-        @filesToResolve = ();
+        $action = "submit";
     }
-    @skippedFiles = ();
+
+    print "Running 'p4 $action'\n";
+
+    if(1) {
+        open( P4, "| $P4 $action -i" ) || die "$0: Couldn't exec $P4: $!\n";
+
+        print P4 "Change: new\n";
+        print P4 "Description:\n";
+        print P4 "\t".join( "\t", @changeDescription )."\n";
+        print P4 "\tIntegrate(p4i) $change from $fromBranch to $toBranch:\n";
+        print P4 "Files:\n\t".join( "\n\t", grep { !$alldone{$_} } @toBranchFiles )."\n";
+
+        close( P4 );
+    }
+
+    if ( $action eq "change" ) {
+        print "Submit the above change number to complete the integration.\n";
+    }
+    if ( $all ) {
+        my $next_change = findLastChange();
+        if ( $next_change != $change ) {
+            # Check if change contains the word integration
+            # in some form
+            # ------------------------------------------------
+            open ( P4, "$P4 describe -s $next_change |") || die "$0: Couldn't get description of change #$next_change";
+            my @description = <P4>;
+            close( P4 );
+            my $is_integrate = 0;
+            grep {
+                if ( /[iI]ntegrat(e|ed|ion)/ ) {
+                    $is_integrate = 1;
+                }
+            } @description;
+            if ( $is_integrate ) {
+                print "Running another integrate.. [$next_change]\n";
+                exec "$orig_argv0 --all $next_change";
+            }
+        }
+    }
+    print "Done [$change].\n";
 }
-
-if ( $ask ) {
-  print "Enter y to submit change, anything else to create changelist: ";
-  $confirm = <STDIN>;
-
-  if ( $confirm =~ /^[Yy]/ ) {
-      $action = "submit";
-  } else {
-      $action = "change";
-  }
-} else {
-  $action = "submit";
-}
-
-print "Running 'p4 $action'\n";
-
-open( P4, "| $P4 $action -i" ) || die "$0: Couldn't exec $P4: $!\n";
-
-print P4 "Change: new\n";
-print P4 "Description:\n";
-print P4 "\tp4i integration\n";
-print P4 "\tIntegrate $change from $fromBranch to $toBranch:\n";
-print P4 "\t".join( "\t", @changeDescription )."\n";
-print P4 "Files:\n\t".join( "\n\t", grep { !$alldone{$_} } @toBranchFiles )."\n";
-
-close( P4 );
-
-if ( $action eq "change" ) {
-    print "Submit the above change number to complete the integration.\n";
-}
-if ( $all ) {
-   my $next_change = findLastChange();
-   if ( $next_change != $change ) {
-     # Check if change contains the word integration
-     # in some form
-     # ------------------------------------------------
-     open ( P4, "$P4 describe -s $next_change |") || die "$0: Couldn't get description of change #$next_change";
-     my @description = <P4>;
-     close( P4 );
-     my $is_integrate = 0;
-     grep {
-       if ( /[iI]ntegrat(e|ed|ion)/ ) {
-         $is_integrate = 1;
-       }
-     } @description;
-     if ( $is_integrate ) {
-        print "Running another integrate.. [$next_change]\n";
-        exec "$orig_argv0 --all $next_change";
-     }
-   }
-}
-print "Done [$change].\n";
 
 sub printNeededRevisions {
     my ($fromBranchFile, $toBranchFile, $change, $start, $end) = @_;
@@ -567,3 +573,6 @@ sub findLastChange {
    return $myChanges[0];
 }
 
+foreach my $change (@changes) {
+    p4i($change);
+}
