@@ -361,6 +361,13 @@ def p4Where(depotPath):
         clientPath = clientPath[:-3]
     return clientPath
 
+def getShelves():
+    shelves = []
+    for change in p4CmdList("changes -s pending"):
+        if change.has_key("shelved"):
+            shelves.append(change);
+    return shelves
+
 def getScriptsPath():
     scriptsPath = read_pipe("git rev-parse --show-toplevel").strip()
     if scriptsPath and len(scriptsPath):
@@ -402,6 +409,20 @@ def extractSettingsCommit(commit):
            continue
        values["log"] += log
     return values
+
+def lookupFromGitChange(change):
+    log = extractLogMessageFromGitCommit(change)
+    settings =  extractSettingsGitLog(log)
+    if settings:
+        return settings['change'];
+    return False;
+
+def lookupFromP4Change(change):
+    logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + str(change) + "'";
+    changes = read_pipe("git log %s" % logOpts, ignore_error=True).split("\n");
+    if changes and len(changes):
+        return changes[0].strip();
+    return False;
 
 def extractLogMessageFromGitCommit(commit):
     return extractSettingsCommit(commit)["log"]
@@ -650,6 +671,7 @@ class P4Submit(Command):
                 optparse.make_option("-a", dest="confirmCommit", action="store_false"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
         ]
+        self.p4Shelve = False
         self.description = "Submit changes from git to the perforce depot."
         self.usage += " [name of git branch to submit into perforce depot]"
         self.interactive = True
@@ -759,7 +781,10 @@ class P4Submit(Command):
             else:
                 die("unknown modifier %s for %s" % (modifier, path))
 
-        diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
+        if re.match("^stash@", id):
+            diffcmd = "git stash show -p \"%s\"" % id
+        else:
+            diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
         patchcmd = diffcmd + " | git apply "
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
@@ -863,6 +888,7 @@ class P4Submit(Command):
                     while response != "y" and response != "n":
                         response = raw_input("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ")
 
+            revert = False
             if response == "y":
                 tmpFile = open(fileName, "rb")
                 message = tmpFile.read()
@@ -870,12 +896,22 @@ class P4Submit(Command):
                 submitTemplate = message[:message.index(separatorLine)]
                 if self.isWindows:
                     submitTemplate = submitTemplate.replace("\r\n", "\n")
-                result = p4_read_write_pipe("submit -i", submitTemplate)
 
-                m = re.search (r"hange ([0-9]+)[^0-9]*submitted\.$", result)
-                if m:
-                    p4commit = m.group(1)
+                if self.p4Shelve:
+                    result = p4_read_write_pipe("shelve -i", submitTemplate)
+                    m = re.search (r"hange ([0-9]+)[^0-9]*files shelved\.$", result)
+                    if m:
+                        p4commit = m.group(1)
+                    revert = True
+                else:
+                    result = p4_read_write_pipe("submit -i", submitTemplate)
+                    m = re.search (r"hange ([0-9]+)[^0-9]*submitted\.$", result)
+                    if m:
+                        p4commit = m.group(1)
             else:
+                revert = True
+
+            if revert:
                 for f in editedFiles:
                     p4_system("revert \"%s\"" % f);
                 for f in filesToAdd:
@@ -952,7 +988,11 @@ class P4Submit(Command):
             commits = commits[1:]
             p4commit = "0"
             p4commit = self.applyCommit(commit)
-            if p4commit and self.scriptsPath:
+            if self.p4Shelve:
+                print "Shelved to: %s" % p4commit;
+            else:
+                print "Applied change: %s [%s]" % (commit, p4commit);
+            if not self.p4Shelve and p4commit and self.scriptsPath:
                 post_p4Submit = self.scriptsPath + "/post-p4submit"
                 if os.path.exists(post_p4Submit):
                     print "Running post-p4submit: %s" % post_p4Submit
@@ -1072,27 +1112,13 @@ class P4Change(Command):
         self.verbose = False
         self.isWindows = (platform.system() == "Windows")
 
-    def lookupFromGitChange(self, change):
-        log = extractLogMessageFromGitCommit(change)
-        settings =  extractSettingsGitLog(log)
-        if settings:
-            return settings['change'];
-        return False;
-
-    def lookupFromP4Change(self, change):
-        logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + change + "'";
-        result = read_pipe("git log %s" % logOpts, ignore_error=True).strip();
-        if result and len(result):
-            return result;
-        return False;
-
     def lookupChange(self, change):
         git = not self.p4Change;
         if re.match("[^0-9]", change):
             git = True
         if git:
-            return self.lookupFromGitChange(change);
-        return self.lookupFromP4Change(change);
+            return lookupFromGitChange(change);
+        return lookupFromP4Change(change);
 
     def run(self, args):
         if len(args) < 1:
@@ -1120,7 +1146,7 @@ class P4Integrate(P4Change):
         for change in args:
             gitChange = change;
             if not re.match("[^0-9]", change):
-                gitChange = self.lookupFromP4Change(change);
+                gitChange = lookupFromP4Change(change);
             print "Integrating: %s -> %s" % (change, gitChange);
             if(gitChange):
                 cpOpts = "";
@@ -1164,6 +1190,7 @@ class P4Sync(Command):
     (a ... is not needed in the path p4 specification, it's added implicitly)"""
 
         self.usage += " //depot/path[@revRange]"
+        self.p4Shelve = False
         self.silent = False
         self.createdBranches = set()
         self.committedChanges = set()
@@ -1180,6 +1207,7 @@ class P4Sync(Command):
         self.keepRepoPath = False
         self.depotPaths = None
         self.importProcess = None
+        self.changes = []
         self.p4BranchesInGit = []
         self.cloneExclude = []
         self.useClientSpec = False
@@ -1211,7 +1239,10 @@ class P4Sync(Command):
 
             file = {}
             file["path"] = path
-            file["rev"] = commit["rev%s" % fnum]
+            if commit.has_key("shelf"):
+                file["rev"] = "@=" + str(commit["shelf"])
+            else:
+                file["rev"] = commit["rev%s" % fnum]
             file["action"] = commit["action%s" % fnum]
             file["type"] = commit["type%s" % fnum]
             files.append(file)
@@ -1241,7 +1272,10 @@ class P4Sync(Command):
 
             file = {}
             file["path"] = path
-            file["rev"] = commit["rev%s" % fnum]
+            if commit.has_key("shelf"):
+                file["rev"] = "@=" + str(commit["shelf"])
+            else:
+                file["rev"] = commit["rev%s" % fnum]
             file["action"] = commit["action%s" % fnum]
             file["type"] = commit["type%s" % fnum]
             fnum = fnum + 1
@@ -1366,10 +1400,18 @@ class P4Sync(Command):
 	    def streamP4FilesCbSelf(entry):
 		self.streamP4FilesCb(entry)
 
-	    p4CmdList("-x - print",
-		'\n'.join(['%s#%s' % (f['path'], f['rev'])
-                                                  for f in filesToRead]),
-	        cb=streamP4FilesCbSelf)
+            files = []
+            for f in filesToRead:
+                if f['rev'][0] == '#' or f['rev'][0] == '@':
+                    file = ['%s%s' % (f['path'], f['rev'])];
+                else:
+                    file = ['%s#%s' % (f['path'], f['rev'])];
+                if verbose:
+                    sys.stderr.write('Print file: %s\n' % file)
+                if len(files):
+                    files += " "
+                files += file
+	    p4CmdList("-x - print", '\n'.join(files), cb=streamP4FilesCbSelf)
 
             # do the last chunk
             if self.stream_file.has_key('depotFile'):
@@ -1378,6 +1420,8 @@ class P4Sync(Command):
     def commit(self, details, files, branch, branchPrefixes, parent = ""):
         epoch = details["time"]
         author = details["user"]
+        if self.p4Shelve:
+            branch = "refs/heads/" + currentGitBranch()
 	self.branchPrefixes = branchPrefixes
 
         if self.verbose:
@@ -1709,7 +1753,12 @@ class P4Sync(Command):
     def importChanges(self, changes):
         cnt = 1
         for change in changes:
-            description = p4Cmd("describe %s" % change)
+            if self.p4Shelve:
+                description = p4Cmd("describe -S %s" % change)
+                description["shelf"] = change
+            else:
+                description = p4Cmd("describe %s" % change)
+
             self.updateOptionDict(description)
 
             if not self.silent:
@@ -1973,6 +2022,25 @@ class P4Sync(Command):
         if self.detectLabels:
             self.getLabels();
 
+        if len(self.changesFile) > 0:
+            output = open(self.changesFile).readlines()
+            changeSet = set()
+            for line in output:
+                changeSet.add(int(line))
+
+            for change in changeSet:
+                self.changes.append(change)
+
+            self.changes.sort()
+        elif len(self.changes) == 0:
+             if self.verbose:
+                 print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
+                                                                 self.changeRange)
+             self.changes = p4ChangesForPaths(self.depotPaths, self.changeRange)
+
+             if len(self.maxChanges) > 0:
+                 self.changes = self.changes[:min(int(self.maxChanges), len(changes))]
+
         if self.detectBranches:
             ## FIXME - what's a P4 projectName ?
             self.projectName = self.guessProjectName()
@@ -2009,34 +2077,13 @@ class P4Sync(Command):
            if revision:
                self.importHeadRevision(revision)
            else:
-               changes = []
-
-               if len(self.changesFile) > 0:
-                   output = open(self.changesFile).readlines()
-                   changeSet = set()
-                   for line in output:
-                       changeSet.add(int(line))
-
-                   for change in changeSet:
-                       changes.append(change)
-
-                   changes.sort()
-               else:
-                   if self.verbose:
-                       print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
-                                                                 self.changeRange)
-                   changes = p4ChangesForPaths(self.depotPaths, self.changeRange)
-
-                   if len(self.maxChanges) > 0:
-                       changes = changes[:min(int(self.maxChanges), len(changes))]
-
-               if len(changes) == 0:
+               if len(self.changes) == 0:
                    if not self.silent:
                        print "No changes to import!"
      	       else:
                    if not self.silent and not self.detectBranches:
                        print "Import destination: %s" % self.branch
-                   self.importChanges(changes)
+                   self.importChanges(self.changes)
    		   if not self.silent:
                        print ""
                        if len(self.updatedBranches) > 0:
@@ -2101,6 +2148,64 @@ class P4Rebase(Command):
         oldHead = read_pipe("git rev-parse HEAD").strip()
         system("git rebase %s" % upstream)
         system("git diff-tree --stat --summary -M %s HEAD" % oldHead)
+        return True
+
+class P4Unshelve(P4Sync):
+    def __init__(self):
+        P4Sync.__init__(self)
+        self.options = [
+            optparse.make_option("--verbose", dest="verbose", action="store_true"),
+            optparse.make_option("-n", dest="doCommit", action="store_false"),
+            optparse.make_option("-f", dest="doForce", action="store_true"),
+        ]
+        self.p4Shelve = True
+        self.doCommit = True
+        self.doForce = False
+        self.description = "Unshelve a change."
+    def run(self, args):
+        if os.system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0:
+            die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
+        if len(args) == 0:
+            self.changes.append(getShelves()[0]["change"])
+        else:
+            self.changes = args;
+        if P4Sync.run(self, []):
+            system("git reset --hard -q HEAD")
+            if not self.doCommit:
+                system("git reset -q HEAD^")
+                system("git status")
+            return True
+        return False
+
+class P4Shelve(P4Submit):
+    def __init__(self):
+        P4Submit.__init__(self)
+        self.description = "Shelve a change."
+        self.p4Shelve = True
+    def run(self, args):
+        if len(self.commit) == 0 and system("git commit -q -a -m 'SHELVING'"):
+            self.commit = read_pipe("git rev-parse HEAD").strip();
+            system("git reset -q HEAD^")
+        return P4Submit.run(self, args)
+
+class P4Stash(P4Shelve):
+    def __init__(self):
+        P4Shelve.__init__(self)
+    def run(self, args):
+        if len(args) > 0 and args[0] == "list":
+            shelves = getShelves()
+            for shelf in shelves:
+                print "%s: %s" % (shelf["change"], shelf["desc"].strip())
+        elif len(args) > 0 and args[0] == "drop":
+            return False
+        elif len(args) > 0 and (args[0] == "apply" or args[0] == "pop"):
+            apply = P4Unshelve()
+            apply.doCommit = False
+            return apply.run(args[1:])
+        elif P4Shelve.run(self, args):
+            gitCommit = self.commit;
+            system("git stash save -q 'P4 SHELF %s'" % (gitCommit))
+            return True
         return True
 
 class P4Clone(P4Sync):
@@ -2310,9 +2415,11 @@ commands = {
     "clone" : P4Clone,
     "rollback" : P4RollBack,
     "branches" : P4Branches,
-    "branch" : P4Branch
+    "branch" : P4Branch,
+    "unshelve" : P4Unshelve,
+    "shelve" : P4Shelve,
+    "stash" : P4Stash
 }
-
 
 def main():
     if len(sys.argv[1:]) == 0:
