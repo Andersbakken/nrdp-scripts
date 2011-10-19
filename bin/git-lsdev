@@ -9,6 +9,7 @@ while [ "$#" -gt 0 ]; do
   shift
   case $OPT in
   -dry) TEST="echo" ;;
+  --) COMMAND="$@"; break ;;
   --*) COMMAND=`echo $OPT | sed "s,^--,,g"` ;;
   *)
      if [ -z "$COMMAND" ] && [ "$#" = "0" ]; then
@@ -25,9 +26,13 @@ if [ -z "$COMMAND" ]; then
    exit 1
 fi
 
-for dir in `lsdev.pl -l -tp $DEVS`; do
+for dir in `lsdev.pl -a -l -tp $DEVS`; do
    if [ -d "$dir" ] && [ -d "$dir/.git" ]; then
+      echo
+      echo
+      echo "============================================================="
       echo "Processing: $dir ($COMMAND)"
+      echo "============================================================="
       cd "$dir"
       $TEST git $COMMAND
    fi
