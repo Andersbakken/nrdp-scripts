@@ -2175,21 +2175,27 @@ class P4Unshelve(P4Sync):
                 self.changes.append(shelves[0]["change"])
         else:
             self.changes = args;
-        if P4Sync.run(self, []):
+        if len(self.changes) == 0:
+            print "Nothing to unshelve!"
+        elif P4Sync.run(self, []):
             system("git reset --hard -q HEAD")
             if not self.doCommit:
                 system("git reset -q HEAD^")
                 system("git status")
-            return True
-        return False
+        return True
 
 class P4Shelve(P4Submit):
     def __init__(self):
         P4Submit.__init__(self)
+        self.options = [
+                optparse.make_option("-m", dest="commitMsg"),
+        ]
         self.description = "Shelve a change."
+        self.commitMsg = "git-p4: SHELF"
+        self.confirmCommit = False
         self.p4Shelve = True
     def run(self, args):
-        if len(self.commit) == 0 and system("git commit -q -a -m 'SHELVING'"):
+        if len(self.commit) == 0 and system("git commit -q -a -m '%s'" % self.commitMsg):
             self.commit = read_pipe("git rev-parse HEAD").strip();
             system("git reset -q HEAD^")
         return P4Submit.run(self, args)
