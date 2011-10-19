@@ -2189,6 +2189,7 @@ class P4Shelve(P4Submit):
         P4Submit.__init__(self)
         self.options = [
                 optparse.make_option("-m", dest="commitMsg"),
+                optparse.make_option("-c", dest="commit"),
         ]
         self.description = "Shelve a change."
         self.commitMsg = "git-p4: SHELF"
@@ -2226,10 +2227,11 @@ class P4Stash(P4Shelve):
             apply = P4Unshelve()
             apply.doCommit = False
             return apply.run(args[1:])
-        elif P4Shelve.run(self, args):
-            gitCommit = self.commit;
-            system("git stash save -q 'P4 SHELF %s'" % (gitCommit))
-            return True
+        else:
+            doStash = len(self.commit) == 0
+            if P4Shelve.run(self, args) and doStash:
+                gitCommit = self.commit;
+                system("git stash save -q 'P4 SHELF %s'" % (gitCommit))
         return True
 
 class P4Clone(P4Sync):
