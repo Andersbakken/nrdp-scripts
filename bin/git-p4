@@ -298,6 +298,8 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None):
         stdin_file.write(stdin)
         stdin_file.flush()
         stdin_file.seek(0)
+        if verbose:
+            sys.stderr.write("stdin is: %s\n" % stdin)
 
     p4 = subprocess.Popen(cmd, shell=True,
                           stdin=stdin_file,
@@ -1404,18 +1406,16 @@ class P4Sync(Command):
 	    def streamP4FilesCbSelf(entry):
 		self.streamP4FilesCb(entry)
 
-            files = []
+            files = ''
             for f in filesToRead:
                 if f['rev'][0] == '#' or f['rev'][0] == '@':
-                    file = ['%s%s' % (f['path'], f['rev'])];
+                    file = '%s%s' % (f['path'], f['rev']);
                 else:
-                    file = ['%s#%s' % (f['path'], f['rev'])];
+                    file = '%s#%s' % (f['path'], f['rev']);
                 if verbose:
                     sys.stderr.write('Print file: %s\n' % file)
-                if len(files):
-                    files += " "
-                files += file
-	    p4CmdList("-x - print", '\n'.join(files), cb=streamP4FilesCbSelf)
+	        files += "%s\n" % file
+	    p4CmdList("-x - print", files, cb=streamP4FilesCbSelf)
 
             # do the last chunk
             if self.stream_file.has_key('depotFile'):
