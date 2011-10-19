@@ -362,8 +362,12 @@ def p4Where(depotPath):
     return clientPath
 
 def getShelves():
+    info = p4Cmd("info")
+    changes_flags = "";
+    if info.has_key("userName"):
+        changes_flags += " -u " + info["userName"];
     shelves = []
-    for change in p4CmdList("changes -s pending"):
+    for change in p4CmdList("changes -s pending" + changes_flags):
         if change.has_key("shelved"):
             shelves.append(change);
     return shelves
@@ -2166,7 +2170,9 @@ class P4Unshelve(P4Sync):
         if os.system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0:
             die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
         if len(args) == 0:
-            self.changes.append(getShelves()[0]["change"])
+            shelves = getShelves()
+            if len(shelves) > 0 and shelves[0].has_key("change"):
+                self.changes.append(shelves[0]["change"])
         else:
             self.changes = args;
         if P4Sync.run(self, []):
@@ -2197,7 +2203,19 @@ class P4Stash(P4Shelve):
             for shelf in shelves:
                 print "%s: %s" % (shelf["change"], shelf["desc"].strip())
         elif len(args) > 0 and args[0] == "drop":
-            return False
+            change = False;
+            if len(args) > 1:
+                change = args[1];
+            else:
+                shelves = getShelves()
+                if len(shelves) > 0 and shelves[0].has_key("change"):
+                    change = shelves[0]["change"]
+            if not change:
+                print "No changes to drop!"
+            else:
+                print "Dropping: %s" % change
+                p4Cmd("shelve -d -c %s" % change)
+                p4Cmd("change -d %s" % change)
         elif len(args) > 0 and (args[0] == "apply" or args[0] == "pop"):
             apply = P4Unshelve()
             apply.doCommit = False
