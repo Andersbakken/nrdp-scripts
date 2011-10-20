@@ -450,7 +450,7 @@ if($display_only eq "current") { #display just the name of the directory request
                         last;
                     }
                 }
-            } elsif($root eq $root_dir) { #if there are no arguments filter out pwd
+            } elsif($read_devdir_list != 2 && $root eq $root_dir) { #if there are no arguments filter out pwd
                 next;
             }
             push @choices, $root if(defined($root));
