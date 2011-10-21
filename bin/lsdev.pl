@@ -130,6 +130,19 @@ sub findAncestor {
     return undef;
 }
 
+sub processSourceDir {
+    my ($src_dir) = @_;
+    if(-e "${src_dir}/configure" || -e "${src_dir}/Makefile" || -e "${src_dir}/*.pro" ||
+       -e "${src_dir}/CMakeLists.txt") { #buildable
+        return 1;
+    } elsif(-e "${src_dir}/.lsdev_shadows" || -e "${src_dir}/.lsdev_config") { #lsdev
+        return 1;
+    } elsif(-d "${src_dir}/.git") { #really?
+        return 1;
+    }
+    return 0;
+}
+
 sub processBuildDir {
     my ($build_dir) = @_;
     my $src_dir;
@@ -159,14 +172,8 @@ sub processBuildDir {
             }
             close(CONFIG_STATUS);
         }
-    } elsif(-e "${build_dir}/.shadows_src") {
-        my $shadows_src = "${build_dir}/.shadows_src";
-        display " Found $shadows_src!\n" if($verbose);
-        if(open( SHADOWS_SRC, "<$shadows_src")) {
-            $src_dir = <SHADOWS_SRC>;
-            chomp($src_dir);
-            close(SHADOWS_SRC);
-        }
+    } elsif(-e "${build_dir}/.lsdev_config") {
+        $src_dir = getProjectConfig(${build_dir}, "source_dir");
     }
     $src_dir = canonicalize($src_dir, $build_dir) if(defined($src_dir));
     return $src_dir;
@@ -231,14 +238,19 @@ sub findFileMap {
     return $result;
 }
 
-sub getProjectName {
-    my ($path) = @_;
-    my $result;
+sub getProjectConfig {
+    my ($path, $config) = @_;
     my $lsdev_config_file = "$path/.lsdev_config";
     if(-e $lsdev_config_file) {
-        my %config = parseConfig($lsdev_config_file);
-        $result = $config{"name"};
+        my %c = parseConfig($lsdev_config_file);
+        return $c{$config};
     }
+    return undef;
+}
+
+sub getProjectName {
+    my ($path) = @_;
+    my $result = getProjectConfig($path, "name");
     display " ProjectName: $path -> $result\n" if($verbose);
     return $result;
 }
@@ -252,9 +264,10 @@ my %dev_roots = parseFileMap(glob("~/.dev_directories"));
 my $project_name;
 
 #figure out where I am in a shadow build and my relevent source dir
-if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.status") || findAncestor(".shadows_src")) {
+if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.status") || findAncestor(".lsdev_config")) {
     $root_dir = dirname($build_marker);
-    $read_devdir_list = -2 if($read_devdir_list == 1 || ($#matches == 0 && $matches[0] eq "-"));
+    $read_devdir_list = -2 if($read_devdir_list == 1 &&
+                             ($#matches == -1 || $matches[0] eq "-"));
     if(my $src_dir = processBuildDir("$root_dir")) {
         display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
         $default_dir = $src_dir;
@@ -267,14 +280,14 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
 }
 
 #figure out all the shadows listed in my relevent source dir
-if(my $shadows_file = findAncestor(".shadows")) {
+if(my $shadows_file = findAncestor(".lsdev_shadows")) {
     display " Found $shadows_file!\n" if($verbose);
     my $shadows_file_dir = dirname($shadows_file);
     my $shadows_dir = $shadows_file_dir;
     $project_name = findFileMap($shadows_dir, \%dev_roots) unless(defined($project_name));
     my %shadows_roots = parseFileMap("$shadows_file");
-    $read_devdir_list = -2 if($read_devdir_list == 1 ||
-                             ($#matches == 0 && $matches[0] eq "-"));
+    $read_devdir_list = -2 if($read_devdir_list == 1 &&
+                             ($#matches == -1 || $matches[0] eq "-"));
     unless(defined($default_dir)) {
         my @shadows_roots_keys = keys %shadows_roots;
         $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
@@ -297,8 +310,8 @@ if(my $shadows_file = findAncestor(".shadows")) {
     }
 }
 if(my $src_marker = findAncestor("configure")) {
-    $read_devdir_list = -2 if($read_devdir_list == 1 ||
-                             ($#matches == 0 && $matches[0] eq "-"));
+    $read_devdir_list = -2 if($read_devdir_list == 1 &&
+                             ($#matches == -1 || $matches[0] eq "-"));
     $root_dir = dirname($src_marker) unless(defined($root_dir));
 }
 
@@ -323,11 +336,12 @@ if(defined($dev_roots{sources})) {
     my $sources = delete $dev_roots{sources};
     foreach(split(/,/, $sources)) {
         my $source = $_;
+        display "Looking at source: $source\n" if($verbose);
         if( $detect_devdirs && -d "$source" && opendir(SOURCES, $source) ) {
             while(my $subdir = readdir(SOURCES)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $src_dir = "$source/$subdir";
-                if(-d $src_dir) {
+                if(-d $src_dir && processSourceDir($src_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
                         $project_name = findFileMap($src_dir, \%dev_roots);
@@ -350,11 +364,13 @@ if(defined($dev_roots{builds})) {
     my $builds = delete $dev_roots{builds};
     foreach(split(/,/, $builds)) {
         my $build = $_;
+        display "Looking at build: $build\n" if($verbose);
         if( $detect_devdirs && -d "$build" && opendir(BUILDS, $build) ) {
             while(my $subdir = readdir(BUILDS)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $build_dir = "$build/$subdir";
-                my $src_dir = processBuildDir($build_dir) if(-d $build_dir);
+                my $src_dir;
+                $src_dir = processBuildDir($build_dir) if(-d $build_dir);
                 if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
@@ -392,8 +408,8 @@ foreach(keys(%dev_roots)) {
         push(@roots, $dev_root);
         display __LINE__, ": Pushed Root [$dev_root]\n" if($verbose);
     }
-    if(-e "$dev_root/.shadows" ) {
-        my %shadows = parseFileMap("$dev_root/.shadows");
+    if(-e "$dev_root/.lsdev_shadows" ) {
+        my %shadows = parseFileMap("$dev_root/.lsdev_shadows");
         foreach(keys(%shadows)) {
             my $shadow_root_name = $_;
             my $shadow_root = $shadows{$_};
