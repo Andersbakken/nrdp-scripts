@@ -459,6 +459,8 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     } elsif($#matches == 0 && $matches[0] eq "-") {
         push @choices, $default_dir;
+    } elsif($#matches == -1 && $root && $root_dir) {
+        push @choices, $root_dir;
     } else {
         my @match_roots;
         if($#matches == -1 || $read_devdir_list == -1) {
