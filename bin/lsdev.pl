@@ -10,7 +10,7 @@ use strict;
 my $verbose = 0;
 my $write_default_file = 0;
 my $read_devdir_list = 1;
-my $detect_builds_list = 1;
+my $detect_devdirs = 1;
 my $display_only;
 my $display_help = 0;
 my $answer;
@@ -42,7 +42,7 @@ while(@ARGV) {
     } elsif($option eq "-a") {
         $read_devdir_list = 2;
     } elsif($option eq "-m") {
-        $detect_builds_list = 0;
+        $detect_devdirs = 0;
     } elsif($option eq "-l") {
         $display_only = "list";
     } elsif($option eq "-p") {
@@ -89,7 +89,7 @@ sub showHelp {
     display "lsdev [options] [matches]\n";
     display "\n== Options ==\n";
     display "-w : Write out the selected directory to the relevant default file (for next invocation with -).\n";
-    display "-m : Disable build directory detection which will find any build tree that isn't referenced explicitly.\n";
+    display "-m : Disable directory detection which will find any build tree that isn't referenced explicitly.\n";
     display "-r : Select the root of the selected project (rather than guessing subdirs based on current path).\n";
     display "-d : Only include the relevant source dirs and shadow dirs in the selection output.\n";
     display "-a : Force inclusion of all source and shadow dirs in the selection output.\n";
@@ -317,39 +317,70 @@ unless(defined($default_dir)) {
     }
 }
 
+
 #process anything that looks like a build
-if(defined($dev_roots{builds})) {
-    my $builds = delete $dev_roots{builds};
-    if( $detect_builds_list && -d "$builds" && opendir(BUILDS, $builds) ) {
-        while(my $subdir = readdir(BUILDS)) {
-            next if($subdir eq "." || $subdir eq "..");
-            my $build_dir = "$builds/$subdir";
-            my $src_dir = processBuildDir($build_dir) if(-d $build_dir);
-            if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
-                my $project_name = getProjectName($src_dir);
-                unless(defined($project_name)) {
-                    $project_name = findFileMap($src_dir, \%dev_roots);
-                    $project_name = basename($src_dir) unless(defined($project_name));
-                    #$project_name .= "_detect";
-                }
-                if(defined($project_name)) {
-                    display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
-                    #src side
+if(defined($dev_roots{sources})) {
+    my $sources = delete $dev_roots{sources};
+    foreach(split(/,/, $sources)) {
+        my $source = $_;
+        if( $detect_devdirs && -d "$source" && opendir(SOURCES, $source) ) {
+            while(my $subdir = readdir(SOURCES)) {
+                next if($subdir eq "." || $subdir eq "..");
+                my $src_dir = "$source/$subdir";
+                if(-d $src_dir) {
+                    my $project_name = getProjectName($src_dir);
+                    unless(defined($project_name)) {
+                        $project_name = findFileMap($src_dir, \%dev_roots);
+                        $project_name = basename($src_dir) unless(defined($project_name));
+                        #$project_name .= "_detect";
+                    }
+                    display "Source Detect: $src_dir [$project_name]\n" if($verbose);
                     $roots_names{$src_dir} = "${src_prefix}${project_name}";
                     display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
                     push(@roots, $src_dir);
                     display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
-                    #build side
-                    my $shadow_name = getProjectName($build_dir);
-                    $shadow_name = "$subdir" unless(defined($shadow_name));
-                    $roots_names{$build_dir} = "${build_prefix}${project_name}_${shadow_name}";
-                    display __LINE__, ": Named Root [", $roots_names{$build_dir}, "] -> [$build_dir]\n" if($verbose);
-                    push(@roots, $build_dir);
-                    display __LINE__, ": Pushed Root [$build_dir]\n" if($verbose);
                 }
             }
+            closedir(SOURCES);
         }
-        closedir(BUILDS);
+    }
+}
+#process anything that looks like a build
+if(defined($dev_roots{builds})) {
+    my $builds = delete $dev_roots{builds};
+    foreach(split(/,/, $builds)) {
+        my $build = $_;
+        if( $detect_devdirs && -d "$build" && opendir(BUILDS, $build) ) {
+            while(my $subdir = readdir(BUILDS)) {
+                next if($subdir eq "." || $subdir eq "..");
+                my $build_dir = "$build/$subdir";
+                my $src_dir = processBuildDir($build_dir) if(-d $build_dir);
+                if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
+                    my $project_name = getProjectName($src_dir);
+                    unless(defined($project_name)) {
+                        $project_name = findFileMap($src_dir, \%dev_roots);
+                        $project_name = basename($src_dir) unless(defined($project_name));
+                        #$project_name .= "_detect";
+                    }
+                    if(defined($project_name)) {
+                        display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
+                        #src side
+                        $roots_names{$src_dir} = "${src_prefix}${project_name}";
+                        display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
+                        push(@roots, $src_dir);
+                        display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
+                        #build side
+                        my $shadow_name = getProjectName($build_dir);
+                        $shadow_name = "$subdir" unless(defined($shadow_name));
+                        $roots_names{$build_dir} = "${build_prefix}${project_name}_${shadow_name}";
+                        display __LINE__, ": Named Root [", $roots_names{$build_dir}, "] -> [$build_dir]\n" if($verbose);
+                        push(@roots, $build_dir);
+                        display __LINE__, ": Pushed Root [$build_dir]\n" if($verbose);
+                    }
+                }
+            }
+            closedir(BUILDS);
+        }
     }
 }
 
