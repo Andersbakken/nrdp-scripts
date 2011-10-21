@@ -197,7 +197,7 @@ complete-cddev ()
         fi
     else
         COMPREPLY=()
-        local words="`lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.]\+, ,g' | xargs | sort -u`"
+        local words="`lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g' | xargs | sort -u`"
         COMPREPLY=( $(compgen -W "${words}" -- ${cur}) )
     fi
 }
