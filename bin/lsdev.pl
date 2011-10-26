@@ -240,18 +240,19 @@ sub findFileMap {
 
 sub getProjectConfig {
     my ($path, $config) = @_;
+    my $result;
     my $lsdev_config_file = "$path/.lsdev_config";
     if(-e $lsdev_config_file) {
         my %c = parseConfig($lsdev_config_file);
-        return $c{$config};
+        $result = $c{$config};
     }
-    return undef;
+    display " ProjectConfig: $lsdev_config_file($config) -> $result\n" if($verbose);
+    return $result;
 }
 
 sub getProjectName {
     my ($path) = @_;
     my $result = getProjectConfig($path, "name");
-    display " ProjectName: $path -> $result\n" if($verbose);
     return $result;
 }
 
@@ -341,6 +342,7 @@ if(defined($dev_roots{sources})) {
             while(my $subdir = readdir(SOURCES)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $src_dir = "$source/$subdir";
+                next if(getProjectConfig($src_dir, "ignore"));
                 if(-d $src_dir && processSourceDir($src_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
@@ -369,6 +371,7 @@ if(defined($dev_roots{builds})) {
             while(my $subdir = readdir(BUILDS)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $build_dir = "$build/$subdir";
+                next if(getProjectConfig($build_dir, "ignore"));
                 my $src_dir;
                 $src_dir = processBuildDir($build_dir) if(-d $build_dir);
                 if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
