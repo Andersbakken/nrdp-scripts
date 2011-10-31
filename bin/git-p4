@@ -778,7 +778,7 @@ class P4Submit(Command):
                 filesToDelete.add(path)
                 if path in filesToAdd:
                     filesToAdd.remove(path)
-            elif modifier == "R":
+            elif modifier == "R" or modifier == "C":
                 src, dest = diff['src'], diff['dst']
                 p4_system("integrate -Dt \"%s\" \"%s\"" % (src, dest))
                 #p4_system("edit \"%s\"" % (dest))
@@ -786,7 +786,8 @@ class P4Submit(Command):
                     filesToChangeExecBit[dest] = diff['dst_mode']
                 os.unlink(dest)
                 editedFiles.add(dest)
-                filesToDelete.add(src)
+                if modifier == "R":
+                    filesToDelete.add(src)
             else:
                 die("unknown modifier %s for %s" % (modifier, path))
 
