@@ -363,11 +363,14 @@ def p4Where(depotPath):
         clientPath = clientPath[:-3]
     return clientPath
 
-def getShelves():
-    info = p4Cmd("info")
+def getShelves(user):
     changes_flags = "";
-    if info.has_key("userName"):
-        changes_flags += " -u " + info["userName"];
+    if not user:
+        info = p4Cmd("info")
+        if info.has_key("userName"):
+            user = info["userName"];
+    if user:
+        changes_flags += " -u " + user
     shelves = []
     for change in p4CmdList("changes -s pending" + changes_flags):
         if change.has_key("shelved"):
@@ -2174,7 +2177,7 @@ class P4Unshelve(P4Sync):
         if os.system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0:
             die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
         if len(args) == 0:
-            shelves = getShelves()
+            shelves = getShelves(False)
             if len(shelves) > 0 and shelves[0].has_key("change"):
                 self.changes.append(shelves[0]["change"])
         else:
@@ -2208,19 +2211,55 @@ class P4Shelve(P4Submit):
 class P4Stash(P4Shelve):
     def __init__(self):
         P4Shelve.__init__(self)
+        self.options = [
+                optparse.make_option("-u", dest="shelfUser"),
+        ]
+        self.shelfUser = False
+        self.description = "Manage git-p4 shelves like stashes."
+    def mapShelf(self, shelf):
+        if not shelf:
+            return shelf
+        match = re.match("^shelf@{([0-9])}", shelf)
+        if match:
+            s = int(match.group(1));
+            shelves = getShelves(self.shelfUser)
+            if len(shelves) > 0 and len(shelves) >= s and shelves[s].has_key("change"):
+                shelf = shelves[s]["change"]
+        return shelf;
     def run(self, args):
         if len(args) > 0 and args[0] == "list":
-            shelves = getShelves()
+            shelves = getShelves(self.shelfUser)
+            shelf_no = 0
             for shelf in shelves:
-                print "%s: %s" % (shelf["change"], shelf["desc"].strip())
+                print "shelf@{%d}: %s: %s" % (shelf_no, shelf["change"], shelf["desc"].strip())
+                shelf_no+=1
+        elif len(args) > 0 and args[0] == "show":
+            change = False;
+            if len(args) > 1:
+                change = args[1];
+            else:
+                shelves = getShelves(self.shelfUser)
+                if len(shelves) > 0 and shelves[0].has_key("change"):
+                    change = shelves[0]["change"]
+            change = self.mapShelf(change)
+            if not change:
+                print "No changes to show!"
+            else:
+                fnum = 0
+                commit = p4Cmd("describe -S %s" % change);
+                while commit.has_key("depotFile%s" % fnum):
+                    path =  commit["depotFile%s" % fnum]
+                    print "%s" % path
+                    fnum += 1
         elif len(args) > 0 and args[0] == "drop":
             change = False;
             if len(args) > 1:
                 change = args[1];
             else:
-                shelves = getShelves()
+                shelves = getShelves(self.shelfUser)
                 if len(shelves) > 0 and shelves[0].has_key("change"):
                     change = shelves[0]["change"]
+            change = self.mapShelf(change)
             if not change:
                 print "No changes to drop!"
             else:
@@ -2230,7 +2269,10 @@ class P4Stash(P4Shelve):
         elif len(args) > 0 and (args[0] == "apply" or args[0] == "pop"):
             apply = P4Unshelve()
             apply.doCommit = False
-            return apply.run(args[1:])
+            shelves = []
+            for shelf in args[1:]:
+                shelves.append(self.mapShelf(shelf))
+            return apply.run(shelves)
         else:
             doStash = len(self.commit) == 0
             if P4Shelve.run(self, args) and doStash:
