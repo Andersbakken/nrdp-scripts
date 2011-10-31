@@ -1425,6 +1425,7 @@ class P4Sync(Command):
         epoch = details["time"]
         author = details["user"]
         if self.p4Shelve:
+            parent = "HEAD"
             branch = "refs/heads/" + currentGitBranch()
 	self.branchPrefixes = branchPrefixes
 
@@ -1455,8 +1456,11 @@ class P4Sync(Command):
 
         self.gitStream.write("data <<EOT\n")
         self.gitStream.write(details["desc"])
-        self.gitStream.write("\n[git-p4: depot-paths = \"%s\": change = %s"
-                             % (','.join (branchPrefixes), details["change"]))
+        if self.p4Shelve:
+            self.gitStream.write("\n[git-unshelf: %s" % details["change"])
+        else:
+            self.gitStream.write("\n[git-p4: depot-paths = \"%s\": change = %s"
+                                 % (','.join (branchPrefixes), details["change"]))
         if len(details['options']) > 0:
             self.gitStream.write(": options = %s" % details['options'])
         self.gitStream.write("]\nEOT\n\n")
