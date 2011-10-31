@@ -23,38 +23,43 @@ my $output;
 my $root = 0;
 my @matches;
 
-while(@ARGV) {
-    my $option = shift @ARGV;
-    if($option eq "-w") {
-        $write_default_file = 1;
-    } elsif($option eq "-r") {
-        $root = 1;
-    } elsif($option eq "-c") {
-        $cwd = shift @ARGV;
-    } elsif($option eq "-d") {
-        $read_devdir_list = -1;
-    } elsif($option eq "-tp") {
-        $answer = "path";
-    } elsif($option eq "-tn") {
-        $answer = "name";
-    } elsif($option eq "-ta") {
-        $answer = "all";
-    } elsif($option eq "-a") {
-        $read_devdir_list = 2;
-    } elsif($option eq "-m") {
-        $detect_devdirs = 0;
-    } elsif($option eq "-l") {
-        $display_only = "list";
-    } elsif($option eq "-p") {
-        $display_only = "current";
-    } elsif($option eq "-h") {
-        $display_help = 1;
-    } elsif($option eq "-v") {
-        $verbose = 1;
-    } else {
-        push @matches, "$option";
+sub parseOptions {
+    while(@_) {
+        my $option = shift @_;
+        if($option eq "-w") {
+            $write_default_file = 1;
+        } elsif($option eq "-r") {
+            $root = 1;
+        } elsif($option eq "-c") {
+            $cwd = shift @_;
+        } elsif($option eq "-d") {
+            $read_devdir_list = -1;
+        } elsif($option eq "-tp") {
+            $answer = "path";
+        } elsif($option eq "-tn") {
+            $answer = "name";
+        } elsif($option eq "-ta") {
+            $answer = "all";
+        } elsif($option eq "-a") {
+            $read_devdir_list = 2;
+        } elsif($option eq "-m") {
+            $detect_devdirs = 0;
+        } elsif($option eq "-l") {
+            $display_only = "list";
+        } elsif($option eq "-p") {
+            $display_only = "current";
+        } elsif($option eq "-h") {
+            $display_help = 1;
+        } elsif($option eq "-v") {
+            $verbose = 1;
+        } else {
+            push @matches, "$option";
+        }
     }
 }
+
+parseOptions(split(/ /, $ENV{LSDEV_FLAGS})) if($ENV{LSDEV_FLAGS});
+parseOptions(@ARGV);
 
 if($display_only eq "current") {
     $read_devdir_list = 3;
