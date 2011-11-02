@@ -1337,6 +1337,10 @@ class P4Sync(Command):
             contents = map(lambda text: re.sub(r'(?i)\$(Id|Header):[^$]*\$',r'$\1$', text), contents)
         elif file['type'] in ('text+k', 'ktext', 'kxtext', 'unicode+k', 'binary+k'):
             contents = map(lambda text: re.sub(r'\$(Id|Header|Author|Date|DateTime|Change|File|Revision):[^$\n]*\$',r'$\1$', text), contents)
+        elif file['type'] == 'utf16':
+            text = p4_read_pipe('print -q -o - "%s"' % file['depotFile'])
+            contents = [ text ]
+        #print "File stream: %s %s %s" % (file['depotFile'], file['type'], contents);
 
         self.gitStream.write("M %s inline %s\n" % (mode, relPath))
 
