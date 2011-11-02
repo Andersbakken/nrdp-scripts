@@ -75,6 +75,13 @@ def read_write_pipe(c, str, ignore_error=False):
         die('Command failed(in): %s' % c)
     return val
 
+def url_decode(text):
+    def unicode_unquoter(match):
+        return unichr(int(match.group(1),16))
+    text = re.sub(r'%u([0-9a-fA-F]{4})',unicode_unquoter,text);
+    text = re.sub(r'%([0-9a-fA-F]{2})',unicode_unquoter,text);
+    return text;
+
 def p4_read_write_pipe(c, str):
     real_cmd = p4_build_cmd(c)
     return read_write_pipe(real_cmd, str)
@@ -1313,7 +1320,7 @@ class P4Sync(Command):
 		file['depotFile']
 	    return
 
-        relPath = self.stripRepoPath(file['depotFile'], self.branchPrefixes)
+        relPath = url_decode(self.stripRepoPath(file['depotFile'], self.branchPrefixes))
         #if verbose:
         #    sys.stderr.write("stream %s\n" % relPath)
 
@@ -1340,7 +1347,7 @@ class P4Sync(Command):
         elif file['type'] == 'utf16':
             text = p4_read_pipe('print -q -o - "%s"' % file['depotFile'])
             contents = [ text ]
-        #print "File stream: %s %s %s" % (file['depotFile'], file['type'], contents);
+        #print "File stream: %s %s" % (url_decode(file['depotFile']), file['type']);
 
         self.gitStream.write("M %s inline %s\n" % (mode, relPath))
 
