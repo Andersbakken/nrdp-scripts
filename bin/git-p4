@@ -1362,7 +1362,7 @@ class P4Sync(Command):
         self.gitStream.write("\n")
 
     def streamOneP4Deletion(self, file):
-        relPath = self.stripRepoPath(file['path'], self.branchPrefixes)
+        relPath = url_decode(self.stripRepoPath(file['path'], self.branchPrefixes))
         #if verbose:
         #    sys.stderr.write("delete %s\n" % relPath)
         self.gitStream.write("D %s\n" % relPath)
