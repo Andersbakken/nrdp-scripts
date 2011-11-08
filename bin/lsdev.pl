@@ -32,7 +32,7 @@ sub parseOptions {
             $root = 1;
         } elsif($option eq "-c") {
             $cwd = shift @_;
-        } elsif($option eq "-d") {
+        } elsif($option eq "-b") {
             $read_devdir_list = -1;
         } elsif($option eq "-tp") {
             $answer = "path";
@@ -96,7 +96,7 @@ sub showHelp {
     display "-w : Write out the selected directory to the relevant default file (for next invocation with -).\n";
     display "-m : Disable directory detection which will find any build tree that isn't referenced explicitly.\n";
     display "-r : Select the root of the selected project (rather than guessing subdirs based on current path).\n";
-    display "-d : Only include the relevant source dirs and shadow dirs in the selection output.\n";
+    display "-b : Only include the relevant source dirs and shadow dirs in the selection output.\n";
     display "-a : Force inclusion of all source and shadow dirs in the selection output.\n";
     display "-l : Just list out the selections and do not actually request selection.\n";
     display "-p : Just list out the name of the current working directories project if possible.\n";
@@ -184,6 +184,7 @@ sub processBuildDir {
     return $src_dir;
 }
 
+
 sub canonicalize {
     my ($file, $base) = @_;
     my @globs = glob($file);
@@ -268,6 +269,36 @@ my $default_dir;
 my $root_dir;
 my %dev_roots = parseFileMap(glob("~/.dev_directories"));
 my $project_name;
+
+sub filterMatches {
+    my @choices;
+    my @match_roots = @_;
+    foreach(@match_roots) {
+        my $root = $_;
+        my $root_name = $roots_names{$root};
+        if($#matches != -1) {
+            foreach(@matches) {
+                my $match = $_;
+                my $inverse = 0;
+                if($match =~ /^-(.*)/) {
+                    $match = $1;
+                    $inverse = 1;
+                }
+                my $matches = ($root_name =~ /$match/i);
+                $matches = !$matches if($inverse);
+                unless($matches) {
+                    $root = undef;
+                    last;
+                }
+            }
+        } elsif($read_devdir_list != 2 && $root eq $root_dir) { #if there are no arguments filter out pwd
+            next;
+        }
+        push @choices, $root if(defined($root));
+    }
+    @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
+    return @choices;
+}
 
 #figure out where I am in a shadow build and my relevent source dir
 if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.status") || findAncestor(".lsdev_config")) {
@@ -488,32 +519,8 @@ if($display_only eq "current") { #display just the name of the directory request
                 splice(@matches, $i, 1);
             }
         }
-
-        foreach(@match_roots) {
-            my $root = $_;
-            my $root_name = $roots_names{$root};
-            if($#matches != -1) {
-                foreach(@matches) {
-                    my $match = $_;
-                    my $inverse = 0;
-                    if($match =~ /^-(.*)/) {
-                        $match = $1;
-                        $inverse = 1;
-                    }
-                    my $matches = ($root_name =~ /$match/i);
-                    $matches = !$matches if($inverse);
-                    unless($matches) {
-                        $root = undef;
-                        last;
-                    }
-                }
-            } elsif($read_devdir_list != 2 && $root eq $root_dir) { #if there are no arguments filter out pwd
-                next;
-            }
-            push @choices, $root if(defined($root));
-        }
+        @choices = filterMatches(@match_roots);
     }
-    @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
 
     if(!defined($rest_dir) && !$root && $root_dir) {
         my $current = $cwd;
@@ -530,17 +537,24 @@ if($display_only eq "current") { #display just the name of the directory request
     } elsif($#choices == 0) {
         $index = 0;
     } elsif($#choices != -1) {
-        for(my $i = 0; $i < @choices; ++$i) {
-            my $root = canonicalize($choices[$i]);
-            my $root_name = $roots_names{$root};
-            display "[", $i + 1, "] $root_name [$root]\n";
+        while(1) {
+            for(my $i = 0; $i < @choices; ++$i) {
+                my $root = canonicalize($choices[$i]);
+                my $root_name = $roots_names{$root};
+                display "[", $i + 1, "] $root_name [$root]\n";
+            }
+            display "[1..", $#choices+1, "]";
+            display " ($rest_dir)" if(defined($rest_dir));
+            display "> ";
+            my $choice = <STDIN>;
+            chomp $choice;
+            if($choice =~ /[0-9]+/) {
+                $index = $choice - 1;
+                last if($index >= 0 && $index <= $#choices);
+            }
+            push @matches, "$choice";
+            @choices = filterMatches(@choices);
         }
-        display "[1..", $#choices+1, "]";
-        display " ($rest_dir)" if(defined($rest_dir));
-        display "> ";
-        $index = <STDIN>;
-        chomp $index;
-        $index -= 1;
     }
     if(defined($index)) {
         my $ans_root_dir = canonicalize($choices[$index]);
