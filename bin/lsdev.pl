@@ -284,7 +284,12 @@ sub filterMatches {
                     $match = $1;
                     $inverse = 1;
                 }
-                my $matches = ($root_name =~ /$match/i);
+                my $matches = 0;
+                if($match =~ /^path:(.*)/) {
+                    $matches = ($root =~ /$1/i);
+                } else {
+                    $matches = ($root_name =~ /$match/i);
+                }
                 $matches = !$matches if($inverse);
                 unless($matches) {
                     $root = undef;
