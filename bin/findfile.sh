@@ -22,7 +22,7 @@ if echo "$FILE" | grep "^//" >/dev/null 2>&1; then
         FILE=`echo $W | awk '{print $3}'`
     fi
 elif [ ! -e "$FILE" ] && FILES=`global -P "$FILE" 2>/dev/null`; then
-    [ -n "$FILES" ] && FILE="$($HOME/bin/choose.pl $FILES)"      
+    [ -n "$FILES" ] && FILE="$(choose.pl $FILES)"      
 fi
 if [ -z "$LINE" ]; then
     echo "${FILE}"
