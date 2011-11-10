@@ -9,6 +9,7 @@ FILE=
 LINE=0
 COL=
 TEST=
+EMACSDAEMON=no
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -17,11 +18,12 @@ while [ "$#" -gt 0 ]; do
     -e) MODE=eval ;;
     -t) MODE=tail ;;
     -m) MODE=make ;;
-    -d) TEST=echo ;;
+    -s|--dry) TEST=echo ;;
     -n) EMACSWAIT=no ;;
     -q) TEST=exists ;;
+    --daemon|-d) EMACSDAEMON="yes" ;;
     -nw) unset DISPLAY ;;
-    -h) echo "$0: [options] [file]"
+    -h|--help|-help) echo "$0: [options] [file]"
         echo "Options:"
         echo "  -c    Must confirm execution"
         echo "  -t    Tail provided file"
@@ -42,7 +44,12 @@ if [ -z "$EMACS" ]; then
     elif which gnuclient >/dev/null 2>&1 && gnuclient -v >/dev/null 2>&1; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
-        EMACS="emacsclient -a $(which emacs) -nw"
+        EMACS="emacsclient -nw"
+        if [ "$EMACSDAEMON" = "yes" ]; then
+            EMACS="$EMACS -a \"\""
+        elif [ -z "$ALTERNATE_EDITOR" ]; then
+            EMACS="$EMACS -a $(which emacs)"
+        fi
         [ "$EMACSWAIT" = "no" ] && EMACS="$EMACS -n"
     else
         echo "No emacs client available!"
@@ -53,7 +60,7 @@ else
 fi
 
 if [ -n "$FILE" ]; then
-    FILE=`$HOME/bin/findfile.sh $FILE`
+    FILE=`findfile.sh $FILE`
     if [ "CONFIRM" = "yes" ]; then
         echo -n "$FILE"
         read confirm
@@ -70,7 +77,8 @@ if [ -n "$FILE" ]; then
     elif [ "$MODE" = "eval" ]; then
         $TEST $EMACS -e "$FILE"
     elif [ "$MODE" = "make" ]; then
-        $TEST $EMACS -e "(sam-compile-directory \"$FILE\")"
+        [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="sam-compile-directory"
+        $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
     elif [ "$MODE" = "tail" ]; then
         $TEST $EMACS -e "(tailf \"$FILE\")"
     else
@@ -81,9 +89,9 @@ if [ -n "$FILE" ]; then
         else
             JUMP=0
         fi
-        $TEST $EMACS "+${JUMP}" "$FILE"
+        $TEST eval $EMACS "+${JUMP}" "$FILE"
     fi
 elif [ "$TEST" != "exists" ]; then
-    $TEST $EMACS
+    $TEST eval $EMACS
 fi
 exit 1
