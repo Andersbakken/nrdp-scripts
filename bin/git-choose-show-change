@@ -66,6 +66,8 @@ while true; do
     change=`choose.pl -$number -a -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
     if [ -n "$change" ]; then
       git show "$change"
+      echo -n "Done? "
+      read done
     else
       break;
     fi
