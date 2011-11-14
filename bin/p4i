@@ -321,7 +321,7 @@ sub p4i {
 
     print "Checking files are up-to-date: $files\n";
     $linecount = 0;
-    open( P4, "$P4 sync -n $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
+    open( P4, "$P4 sync $files 2>&1 |") || die "$0: Couldn't exec $P4: $!\n";
     while ( my $line = <P4> ) {
         $linecount++;
         chomp( $line );
