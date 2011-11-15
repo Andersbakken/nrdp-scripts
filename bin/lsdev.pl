@@ -490,6 +490,18 @@ if($display_only eq "current") { #display just the name of the directory request
     }
 } else { #display all matching directories, and finally answer with the chosen one
     my $rest_dir;
+    for(my $i = 0; $i <= $#matches; ++$i) {
+        my $match = $matches[$i];
+        if($match =~ /\//) {
+            if(!defined($rest_dir)) {
+                $rest_dir = $match;
+            } else {
+                display "Illegal match: $match ($rest_dir)\n";
+            }
+            splice(@matches, $i, 1);
+        }
+    }
+
     my @choices;
     if($#matches == 0 && $matches[0] =~ /^@(.*)$/) {
         if(open(EMACSCLIENT, "emacsclient -e '(sam-find-directory \"$1\")'|")) {
@@ -511,18 +523,6 @@ if($display_only eq "current") { #display just the name of the directory request
             @match_roots = uniq(@roots);
         } else {
             @match_roots = keys %roots_names;
-        }
-
-        for(my $i = 0; $i <= $#matches; ++$i) {
-            my $match = $matches[$i];
-            if($match =~ /\//) {
-                if(!defined($rest_dir) && !$root) {
-                    $rest_dir = $match;
-                } else {
-                    display "Illegal match: $match\n";
-                }
-                splice(@matches, $i, 1);
-            }
         }
         @choices = filterMatches(@match_roots);
     }
