@@ -48,8 +48,8 @@
     ret))
 (defun lsdev-cd()
   (interactive)
-  (let ((hd (completing-read "Directory: " (sam-hack-dirs))))
-    (if hd (find-file (sam-hack-dir hd)))))
+  (let ((hd (completing-read "Directory: " (lsdev-dirs-all))))
+    (if hd (find-file (lsdev-dir-for-name hd)))))
 
 
 (provide 'lsdev)
