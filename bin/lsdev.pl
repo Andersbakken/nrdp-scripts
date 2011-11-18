@@ -350,12 +350,12 @@ if(my $shadows_file = findAncestor(".lsdev_shadows")) {
         push(@roots, $shadows_root);
         display __LINE__, ": Pushed Root [$shadows_dir]\n" if($verbose);
     }
-}
-if(my $src_marker = findAncestor("configure")) {
+} elsif(my $src_marker = findAncestor(".lsdev_config") || findAncestor("configure")) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
                              ($#matches == -1 || $matches[0] eq "-"));
     $root_dir = dirname($src_marker) unless(defined($root_dir));
 }
+
 
 #figure out default
 unless(defined($default_dir)) {
