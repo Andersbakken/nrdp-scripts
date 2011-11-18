@@ -38,4 +38,18 @@
         (cd dir))
     (apply #'lsdev-dirs-internal "-l" match)))
 
+(defun lsdev-dir-for-name(name)
+  (let ((ret nil) (hds (lsdev-dirs-all)))
+    (while (and hds (not ret))
+      (let ((hd (car hds))
+            (hds (cdr hds)))
+        (if (string-equal (nth 0 hd) name)
+            (setq ret (nth 1 hd)))))
+    ret))
+(defun lsdev-cd()
+  (interactive)
+  (let ((hd (completing-read "Directory: " (sam-hack-dirs))))
+    (if hd (find-file (sam-hack-dir hd)))))
+
+
 (provide 'lsdev)
