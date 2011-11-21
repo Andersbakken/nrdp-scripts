@@ -94,4 +94,4 @@ if [ -n "$FILE" ]; then
 elif [ "$TEST" != "exists" ]; then
     $TEST eval $EMACS
 fi
-exit 1
+exit 0
