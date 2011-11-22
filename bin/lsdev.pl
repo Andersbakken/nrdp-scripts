@@ -539,10 +539,12 @@ if($display_only eq "current") { #display just the name of the directory request
             my $root_name = $roots_names{$root};
             answer($root_name, $root);
         }
-    } elsif($#choices == 0) {
-        $index = 0;
-    } elsif($#choices != -1) {
+    } else {
         while(1) {
+            if($#choices == 0) {
+                $index = 0;
+                last;
+            }
             for(my $i = 0; $i < @choices; ++$i) {
                 my $root = canonicalize($choices[$i]);
                 my $root_name = $roots_names{$root};
