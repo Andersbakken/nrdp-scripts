@@ -8,7 +8,7 @@
   :type 'boolean
   :group 'lsdev)
 
-
+;;general lsdev utilities
 (defun lsdev-dirs-internal (&rest match)
   (let ((result)
         (args '("-ta")))
@@ -57,6 +57,7 @@
             (setq ret (nth 1 hd)))))
     ret))
 
+;;lsdev-cd handling
 (defun lsdev-cd-completing (string predicate code)
   (let ((complete-list (make-vector 63 0)))
     (with-temp-buffer
@@ -77,35 +78,37 @@
           ((eq code 'lambda)
            (if (intern-soft string complete-list) t nil)))))
 
-(defun lsdev-directory-name-at-point()
+(defun lsdev-cd-directory-name-at-point()
   (save-excursion
     (beginning-of-line)
     ;; (message (buffer-substring (point-at-bol) (point-at-eol)))
     (if (looking-at "^.* \\[\\(.*\\)\\]$")
-        (match-string 1)
+        (let ((dir (match-string 1)))
+          (if (string-match "/$" dir) dir (concat dir "/"))
+          )
       nil)))
 
-(defun lsdev-bury-buffer()
+(defun lsdev-cd-bury-buffer()
   (if (string-equal (buffer-name) "*lsdev-complete*")
       (bury-buffer)))
 
-(defun lsdev-open-and-bury (dirname)
+(defun lsdev-cd-open-and-bury (dirname)
   (if (and dirname (file-exists-p dirname))
       (progn
-        (lsdev-bury-buffer)
+        (lsdev-cd-bury-buffer)
         (find-file dirname))
     (message (if dirname dirname "empty"))))
 
 (defun lsdev-cd-path-at-point ()
   (interactive)
-  (lsdev-open-and-bury (lsdev-directory-name-at-point)))
+  (lsdev-cd-open-and-bury (lsdev-cd-directory-name-at-point)))
 
 (defun lsdev-cd-subdir (&optional buryfirst)
   (interactive)
-  (let ((dirname (lsdev-directory-name-at-point)))
+  (let ((dirname (lsdev-cd-directory-name-at-point)))
     (if buryfirst
-        (lsdev-bury-buffer))
-    (lsdev-open-and-bury (read-directory-name "Directory: " dirname))))
+        (lsdev-cd-bury-buffer))
+    (lsdev-cd-open-and-bury (read-directory-name "Directory: " dirname))))
 
 (defvar lsdev-cd-history nil)
 (defun lsdev-cd()
@@ -122,11 +125,11 @@
     (switch-to-buffer (generate-new-buffer "*lsdev-complete*"))
     (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if lsdev-cd-ignore-builds "-build" ""))
     (goto-char (point-min))
-    (cond ((= (point-min) (point-max)) (bury-buffer) (switch-to-buffer previous))
+    (cond ((= (point-min) (point-max)) (lsdev-cd-bury-uffer) (switch-to-buffer previous))
           ((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir t) (lsdev-cd-path-at-point)))
           (t (progn
                (setq buffer-read-only t)
-               (local-set-key "q" 'lsdev-bury-buffer)
+               (local-set-key "q" 'lsdev-cd-bury-buffer)
                (local-set-key "/" 'lsdev-cd-subdir)
                (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
                (local-set-key [return] 'lsdev-cd-path-at-point)
