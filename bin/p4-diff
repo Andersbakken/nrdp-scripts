@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+# "Nicer "p4 diff"
+
+if (($ARGV[0] eq "-help") or ($ARGV[0] eq "-h")){
+    print <<END;
+Usage:
+    p4-diff -c <pending change number> | <file path> | -D <submitted change number>  
+
+Produces "patch"-compatible unified-diff output.
+
+  Works with changes eg p4diff -c 12345, where 12345 is a pending
+  changelist will shows diffs for all the files in that changelist.
+
+If no argumnents are provided then <file path> defaults to "..."
+  
+END
+    exit 2 
+}
+
+if ( $ARGV[0] eq "-c" ) {
+    shift;
+    $change=shift;
+    open P4CHANGE, "p4 change -o $change |";
+    while (<P4CHANGE>) {
+	last if /^Files:/;
+    }
+    while (<P4CHANGE>) {
+	($file) = m{(//.*)\s+#};
+	push @files, $file;
+    }
+    $mode="change"
+} elsif ( int(@ARGV) == 0 ) {
+    $files[0] = "...";
+} else {
+    @files=@ARGV;
+}
+if ( $ARGV[0] eq "-D" ) {
+    shift;
+    $cmd="p4 describe -du ".join(" ",@ARGV);
+    $mode="describe"
+} else {
+    $cmd="p4 diff -du ".join(" ",(map {"'$_'"} @files));
+    $mode="diff"
+}
+
+open P4DIFF, $cmd." |";
+$date=`date`;
+chomp $date;
+$skip=0;
+while (<P4DIFF>) {
+    if ( /^Differences \.\.\./ ) {
+        $skip=1
+    } elsif ( /^$/ ) {
+        if ($skip == 1) {
+            $skip = 2;
+        }
+    } elsif ( /^==== (.*) - (.*) ====/ ) {
+	print "--- $1\t$date\n";
+	print "+++ $2\t$date\n";
+    } elsif ( /^==== (\/\/\S*)#\d+ .*====/ ) {
+	print "--- $1\t$date\n";
+	print "+++ $1\t$date\n";
+    } else {
+        if ($skip == 2 || $mode ne "describe") {
+            print;
+        }
+    }
+}
+
