@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 
 EMACS=
 EMACSWAIT=yes
@@ -45,6 +45,8 @@ if [ -z "$EMACS" ]; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
         EMACS="emacsclient -nw"
+    fi
+    if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
             EMACS="$EMACS -a \"\""
         elif [ -z "$ALTERNATE_EDITOR" ]; then
