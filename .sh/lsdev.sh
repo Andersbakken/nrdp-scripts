@@ -131,7 +131,7 @@ editdev() {
 alias edd=editdev
 
 lsdevsetenvs() {
-    eval `lsdev -a -l | awk '{ print toupper($1),$2 }' | sed -e "s,^,$1," -e 's, \[,=,' -e 's,\]$,,' -e 's,[._-]\+,_,g'`
+    eval `lsdev -a -l -ta | awk '{ var=$1; val=$2; gsub(/[._-]+/, "_", var); print toupper(var),val }' | sed -e "s,^,$1," -e 's, \[,=,' -e 's,\]$,,'`
 }
 
 whatdev() {
