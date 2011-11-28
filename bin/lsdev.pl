@@ -541,11 +541,8 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     } else {
         while(1) {
-            if($#choices == -1) {
-                display "No matches\n";
-                last;
-            } elsif($#choices == 0) {
-                $index = 0;
+            if($#choices <= 0) {
+                $index = 0 if($#choices == 0);
                 last;
             }
             for(my $i = 0; $i < @choices; ++$i) {
