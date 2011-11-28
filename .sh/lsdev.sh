@@ -173,12 +173,15 @@ complete-cddev ()
     if [ "${COMP_WORDS[0]}" = "cdds" ] || [ "${COMP_WORDS[0]}" = "cds" ]; then
         nondirs=(${nondirs[@]} src)
     fi
-    while [ $idx -lt ${#COMP_WORDS[@]} ]; do
-        local arg="${COMP_WORDS[${idx}]}"
-        if echo "$arg" | grep --quiet /; then
-            test -z "$cur" && return
-        elif test -n "$arg"; then
-            nondirs=(${nondirs[@]} $arg)
+
+    while [ "$idx" -lt "${#COMP_WORDS[@]}" ]; do
+        if [ "$idx" -ne "$COMP_CWORD" ]; then
+            local arg="${COMP_WORDS[${idx}]}"
+            if echo "$arg" | grep --quiet /; then
+                test -z "$cur" && return
+            elif test -n "$arg"; then
+                nondirs=(${nondirs[@]} $arg)
+            fi
         fi
         idx=$((idx + 1))
     done
@@ -202,8 +205,11 @@ complete-cddev ()
         fi
     else
         COMPREPLY=()
-        local words="`lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g' | xargs | sort -u`"
-        COMPREPLY=( $(compgen -W "${words}" -- ${cur}) )
+        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g'); do echo $a; done | sort -u`
+        local subwords=
+        [ `echo $cur | wc -c` -gt 2 ] && subwords=`for a in $words; do echo $a; done | grep -o "${cur}[A-Za-z0-9.]*$"`
+        COMPREPLY=($(compgen -W "${words} ${subwords}" -- ${cur}))
+        [ "${#COMPREPLY[@]}" = 0 ] && COMPREPLY=(${words})
     fi
 }
 
