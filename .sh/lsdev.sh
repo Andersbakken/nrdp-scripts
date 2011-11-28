@@ -72,7 +72,23 @@ addbuild() {
 
 #lsdev
 lsdev() {
-   "lsdev.pl" "$@"
+   if [ "$1" = "-e" ]; then
+       shift
+       EXECUTE="$1"
+       shift
+       LSDEV_PATH=`lsdev.pl -tp "$@"`
+       if [ -n "$LSDEV_PATH" ]; then
+           if echo "$EXECUTE" | grep -q "{}"; then
+               EXECUTE=`echo $EXECUTE | sed "s,{},$LSDEV_PATH,g"`
+           else
+               EXECUTE="$EXECUTE $LSDEV_PATH"
+           fi
+           echo "Executing: $EXECUTE" >&2
+           eval $EXECUTE
+       fi
+   else
+       lsdev.pl "$@"
+   fi
 }
 lsd() {
    OPTS="$@"
@@ -176,6 +192,8 @@ complete-cddev ()
         nondirs=(${nondirs[@]} src)
     elif [ "${COMP_WORDS[0]}" = "cddb" ] || [ "${COMP_WORDS[0]}" = "cdb" ]; then
         nondirs=(${nondirs[@]} build)
+    elif [ "${COMP_WORDS[0]}" = "lsdev" ]; then
+        [ "${COMP_WORDS[$idx]}" = "-e" ] && idx=3
     fi
 
     while [ "$idx" -lt "${#COMP_WORDS[@]}" ]; do
@@ -218,4 +236,4 @@ complete-cddev ()
     fi
 }
 
-complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb
+complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb lsdev
