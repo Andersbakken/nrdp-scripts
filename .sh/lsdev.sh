@@ -149,6 +149,8 @@ cddev() {
     return 1
 }
 alias cdd=cddev
+alias cdds="cdd src"
+alias cds=cdds
 
 makedev() {
     DIR=`lsdev -w $@`
@@ -168,6 +170,9 @@ complete-cddev ()
     COMPREPLY=()
     local nondirs=()
     local idx=1
+    if [ "${COMP_WORDS[0]}" = "cdds" ] || [ "${COMP_WORDS[0]}" = "cds" ]; then
+        nondirs=(${nondirs[@]} src)
+    fi
     while [ $idx -lt ${#COMP_WORDS[@]} ]; do
         local arg="${COMP_WORDS[${idx}]}"
         if echo "$arg" | grep --quiet /; then
@@ -202,4 +207,4 @@ complete-cddev ()
     fi
 }
 
-complete -F complete-cddev cdd cddev mdd makedev editdev edd
+complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds
