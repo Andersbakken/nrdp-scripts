@@ -130,6 +130,10 @@ editdev() {
 }
 alias edd=editdev
 
+lsdevsetenvs() {
+    eval `lsdev -a -l | awk '{ print toupper($1),$2 }' | sed -e "s,^,$1," -e 's, \[,=,' -e 's,\]$,,' -e 's,[._-]\+,_,g'`
+}
+
 whatdev() {
     NAME=`lsdev -p $@`
     export WHATDEV_LAST_ARGS="x${@}x${PWD}"
