@@ -150,7 +150,9 @@ cddev() {
 }
 alias cdd=cddev
 alias cdds="cdd src"
+alias cddb="cdd build"
 alias cds=cdds
+alias cdb=cddb
 
 makedev() {
     DIR=`lsdev -w $@`
@@ -172,6 +174,8 @@ complete-cddev ()
     local idx=1
     if [ "${COMP_WORDS[0]}" = "cdds" ] || [ "${COMP_WORDS[0]}" = "cds" ]; then
         nondirs=(${nondirs[@]} src)
+    elif [ "${COMP_WORDS[0]}" = "cddb" ] || [ "${COMP_WORDS[0]}" = "cdb" ]; then
+        nondirs=(${nondirs[@]} build)
     fi
 
     while [ "$idx" -lt "${#COMP_WORDS[@]}" ]; do
@@ -187,15 +191,11 @@ complete-cddev ()
     done
     local realdir
     if [ "${#nondirs[@]}" -ge 0 -a -z "$cur" ]; then
+        tmp=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
+        [ `echo "$tmp" | wc -w` == 1 ] && realdir="$tmp"
+    elif echo "$cur" | grep --quiet "/"; then
         realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
-        if [ `echo "$realdir" | wc -w` != 1 ]; then 
-            realdir=
-        fi
-    elif echo "$cur" | grep --quiet /; then
-        realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
-        if [ `echo "$realdir" | wc -w` != 1 ]; then 
-            return
-        fi
+        [ `echo "$realdir" | wc -w` != 1 ] && return
     fi
 
     if [ -n "$realdir" ]; then
@@ -205,12 +205,17 @@ complete-cddev ()
         fi
     else
         COMPREPLY=()
-        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g'); do echo $a; done | sort -u`
-        local subwords=
+        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g'); do echo $a; done | sort -u | xargs`
+        idx=0
+        while [ "$idx" -lt "${#nondirs[@]}" ]; do
+            words=`echo $words | sed "s,\<${nondirs[${idx}]}\>,,g"`
+            idx=$((idx + 1))
+        done
+        local subwords
         [ `echo $cur | wc -c` -gt 2 ] && subwords=`for a in $words; do echo $a; done | grep -o "${cur}[A-Za-z0-9.]*$"`
         COMPREPLY=($(compgen -W "${words} ${subwords}" -- ${cur}))
-        [ "${#COMPREPLY[@]}" = 0 ] && COMPREPLY=(${words})
+        #[ "${#COMPREPLY[@]}" = 0 ] && COMPREPLY=(${words})
     fi
 }
 
-complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds
+complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb
