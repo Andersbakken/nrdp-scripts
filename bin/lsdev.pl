@@ -78,9 +78,9 @@ $display_only = "default" if(!defined($display_only) &&
 sub answer {
     my ($root) = @_;
     if($answer eq "all") {
-        print STDOUT $root->{name} . " [" . $root->{path} . "]\n";
+        print STDOUT generateName($root) . " [" . $root->{path} . "]\n";
     } elsif($answer eq "name") {
-        print STDOUT $root->{name} . "\n";
+        print STDOUT generateName($root) . "\n";
     } elsif($answer eq "path") {
         print STDOUT $root->{path} . "\n";
     }
@@ -271,6 +271,21 @@ my $root_dir;
 my %dev_roots = parseFileMap(glob("~/.dev_directories"));
 my $project_name;
 
+sub generateName {
+    my ($root) = @_;
+    my $name = $root->{name};
+    $name =~ s,-,_,g;
+    if($root->{src}) {
+        my $src_root = $roots{$root->{src}};
+        my $src_name = $src_root->{name};
+        $src_name =~ s,-,_,g;
+        $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
+        $name = "${build_prefix}${name}";
+    } else {
+        $name = "${src_prefix}${name}";
+    }
+    return $name;
+}
 sub isRelated {
     my ($path1, $path2) = @_;
     return 3 if($path1 eq $path2);
@@ -302,10 +317,14 @@ sub filterMatches {
                     $inverse = 1;
                 }
                 my $matches = 0;
-                if($match =~ /^path:(.*)/) {
+                if($match eq $src_prefix) {
+                    $matches = !defined($root->{src});
+                } elsif($match eq $build_prefix) {
+                    $matches = defined($root->{src});
+                } elsif($match =~ /^path:(.*)/) {
                     $matches = ($root->{path} =~ /$1/i);
                 } else {
-                    $matches = ($root->{name} =~ /$match/i);
+                    $matches = (generateName($root) =~ /$match/i);
                 }
                 $matches = !$matches if($inverse);
                 unless($matches) {
@@ -333,7 +352,7 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         $project_name = findFileMap($src_dir, \%dev_roots) unless(defined($project_name));
 
         my %root;
-        $root{name} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
+        $root{name} = defined($project_name) ? "${project_name}" : "src";
         $root{path} = $src_dir;
         $roots{$root{path}} = \%root;
         display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
@@ -356,7 +375,7 @@ if(my $shadows_file = findAncestor(".lsdev_shadows")) {
     $root_dir = $shadows_file_dir unless(defined($root_dir));
 
     my %src_root;
-    $src_root{name} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
+    $src_root{name} = defined($project_name) ? "${project_name}" : "src";
     $src_root{path} = $shadows_dir;
     $roots{$src_root{path}} = \%src_root;
     display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
@@ -364,10 +383,9 @@ if(my $shadows_file = findAncestor(".lsdev_shadows")) {
     foreach(keys(%shadows_roots)) {
         my $shadows_root_name = $_;
         my $shadows_root = $shadows_roots{$_};
-        $shadows_root_name = "${project_name}_${shadows_root_name}" if(defined($project_name));
 
         my %root;
-        $root{name} = "${build_prefix}${shadows_root_name}";
+        $root{name} = "${shadows_root_name}";
         $root{path} = $shadows_root;
         $root{src} = $src_root{path};
         $roots{$root{path}} = \%root;
@@ -417,7 +435,7 @@ if(defined($dev_roots{sources})) {
                     display "Source Detect: $src_dir [$project_name]\n" if($verbose);
 
                     my %root;
-                    $root{name} = "${src_prefix}${project_name}";
+                    $root{name} = "${project_name}";
                     $root{path} = $src_dir;
                     $roots{$root{path}} = \%root;
                     display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
@@ -451,7 +469,7 @@ if(defined($dev_roots{builds})) {
                         display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
                         #src side
                         my %src_root;
-                        $src_root{name} = "${src_prefix}${project_name}";
+                        $src_root{name} = "${project_name}";
                         $src_root{path} = $src_dir;
                         $roots{$src_root{path}} = \%src_root;
                         display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
@@ -459,7 +477,7 @@ if(defined($dev_roots{builds})) {
                         my $build_name = getProjectName($build_dir);
                         $build_name = "$subdir" unless(defined($build_name));
                         my %build_root;
-                        $build_root{name} = "${build_prefix}${project_name}_${build_name}";
+                        $build_root{name} = "${build_name}";
                         $build_root{path} = $build_dir;
                         $build_root{src} = $src_dir;
                         $roots{$build_root{path}} = \%build_root;
@@ -478,7 +496,7 @@ foreach(keys(%dev_roots)) {
     my $dev_root = $dev_roots{$dev_root_name};
     if($read_devdir_list >= 1) {
         my %root;
-        $root{name} = "${src_prefix}${dev_root_name}";
+        $root{name} = "${dev_root_name}";
         $root{path} = $dev_root;
         $roots{$root{path}} = \%root;
         display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
@@ -489,7 +507,7 @@ foreach(keys(%dev_roots)) {
             my $shadow_root_name = $_;
             my $shadow_root = $shadows{$_};
             my %root;
-            $root{name} = "${build_prefix}${dev_root_name}_${shadow_root_name}";
+            $root{name} = "${shadow_root_name}";
             $root{path} = $shadow_root;
             $root{src} = $dev_root;
             $roots{$root{path}} = \%root;
@@ -576,10 +594,10 @@ if($display_only eq "current") { #display just the name of the directory request
             }
             for(my $i = 0; $i < @choices; ++$i) {
                 my $root = $roots{canonicalize($choices[$i])};
-                display "[", $i + 1, "] ", $root->{name}, " [", $root->{path}, "]";
+                display "[", $i + 1, "] ", generateName($root), " [", $root->{path}, "]";
                 if($root->{src}) {
                     my $src_root = $roots{$root->{src}};
-                    display " [" . $src_root->{name} . "]";
+                    display " [" . generateName($src_root) . "]";
                 }
                 display "\n";
             }
