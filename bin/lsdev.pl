@@ -18,6 +18,8 @@ my $cwd = Cwd::cwd();
 
 my $src_prefix = "src_";
 my $build_prefix = "build_";
+my $detect_suffix = "_detect";
+$detect_suffix = ""; #not used currently
 
 my $output;
 my $root = 0;
@@ -74,13 +76,13 @@ $display_only = "default" if(!defined($display_only) &&
 
 
 sub answer {
-    my ($name, $path) = @_;
+    my ($root) = @_;
     if($answer eq "all") {
-        print STDOUT "$name [$path]\n";
+        print STDOUT $root->{name} . " [" . $root->{path} . "]\n";
     } elsif($answer eq "name") {
-        print STDOUT "$name\n";
+        print STDOUT $root->{name} . "\n";
     } elsif($answer eq "path") {
-        print STDOUT "$path\n";
+        print STDOUT $root->{path} . "\n";
     }
 }
 
@@ -262,20 +264,35 @@ sub getProjectName {
     return $result;
 }
 
-my %roots_names;
-my @roots;
+my %roots;
 
 my $default_dir;
 my $root_dir;
 my %dev_roots = parseFileMap(glob("~/.dev_directories"));
 my $project_name;
 
+sub isRelated {
+    my ($path1, $path2) = @_;
+    return 3 if($path1 eq $path2);
+
+    my $root1 = $roots{$path1};
+    my $root2 = $roots{$path2};
+    if($root1 && $root2) {
+        if($root1->{src}) {
+            return 1 if($root1->{src} eq $root2->{path});
+            return 2 if($root1->{src} eq $root2->{src});
+        } elsif($root2->{src}) {
+            return 1 if($root1->{path} eq $root2->{src});
+        }
+    }
+    return 0;
+}
+
 sub filterMatches {
     my @choices;
     my @match_roots = @_;
     foreach(@match_roots) {
-        my $root = $_;
-        my $root_name = $roots_names{$root};
+        my $root = $roots{$_};
         if($#matches != -1) {
             foreach(@matches) {
                 my $match = $_;
@@ -286,9 +303,9 @@ sub filterMatches {
                 }
                 my $matches = 0;
                 if($match =~ /^path:(.*)/) {
-                    $matches = ($root =~ /$1/i);
+                    $matches = ($root->{path} =~ /$1/i);
                 } else {
-                    $matches = ($root_name =~ /$match/i);
+                    $matches = ($root->{name} =~ /$match/i);
                 }
                 $matches = !$matches if($inverse);
                 unless($matches) {
@@ -296,10 +313,10 @@ sub filterMatches {
                     last;
                 }
             }
-        } elsif($read_devdir_list != 2 && $root eq $root_dir) { #if there are no arguments filter out pwd
+        } elsif($read_devdir_list != 2 && $root->{path} eq $root_dir) { #if there are no arguments filter out pwd
             next;
         }
-        push @choices, $root if(defined($root));
+        push @choices, $root->{path} if(defined($root));
     }
     @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
     return @choices;
@@ -314,10 +331,12 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
         $default_dir = $src_dir;
         $project_name = findFileMap($src_dir, \%dev_roots) unless(defined($project_name));
-        $roots_names{$src_dir} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
-        display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
-        push(@roots, $src_dir);
-        display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
+
+        my %root;
+        $root{name} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
+        $root{path} = $src_dir;
+        $roots{$root{path}} = \%root;
+        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
     }
 }
 
@@ -335,20 +354,24 @@ if(my $shadows_file = findAncestor(".lsdev_shadows")) {
         $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
     }
     $root_dir = $shadows_file_dir unless(defined($root_dir));
-    $roots_names{$shadows_dir} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
-    display __LINE__, ": Named Root [", $roots_names{$shadows_dir}, "] -> [$shadows_dir]\n" if($verbose);
-    push(@roots, $shadows_dir);
-    display __LINE__, ": Pushed Root [$shadows_dir]\n" if($verbose);
+
+    my %src_root;
+    $src_root{name} = defined($project_name) ? "${src_prefix}${project_name}" : "${build_prefix}src";
+    $src_root{path} = $shadows_dir;
+    $roots{$src_root{path}} = \%src_root;
+    display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
+
     foreach(keys(%shadows_roots)) {
         my $shadows_root_name = $_;
         my $shadows_root = $shadows_roots{$_};
-        if(defined($project_name)) {
-            $shadows_root_name = "${project_name}_${shadows_root_name}";
-        }
-        $roots_names{$shadows_root} = "${build_prefix}${shadows_root_name}";
-        display __LINE__, ": Named Root [", $roots_names{$shadows_root}, "] -> [$shadows_root]\n" if($verbose);
-        push(@roots, $shadows_root);
-        display __LINE__, ": Pushed Root [$shadows_dir]\n" if($verbose);
+        $shadows_root_name = "${project_name}_${shadows_root_name}" if(defined($project_name));
+
+        my %root;
+        $root{name} = "${build_prefix}${shadows_root_name}";
+        $root{path} = $shadows_root;
+        $root{src} = $src_root{path};
+        $roots{$root{path}} = \%root;
+        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
     }
 } elsif(my $src_marker = findAncestor(".lsdev_config") || findAncestor("configure")) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
@@ -389,13 +412,15 @@ if(defined($dev_roots{sources})) {
                     unless(defined($project_name)) {
                         $project_name = findFileMap($src_dir, \%dev_roots);
                         $project_name = basename($src_dir) unless(defined($project_name));
-                        #$project_name .= "_detect";
+                        $project_name .= $detect_suffix;
                     }
                     display "Source Detect: $src_dir [$project_name]\n" if($verbose);
-                    $roots_names{$src_dir} = "${src_prefix}${project_name}";
-                    display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
-                    push(@roots, $src_dir);
-                    display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
+
+                    my %root;
+                    $root{name} = "${src_prefix}${project_name}";
+                    $root{path} = $src_dir;
+                    $roots{$root{path}} = \%root;
+                    display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
                 }
             }
             closedir(SOURCES);
@@ -420,22 +445,25 @@ if(defined($dev_roots{builds})) {
                     unless(defined($project_name)) {
                         $project_name = findFileMap($src_dir, \%dev_roots);
                         $project_name = basename($src_dir) unless(defined($project_name));
-                        #$project_name .= "_detect";
+                        $project_name .= $detect_suffix;
                     }
                     if(defined($project_name)) {
                         display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
                         #src side
-                        $roots_names{$src_dir} = "${src_prefix}${project_name}";
-                        display __LINE__, ": Named Root [", $roots_names{$src_dir}, "] -> [$src_dir]\n" if($verbose);
-                        push(@roots, $src_dir);
-                        display __LINE__, ": Pushed Root [$src_dir]\n" if($verbose);
+                        my %src_root;
+                        $src_root{name} = "${src_prefix}${project_name}";
+                        $src_root{path} = $src_dir;
+                        $roots{$src_root{path}} = \%src_root;
+                        display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
                         #build side
-                        my $shadow_name = getProjectName($build_dir);
-                        $shadow_name = "$subdir" unless(defined($shadow_name));
-                        $roots_names{$build_dir} = "${build_prefix}${project_name}_${shadow_name}";
-                        display __LINE__, ": Named Root [", $roots_names{$build_dir}, "] -> [$build_dir]\n" if($verbose);
-                        push(@roots, $build_dir);
-                        display __LINE__, ": Pushed Root [$build_dir]\n" if($verbose);
+                        my $build_name = getProjectName($build_dir);
+                        $build_name = "$subdir" unless(defined($build_name));
+                        my %build_root;
+                        $build_root{name} = "${build_prefix}${project_name}_${build_name}";
+                        $build_root{path} = $build_dir;
+                        $build_root{src} = $src_dir;
+                        $roots{$build_root{path}} = \%build_root;
+                        display __LINE__, ": Named Root [", $build_root{name}, "] -> [", $build_root{path}, "]\n" if($verbose);
                     }
                 }
             }
@@ -449,24 +477,25 @@ foreach(keys(%dev_roots)) {
     my $dev_root_name = $_;
     my $dev_root = $dev_roots{$dev_root_name};
     if($read_devdir_list >= 1) {
-        push(@roots, $dev_root);
-        display __LINE__, ": Pushed Root [$dev_root]\n" if($verbose);
+        my %root;
+        $root{name} = "${src_prefix}${dev_root_name}";
+        $root{path} = $dev_root;
+        $roots{$root{path}} = \%root;
+        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
     }
     if(-e "$dev_root/.lsdev_shadows" ) {
         my %shadows = parseFileMap("$dev_root/.lsdev_shadows");
         foreach(keys(%shadows)) {
             my $shadow_root_name = $_;
             my $shadow_root = $shadows{$_};
-            $roots_names{$shadow_root} = "${build_prefix}${dev_root_name}_${shadow_root_name}";
-            display __LINE__, ": Named Root [", $roots_names{$shadow_root}, "] -> [$shadow_root]\n" if($verbose);
-            if($read_devdir_list >= 1) {
-                push(@roots, $shadow_root);
-                display __LINE__, ": Pushed Root [$shadow_root]\n" if($verbose);
-            }
+            my %root;
+            $root{name} = "${build_prefix}${dev_root_name}_${shadow_root_name}";
+            $root{path} = $shadow_root;
+            $root{src} = $dev_root;
+            $roots{$root{path}} = \%root;
+            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
         }
     }
-    $roots_names{$dev_root} = "${src_prefix}${dev_root_name}";
-    display __LINE__, ": Named Root [", $roots_names{$dev_root}, "] -> [$dev_root]\n" if($verbose);
 }
 
 if($display_only eq "current") { #display just the name of the directory request
@@ -478,12 +507,11 @@ if($display_only eq "current") { #display just the name of the directory request
     } else {
         $current = $matches[0];
     }
-    for($current = canonicalize($current); $current;
-        $current = dirname($current)) {
-        my $root_name = $roots_names{$current};
-        display "Trying: $current -> $root_name\n" if($verbose);
-        if(defined($root_name)) {
-            answer($root_name, $current);
+    for($current = canonicalize($current); $current; $current = dirname($current)) {
+        my $root = $roots{$current};
+        display "Trying: $current -> $root\n" if($verbose);
+        if(defined($root)) {
+            answer($root);
             last;
         }
         last if(length($current) <= 1);
@@ -518,13 +546,16 @@ if($display_only eq "current") { #display just the name of the directory request
     } elsif($#matches == -1 && $root && $root_dir) {
         push @choices, $root_dir;
     } else {
-        my @match_roots;
-        if($#matches == -1 || $read_devdir_list == -1) {
-            @match_roots = uniq(@roots);
-        } else {
-            @match_roots = keys %roots_names;
-        }
+        my @match_roots = keys %roots;
         @choices = filterMatches(@match_roots);
+
+        if($read_devdir_list != 2) {
+            my @related_choices;
+            for(my $i = 0; $i < @choices; ++$i) {
+                push @related_choices, $choices[$i] if(isRelated($choices[$i], $root_dir));
+            }
+            @choices = @related_choices if($#related_choices != -1);
+        }
     }
 
     if(!defined($rest_dir) && !$root && $root_dir) {
@@ -535,9 +566,7 @@ if($display_only eq "current") { #display just the name of the directory request
     my $index;
     if($display_only eq "list") {
         for(my $i = 0; $i < @choices; ++$i) {
-            my $root = canonicalize($choices[$i]);
-            my $root_name = $roots_names{$root};
-            answer($root_name, $root);
+            answer($roots{canonicalize($choices[$i])});
         }
     } else {
         while(1) {
@@ -546,9 +575,13 @@ if($display_only eq "current") { #display just the name of the directory request
                 last;
             }
             for(my $i = 0; $i < @choices; ++$i) {
-                my $root = canonicalize($choices[$i]);
-                my $root_name = $roots_names{$root};
-                display "[", $i + 1, "] $root_name [$root]\n";
+                my $root = $roots{canonicalize($choices[$i])};
+                display "[", $i + 1, "] ", $root->{name}, " [", $root->{path}, "]";
+                if($root->{src}) {
+                    my $src_root = $roots{$root->{src}};
+                    display " [" . $src_root->{name} . "]";
+                }
+                display "\n";
             }
             display "[1..", $#choices+1, "]";
             display " ($rest_dir)" if(defined($rest_dir));
@@ -564,31 +597,28 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     }
     if(defined($index)) {
-        my $ans_root_dir = canonicalize($choices[$index]);
-        my $ans_root_name = $roots_names{$ans_root_dir};
-
-        my $ans_dir = $ans_root_dir;
-        if(defined($rest_dir)) {
-            my $rest_cd_dir = "$ans_dir/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($ans_dir);
+        my %root = %{$roots{canonicalize($choices[$index])}};
+        if(defined($rest_dir)) {     #handle the rest logic
+            my $rest_cd_dir = $root{path} . "/$rest_dir";
+            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($root{path});
                 $current = dirname($current)) {
                 if(-d $current) {
-                    $ans_dir = $current;
+                    $root{path} = $current;
                     last;
                 }
             }
         }
-        answer($ans_root_name, $ans_dir);
+        answer(\%root);
 
         if($write_default_file) {
             my @lsdev_defaults;
             push(@lsdev_defaults, glob("~/.lsdev_default"));
-            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && !($root_dir eq $ans_dir));
+            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && isRelated($root_dir, $root{path}) == 1);
             foreach(@lsdev_defaults) {
                 my $lsdev_default = $_;
                 if(open(LSDEV_DEFAULT, ">$lsdev_default")) {
-                    display "Writing $lsdev_default -> $ans_dir\n" if($verbose);
-                    print LSDEV_DEFAULT "$ans_dir\n";
+                    display "Writing $lsdev_default -> " . $root{path} . "\n" if($verbose);
+                    print LSDEV_DEFAULT $root{path} . "\n";
                     close(LSDEV_DEFAULT);
                 }
             }
