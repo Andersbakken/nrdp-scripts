@@ -111,11 +111,15 @@
         (lsdev-cd-bury-buffer))
     (lsdev-cd-open-and-bury (ido-find-file-in-dir dirname))))
 
-(defun lsdev-cd-changedir ()
+(defun lsdev-cd-changedir (&optional quiet)
   (interactive)
   (let ((dir (lsdev-cd-directory-name-at-point)))
-    (if (and dir ;;(not (string-equal dir (expand-file-name default-directory)))
-            ) (progn (cd dir) (message (concat "LSDEV-CD " dir))))))
+    (if (and dir) (progn
+                    (cd dir)
+                    (if (not quiet) (message (concat "LSDEV-CD " dir)))
+                    ))))
+
+(defun lsdev-cd-modeline-function () (lsdev-cd-changedir t) nil)
 
 (defvar lsdev-cd-history nil)
 (defun lsdev-cd()
@@ -141,6 +145,7 @@
                (local-set-key "g" 'lsdev-cd-changedir)
                (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
                (local-set-key [return] 'lsdev-cd-path-at-point)
+               (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
                )))))
 
 
