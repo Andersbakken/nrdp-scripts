@@ -89,6 +89,7 @@
       nil)))
 
 (defun lsdev-cd-bury-buffer()
+  (interactive)
   (if (string-equal (buffer-name) "*lsdev-complete*")
       (bury-buffer)))
 
@@ -108,7 +109,7 @@
   (let ((dirname (lsdev-cd-directory-name-at-point)))
     (if buryfirst
         (lsdev-cd-bury-buffer))
-    (lsdev-cd-open-and-bury (read-directory-name "Directory: " dirname))))
+    (lsdev-cd-open-and-bury (ido-find-file-in-dir dirname))))
 
 (defvar lsdev-cd-history nil)
 (defun lsdev-cd()
