@@ -124,7 +124,7 @@
 (defvar lsdev-cd-history nil)
 (defun lsdev-cd()
   (interactive)
-  (let ((hd (completing-read "Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history))
+  (let ((hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history))
         (previous (current-buffer))
         (slash nil))
     (if (get-buffer "*lsdev-complete*")
