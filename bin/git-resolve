@@ -76,7 +76,15 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
               edit=yes
 	      while true; do
                   if [ "$edit" = "yes" ]; then
-                      if ! $editor $tmp; then
+                      if [ "$editor" = "meld" ]; then
+                          tmpupstream=`mktemp -t XXXXupstream`
+                          tmpyours=`mktemp -t XXXXyours`
+                          
+                          git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+                          git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
+                          git cat-file blob ":1:$file" >$tmp 2>/dev/null
+                          $editor $tmpupstream $tmp $tmpyours
+                      elif ! $editor $tmp; then
 		          echo "Unable to spawn editor!!"
 		          break;
                       fi
