@@ -560,6 +560,13 @@ if($display_only eq "current") { #display just the name of the directory request
             display "Unable to connect emacsclient!\n";
         }
     } elsif($#matches == 0 && $matches[0] eq "-") {
+        unless(defined($roots{$default_dir})) {
+            my %root;
+            $root{name} = "default";
+            $root{path} = $default_dir;
+            $roots{$root{path}} = \%root;
+            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+        }
         push @choices, $default_dir;
     } elsif($#matches == -1 && $root && $root_dir) {
         push @choices, $root_dir;
