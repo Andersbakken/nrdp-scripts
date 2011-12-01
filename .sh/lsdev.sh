@@ -81,7 +81,12 @@ lsdev() {
            if echo "$EXECUTE" | grep -q "{}"; then
                EXECUTE=`echo $EXECUTE | sed "s,{},$LSDEV_PATH,g"`
            else
-               EXECUTE="$EXECUTE $LSDEV_PATH"
+               E=`echo $EXECUTE | cut -d' ' -f1`
+               if [ -x "$LSDEV_PATH/$E" ]; then
+                   EXECUTE="$LSDEV_PATH/$EXECUTE"
+               else
+                   EXECUTE="$EXECUTE $LSDEV_PATH"
+               fi
            fi
            echo "Executing: $EXECUTE" >&2
            eval $EXECUTE
