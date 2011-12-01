@@ -317,9 +317,9 @@ sub filterMatches {
                     $inverse = 1;
                 }
                 my $matches = 0;
-                if($match eq $src_prefix) {
+                if($match eq "src") {
                     $matches = !defined($root->{src});
-                } elsif($match eq $build_prefix) {
+                } elsif($match eq "build") {
                     $matches = defined($root->{src});
                 } elsif($match =~ /^path:(.*)/) {
                     $matches = ($root->{path} =~ /$1/i);
