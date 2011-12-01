@@ -122,7 +122,7 @@
 (defun lsdev-cd-modeline-function () (lsdev-cd-changedir t) nil)
 
 (defvar lsdev-cd-history nil)
-(defun lsdev-cd()
+(defun lsdev-cd(&optional ignore-builds)
   (interactive)
   (let ((hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history))
         (previous (current-buffer))
@@ -134,11 +134,23 @@
           (setq slash t)
           (setq hd (substring hd 0 -1))))
     (switch-to-buffer (generate-new-buffer "*lsdev-complete*"))
-    (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if lsdev-cd-ignore-builds "-build" ""))
+    (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if (or ignore-builds lsdev-cd-ignore-builds) "-build" ""))
     (goto-char (point-min))
     (cond ((= (point-min) (point-max)) (lsdev-cd-bury-buffer) (switch-to-buffer previous))
           ((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir t) (lsdev-cd-path-at-point)))
           (t (progn
+               (save-excursion
+                 (let ((first t) (lines (count-lines (point-min) (point-max))))
+                   (goto-char (point-min))
+                   (while (and (<(count-lines (point-min) (point)) lines) (not (looking-at "\*Builds\*")))
+                     (if (looking-at "^build_")
+                         (save-excursion
+                           (kill-line)(kill-line)
+                           (goto-char (point-max))
+                           (if first (progn (setq first nil) (insert "\n*Builds*\n")))
+                           (insert (current-kill 1))
+                           (insert "\n"))
+                         (next-line)))))
                (setq buffer-read-only t)
                (local-set-key "q" 'lsdev-cd-bury-buffer)
                (local-set-key "/" 'lsdev-cd-subdir)
