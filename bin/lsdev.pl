@@ -198,7 +198,7 @@ sub canonicalize {
     my ($file, $base, $readlink) = @_;
     $readlink = 1 unless(defined($readlink));
     my @globs = glob($file);
-    my $result = defined(@globs) ? $globs[0] : $file;
+    my $result = @globs ? $globs[0] : $file;
     if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
         $result = File::Spec->rel2abs($result, $base);
     }
