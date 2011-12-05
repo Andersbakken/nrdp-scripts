@@ -172,10 +172,10 @@ sub processBuildDir {
         if(open( CONFIG_STATUS, "<$config_status")) {
             while(my $line = <CONFIG_STATUS>) {
                 chomp($line);
-                if($line =~ /([^ ]*configure)/) {
+                if($line =~ /(\W+\/configure)/) {
                     $src_dir = dirname($1);
-                    last;
                 }
+                last if($src_dir && length($src_dir));
             }
             close(CONFIG_STATUS);
         }
@@ -197,6 +197,7 @@ sub canonicalize {
     my $before = $result;
     $result = abs_path($result) if(-e "$result");
     $result =~ s,/*$,,g;
+    $result = "/" unless(length($result));
     return $result;
 }
 
@@ -409,6 +410,23 @@ unless(defined($default_dir)) {
             display "   Default $default_dir\n" if($verbose);
             chomp($default_dir);
             close(LSDEV_DEFAULT);
+
+            unless(defined($roots{$default_dir})) {
+                my %root;
+                $root{name} = "default";
+                $root{path} = $default_dir;
+                if(my $src = processBuildDir($root{path})) {
+                    $root{src} = $src;
+                    unless(defined($roots{$src})) {
+                        my %src_root;
+                        $src_root{name} = "${src_prefix}default";
+                        $src_root{path} = $src;
+                        $roots{$src_root{path}} = \%src_root;
+                    }
+                }
+                $roots{$root{path}} = \%root;
+                display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+            }
         }
     }
 }
@@ -549,7 +567,26 @@ if($display_only eq "current") { #display just the name of the directory request
     }
 
     my @choices;
-    if($#matches == 0 && $matches[0] =~ /^@(.*)$/) {
+    if($#matches == -1 && $rest_dir && -d $rest_dir) {
+        unless(defined($roots{$rest_dir})) {
+            my %root;
+            $root{name} = "passed";
+            $root{path} = $rest_dir;
+            if(my $src = processBuildDir($root{path})) {
+                $root{src} = $src;
+                unless(defined($roots{$src})) {
+                    my %src_root;
+                    $src_root{name} = "${src_prefix}passed";
+                    $src_root{path} = $src;
+                    $roots{$src_root{path}} = \%src_root;
+                }
+            }
+            $roots{$root{path}} = \%root;
+            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+        }
+        push @choices, $rest_dir;
+        $rest_dir = undef;
+    } elsif($#matches == 0 && $matches[0] =~ /^@(.*)$/) {
         if(open(EMACSCLIENT, "emacsclient -e '(sam-find-directory \"$1\")'|")) {
             my $choice = <EMACSCLIENT>;
             chomp $choice;
@@ -560,13 +597,6 @@ if($display_only eq "current") { #display just the name of the directory request
             display "Unable to connect emacsclient!\n";
         }
     } elsif($#matches == 0 && $matches[0] eq "-") {
-        unless(defined($roots{$default_dir})) {
-            my %root;
-            $root{name} = "default";
-            $root{path} = $default_dir;
-            $roots{$root{path}} = \%root;
-            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
-        }
         push @choices, $default_dir;
     } elsif($#matches == -1 && $root && $root_dir) {
         push @choices, $root_dir;
@@ -622,6 +652,7 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     }
     if(defined($index)) {
+        display "Chose: $root_dir: $index: '" . canonicalize($choices[$index]) . "' -> '" . $roots{canonicalize($choices[$index])} . "'\n" if($verbose);
         my %root = %{$roots{canonicalize($choices[$index])}};
         if(defined($rest_dir)) {     #handle the rest logic
             my $rest_cd_dir = $root{path} . "/$rest_dir";
