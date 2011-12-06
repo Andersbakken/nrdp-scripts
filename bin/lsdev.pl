@@ -287,6 +287,18 @@ sub generateName {
     }
     return $name;
 }
+
+sub findRoot {
+    my ($current) = @_;
+    for($current = canonicalize($current); $current; $current = dirname($current)) {
+        my $root = $roots{$current};
+        display "Trying: $current -> $root\n" if($verbose);
+        return $root->{path} if(defined($root));
+        last if(length($current) <= 1);
+    }
+    return undef;
+}
+
 sub isRelated {
     my ($path1, $path2) = @_;
     return 3 if($path1 eq $path2);
@@ -543,14 +555,8 @@ if($display_only eq "current") { #display just the name of the directory request
     } else {
         $current = $matches[0];
     }
-    for($current = canonicalize($current); $current; $current = dirname($current)) {
-        my $root = $roots{$current};
-        display "Trying: $current -> $root\n" if($verbose);
-        if(defined($root)) {
-            answer($root);
-            last;
-        }
-        last if(length($current) <= 1);
+    if(my $root = findRoot($current)) {
+        answer($roots{$root});
     }
 } else { #display all matching directories, and finally answer with the chosen one
     my $rest_dir;
@@ -558,7 +564,7 @@ if($display_only eq "current") { #display just the name of the directory request
         my $match = $matches[$i];
         if($match =~ /\//) {
             if(!defined($rest_dir)) {
-                $rest_dir = $match;
+                $rest_dir = canonicalize($match);
             } else {
                 display "Illegal match: $match ($rest_dir)\n";
             }
@@ -571,7 +577,7 @@ if($display_only eq "current") { #display just the name of the directory request
         unless(defined($roots{$rest_dir})) {
             my %root;
             $root{name} = "passed";
-            $root{path} = $rest_dir;
+            $root{path} = canonicalize($rest_dir);
             if(my $src = processBuildDir($root{path})) {
                 $root{src} = $src;
                 unless(defined($roots{$src})) {
@@ -588,10 +594,31 @@ if($display_only eq "current") { #display just the name of the directory request
         $rest_dir = undef;
     } elsif($#matches == 0 && $matches[0] =~ /^@(.*)$/) {
         if(open(EMACSCLIENT, "emacsclient -e '(sam-find-directory \"$1\")'|")) {
-            my $choice = <EMACSCLIENT>;
-            chomp $choice;
-            $choice =~ s,",,g;
-            push @choices, $choice if($choice);
+            my $emacs_dir = <EMACSCLIENT>;
+            chomp $emacs_dir;
+            $emacs_dir =~ s,",,g;
+            $emacs_dir = canonicalize($emacs_dir);
+            $emacs_dir = findRoot($emacs_dir) if($root);
+            display "Emacs detection: $emacs_dir\n" if($verbose);
+            if($emacs_dir) {
+                unless(defined($roots{$emacs_dir})) {
+                    my %root;
+                    $root{name} = "emacs";
+                    $root{path} = $emacs_dir;
+                    if(my $src = processBuildDir($root{path})) {
+                        $root{src} = $src;
+                        unless(defined($roots{$src})) {
+                            my %src_root;
+                            $src_root{name} = "${src_prefix}emacs";
+                            $src_root{path} = $src;
+                            $roots{$src_root{path}} = \%src_root;
+                        }
+                    }
+                    $roots{$root{path}} = \%root;
+                    display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+                }
+                push @choices, $emacs_dir;
+            }
             close(EMACSCLIENT);
         } else {
             display "Unable to connect emacsclient!\n";
