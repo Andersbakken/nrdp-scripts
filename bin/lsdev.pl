@@ -295,11 +295,25 @@ sub generateName {
     return $name;
 }
 
+sub findDevDirectory {
+    my ($current) = @_;
+    for($current = canonicalize($current, undef, 0); $current; $current = dirname($current)) {
+        foreach(keys(%dev_roots)) {
+            my $dev_root_name = $_;
+            my $dev_root = $dev_roots{$dev_root_name};
+            #display "findDevDirectory: $dev_root -> $current\n" if($verbose);
+            return $current if($dev_root eq $current);
+        }
+        last if(length($current) <= 1);
+    }
+    return undef;
+}
+
 sub findRoot {
     my ($current) = @_;
     for($current = canonicalize($current, undef, 0); $current; $current = dirname($current)) {
         my $root = $roots{$current};
-        display "Trying: $current -> $root\n" if($verbose);
+        #display "findRoot: $current -> $root\n" if($verbose);
         return $root->{path} if(defined($root));
         last if(length($current) <= 1);
     }
@@ -379,15 +393,18 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
     }
 }
 
-#figure out all the shadows listed in my relevent source dir
-if(my $shadows_file = findAncestor(".lsdev_shadows")) {
+if(my $dev_directory = findDevDirectory($cwd)) {
+    $read_devdir_list = -2 if($read_devdir_list == 1 &&
+                              ($#matches == -1 || $matches[0] eq "-"));
+    $root_dir = $dev_directory unless(defined($root_dir));
+} elsif(my $shadows_file = findAncestor(".lsdev_shadows")) {    #figure out all the shadows listed in my relevent source dir
     display " Found $shadows_file!\n" if($verbose);
     my $shadows_file_dir = dirname($shadows_file);
     my $shadows_dir = $shadows_file_dir;
     $project_name = findFileMap($shadows_dir, \%dev_roots) unless(defined($project_name));
     my %shadows_roots = parseFileMap("$shadows_file");
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
-                             ($#matches == -1 || $matches[0] eq "-"));
+                              ($#matches == -1 || $matches[0] eq "-"));
     unless(defined($default_dir)) {
         my @shadows_roots_keys = keys %shadows_roots;
         $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
@@ -413,10 +430,9 @@ if(my $shadows_file = findAncestor(".lsdev_shadows")) {
     }
 } elsif(my $src_marker = findAncestor(".lsdev_config") || findAncestor("configure")) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
-                             ($#matches == -1 || $matches[0] eq "-"));
+                              ($#matches == -1 || $matches[0] eq "-"));
     $root_dir = dirname($src_marker) unless(defined($root_dir));
 }
-
 
 #figure out default
 unless(defined($default_dir)) {
