@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
    --no-prompt|-no-prompt) PROMPT=false ;;
    -dry) TEST=echo ;;
    *) echo "No such command: $1"; exit 1 ;;
-   esac  
+   esac
    shift
 done
 GITDIR=`git rev-parse --git-dir`
@@ -55,14 +55,14 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
    fi
    while [ "$merged" = "false" ]; do
       if [ "$PROMPT" = "true" ]; then
-          echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, accept yours(ay), (s)kip: "
+          echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
           read cmd
       else
           echo "$file unmerged!"
       fi
       [ -z "$cmd" ] && cmd=$STRATEGY
       case $cmd in
-      d|diff) 
+      d|diff)
           tmpupstream=`mktemp -t XXXX`
           tmpyours=`mktemp -t XXXX`
 
@@ -70,16 +70,16 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
           git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
           diff -du "$tmpupstream" "$tmpyours"
           ;;
-      e|edit) 
+      m|e|edit)
               tmp=`mktemp -t XXXX`
 	      cp $file $tmp
               edit=yes
 	      while true; do
                   if [ "$edit" = "yes" ]; then
-                      if [ "$editor" = "meld" ]; then
+                      if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
                           tmpupstream=`mktemp -t XXXXupstream`
                           tmpyours=`mktemp -t XXXXyours`
-                          
+
                           git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
                           git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
                           git cat-file blob ":1:$file" >$tmp 2>/dev/null
@@ -94,7 +94,7 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
 		  read accpt
 		  [ -z "$accpt" ] && accpt=y
 		  case $accpt in
-                  d|diff) 
+                  d|diff)
                       tmpupstream=`mktemp -t XXXX`
 
                       git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
@@ -118,7 +118,7 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
                   *) ;;
                   esac
                done ;;
-      au) merged=true; 
+      au) merged=true;
           tmp=`mktemp -t XXXX`
           git cat-file blob ":2:$file" >$tmp 2>/dev/null
 	  $TEST mv $tmp $file
