@@ -14,7 +14,14 @@ my $detect_devdirs = 1;
 my $display_only;
 my $display_help = 0;
 my $answer;
-my $cwd = Cwd::cwd();
+my $cwd = Cwd::getcwd();
+if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
+    my $e = my ($e_dev, $e_node) = stat($ENV{PWD});
+    my $c = my ($c_dev, $c_node) = stat($cwd);
+    if ($e && $c && $e_dev == $c_dev && $e_node == $c_node) {
+        $cwd = $ENV{PWD};
+    }
+}
 
 my $src_prefix = "src_";
 my $build_prefix = "build_";
@@ -429,12 +436,12 @@ unless(defined($default_dir)) {
                 $root{path} = $default_dir;
                 if(my $src = processBuildDir($root{path})) {
                     $root{src} = $src;
-                    unless(defined($roots{$src})) {
-                        my %src_root;
-                        $src_root{name} = "${src_prefix}default";
-                        $src_root{path} = $src;
-                        $roots{$src_root{path}} = \%src_root;
-                    }
+                    # unless(defined($roots{$src})) {
+                    #     my %src_root;
+                    #     $src_root{name} = "${src_prefix}default";
+                    #     $src_root{path} = $src;
+                    #     $roots{$src_root{path}} = \%src_root;
+                    # }
                 }
                 $roots{$root{path}} = \%root;
                 display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
@@ -545,6 +552,7 @@ foreach(keys(%dev_roots)) {
         }
     }
 }
+display "root=$root_dir default=$default_dir cwd=$cwd\n" if($verbose);
 
 if($display_only eq "current") { #display just the name of the directory request
     my $current;
