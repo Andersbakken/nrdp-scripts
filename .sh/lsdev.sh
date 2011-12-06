@@ -12,6 +12,7 @@ add_lsdev() {
      *)
         if [ -z "$DIR" ]; then
             DIR="$1"
+            echo "$DIR" | grep -v -q "^/" && DIR="$PWD/$DIR"
         elif [ -z "$NAME" ]; then
             NAME="$1"
         fi
