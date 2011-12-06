@@ -3,6 +3,7 @@
 use Cwd;
 use Cwd 'abs_path';
 use Pod::Usage;
+use File::Spec;
 use File::Basename;
 
 use strict;
@@ -28,7 +29,14 @@ my $action = $ARGV[0];
 #($action, $path) = ( =~ /([+-][shel0-9]?)(.*)/);
 $path = $ARGV[1] if (!$path and $ARGV[1]);
 
-my $cwd = getcwd();
+my $cwd = Cwd::getcwd();
+if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
+    my $e = my ($e_dev, $e_node) = stat($ENV{PWD});
+    my $c = my ($c_dev, $c_node) = stat($cwd);
+    if ($e && $c && $e_dev == $c_dev && $e_node == $c_node) {
+        $cwd = $ENV{PWD};
+    }
+}
 
 if($action =~ /\+/) {
   $path = $cwd unless length($path);
@@ -173,7 +181,9 @@ if($action =~ /\+/) {
 sub cdbm_chose {
 #############################################################
     my($path,$show) = @_;
-    $path = abs_path($path);
+    #print STDERR "CHOSE1: $path\n";
+    $path = File::Spec->rel2abs($path, $cwd);
+    #print STDERR "CHOSE2: $path\n";
 
     cdbm_add($path, 1 );
     print STDERR "$path\n" if($show);
