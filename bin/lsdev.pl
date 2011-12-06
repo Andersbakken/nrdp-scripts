@@ -195,14 +195,14 @@ sub processBuildDir {
 
 
 sub canonicalize {
-    my ($file, $base) = @_;
+    my ($file, $base, $readlink) = @_;
+    $readlink = 1 unless(defined($readlink));
     my @globs = glob($file);
     my $result = defined(@globs) ? $globs[0] : $file;
     if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
         $result = File::Spec->rel2abs($result, $base);
     }
-    my $before = $result;
-    $result = abs_path($result) if(-e "$result");
+    $result = abs_path($result) if(-e "$result" && $readlink);
     $result =~ s,/*$,,g;
     $result = "/" unless(length($result));
     return $result;
@@ -239,7 +239,7 @@ sub parseFileMap {
 sub findFileMap {
     my ($find, $map) = @_;
 
-    $find = canonicalize($find);
+    $find = canonicalize($find, 0);
     my $result;
     my $result_path;
     foreach(keys %$map ) {
@@ -297,7 +297,7 @@ sub generateName {
 
 sub findRoot {
     my ($current) = @_;
-    for($current = canonicalize($current); $current; $current = dirname($current)) {
+    for($current = canonicalize($current, undef, 0); $current; $current = dirname($current)) {
         my $root = $roots{$current};
         display "Trying: $current -> $root\n" if($verbose);
         return $root->{path} if(defined($root));
