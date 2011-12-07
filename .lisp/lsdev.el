@@ -93,23 +93,20 @@
   (if (string-equal (buffer-name) "*lsdev-complete*")
       (bury-buffer)))
 
-(defun lsdev-cd-open-and-bury (dirname)
+(defun lsdev-cd-open (dirname)
   (if (and dirname (file-exists-p dirname))
       (progn
-        (lsdev-cd-bury-buffer)
         (find-file dirname))
     (message (if dirname dirname "empty"))))
 
 (defun lsdev-cd-path-at-point ()
   (interactive)
-  (lsdev-cd-open-and-bury (lsdev-cd-directory-name-at-point)))
+  (lsdev-cd-open (lsdev-cd-directory-name-at-point)))
 
-(defun lsdev-cd-subdir (&optional buryfirst)
+(defun lsdev-cd-subdir ()
   (interactive)
   (let ((dirname (lsdev-cd-directory-name-at-point)))
-    (if buryfirst
-        (lsdev-cd-bury-buffer))
-    (lsdev-cd-open-and-bury (ido-find-file-in-dir dirname))))
+    (lsdev-cd-open (ido-find-file-in-dir dirname))))
 
 (defun lsdev-cd-changedir (&optional quiet)
   (interactive)
@@ -127,17 +124,18 @@
   (let ((hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history))
         (previous (current-buffer))
         (slash nil))
-    (if (get-buffer "*lsdev-complete*")
-        (kill-buffer "*lsdev-complete*"))
     (if (string-match "/$" hd)
         (progn
           (setq slash t)
           (setq hd (substring hd 0 -1))))
-    (switch-to-buffer (generate-new-buffer "*lsdev-complete*"))
+    (switch-to-buffer (get-buffer-create "*lsdev-complete*"))
+    (setq buffer-read-only nil)
+    (goto-char (point-min))
+    (delete-char (- (point-max) 1))
     (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if (or ignore-builds lsdev-cd-ignore-builds) "-build" ""))
     (goto-char (point-min))
     (cond ((= (point-min) (point-max)) (lsdev-cd-bury-buffer) (switch-to-buffer previous))
-          ((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir t) (lsdev-cd-path-at-point)))
+          ((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir) (lsdev-cd-path-at-point)))
           (t (progn
                (save-excursion
                  (let ((first t) (lines (count-lines (point-min) (point-max))))
