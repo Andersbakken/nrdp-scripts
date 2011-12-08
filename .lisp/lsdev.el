@@ -135,7 +135,7 @@
     (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if (or ignore-builds lsdev-cd-ignore-builds) "-build" ""))
     (goto-char (point-min))
     (cond ((= (point-min) (point-max)) (lsdev-cd-bury-buffer) (switch-to-buffer previous))
-          ((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir) (lsdev-cd-path-at-point)))
+          ;;((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir) (lsdev-cd-path-at-point)))
           (t (progn
                (save-excursion
                  (let ((first t) (lines (count-lines (point-min) (point-max))))
