@@ -244,7 +244,7 @@ sub findFileMap {
     my $result_path;
     foreach(keys %$map ) {
         my $name = $_;
-        my $path = canonicalize($map->{$_});
+        my $path = canonicalize($map->{$_}, undef, 0);
         if($find eq $path && length($path) > length($result_path)) {
             $result_path = $path;
             $result = $name;
