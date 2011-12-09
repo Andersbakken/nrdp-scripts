@@ -703,11 +703,11 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     }
     if(defined($index)) {
-        display "Chose: $root_dir: $index: '" . canonicalize($choices[$index]) . "' -> '" . $roots{canonicalize($choices[$index])} . "'\n" if($verbose);
+        display "Chose: $root_dir($rest_dir): $index: '" . canonicalize($choices[$index]) . "' -> '" . $roots{canonicalize($choices[$index])} . "'\n" if($verbose);
         my %root = %{$roots{canonicalize($choices[$index])}};
         if(defined($rest_dir)) {     #handle the rest logic
             my $rest_cd_dir = $root{path} . "/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($root{path});
+            for(my $current = canonicalize($rest_cd_dir, undef, 0); $current && length($current) > length($root{path});
                 $current = dirname($current)) {
                 if(-d $current) {
                     $root{path} = $current;
