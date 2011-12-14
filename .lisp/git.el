@@ -1249,7 +1249,7 @@ The FILES list must be sorted."
     (with-current-buffer buffer
       (diff-mode)
       (goto-char (point-min))
-      ;;(setq default-directory dir)
+      (setq default-directory dir)
       (setq buffer-read-only t)))
   (display-buffer buffer)
   ; shrink window only if it displays the status buffer
