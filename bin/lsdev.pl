@@ -179,7 +179,7 @@ sub processBuildDir {
         if(open( CONFIG_STATUS, "<$config_status")) {
             while(my $line = <CONFIG_STATUS>) {
                 chomp($line);
-                if($line =~ /(\W+\/configure)/) {
+                if($line =~ /([\w-\/.]+\/configure)/) {
                     $src_dir = dirname($1);
                 }
                 last if($src_dir && length($src_dir));
