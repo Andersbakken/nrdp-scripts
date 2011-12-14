@@ -1348,6 +1348,7 @@ The FILES list must be sorted."
     (cond 
      ((equal pretty 'pretty)
       (while (not (eobp))
+        (goto-char (point-at-bol))
         (cond ((looking-at "commit \\([0-9a-g]*\\)")
                (let ((commit-match 1))
                  (setq git-cur-commit (match-string commit-match))
