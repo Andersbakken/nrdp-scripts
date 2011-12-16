@@ -26,7 +26,7 @@ if [ -z "$COMMAND" ]; then
    exit 1
 fi
 
-for dir in `lsdev.pl -a -l -tp $DEVS`; do
+for dir in `lsdev.pl -l -tp $DEVS`; do
    if [ -d "$dir" ] && [ -d "$dir/.git" ]; then
       echo
       echo
