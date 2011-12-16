@@ -10,6 +10,7 @@ use strict;
 my $verbose = 0;
 my $write_default_file = 0;
 my $read_devdir_list = 1;
+my $detect_rest = 1;
 my $detect_devdirs = 1;
 my $display_only;
 my $display_help = 0;
@@ -28,8 +29,6 @@ my $build_prefix = "build_";
 my $detect_suffix = "_detect";
 $detect_suffix = ""; #not used currently
 
-my $output;
-my $root = 0;
 my @matches;
 
 sub parseOptions {
@@ -38,7 +37,7 @@ sub parseOptions {
         if($option eq "-w") {
             $write_default_file = 1;
         } elsif($option eq "-r") {
-            $root = 1;
+            $detect_rest = 0;
         } elsif($option eq "-c") {
             $cwd = shift @_;
         } elsif($option eq "-b") {
@@ -187,22 +186,25 @@ sub processBuildDir {
             close(CONFIG_STATUS);
         }
     } elsif(-e "${build_dir}/.lsdev_config") {
-        $src_dir = getProjectConfig(${build_dir}, "source_dir");
+        $src_dir = getPathConfig(${build_dir}, "source");
     }
     $src_dir = canonicalize($src_dir, $build_dir) if(defined($src_dir));
     return $src_dir;
 }
 
+sub resolveLinks {
+    my ($file) = @_;
+    $file = abs_path($file) if(-e "$file");
+    return $file;
+}
 
 sub canonicalize {
-    my ($file, $base, $readlink) = @_;
-    $readlink = 1 unless(defined($readlink));
+    my ($file, $base) = @_;
     my @globs = glob($file);
     my $result = @globs ? $globs[0] : $file;
     if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
         $result = File::Spec->rel2abs($result, $base);
     }
-    $result = abs_path($result) if(-e "$result" && $readlink);
     $result =~ s,/*$,,g;
     $result = "/" unless(length($result));
     return $result;
@@ -211,22 +213,23 @@ sub canonicalize {
 sub parseConfig {
     my ($file) = @_;
     my %result;
-    display "Processing: $file\n" if($verbose);
+    display "ProcessingConfigFile: $file\n" if($verbose);
     if(open(FILE, "<$file")) {
         while(my $line = <FILE>) {
             chomp($line);
-            if($line =~ /^([^#].*)=(.*)$/) {
+            $line =~ s,#.*$,,;
+            if($line =~ /^(.*)=(.*)$/) {
                 $result{$1} = $2;
             }
         }
         close(FILE);
     }
-    return %result;
+    return \%result;
 }
 
 sub parseFileMap {
     my ($file) = @_;
-    my %result = parseConfig($file);
+    my %result = %{parseConfig($file)};
     foreach(keys %result ) {
         my $name = $_;
         my $path = canonicalize($result{$name}, dirname($file));
@@ -244,7 +247,7 @@ sub findFileMap {
     my $result_path;
     foreach(keys %$map ) {
         my $name = $_;
-        my $path = canonicalize($map->{$_}, undef, 0);
+        my $path = canonicalize($map->{$_});
         if($find eq $path && length($path) > length($result_path)) {
             $result_path = $path;
             $result = $name;
@@ -254,37 +257,110 @@ sub findFileMap {
     return $result;
 }
 
-sub getProjectConfig {
-    my ($path, $config) = @_;
-    my $result;
-    my $lsdev_config_file = "$path/.lsdev_config";
-    if(-e $lsdev_config_file) {
-        my %c = parseConfig($lsdev_config_file);
-        $result = $c{$config};
+my %dev_roots;
+my %path_config;
+if(-e glob("~/.dev_directories")) {
+    my $dev_directories_path = glob("~/.dev_directories");
+    display "ProcessingDevDirectories: $dev_directories_path\n" if($verbose);
+    if(open(FILE, "<$dev_directories_path")) {
+        my $path;
+        while(my $line = <FILE>) {
+            chomp($line);
+            $line =~ s,#.*$,,;
+            if($line =~ /^\[(.*)\]$/) {
+                $path = $1;
+            } elsif($line =~ /^(.*)=(.*)$/) {
+                if($path) {
+                    if(!exists $path_config{$path}) {
+                        if(my $config = parsePathConfig($path)) {
+                            $path_config{$path} = $config;
+                        } else {
+                            my %tmp_config;
+                            $path_config{$path} = \%tmp_config;
+                        }
+                    }
+                    my $k = $1;
+                    my $v = $2;
+                    $v = canonicalize($v, dirname($dev_directories_path)) if($k eq "path" || $k eq "source");
+                    display "Found PathConfig: {$path}{$k} -> $v\n" if($verbose);
+                    $path_config{$path}->{$k} = $v;
+                } else {
+                    my $p = canonicalize($2, dirname($dev_directories_path));
+                    display "Found DevDirectory: $1 -> $p\n" if($verbose);
+                    $dev_roots{$1} = $p;
+                }
+            }
+        }
+        close(FILE);
     }
-    display " ProjectConfig: $lsdev_config_file($config) -> $result\n" if($verbose);
+}
+
+sub parsePathConfig {
+    my ($path) = @_;
+    my $lsdev_config_file = "$path/.lsdev_config";
+    return parseConfig($lsdev_config_file) if(-e $lsdev_config_file);
+    return undef;
+}
+
+sub getPathConfig {
+    my ($path, $key) = @_;
+    $path_config{$path} = parsePathConfig($path) if(!exists $path_config{$path});
+    my $result;
+    $result = $path_config{$path}->{$key} if($path_config{$path} && exists $path_config{$path}->{$key});
+    display " PathConfig: $path($key) -> '" . defined($result) ? $result : "(undef)" . "'\n" if($verbose);
     return $result;
 }
 
 sub getProjectName {
     my ($path) = @_;
-    my $result = getProjectConfig($path, "name");
+    my $result = getPathConfig($path, "name");
     return $result;
 }
 
 my %roots;
-
 my $default_dir;
 my $root_dir;
-my %dev_roots = parseFileMap(glob("~/.dev_directories"));
-my $project_name;
+
+sub findRoot {
+    my ($path, $recurse) = @_;
+    for(my $current = resolveLinks(canonicalize($path)); $current; $current = dirname($current)) {
+        my $root = $roots{$current};
+        return $root if($root);
+        last if(!$recurse);
+    }
+    return undef;
+}
+
+sub findRootPath {
+    my ($path, $recurse) = @_;
+    if(my $root = findRoot($path, $recurse)) {
+        return $root->{path};
+    }
+    return undef;
+}
+
+sub addRoot {
+    my ($name, $path, $source) = @_;
+    my %root;
+    %root = %{$path_config{$path}} if($path_config{$path} && exists $path_config{$path});
+    $root{name} = $name;
+    $root{path} = canonicalize($path);
+    $root{source} = resolveLinks(canonicalize($source)) if($source);
+    my $root_location = resolveLinks($root{path});
+    $roots{$root_location} = \%root;
+    if($verbose) {
+        my @c = caller(0);
+        display $c[2], ": Named Root($root_location) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "}\n"
+    }
+    return \%root;
+}
 
 sub generateName {
     my ($root) = @_;
     my $name = $root->{name};
     $name =~ s,-,_,g;
-    if($root->{src}) {
-        my $src_root = $roots{$root->{src}};
+    if($root->{source}) {
+        my $src_root = findRoot($root->{source});
         my $src_name = $src_root->{name};
         $src_name =~ s,-,_,g;
         $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
@@ -292,56 +368,69 @@ sub generateName {
     } else {
         $name = "${src_prefix}${name}";
     }
+    display "Generated Name: $name: for " . $root->{path} . "\n" if($verbose);
     return $name;
 }
 
-sub findDevDirectory {
-    my ($current) = @_;
-    for($current = canonicalize($current, undef, 0); $current; $current = dirname($current)) {
+sub findDevRootName {
+    my ($path, $recurse) = @_;
+    for(my $current = resolveLinks(canonicalize($path)); $current; $current = dirname($current)) {
         foreach(keys(%dev_roots)) {
             my $dev_root_name = $_;
-            my $dev_root = $dev_roots{$dev_root_name};
-            #display "findDevDirectory: $dev_root -> $current\n" if($verbose);
-            return $current if($dev_root eq $current);
+            my $dev_root = resolveLinks($dev_roots{$dev_root_name});
+            if($dev_root eq $current) {
+                display "FindDevRootName: $current -> $dev_root_name\n" if($verbose);
+                return $dev_root_name;
+            }
         }
-        last if(length($current) <= 1);
+        last if(length($current) <= 1 || !$recurse);
     }
+    display "FindDevRootName: $path -> not found\n" if($verbose);
     return undef;
 }
 
-sub findRoot {
-    my ($current) = @_;
-    for($current = canonicalize($current, undef, 0); $current; $current = dirname($current)) {
-        my $root = $roots{$current};
-        #display "findRoot: $current -> $root\n" if($verbose);
-        return $root->{path} if(defined($root));
-        last if(length($current) <= 1);
+sub findDevRoot {
+    my ($path, $recurse) = @_;
+    if(my $name = findDevRootName($path, $recurse)) {
+        my $root = $dev_roots{$name};
+        display "FindDevRoot: $path -> '$root' ($name)\n" if($verbose);
+        return $root;
     }
+    display "FindDevRoot: $path -> not found\n" if($verbose);
     return undef;
 }
 
 sub isRelated {
     my ($path1, $path2) = @_;
-    return 3 if($path1 eq $path2);
 
-    my $root1 = $roots{$path1};
-    my $root2 = $roots{$path2};
-    if($root1 && $root2) {
-        if($root1->{src}) {
-            return 1 if($root1->{src} eq $root2->{path});
-            return 2 if($root1->{src} eq $root2->{src});
-        } elsif($root2->{src}) {
-            return 1 if($root1->{path} eq $root2->{src});
+    my $result = 0;
+    if(resolveLinks($path1) eq resolveLinks($path2)) {
+        $result = 3;
+    } else {
+        my $root1 = findRoot($path1);
+        my $root2 = findRoot($path2);
+        if($root1 && $root2) {
+            if($root1->{source}) {
+                if(resolveLinks($root1->{source}) eq resolveLinks($root2->{path})) {
+                    $result = 1;
+                } elsif(resolveLinks($root1->{source}) eq resolveLinks($root2->{source})) {
+                    $result = 2;
+                }
+            } elsif($root2->{source}) {
+                $result = 1 if(resolveLinks($root1->{path}) eq resolveLinks($root2->{source}));
+            }
         }
     }
-    return 0;
+    display "IsRelated: ${path1}::${path2} -> $result\n" if($verbose);
+    return $result;
 }
 
 sub filterMatches {
     my @choices;
     my @match_roots = @_;
     foreach(@match_roots) {
-        my $root = $roots{$_};
+        my $root = findRoot($_);
+        next if($root->{ignore} || !$root->{path});
         if($#matches != -1) {
             foreach(@matches) {
                 my $match = $_;
@@ -352,15 +441,16 @@ sub filterMatches {
                 }
                 my $matches = 0;
                 if($match eq "src") {
-                    $matches = !defined($root->{src});
+                    $matches = !defined($root->{source});
                 } elsif($match eq "build") {
-                    $matches = defined($root->{src});
+                    $matches = defined($root->{source});
                 } elsif($match =~ /^path:(.*)/) {
                     $matches = ($root->{path} =~ /$1/i);
                 } else {
                     $matches = (generateName($root) =~ /$match/i);
                 }
                 $matches = !$matches if($inverse);
+                #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matches\n" if($verbose);
                 unless($matches) {
                     $root = undef;
                     last;
@@ -369,7 +459,10 @@ sub filterMatches {
         } elsif($read_devdir_list != 2 && $root->{path} eq $root_dir) { #if there are no arguments filter out pwd
             next;
         }
-        push @choices, $root->{path} if(defined($root));
+        if(defined($root)) {
+            display "AddChoice: [" . $root->{name} . "::" . $root->{path} . "::" . generateName($root) . "]\n" if($verbose);
+            push @choices, $root->{path} if(defined($root));
+        }
     }
     @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
     return @choices;
@@ -383,17 +476,12 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
     if(my $src_dir = processBuildDir("$root_dir")) {
         display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
         $default_dir = $src_dir;
-        $project_name = findFileMap($src_dir, \%dev_roots) unless(defined($project_name));
-
-        my %root;
-        $root{name} = defined($project_name) ? "${project_name}" : "src";
-        $root{path} = $src_dir;
-        $roots{$root{path}} = \%root;
-        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+        my $project_name = findDevRootName($src_dir);
+        addRoot($project_name ? "${project_name}" : "src", $src_dir);
     }
 }
 
-if(my $dev_directory = findDevDirectory($cwd)) {
+if(my $dev_directory = findDevRoot($cwd, 1)) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
                               ($#matches == -1 || $matches[0] eq "-"));
     $root_dir = $dev_directory unless(defined($root_dir));
@@ -401,32 +489,17 @@ if(my $dev_directory = findDevDirectory($cwd)) {
     display " Found $shadows_file!\n" if($verbose);
     my $shadows_file_dir = dirname($shadows_file);
     my $shadows_dir = $shadows_file_dir;
-    $project_name = findFileMap($shadows_dir, \%dev_roots) unless(defined($project_name));
-    my %shadows_roots = parseFileMap("$shadows_file");
+    my $project_name = findDevRootName($shadows_dir);
+    my %shadows = parseFileMap("$shadows_file");
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
                               ($#matches == -1 || $matches[0] eq "-"));
-    unless(defined($default_dir)) {
-        my @shadows_roots_keys = keys %shadows_roots;
-        $default_dir = $shadows_roots{$shadows_roots_keys[0]} if($#shadows_roots_keys == 1);
-    }
     $root_dir = $shadows_file_dir unless(defined($root_dir));
 
-    my %src_root;
-    $src_root{name} = defined($project_name) ? "${project_name}" : "src";
-    $src_root{path} = $shadows_dir;
-    $roots{$src_root{path}} = \%src_root;
-    display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
-
-    foreach(keys(%shadows_roots)) {
-        my $shadows_root_name = $_;
-        my $shadows_root = $shadows_roots{$_};
-
-        my %root;
-        $root{name} = "${shadows_root_name}";
-        $root{path} = $shadows_root;
-        $root{src} = $src_root{path};
-        $roots{$root{path}} = \%root;
-        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+    my $src_root = addRoot($project_name ? "${project_name}" : "src", $shadows_dir);
+    foreach(keys(%shadows)) {
+        my $shadow_root_name = $_;
+        my $shadow_root = $shadows{$_};
+        addRoot($shadow_root_name, $shadow_root, $src_root->{path});
     }
 } elsif(my $src_marker = findAncestor(".lsdev_config") || findAncestor("configure")) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
@@ -445,23 +518,7 @@ unless(defined($default_dir)) {
             display "   Default $default_dir\n" if($verbose);
             chomp($default_dir);
             close(LSDEV_DEFAULT);
-
-            unless(defined($roots{$default_dir})) {
-                my %root;
-                $root{name} = "default";
-                $root{path} = $default_dir;
-                if(my $src = processBuildDir($root{path})) {
-                    $root{src} = $src;
-                    # unless(defined($roots{$src})) {
-                    #     my %src_root;
-                    #     $src_root{name} = "${src_prefix}default";
-                    #     $src_root{path} = $src;
-                    #     $roots{$src_root{path}} = \%src_root;
-                    # }
-                }
-                $roots{$root{path}} = \%root;
-                display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
-            }
+            addRoot("default", $default_dir) unless(defined(findRoot($default_dir)));
         }
     }
 }
@@ -477,21 +534,16 @@ if(defined($dev_roots{sources})) {
             while(my $subdir = readdir(SOURCES)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $src_dir = "$source/$subdir";
-                next if(getProjectConfig($src_dir, "ignore"));
+                next if(getPathConfig($src_dir, "ignore"));
                 if(-d $src_dir && processSourceDir($src_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
-                        $project_name = findFileMap($src_dir, \%dev_roots);
+                        $project_name = findDevRootName($src_dir);
                         $project_name = basename($src_dir) unless(defined($project_name));
                         $project_name .= $detect_suffix;
                     }
                     display "Source Detect: $src_dir [$project_name]\n" if($verbose);
-
-                    my %root;
-                    $root{name} = "${project_name}";
-                    $root{path} = $src_dir;
-                    $roots{$root{path}} = \%root;
-                    display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+                    addRoot($project_name, $src_dir);
                 }
             }
             closedir(SOURCES);
@@ -508,33 +560,24 @@ if(defined($dev_roots{builds})) {
             while(my $subdir = readdir(BUILDS)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $build_dir = "$build/$subdir";
-                next if(getProjectConfig($build_dir, "ignore"));
+                next if(getPathConfig($build_dir, "ignore"));
                 my $src_dir;
                 $src_dir = processBuildDir($build_dir) if(-d $build_dir);
                 if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
-                        $project_name = findFileMap($src_dir, \%dev_roots);
+                        $project_name = findDevRootName($src_dir);
                         $project_name = basename($src_dir) unless(defined($project_name));
                         $project_name .= $detect_suffix;
                     }
                     if(defined($project_name)) {
                         display "Build Detect: $build_dir ($src_dir) [$project_name]\n" if($verbose);
                         #src side
-                        my %src_root;
-                        $src_root{name} = "${project_name}";
-                        $src_root{path} = $src_dir;
-                        $roots{$src_root{path}} = \%src_root;
-                        display __LINE__, ": Named Root [", $src_root{name}, "] -> [", $src_root{path}, "]\n" if($verbose);
+                        my $src_root = addRoot($project_name, $src_dir);
                         #build side
                         my $build_name = getProjectName($build_dir);
                         $build_name = "$subdir" unless(defined($build_name));
-                        my %build_root;
-                        $build_root{name} = "${build_name}";
-                        $build_root{path} = $build_dir;
-                        $build_root{src} = $src_dir;
-                        $roots{$build_root{path}} = \%build_root;
-                        display __LINE__, ": Named Root [", $build_root{name}, "] -> [", $build_root{path}, "]\n" if($verbose);
+                        addRoot($build_name, $build_dir, $src_root->{path});
                     }
                 }
             }
@@ -548,23 +591,14 @@ foreach(keys(%dev_roots)) {
     my $dev_root_name = $_;
     my $dev_root = $dev_roots{$dev_root_name};
     if($read_devdir_list >= 1) {
-        my %root;
-        $root{name} = "${dev_root_name}";
-        $root{path} = $dev_root;
-        $roots{$root{path}} = \%root;
-        display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+        addRoot($dev_root_name, $dev_root);
     }
     if(-e "$dev_root/.lsdev_shadows" ) {
-        my %shadows = parseFileMap("$dev_root/.lsdev_shadows");
+        my %shadows = parseRoots("$dev_root/.lsdev_shadows");
         foreach(keys(%shadows)) {
             my $shadow_root_name = $_;
             my $shadow_root = $shadows{$_};
-            my %root;
-            $root{name} = "${shadow_root_name}";
-            $root{path} = $shadow_root;
-            $root{src} = $dev_root;
-            $roots{$root{path}} = \%root;
-            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
+            addRoot($shadow_root_name, $shadow_root, $dev_root);
         }
     }
 }
@@ -580,7 +614,7 @@ if($display_only eq "current") { #display just the name of the directory request
         $current = $matches[0];
     }
     if(my $root = findRoot($current)) {
-        answer($roots{$root});
+        answer($root);
     }
 } else { #display all matching directories, and finally answer with the chosen one
     my $rest_dir;
@@ -598,21 +632,12 @@ if($display_only eq "current") { #display just the name of the directory request
 
     my @choices;
     if($#matches == -1 && $rest_dir && -d $rest_dir) {
-        unless(defined($roots{$rest_dir})) {
-            my %root;
-            $root{name} = "passed";
-            $root{path} = canonicalize($rest_dir);
-            if(my $src = processBuildDir($root{path})) {
-                $root{src} = $src;
-                unless(defined($roots{$src})) {
-                    my %src_root;
-                    $src_root{name} = "${src_prefix}passed";
-                    $src_root{path} = $src;
-                    $roots{$src_root{path}} = \%src_root;
-                }
+        unless(defined(findRoot($rest_dir))) {
+            my $root = addRoot("passed", $rest_dir);
+            if(my $src = processBuildDir($root->{path})) {
+                $root->{source} = $src;
+                addRoot("${src_prefix}passed", $src) unless(defined(findRoot($src)));
             }
-            $roots{$root{path}} = \%root;
-            display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
         }
         push @choices, $rest_dir;
         $rest_dir = undef;
@@ -622,25 +647,10 @@ if($display_only eq "current") { #display just the name of the directory request
             chomp $emacs_dir;
             $emacs_dir =~ s,",,g;
             $emacs_dir = canonicalize($emacs_dir);
-            $emacs_dir = findRoot($emacs_dir) if($root);
+            $emacs_dir = findRootPath($emacs_dir) if(!$detect_rest);
             display "Emacs detection: $emacs_dir\n" if($verbose);
             if($emacs_dir) {
-                unless(defined($roots{$emacs_dir})) {
-                    my %root;
-                    $root{name} = "emacs";
-                    $root{path} = $emacs_dir;
-                    if(my $src = processBuildDir($root{path})) {
-                        $root{src} = $src;
-                        unless(defined($roots{$src})) {
-                            my %src_root;
-                            $src_root{name} = "${src_prefix}emacs";
-                            $src_root{path} = $src;
-                            $roots{$src_root{path}} = \%src_root;
-                        }
-                    }
-                    $roots{$root{path}} = \%root;
-                    display __LINE__, ": Named Root [", $root{name}, "] -> [", $root{path}, "]\n" if($verbose);
-                }
+                addRoot("emacs", $emacs_dir) unless(defined(findRoot($emacs_dir)));
                 push @choices, $emacs_dir;
             }
             close(EMACSCLIENT);
@@ -649,12 +659,11 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     } elsif($#matches == 0 && $matches[0] eq "-") {
         push @choices, $default_dir;
-    } elsif($#matches == -1 && $root && $root_dir) {
+    } elsif($#matches == -1 && !$detect_rest && $root_dir) {
         push @choices, $root_dir;
     } else {
         my @match_roots = keys %roots;
         @choices = filterMatches(@match_roots);
-
         if($read_devdir_list != 2) {
             my @related_choices;
             for(my $i = 0; $i < @choices; ++$i) {
@@ -664,7 +673,7 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     }
 
-    if(!defined($rest_dir) && !$root && $root_dir) {
+    if(!defined($rest_dir) && $detect_rest && $root_dir) {
         my $current = $cwd;
         $rest_dir = $1 if($current =~ /^$root_dir\/(.*)/);
     }
@@ -672,7 +681,7 @@ if($display_only eq "current") { #display just the name of the directory request
     my $index;
     if($display_only eq "list") {
         for(my $i = 0; $i < @choices; ++$i) {
-            answer($roots{canonicalize($choices[$i])});
+            answer(findRoot($choices[$i]));
         }
     } else {
         while(1) {
@@ -681,10 +690,10 @@ if($display_only eq "current") { #display just the name of the directory request
                 last;
             }
             for(my $i = 0; $i < @choices; ++$i) {
-                my $root = $roots{canonicalize($choices[$i])};
+                my $root = findRoot($choices[$i]);
                 display "[", $i + 1, "] ", generateName($root), " [", $root->{path}, "]";
-                if($root->{src}) {
-                    my $src_root = $roots{$root->{src}};
+                if($root->{source}) {
+                    my $src_root = findRoot($root->{source});
                     display " [" . generateName($src_root) . "]";
                 }
                 display "\n";
@@ -703,11 +712,11 @@ if($display_only eq "current") { #display just the name of the directory request
         }
     }
     if(defined($index)) {
-        display "Chose: $root_dir($rest_dir): $index: '" . canonicalize($choices[$index]) . "' -> '" . $roots{canonicalize($choices[$index])} . "'\n" if($verbose);
-        my %root = %{$roots{canonicalize($choices[$index])}};
+        display "Chose: $root_dir($rest_dir): $index: '" . canonicalize($choices[$index]) . "' -> '" . findRoot($choices[$index]) . "'\n" if($verbose);
+        my %root = %{findRoot($choices[$index])};
         if(defined($rest_dir)) {     #handle the rest logic
             my $rest_cd_dir = $root{path} . "/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir, undef, 0); $current && length($current) > length($root{path});
+            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($root{path});
                 $current = dirname($current)) {
                 if(-d $current) {
                     $root{path} = $current;
