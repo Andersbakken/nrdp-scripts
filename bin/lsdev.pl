@@ -80,21 +80,25 @@ if($display_only eq "current") {
 $display_only = "default" if(!defined($display_only) &&
                              $#matches == 0 && $matches[0] eq "-");
 
-
-sub answer {
-    my ($root) = @_;
-    if($answer eq "all") {
-        print STDOUT generateName($root) . " [" . $root->{path} . "]\n";
-    } elsif($answer eq "name") {
-        print STDOUT generateName($root) . "\n";
-    } elsif($answer eq "path") {
-        print STDOUT $root->{path} . "\n";
-    }
-}
-
 sub display {
     foreach(@_) {
         print STDERR $_;
+    }
+}
+
+sub answer {
+    my ($root) = @_;
+    my $output;
+    if($answer eq "all") {
+        $output = generateName($root) . " [" . $root->{path} . "]";
+    } elsif($answer eq "name") {
+        $output = generateName($root);
+    } elsif($answer eq "path") {
+        $output = $root->{path};
+    }
+    if($output) {
+        print STDOUT "$output\n";
+        display "Answering: $output\n" if($verbose);
     }
 }
 

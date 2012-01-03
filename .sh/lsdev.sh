@@ -167,7 +167,7 @@ setdev() {
 cddev() {
     DIR=`lsdev -w $@`
     [ -z "$DIR" ] && [ "$#" = "1" ] && [ -d "$1" ] && DIR="$1"
-    if [ -n "$DIR" ]; then
+    if [ -d "$DIR" ] && [ -n "$DIR" ]; then
       echo "$DIR"
       cd "$DIR" && return 0
     fi
