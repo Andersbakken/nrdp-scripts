@@ -329,8 +329,9 @@ sub findRoot {
     my ($path, $recurse) = @_;
     for(my $current = resolveLinks(canonicalize($path)); $current; $current = dirname($current)) {
         my $root = $roots{$current};
+        display "FindRoot: $current: -> $root\n" if($verbose);
         return $root if($root);
-        last if(!$recurse);
+        last if(!$recurse || $current eq "/");
     }
     return undef;
 }
@@ -617,7 +618,7 @@ if($display_only eq "current") { #display just the name of the directory request
     } else {
         $current = $matches[0];
     }
-    if(my $root = findRoot($current)) {
+    if(my $root = findRoot($current, 1)) {
         answer($root);
     }
 } else { #display all matching directories, and finally answer with the chosen one
