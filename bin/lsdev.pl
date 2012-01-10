@@ -461,7 +461,7 @@ sub filterMatches {
                     last;
                 }
             }
-        } elsif($read_devdir_list != 2 && $root->{path} eq $root_dir) { #if there are no arguments filter out pwd
+        } elsif($read_devdir_list != 2 && $read_devdir_list != -1 && $root->{path} eq $root_dir) { #if there are no arguments filter out pwd
             next;
         }
         if(defined($root)) {
