@@ -405,28 +405,34 @@ sub findDevRoot {
     return undef;
 }
 
-sub isRelated {
+sub isPathSame {
+    my ($path1, $path2) = @_;
+    return 1 if(resolveLinks($path1) eq resolveLinks($path2));
+    return 0;
+}
+
+sub isRootRelated {
     my ($path1, $path2) = @_;
 
     my $result = 0;
-    if(resolveLinks($path1) eq resolveLinks($path2)) {
+    if(isPathSame($path1, $path2)) {
         $result = 3;
     } else {
         my $root1 = findRoot($path1);
         my $root2 = findRoot($path2);
         if($root1 && $root2) {
             if($root1->{source}) {
-                if(resolveLinks($root1->{source}) eq resolveLinks($root2->{path})) {
+                if(isPathSame($root1->{source}, $root2->{path})) {
                     $result = 1;
-                } elsif(resolveLinks($root1->{source}) eq resolveLinks($root2->{source})) {
+                } elsif(isPathSame($root1->{source}, $root2->{source})) {
                     $result = 2;
                 }
             } elsif($root2->{source}) {
-                $result = 1 if(resolveLinks($root1->{path}) eq resolveLinks($root2->{source}));
+                $result = 1 if(isPathSame($root1->{path}, $root2->{source}));
             }
         }
     }
-    display "IsRelated: ${path1}::${path2} -> $result\n" if($verbose);
+    display "IsRootRelated: ${path1}::${path2} -> $result\n" if($verbose);
     return $result;
 }
 
@@ -461,7 +467,7 @@ sub filterMatches {
                     last;
                 }
             }
-        } elsif($read_devdir_list != 2 && $read_devdir_list != -1 && $root->{path} eq $root_dir) { #if there are no arguments filter out pwd
+        } elsif($read_devdir_list != 2 && $read_devdir_list != -1 && isPathSame($root->{path}, $root_dir)) { #if there are no arguments filter out pwd
             next;
         }
         if(defined($root)) {
@@ -517,13 +523,16 @@ unless(defined($default_dir)) {
     my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir);
     $lsdev_default_file = glob("~/.lsdev_default") unless($lsdev_default_file);
     if($lsdev_default_file && -e $lsdev_default_file) {
-        display " Found $lsdev_default_file!\n" if($verbose);
-        if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
-            $default_dir = <LSDEV_DEFAULT>;
-            display "   Default $default_dir\n" if($verbose);
-            chomp($default_dir);
-            close(LSDEV_DEFAULT);
-            addRoot("default", $default_dir) unless(defined(findRoot($default_dir)));
+        my $lsdev_default_file_dir = dirname($lsdev_default_file);
+        if(!$root_dir || length(resolveLinks($lsdev_default_file_dir)) >= length(resolveLinks($root_dir))) {
+            display " Found $lsdev_default_file!\n" if($verbose);
+            if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
+                $default_dir = <LSDEV_DEFAULT>;
+                display "   Default $default_dir\n" if($verbose);
+                chomp($default_dir);
+                close(LSDEV_DEFAULT);
+                addRoot("default", $default_dir) unless(defined(findRoot($default_dir)));
+            }
         }
     }
 }
@@ -568,7 +577,7 @@ if(defined($dev_roots{builds})) {
                 next if(getPathConfig($build_dir, "ignore"));
                 my $src_dir;
                 $src_dir = processBuildDir($build_dir) if(-d $build_dir);
-                if(defined($src_dir) && ($read_devdir_list >= 1 || $src_dir eq $root_dir || $src_dir eq $default_dir)) {
+                if(defined($src_dir) && ($read_devdir_list >= 1 || isPathSame($src_dir, $root_dir) || isPathSame($src_dir, $default_dir))) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
                         $project_name = findDevRootName($src_dir);
@@ -672,7 +681,7 @@ if($display_only eq "current") { #display just the name of the directory request
         if($read_devdir_list != 2) {
             my @related_choices;
             for(my $i = 0; $i < @choices; ++$i) {
-                push @related_choices, $choices[$i] if(isRelated($choices[$i], $root_dir));
+                push @related_choices, $choices[$i] if(isRootRelated($choices[$i], $root_dir));
             }
             @choices = @related_choices if($#related_choices != -1);
         }
@@ -734,7 +743,7 @@ if($display_only eq "current") { #display just the name of the directory request
         if($write_default_file) {
             my @lsdev_defaults;
             push(@lsdev_defaults, glob("~/.lsdev_default"));
-            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && isRelated($root_dir, $root{path}) == 1);
+            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && isRootRelated($root_dir, $root{path}) == 1);
             foreach(@lsdev_defaults) {
                 my $lsdev_default = $_;
                 if(open(LSDEV_DEFAULT, ">$lsdev_default")) {
