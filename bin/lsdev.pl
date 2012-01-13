@@ -688,8 +688,9 @@ if($display_only eq "current") { #display just the name of the directory request
     }
 
     if(!defined($rest_dir) && $detect_rest && $root_dir) {
-        my $current = $cwd;
-        $rest_dir = $1 if($current =~ /^$root_dir\/(.*)/);
+        my $resolved_cwd = resolveLinks($cwd);
+        my $resolved_root_dir = resolveLinks($root_dir);
+        $rest_dir = $1 if($resolved_cwd =~ /^$resolved_root_dir\/(.*)/);
     }
 
     my $index;
