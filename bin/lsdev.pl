@@ -40,6 +40,8 @@ sub parseOptions {
             $detect_rest = 0;
         } elsif($option eq "-c") {
             $cwd = shift @_;
+        } elsif($option eq "-d") {
+            $display_only = "default";
         } elsif($option eq "-b") {
             $read_devdir_list = -1;
         } elsif($option eq "-tp") {
@@ -69,16 +71,17 @@ sub parseOptions {
 parseOptions(split(/ /, $ENV{LSDEV_FLAGS})) if($ENV{LSDEV_FLAGS});
 parseOptions(@ARGV);
 
+$display_only = "default" if(!defined($display_only) &&
+                             $#matches == 0 && $matches[0] eq "-");
+
 if($display_only eq "current") {
     $read_devdir_list = 3;
     $answer = "name" if(!defined($answer));
-} elsif($display_only eq "list") {
+} elsif($display_only eq "list" || $display_only eq "default") {
     $answer = "all" if(!defined($answer));
 } else {
     $answer = "path" if(!defined($answer));
 }
-$display_only = "default" if(!defined($display_only) &&
-                             $#matches == 0 && $matches[0] eq "-");
 
 sub display {
     foreach(@_) {
@@ -326,8 +329,11 @@ my $default_dir;
 my $root_dir;
 
 sub findRoot {
-    my ($path, $recurse) = @_;
-    for(my $current = resolveLinks(canonicalize($path)); $current; $current = dirname($current)) {
+    my ($path, $recurse, $resolve) = @_;
+    $resolve = 1 unless(defined($resolve));
+    $path = canonicalize($path);
+    $path = resolveLinks($path) if($resolve);
+    for(my $current = $path; $current; $current = dirname($current)) {
         my $root = $roots{$current};
         display "FindRoot: $current: -> $root\n" if($verbose);
         return $root if($root);
@@ -377,13 +383,20 @@ sub generateName {
     return $name;
 }
 
+sub isPathSame {
+    my ($path1, $path2, $resolve) = @_;
+    $resolve = 1 unless(defined($resolve));
+    return 1 if($path1 eq $path2);
+    return 1 if($resolve && resolveLinks($path1) eq resolveLinks($path2));
+    return 0;
+}
+
 sub findDevRootName {
     my ($path, $recurse) = @_;
-    for(my $current = resolveLinks(canonicalize($path)); $current; $current = dirname($current)) {
+    for(my $current = canonicalize($path); $current; $current = dirname($current)) {
         foreach(keys(%dev_roots)) {
             my $dev_root_name = $_;
-            my $dev_root = resolveLinks($dev_roots{$dev_root_name});
-            if($dev_root eq $current) {
+            if(isPathSame($dev_roots{$dev_root_name}, $current)) {
                 display "FindDevRootName: $current -> $dev_root_name\n" if($verbose);
                 return $dev_root_name;
             }
@@ -403,12 +416,6 @@ sub findDevRoot {
     }
     display "FindDevRoot: $path -> not found\n" if($verbose);
     return undef;
-}
-
-sub isPathSame {
-    my ($path1, $path2) = @_;
-    return 1 if(resolveLinks($path1) eq resolveLinks($path2));
-    return 0;
 }
 
 sub isRootRelated {
@@ -618,7 +625,11 @@ foreach(keys(%dev_roots)) {
 }
 display "root=$root_dir default=$default_dir cwd=$cwd\n" if($verbose);
 
-if($display_only eq "current") { #display just the name of the directory request
+if($display_only eq "default") { #display the currently mapped default
+    if(my $root = findRoot($default_dir, 1)) {
+        answer($root);
+    }
+}elsif($display_only eq "current") { #display just the name of the directory request
     my $current;
     if($#matches == -1) {
         $current = $cwd;
