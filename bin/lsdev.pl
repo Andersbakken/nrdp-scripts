@@ -329,17 +329,29 @@ my $default_dir;
 my $root_dir;
 
 sub findRoot {
-    my ($path, $recurse, $resolve) = @_;
-    $resolve = 1 unless(defined($resolve));
+    my ($path, $recurse) = @_;
     $path = canonicalize($path);
-    $path = resolveLinks($path) if($resolve);
-    for(my $current = $path; $current; $current = dirname($current)) {
-        my $root = $roots{$current};
-        display "FindRoot: $current: -> $root\n" if($verbose);
-        return $root if($root);
-        last if(!$recurse || $current eq "/");
+    my $result = undef;
+    foreach(keys(%roots)) {
+        my $root = $roots{$_};
+        my $root_path = $root->{path};
+        if($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
+            $result = $root;
+        }
     }
-    return undef;
+    if(!$result) {
+      FIND: for(my $current = $path; $current; $current = dirname($current)) {
+          my $p = $current;
+          $p = resolveLinks($current);
+          if(my $root = $roots{$p}) {
+              $result = $root;
+              last FIND;
+          }
+          last if(!$recurse || $current eq "/");
+      }
+    }
+    display "FindRoot: $path: -> " . ($result ? $result->{name} : "(notfound)") . "\n" if($verbose);
+    return $result;
 }
 
 sub findRootPath {
@@ -386,25 +398,40 @@ sub generateName {
 sub isPathSame {
     my ($path1, $path2, $resolve) = @_;
     $resolve = 1 unless(defined($resolve));
-    return 1 if($path1 eq $path2);
-    return 1 if($resolve && resolveLinks($path1) eq resolveLinks($path2));
-    return 0;
+    my $result = 0;
+    if($path1 eq $path2) {
+        $result = 1;
+    } elsif($resolve && resolveLinks($path1) eq resolveLinks($path2)) {
+        $result = 1;
+    }
+    display "IsPathSame: '$path1' vs '$path2' :: $result\n" if($verbose);
+    return $result;
 }
 
 sub findDevRootName {
     my ($path, $recurse) = @_;
-    for(my $current = canonicalize($path); $current; $current = dirname($current)) {
-        foreach(keys(%dev_roots)) {
-            my $dev_root_name = $_;
-            if(isPathSame($dev_roots{$dev_root_name}, $current)) {
-                display "FindDevRootName: $current -> $dev_root_name\n" if($verbose);
-                return $dev_root_name;
-            }
+    my $result = undef;
+    foreach(keys(%dev_roots)) {
+        my $dev_root_name = $_;
+        my $dev_root_path = $dev_roots{$dev_root_name};
+        if($path =~ /^$dev_root_path/ && (length($dev_root_path) > length($dev_roots{$result}))) {
+            $result = $dev_root_name;
         }
-        last if(length($current) <= 1 || !$recurse);
     }
-    display "FindDevRootName: $path -> not found\n" if($verbose);
-    return undef;
+    if(!$result) {
+      FIND: for(my $current = canonicalize($path); $current; $current = dirname($current)) {
+          foreach(keys(%dev_roots)) {
+              my $dev_root_name = $_;
+              if(isPathSame($dev_roots{$dev_root_name}, $current)) {
+                  $result = $dev_root_name;
+                  last FIND;
+              }
+          }
+          last if(length($current) <= 1 || !$recurse);
+      }
+    }
+    display "FindDevRootName: $path -> $result\n" if($verbose);
+    return $result;
 }
 
 sub findDevRoot {
