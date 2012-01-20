@@ -1743,14 +1743,11 @@ class P4Sync(Command):
         self.gitOutput.close()
         self.gitError.close()
 
-    def importNewBranch(self, branch, maxChange):
+    def importNewBranch(self, branch, range):
         # make fast-import flush all changes to disk and update the refs using the checkpoint
         # command so that we can try to find the branch parent in the git history
         self.flushFastImport()
         branchPrefix = self.depotPaths[0] + branch + "/"
-        range = ""
-        if maxChange != 0:
-            range = "@1,%s" % maxChange
         #print "prefix" + branchPrefix
         changes = p4ChangesForPaths([branchPrefix], range)
         if len(changes) <= 0:
@@ -1762,10 +1759,7 @@ class P4Sync(Command):
         sourceDepotPath = self.depotPaths[0] + sourceBranch
         sourceRef = self.gitRefForBranch(sourceBranch)
         #print "source " + sourceBranch
-
-        branchParentChange = int(p4Cmd("changes -m 1 %s...@1,%s" % (sourceDepotPath, firstChange))["change"])
-        #print "branch parent: %s" % branchParentChange
-        gitParent = self.gitCommitByP4Change(sourceRef, branchParentChange)
+        gitParent = self.gitCommitByP4Change(sourceRef, firstChange)
         if len(gitParent) > 0:
             self.initialParents[self.gitRefForBranch(branch)] = gitParent
             #print "parent git commit: %s" % gitParent
@@ -1816,7 +1810,7 @@ class P4Sync(Command):
                                 if fullBranch not in self.p4BranchesInGit:
                                     if self.verbose:
                                         print("\n    Importing new branch %s(%s) (%s -> %s)" % (branch, fullBranch, self.p4BranchName(fullBranch), self.gitBranchName(fullBranch)));
-                                    if self.importNewBranch(branch, 0):
+                                    if self.importNewBranch(branch, ""):
                                         parent = ""
                                         self.p4BranchesInGit.append(fullBranch)
                                     if self.verbose:
