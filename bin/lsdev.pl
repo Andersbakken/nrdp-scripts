@@ -30,6 +30,7 @@ my $detect_suffix = "_detect";
 $detect_suffix = ""; #not used currently
 
 my @matches;
+my %dev_roots;
 
 sub parseOptions {
     while(@_) {
@@ -93,9 +94,9 @@ sub answer {
     my ($root) = @_;
     my $output;
     if($answer eq "all") {
-        $output = generateName($root) . " [" . $root->{path} . "]";
+        $output = generateRootName($root) . " [" . $root->{path} . "]";
     } elsif($answer eq "name") {
-        $output = generateName($root);
+        $output = generateRootName($root);
     } elsif($answer eq "path") {
         $output = $root->{path};
     }
@@ -193,7 +194,12 @@ sub processBuildDir {
             close(CONFIG_STATUS);
         }
     } elsif(-e "${build_dir}/.lsdev_config") {
-        $src_dir = getPathConfig(${build_dir}, "source");
+        my $source = getPathConfig(${build_dir}, "source");
+        if($source && $dev_roots{$source}) {
+            $src_dir = $dev_roots{$source};
+        } else {
+            $src_dir = $source;
+        }
     }
     $src_dir = canonicalize($src_dir, $build_dir) if(defined($src_dir));
     return $src_dir;
@@ -264,7 +270,6 @@ sub findFileMap {
     return $result;
 }
 
-my %dev_roots;
 my %path_config;
 if(-e glob("~/.dev_directories")) {
     my $dev_directories_path = glob("~/.dev_directories");
@@ -379,11 +384,10 @@ sub addRoot {
 }
 
 sub generateName {
-    my ($root) = @_;
-    my $name = $root->{name};
+    my ($name, $source) = @_;
     $name =~ s,-,_,g;
-    if($root->{source}) {
-        my $src_root = findRoot($root->{source});
+    if($source) {
+        my $src_root = findRoot($source);
         my $src_name = $src_root->{name};
         $src_name =~ s,-,_,g;
         $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
@@ -391,8 +395,13 @@ sub generateName {
     } else {
         $name = "${src_prefix}${name}";
     }
-    display "Generated Name: $name: for " . $root->{path} . "\n" if($verbose);
+    display "Generated Name: $name\n" if($verbose);
     return $name;
+}
+
+sub generateRootName {
+    my ($root) = @_;
+    return generateName($root->{name}, $root->{source});
 }
 
 sub isPathSame {
@@ -492,7 +501,7 @@ sub filterMatches {
                 } elsif($match =~ /^path:(.*)/) {
                     $matches = ($root->{path} =~ /$1/i);
                 } else {
-                    $matches = (generateName($root) =~ /$match/i);
+                    $matches = (generateRootName($root) =~ /$match/i);
                 }
                 $matches = !$matches if($inverse);
                 #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matches\n" if($verbose);
@@ -505,7 +514,7 @@ sub filterMatches {
             next;
         }
         if(defined($root)) {
-            display "AddChoice: [" . $root->{name} . "::" . $root->{path} . "::" . generateName($root) . "]\n" if($verbose);
+            display "AddChoice: [" . $root->{name} . "::" . $root->{path} . "::" . generateRootName($root) . "]\n" if($verbose);
             push @choices, $root->{path} if(defined($root));
         }
     }
@@ -744,10 +753,10 @@ if($display_only eq "default") { #display the currently mapped default
             }
             for(my $i = 0; $i < @choices; ++$i) {
                 my $root = findRoot($choices[$i]);
-                display "[", $i + 1, "] ", generateName($root), " [", $root->{path}, "]";
+                display "[", $i + 1, "] ", generateRootName($root), " [", $root->{path}, "]";
                 if($root->{source}) {
                     my $src_root = findRoot($root->{source});
-                    display " [" . generateName($src_root) . "]";
+                    display " [" . generateRootName($src_root) . "]";
                 }
                 display "\n";
             }
