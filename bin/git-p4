@@ -578,6 +578,8 @@ def originP4BranchesExist():
         return gitBranchExists("origin") or gitBranchExists("origin/p4") or gitBranchExists("origin/p4/master")
 
 def p4ChangesForPaths(depotPaths, changeRange):
+    if not changeRange or not len(changeRange):
+        changeRange = "#head"
     assert depotPaths
     output = p4_read_pipe_lines("changes " + ' '.join (["%s...%s" % (p, changeRange)
                                                         for p in depotPaths]))
@@ -2086,7 +2088,7 @@ class P4Sync(Command):
                         continue
                     print "Creating branch %s" % (branch)
                     self.openFastImport()
-                    self.importNewBranch(branch, "#head")
+                    self.importNewBranch(branch, "")
                     self.closeFastImport()
         else:
            self.openFastImport()
@@ -2117,7 +2119,7 @@ class P4Sync(Command):
                    if not gitBranchExists(p4Branch):
                        print "Creating missing branch %s" % (p4Branch)
                        self.openFastImport()
-  		       self.importNewBranch(branch, "#head")
+  		       self.importNewBranch(branch, "")
                        self.closeFastImport()
 
 
