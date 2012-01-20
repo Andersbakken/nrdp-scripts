@@ -74,7 +74,7 @@ while(@ARGV) {
     }
 }
 $show_help = 1 if($#options < 0);
-if( defined(@matches) ) {
+if(@matches) {
     my @match_options;
     for(@options) {
         my $match = 0;
