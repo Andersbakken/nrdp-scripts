@@ -494,7 +494,7 @@ sub filterMatches {
                     $inverse = 1;
                 }
                 my $matches = 0;
-                if($match eq "src") {
+                if($match eq "src" || $match eq "source") {
                     $matches = !defined($root->{source});
                 } elsif($match eq "build") {
                     $matches = defined($root->{source});
