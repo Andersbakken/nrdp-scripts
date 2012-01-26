@@ -238,7 +238,7 @@ sub cdbm_get {
     my $file = $CDBMRC_FILE;
     $file = $CDBM_HISTORY_FILE if( $history );
     my @paths = ();
-    if(open FILE, "<$file") {
+    if($history && open FILE, "<$file") {
         while(<FILE>) {
 	  my $path = $_;
 	  next if( $path =~ /^\s*$/ );
