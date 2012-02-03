@@ -100,10 +100,7 @@ lsd() {
    OPTS="$@"
    [ -z "$OPTS" ] && OPTS="-"
    DIR=`lsdev -l $OPTS`
-   if [ -n "$DIR" ]; then
-      echo "$DIR"
-      ls "$DIR"
-   fi
+   echo "$DIR"
 }
 
 editdev() {

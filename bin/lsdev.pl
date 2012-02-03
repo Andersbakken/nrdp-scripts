@@ -78,7 +78,7 @@ $display_only = "default" if(!defined($display_only) &&
 if($display_only eq "current") {
     $read_devdir_list = 3;
     $answer = "name" if(!defined($answer));
-} elsif($display_only eq "list" || $display_only eq "default") {
+} elsif($display_only eq "list") {
     $answer = "all" if(!defined($answer));
 } else {
     $answer = "path" if(!defined($answer));
@@ -579,7 +579,6 @@ unless(defined($default_dir)) {
         }
     }
 }
-
 
 #process anything that looks like a build
 if(defined($dev_roots{sources})) {
