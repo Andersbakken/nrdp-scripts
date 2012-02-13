@@ -54,7 +54,7 @@ while(@ARGV) {
     } elsif( $option eq "-x" ) {
         my $exe = shift @ARGV;
         my $kid = open( EXE, "$exe |");
-	$kid || die "Failure"; 
+	$kid || die "Failure";
 	(kill 0, $kid) || die "Failure";
         while(my $line = <EXE>) {
             chomp($line);

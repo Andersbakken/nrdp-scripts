@@ -8,7 +8,9 @@ function complete_emacsedit
     fi
     _longopt
     if [ "${#COMPREPLY[@]}" -eq "0" ] && [ -n "$cur" ]; then
-        COMPREPLY=(`global -P "$cur" 2> /dev/null | sed -e "s,^.*$cur,$cur,"`)
+        paths=`global -P "$cur" 2> /dev/null | sed -e "s,^.*$cur,$cur,"`
+        symbols=`global -c "$cur" 2> /dev/null`
+        COMPREPLY=($paths $symbols)
     fi
 }
 complete -F complete_emacsedit emacsedit.sh em emacs

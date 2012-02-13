@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh
 
 EMACS=
 EMACSWAIT=yes

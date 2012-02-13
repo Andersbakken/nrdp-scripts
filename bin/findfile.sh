@@ -3,8 +3,8 @@
 COL=
 LINE=
 FILE="$1"
-if echo "$FILE" | grep ':$' >/dev/null 2>&1; then
-    FILE=`echo "$FILE" | sed "s,:$,,"`
+if echo "$FILE" | grep ':[^0-9].*$' >/dev/null 2>&1; then
+    FILE=`echo "$FILE" | sed "s,:[^0-9].*$,,"`
 fi
 if echo "$FILE" | grep ':' >/dev/null 2>&1; then
     COL=`echo $FILE | cut -d: -f3`
@@ -21,8 +21,15 @@ if echo "$FILE" | grep "^//" >/dev/null 2>&1; then
     else
         FILE=`echo $W | awk '{print $3}'`
     fi
-elif [ ! -e "$FILE" ] && FILES=`global -P "$FILE" 2>/dev/null`; then
-    [ -n "$FILES" ] && FILE="$(choose.pl $FILES)"      
+elif [ ! -e "$FILE" ]; then
+    #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
+    SYMBOLS=`global -x "$FILE" | awk '{print $3":"$2}'`
+    if [ -n "$SYMBOLS" ]; then
+        FILE="$(choose.pl $SYMBOLS)"
+    else
+        FILES=`global -P "$FILE" 2>/dev/null`
+        [ -n "$FILES" ] && FILE="$(choose.pl $FILES)"
+    fi
 fi
 if [ -z "$LINE" ]; then
     echo "${FILE}"
