@@ -219,6 +219,7 @@ sub canonicalize {
         $result = File::Spec->rel2abs($result, $base);
     }
     $result =~ s,/*$,,g;
+    $result =~ s,/+,/,g;
     $result = "/" unless(length($result));
     return $result;
 }
