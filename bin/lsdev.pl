@@ -728,7 +728,8 @@ if($display_only eq "default") { #display the currently mapped default
         if($read_devdir_list != 2) {
             my @related_choices;
             for(my $i = 0; $i < @choices; ++$i) {
-                push @related_choices, $choices[$i] if(isRootRelated($choices[$i], $root_dir));
+                my $related = isRootRelated($choices[$i], $root_dir);
+                push @related_choices, $choices[$i] if($related == 1 || $related == 3);
             }
             @choices = @related_choices if($#related_choices != -1);
         }
