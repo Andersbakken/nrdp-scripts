@@ -51,6 +51,8 @@ sub parseOptions {
             $answer = "name";
         } elsif($option eq "-ta") {
             $answer = "all";
+        } elsif($option eq "-tr") {
+            $answer = "rest";
         } elsif($option eq "-a") {
             $read_devdir_list = 2;
         } elsif($option eq "-m") {
@@ -97,6 +99,9 @@ sub answer {
         $output = generateRootName($root) . " [" . $root->{path} . "]";
     } elsif($answer eq "name") {
         $output = generateRootName($root);
+    } elsif($answer eq "rest") {
+        $output = getRestDir($root->{path});
+        $output = "<root>" unless(length($output));
     } elsif($answer eq "path") {
         $output = $root->{path};
     }
@@ -322,6 +327,15 @@ sub getPathConfig {
     $result = $path_config{$path}->{$key} if($path_config{$path} && exists $path_config{$path}->{$key});
     display " PathConfig: $path($key) -> '" . defined($result) ? $result : "(undef)" . "'\n" if($verbose);
     return $result;
+}
+
+sub getRestDir {
+    my ($root_dir) = @_;
+    my $rest_dir;
+    my $resolved_cwd = resolveLinks($cwd);
+    my $resolved_root_dir = resolveLinks($root_dir);
+    $rest_dir = $1 if($resolved_cwd =~ /^$resolved_root_dir\/(.*)/);
+    return $rest_dir;
 }
 
 sub getProjectName {
@@ -734,12 +748,7 @@ if($display_only eq "default") { #display the currently mapped default
             @choices = @related_choices if($#related_choices != -1);
         }
     }
-
-    if(!defined($rest_dir) && $detect_rest && $root_dir) {
-        my $resolved_cwd = resolveLinks($cwd);
-        my $resolved_root_dir = resolveLinks($root_dir);
-        $rest_dir = $1 if($resolved_cwd =~ /^$resolved_root_dir\/(.*)/);
-    }
+    $rest_dir = getRestDir($root_dir) if(!defined($rest_dir) && $detect_rest && $root_dir);
 
     my $index;
     if($display_only eq "list") {
