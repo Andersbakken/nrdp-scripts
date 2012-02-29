@@ -882,16 +882,23 @@ The FILES list must be sorted."
       (setq check-dir (substring check-dir 0 (string-match "[^/]*/?$" check-dir))))
     (if (not (string-equal check-dir "/")) check-dir nil)))
 
-(defun git-marked-files ()
+(defun git-current-file ()
   "Return a list of all marked files, or if none a list containing just the file at cursor position."
   (if git-status
-      (or (ewoc-collect git-status (lambda (info) (git-fileinfo->marked info)))
-	  (list (ewoc-data (ewoc-locate git-status))))
+      (list (ewoc-data (ewoc-locate git-status)))
       (let ((file (file-truename (buffer-file-name))))
 	(setq git-default-directory (git-root-dir (file-name-directory file)))
 	(list (git-create-fileinfo 'modified 
 				   (file-relative-name file git-default-directory))))
       ;;(unless git-status (error "Not in git-status buffer."))
+))
+
+(defun git-marked-files ()
+  "Return a list of all marked files, or if none a list containing just the file at cursor position."
+  (let ((result nil))
+    (if git-status (setq result (ewoc-collect git-status (lambda (info) (git-fileinfo->marked info)))))
+    (unless result (setq result (git-current-file)))
+    result
 ))
 
 (defun git-marked-files-state (&rest states)
@@ -1257,6 +1264,15 @@ The FILES list must be sorted."
     (shrink-window-if-larger-than-buffer)))
 
 (defun git-diff-file ()
+  "Diff the marked file(s) against HEAD."
+  (interactive)
+  (let ((files (git-current-file)))
+    (git-setup-diff-buffer
+     (if current-prefix-arg
+         (apply #'git-run-command-buffer "*git-diff*" "diff" "-p" "--" (git-get-filenames files))
+         (apply #'git-run-command-buffer "*git-diff*" "diff-index" "-p" "-M" "HEAD" "--" (git-get-filenames files))))))
+
+(defun git-diff-files ()
   "Diff the marked file(s) against HEAD."
   (interactive)
   (let ((files (git-marked-files)))
@@ -1743,6 +1759,7 @@ amended version of it."
     (define-key map "C"   'git-amend-commit)
     (define-key map "\C-c" commit-map)
     (define-key map "d"    diff-map)
+    (define-key map "D"   'git-diff-files)
     (define-key map "="   'git-diff-file)
     (define-key map "-"   'git-diff-file-idiff)
     (define-key map "f"   'git-find-file)
