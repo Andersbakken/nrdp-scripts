@@ -1325,13 +1325,11 @@ The FILES list must be sorted."
   "Perform an interactive diff on the current file."
   (interactive)
   (let ((files (git-marked-files)))
-    (unless (eq 1 (length files))
-      (error "Cannot perform an interactive diff on multiple files."))
-    (if git-default-directory (setq default-directory git-default-directory))
-    (let* ((filename (car (git-get-filenames files)))
-           (buff1 (find-file-noselect filename))
-           (buff2 (git-run-command-buffer (concat filename ".~HEAD~") "cat-file" "blob" (concat "HEAD:" filename))))
-      (ediff-buffers buff1 buff2))))
+    (dolist (file (git-get-filenames files))
+      (if git-default-directory (setq default-directory git-default-directory))
+      (let* ((buff1 (find-file-noselect file))
+             (buff2 (git-run-command-buffer (concat file ".~HEAD~") "cat-file" "blob" (concat "HEAD:" file))))
+        (ediff-buffers buff1 buff2)))))
 
 (defun git-set-extent-property (start end property value)
   (cond (git-running-xemacs
