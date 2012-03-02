@@ -11,7 +11,7 @@
 ;;general lsdev utilities
 (defun lsdev-dirs-internal (&rest match)
   (let ((result)
-        (args '("-ta")))
+        (args '("-ta" "-l")))
     (if match (dolist (m match) (add-to-list 'args m t)))
     (with-temp-buffer
       (apply #'call-process (executable-find "lsdev.pl") nil t nil args)
@@ -31,9 +31,17 @@
         (with-current-buffer buffer-or-dir (setq dir default-directory))))
     dir))
 
+(setq _lsdev_name nil)
+
 (defun lsdev-name (buffer-or-dir &rest match)
-  (let ((dir (lsdev-get-dir buffer-or-dir)))
-    (if dir (nth 0 (car (apply #'lsdev-dirs-internal "-c" dir "-p" match))) nil)))
+  (let ((name nil))
+    (if (bufferp buffer-or-dir) (setq name (with-current-buffer buffer-or-dir _lsdev_name)))
+    (unless name
+      (let ((dir (lsdev-get-dir buffer-or-dir)))
+        (if dir (setq name (nth 0 (car (apply #'lsdev-dirs-internal "-c" dir "-p" match)))))
+        (if (bufferp buffer-or-dir) (with-current-buffer buffer-or-dir
+                                      (set (make-local-variable '_lsdev_name) (if name name t))))))
+       (if (stringp name) name nil)))
 
 (defun lsdev-root-dir (buffer-or-dir &rest match)
   (let ((dir (lsdev-get-dir buffer-or-dir)))
@@ -158,5 +166,32 @@
                (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
                )))))
 
+;;mode string
+(setq lsdev-mode t)
+(setq lsdev-modestring nil)
+(defun lsdev-update-modestring (&optional buffer)
+  (unless buffer (setq buffer (current-buffer)))
+  (let ((modeline (lsdev-name buffer)))
+    (if modeline (setq modeline (concat " [" modeline "]")))
+    (set (make-local-variable 'lsdev-modestring) modeline)))
+;;(setq global-mode-string (append global-mode-string '(lsdev-modestring)))
+(if (not (assoc 'lsdev-mode minor-mode-alist))
+    (setq minor-mode-alist (cons '(lsdev-mode lsdev-modestring) minor-mode-alist)))
+(defadvice switch-to-buffer (after lsdev-update-modestring-adv)
+  (lsdev-update-modestring))
+(ad-activate 'switch-to-buffer)
+(defadvice display-buffer (after lsdev-update-modestring-adv)
+  (when ad-return-value (lsdev-update-modestring)))
+(ad-activate 'display-buffer)
+
+
+;;bs integration
+(require 'bs)
+(defun lsdev-bs-get-name(&rest ignored)
+  (let ((name (lsdev-name (current-buffer))))
+    (if name name "")))
+(defun lsdev-bs-sort(b1 b2)
+  (string< (lsdev-name b1) (lsdev-name b2)))
+(add-to-list 'bs-configurations '("lsdev" nil nil nil nil lsdev-bs-sort) t)
 
 (provide 'lsdev)
