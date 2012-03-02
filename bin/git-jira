@@ -52,7 +52,7 @@ while [ "$#" -gt 0 ]; do
    --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
    --jira|-j) shift; JIRA="$1" ;;
    --p4|-p4) shift; P4COMMIT="$1" ;;
-   -help|-h) usage $0 ;;
+   --help|-help|-h) usage $0 ;;
    *)
       if [ -z "$GITCOMMIT" ]; then
           GITCOMMIT="$1"
@@ -188,9 +188,15 @@ if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
           read input
           if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
               RESOLVE=yes
+          elif [ "$input" = "n" ] || [ "$input" = "no" ]; then
+              RESOLVE=no
+          else
+              RESOLVE=yes
+              DESCRIPTION="$input"
           fi
       fi
   fi
+  echo "comment $COMMENT resolve $RESOLVE description $DESCRIPTION jira $JIRA"
   if [ "$COMMENT" = "yes" ]; then
     if [ -n "$MESSAGE" ]; then
       $TEST jira comment "$JIRA" "$MESSAGE"
