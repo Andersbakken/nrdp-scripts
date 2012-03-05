@@ -12,7 +12,7 @@ if echo "$FILE" | grep ':' >/dev/null 2>&1; then
     FILE=`echo $FILE | cut -d: -f1`
 fi
 
-if echo "$FILE" | grep "^//" >/dev/null 2>&1; then
+if echo "$FILE" | grep "^//" >/dev/null 2>&1 && test -n "$P4PORT"; then
     P4FILE=`echo $FILE | sed "s,[@#].*$,,g"`
     W=`p4 where "$P4FILE" 2>&1`
     if echo "$W" | grep 'not in client view' >/dev/null 2>&1; then
@@ -22,13 +22,13 @@ if echo "$FILE" | grep "^//" >/dev/null 2>&1; then
         FILE=`echo $W | awk '{print $3}'`
     fi
 elif [ ! -e "$FILE" ]; then
-    #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
-    SYMBOLS=`global -x "$FILE" | awk '{print $3":"$2}'`
-    if [ -n "$SYMBOLS" ]; then
-        FILE="$(choose.pl $SYMBOLS)"
+    FILES=`global -P "$FILE" 2>/dev/null`
+    if [ -n "$FILES" ]; then
+        FILE="$(choose.pl $FILES)"
     else
-        FILES=`global -P "$FILE" 2>/dev/null`
-        [ -n "$FILES" ] && FILE="$(choose.pl $FILES)"
+        #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
+        SYMBOLS=`global -x "$FILE" | awk '{print $3":"$2}'`
+        [ -n "$SYMBOLS" ] && FILE="$(choose.pl $SYMBOLS)"
     fi
 fi
 if [ -z "$LINE" ]; then

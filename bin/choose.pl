@@ -121,7 +121,7 @@ my $result;
 if($read_option) {
     if(defined($choose)) {
         $result = $options[$choose-1]->{"result"};
-    } elsif($#options >= 1) {
+    } elsif($#options >= 0) {
         $| = 1;
         while(!$result) {
             my @choices = filter_options(@options);
