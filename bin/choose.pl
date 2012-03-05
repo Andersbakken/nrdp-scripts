@@ -121,21 +121,24 @@ my $result;
 if($read_option) {
     if(defined($choose)) {
         $result = $options[$choose-1]->{"result"};
-    } elsif($#options < 1 && !$must_ask) {
-        $result = $options[0]->{"result"};
-    } else {
+    } elsif($#options >= 1) {
         $| = 1;
         while(!$result) {
-            my $counter = choose_show( filter_options(@options) );
-            print STDERR "[1..", $counter-1, "]";
-            print STDERR "($read_prompt)" if(defined($read_prompt));
-            print STDERR "> ";
-            my $input = <STDIN>;
-            chomp $input;
-            if( $input =~ /^([1-9]+[0-9]*)$/ ) {
-                $result = $options[$1-1]->{"result"}
+            my @choices = filter_options(@options);
+            if($#choices < 1 && !$must_ask) {
+                $result = $choices[0]->{"result"};
             } else {
-                push(@matches, $input);
+                my $counter = choose_show( @choices );
+                print STDERR "[1..", $counter-1, "]";
+                print STDERR "($read_prompt)" if(defined($read_prompt));
+                print STDERR "> ";
+                my $input = <STDIN>;
+                chomp $input;
+                if( $input =~ /^([1-9]+[0-9]*)$/ ) {
+                    $result = $options[$1-1]->{"result"}
+                } else {
+                    push(@matches, $input);
+                }
             }
         }
     }
