@@ -1,21 +1,5 @@
 #!/usr/bin/perl
 
-sub choose_show {
-    my(@options) = @_;
-    my $counter = 1;
-    for(@options) {
-      my $name = $_->{"name"};
-      my $result = $_->{"result"};
-      if ($name eq $result) {
-          print STDERR "[$counter] $name\n";
-      } else {
-          print STDERR "[$counter] $name [$result]\n";
-      }
-      ++$counter;
-    }
-    return $counter
-}
-
 my @options;
 my $choose;
 my $argv0 = $ARGV[0];
@@ -26,6 +10,49 @@ my $must_ask = 0;
 my $rest_options = 0;
 my $options_use;
 my @matches;
+
+sub choose_show {
+    my(@options) = @_;
+    my $counter = 1;
+    printf STDERR "=======================\n";
+    for(@options) {
+      my $name = $_->{"name"};
+      my $result = $_->{"result"};
+      if ($name eq $result) {
+          print STDERR "[$counter] $name\n";
+      } else {
+          print STDERR "[$counter] $name [$result]\n";
+      }
+      ++$counter;
+      last if($options_use && $counter > $options_use);
+    }
+    return $counter
+}
+
+sub filter_options {
+    my @result = @options;
+    if(@matches) {
+        my @match_options;
+        for(@result) {
+            my $match = 0;
+            my $option = $_;
+            my $name = $option->{"name"};
+            my $result = $option->{"result"};
+            for(@matches) {
+                #print STDERR "name $result $_\n";
+                if ( $name =~ /$_/ ) {
+                    ++$match;
+                } elsif ( $result =~ /$_/ ) {
+                    ++$match;
+                }
+            }
+            #print STDERR "$match $#matches $name\n";
+            push( @match_options, $option ) if($match == $#matches+1);
+        }
+        @result = @match_options;
+    }
+    return @result;
+}
 
 while(@ARGV) {
     my $option = shift @ARGV;
@@ -74,27 +101,6 @@ while(@ARGV) {
     }
 }
 $show_help = 1 if($#options < 0);
-if(@matches) {
-    my @match_options;
-    for(@options) {
-        my $match = 0;
-        my $option = $_;
-        my $name = $option->{"name"};
-        my $result = $option->{"result"};
-        for(@matches) {
-            #print STDERR "name $result $_\n";
-            if ( $name =~ /$_/ ) {
-                ++$match;
-            } elsif ( $result =~ /$_/ ) {
-                ++$match;
-            }
-        }
-        #print STDERR "$match $#matches $name\n";
-        push( @match_options, $option ) if($match == $#matches+1);
-    }
-    @options = @match_options;
-}
-@options = splice(@options, 0, $options_use) if($options_use);
 
 if($show_help) {
     print STDERR "$argv0 [options] [choices]\n";
@@ -118,15 +124,19 @@ if($read_option) {
     } elsif($#options < 1 && !$must_ask) {
         $result = $options[0]->{"result"};
     } else {
-        my $counter = choose_show( @options );
         $| = 1;
         while(!$result) {
+            my $counter = choose_show( filter_options(@options) );
             print STDERR "[1..", $counter-1, "]";
             print STDERR "($read_prompt)" if(defined($read_prompt));
             print STDERR "> ";
             my $input = <STDIN>;
             chomp $input;
-            $result = $options[$1-1]->{"result"} if( $input =~ /^([1-9]+[0-9]*)$/ );
+            if( $input =~ /^([1-9]+[0-9]*)$/ ) {
+                $result = $options[$1-1]->{"result"}
+            } else {
+                push(@matches, $input);
+            }
         }
     }
 } else {
