@@ -332,9 +332,9 @@ sub getPathConfig {
 sub getRestDir {
     my ($root_dir) = @_;
     my $rest_dir;
-    my $resolved_cwd = resolveLinks($cwd);
     my $resolved_root_dir = resolveLinks($root_dir);
-    $rest_dir = $1 if($resolved_cwd =~ /^$resolved_root_dir\/(.*)/);
+    $rest_dir = $1 if($cwd =~ /^$resolved_root_dir\/(.*)/);
+    display "GetRestDir($cwd): $root_dir: -> " . $rest_dir . "\n" if($verbose);
     return $rest_dir;
 }
 
