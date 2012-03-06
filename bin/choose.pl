@@ -135,7 +135,7 @@ if($read_option) {
                 my $input = <STDIN>;
                 chomp $input;
                 if( $input =~ /^([1-9]+[0-9]*)$/ ) {
-                    $result = $options[$1-1]->{"result"}
+                    $result = $choices[$1-1]->{"result"}
                 } else {
                     push(@matches, $input);
                 }
