@@ -196,7 +196,6 @@ if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
           fi
       fi
   fi
-  echo "comment $COMMENT resolve $RESOLVE description $DESCRIPTION jira $JIRA"
   if [ "$COMMENT" = "yes" ]; then
     if [ -n "$MESSAGE" ]; then
       $TEST jira comment "$JIRA" "$MESSAGE"
