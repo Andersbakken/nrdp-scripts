@@ -438,7 +438,7 @@ sub findDevRootName {
     foreach(keys(%dev_roots)) {
         my $dev_root_name = $_;
         my $dev_root_path = $dev_roots{$dev_root_name};
-        if($path =~ /^$dev_root_path/ && (length($dev_root_path) > length($dev_roots{$result}))) {
+        if("$path/" =~ /^$dev_root_path\// && (length($dev_root_path) > length($dev_roots{$result}))) {
             $result = $dev_root_name;
         }
     }
