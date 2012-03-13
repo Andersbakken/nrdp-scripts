@@ -12,7 +12,7 @@ if echo "$FILE" | grep ':' >/dev/null 2>&1; then
     FILE=`echo $FILE | cut -d: -f1`
 fi
 
-if echo "$FILE" | grep "^//" >/dev/null 2>&1 && test -n "$P4PORT"; then
+if echo "$FILE" | grep "^//" >/dev/null 2>&1 && test -n "$P4CONFIG" -o -n "$P4PORT"; then
     P4FILE=`echo $FILE | sed "s,[@#].*$,,g"`
     W=`p4 where "$P4FILE" 2>&1`
     if echo "$W" | grep 'not in client view' >/dev/null 2>&1; then
