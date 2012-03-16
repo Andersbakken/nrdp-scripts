@@ -547,6 +547,7 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         $default_dir = $src_dir;
         my $project_name = findDevRootName($src_dir);
         addRoot($project_name ? "${project_name}" : "src", $src_dir);
+        addRoot($project_name ? "${project_name}" : "build", $root_dir, $src_dir);
     }
 }
 
@@ -799,14 +800,18 @@ if($display_only eq "default") { #display the currently mapped default
         answer(\%root);
 
         if($write_default_file) {
-            my @lsdev_defaults;
-            push(@lsdev_defaults, glob("~/.lsdev_default"));
-            push(@lsdev_defaults, "$root_dir/.lsdev_default") if($root_dir && isRootRelated($root_dir, $root{path}) == 1);
-            foreach(@lsdev_defaults) {
-                my $lsdev_default = $_;
-                if(open(LSDEV_DEFAULT, ">$lsdev_default")) {
-                    display "Writing $lsdev_default -> " . $root{path} . "\n" if($verbose);
-                    print LSDEV_DEFAULT $root{path} . "\n";
+            my %lsdev_defaults;
+            $lsdev_defaults{glob("~/.lsdev_default")} = $root{path};
+            if($root_dir && isRootRelated($root_dir, $root{path}) == 1) {
+                $lsdev_defaults{$root{path} . "/.lsdev_default"} = $root_dir;
+                $lsdev_defaults{"$root_dir/.lsdev_default"} = $root{path};
+            }
+            foreach(keys(%lsdev_defaults)) {
+                my $lsdev_default_file = $_;
+                my $lsdev_default = $lsdev_defaults{$lsdev_default_file};
+                if(open(LSDEV_DEFAULT, ">$lsdev_default_file")) {
+                    display "Writing $lsdev_default_file -> " . $lsdev_default . "\n" if($verbose);
+                    print LSDEV_DEFAULT $lsdev_default . "\n";
                     close(LSDEV_DEFAULT);
                 }
             }
