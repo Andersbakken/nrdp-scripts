@@ -29,6 +29,32 @@ my $action = $ARGV[0];
 #($action, $path) = ( =~ /([+-][shel0-9]?)(.*)/);
 $path = $ARGV[1] if (!$path and $ARGV[1]);
 
+sub uniq {
+    my %seen = ();
+    my @r = ();
+    foreach my $a (@_) {
+        unless ($seen{$a}) {
+            push @r, $a;
+            $seen{$a} = 1;
+        }
+    }
+    return @r;
+}
+
+sub canonicalize {
+    my ($file, $base) = @_;
+    my @globs = glob($file);
+    my $result = @globs ? $globs[0] : $file;
+    if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
+        $result = File::Spec->rel2abs($result, $base);
+    }
+    $result =~ s,/*$,,g;
+    $result =~ s,/+,/,g;
+    $result = abs_path($result);
+    $result = "/" unless(length($result));
+    return $result;
+}
+
 my $cwd = Cwd::getcwd();
 if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
     my $e = my ($e_dev, $e_node) = stat($ENV{PWD});
@@ -240,7 +266,7 @@ sub cdbm_get {
     my @paths = ();
     if($history && open FILE, "<$file") {
         while(<FILE>) {
-	  my $path = $_;
+	  my $path = canonicalize($_);
 	  next if( $path =~ /^\s*$/ );
 	  next if( $path =~ /^\s*#/ );
 	  chomp $path;
@@ -250,7 +276,7 @@ sub cdbm_get {
         close FILE;
     }
        
-    return @paths;
+    return uniq(@paths);
 }
 
 #############################################################
@@ -258,6 +284,7 @@ sub cdbm_add {
 #############################################################
     my($path, $history) = @_;
 
+    $path = canonicalize($path);
     if (-d $path) {
       my $append = 1;
       my @paths = cdbm_get($history);
