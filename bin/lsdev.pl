@@ -435,11 +435,14 @@ sub isPathSame {
 sub findDevRootName {
     my ($path, $recurse) = @_;
     my $result = undef;
-    foreach(keys(%dev_roots)) {
-        my $dev_root_name = $_;
-        my $dev_root_path = $dev_roots{$dev_root_name};
-        if("$path/" =~ /^$dev_root_path\// && (length($dev_root_path) > length($dev_roots{$result}))) {
-            $result = $dev_root_name;
+    $result = getProjectName($path);
+    if(!$result) {
+        foreach(keys(%dev_roots)) {
+            my $dev_root_name = $_;
+            my $dev_root_path = $dev_roots{$dev_root_name};
+            if("$path/" =~ /^$dev_root_path\// && (length($dev_root_path) > length($dev_roots{$result}))) {
+                $result = $dev_root_name;
+            }
         }
     }
     if(!$result) {
@@ -545,9 +548,10 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
     if(my $src_dir = processBuildDir("$root_dir")) {
         display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
         $default_dir = $src_dir;
-        my $project_name = findDevRootName($src_dir);
-        addRoot($project_name ? "${project_name}" : "src", $src_dir);
-        addRoot($project_name ? "${project_name}" : "build", $root_dir, $src_dir);
+        my $src_project_name = findDevRootName($src_dir);
+        addRoot($src_project_name ? "${src_project_name}" : "src", $src_dir);
+        my $bld_project_name = findDevRootName($root_dir);
+        addRoot($bld_project_name ? "${bld_project_name}" : "build", $root_dir, $src_dir);
     }
 }
 
