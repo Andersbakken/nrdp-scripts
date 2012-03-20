@@ -8,6 +8,7 @@ MODE=edit
 FILE=
 LINE=0
 COL=
+OFFSET=
 TEST=
 EMACSDAEMON=no
 
@@ -72,6 +73,9 @@ if [ -n "$FILE" ]; then
         COL=`echo $FILE | cut -d: -f3`
         LINE=`echo $FILE | cut -d: -f2`
         FILE=`echo $FILE | cut -d: -f1`
+    elif echo "$FILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
+        OFFSET=`echo $FILE | cut -d, -f2`
+        FILE=`echo $FILE | cut -d, -f1`
     fi
     if [ "$TEST" = "exists" ]; then
         [ -e "$FILE" ] && exit 0
@@ -83,6 +87,8 @@ if [ -n "$FILE" ]; then
         $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
     elif [ "$MODE" = "tail" ]; then
         $TEST $EMACS -e "(tailf \"$FILE\")"
+    elif [ -n "$OFFSET" ]; then
+        $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
     else
         JUMP=
         if [ -n "$LINE" ]; then
