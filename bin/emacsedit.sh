@@ -16,6 +16,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
     -f) EMACS="emacs" ;;
     -c) CONFIRM=yes ;;
+    -r) MODE=run ;;
     -e) MODE=eval ;;
     -t) MODE=tail ;;
     -m) MODE=make ;;
@@ -63,6 +64,11 @@ else
 fi
 
 if [ -n "$FILE" ]; then
+    if [ "$MODE" = "run" ]; then
+        $TEST $EMACS -e "$FILE"
+        exit 1
+    fi
+
     FILE=`findfile.sh $FILE`
     if [ "CONFIRM" = "yes" ]; then
         echo -n "$FILE"
