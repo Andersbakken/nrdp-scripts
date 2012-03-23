@@ -150,7 +150,7 @@ whatdev() {
     fi
     return 0
 }
-alias wdd=whatdev
+alias wdd="whatdev -ta"
 
 setdev() {
     DIR=`lsdev -w $@`

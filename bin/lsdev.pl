@@ -97,6 +97,10 @@ sub answer {
     my $output;
     if($answer eq "all") {
         $output = generateRootName($root) . " [" . $root->{path} . "]";
+        if($root->{source}) {
+            my $src_root = findRoot($root->{source});
+            $output .= " [" . generateRootName($src_root) . "]";
+        }
     } elsif($answer eq "name") {
         $output = generateRootName($root);
     } elsif($answer eq "rest") {

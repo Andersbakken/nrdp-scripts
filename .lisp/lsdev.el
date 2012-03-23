@@ -17,7 +17,7 @@
       (apply #'call-process (executable-find "lsdev.pl") nil t nil args)
       (goto-char (point-min))
       (while (not (eobp))
-        (if (looking-at "^\\([^ ]*\\) \\[\\(.*\\)\\]$")
+        (if (looking-at "^\\([^ ]*\\) \\[\\(.*\\)\\]")
             (add-to-list 'result (list (match-string 1) (match-string 2))))
         (forward-line)))
     result))
@@ -90,7 +90,7 @@
   (save-excursion
     (beginning-of-line)
     ;; (message (buffer-substring (point-at-bol) (point-at-eol)))
-    (if (looking-at "^.* \\[\\(.*\\)\\]$")
+    (if (looking-at "^[^[]* \\[\\([^]]*\\)\\]")
         (let ((dir (match-string 1)))
           (if (string-match "/$" dir) dir (concat dir "/"))
           )
