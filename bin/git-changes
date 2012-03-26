@@ -1,0 +1,23 @@
+#!/bin/sh
+
+PRE=eval
+#PRE=echo
+LOG_SWITCHES="--no-merges --pretty=format:'%h %s [%an]'"
+
+while [ "$#" -gt 0 ]; do
+   OPT="$1"
+   shift
+   case $OPT in
+   -m) LOG_SWITCHES="$LOG_SWITCHES -m smagnuso" ;;
+   -t)
+      tracking_branch=`git tracking`
+      if [ "$?" ]; then
+         branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+         echo "$branch" | grep "(" --quiet && exit 1
+         LOG_SWITCHES="$LOG_SWITCHES '${tracking_branch}..${branch}'"
+      fi ;;
+    -1w) LOG_SWITCHES="$LOG_SWITCHES --since='7 days ago'" ;;
+    *) ;;
+    esac
+done
+$PRE git log $LOG_SWITCHES
