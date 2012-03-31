@@ -236,7 +236,7 @@ def getP4Branches(p4Branches, srcDepotPath, dstDepotPath):
 def getP4OpenedType(file):
     # Returns the perforce file type for the given file.
 
-    result = p4_read_pipe("opened %s" % file)
+    result = p4_read_pipe("opened \"%s\"" % file)
     match = re.match(".*\((.+)\)\r?$", result)
     if match:
         return match.group(1)
