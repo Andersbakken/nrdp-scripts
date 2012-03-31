@@ -8,7 +8,7 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    shift
    case $OPT in
-   -m) LOG_SWITCHES="$LOG_SWITCHES -m smagnuso" ;;
+   -m) LOG_SWITCHES="$LOG_SWITCHES --author=smagnuso" ;;
    -t)
       tracking_branch=`git tracking`
       if [ "$?" ]; then
