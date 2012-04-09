@@ -1,0 +1,2 @@
+#!/bin/sh
+tmux -q capture-pane \; save-buffer -b 0 $1 \; delete-buffer -b 0 \; display-message "Captured to: $1"
