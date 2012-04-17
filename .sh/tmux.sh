@@ -56,6 +56,10 @@ function tmuxRemove() {
 }
 alias rmp=tmuxRemove
 
+function tmuxSend() {
+    "$HOME/bin/tmux/tmux-run-other.sh" "$@"
+}
+
 function tmuxPane() {
    TMUX_RESURRECT_PANE="$1"
    if [ -z "$TMUX_RESURRECT_PANE" ] && [ -n "$TMUX_PANE" ]; then
