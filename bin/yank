@@ -1,39 +1,47 @@
 #!/bin/bash
-xclip=`which xclip`
-test -z "$xclip" && xclip="/usr/X11R6/bin/xclip"
-if ! test -x "$xclip"; then
-   echo "No XCLIP!"
-   exit 1
-fi
 
+file=
+mode=paste
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+  --append|-a) mode=paste_append ;;
+  --copy|-c) mode=copy ;;
+  *) file="$1"
+  esac
+  shift
+done
 
-append=0
-if [ -n "$1" ]; then
-    if [ "$1" = "--append" ]; then
-        append=1
-    elif [ "$1" = "-a" ]; then
-        append=1
-    else
-        target="$1"
-    fi
-    if [ -n "$2" ]; then
-        if [ "$2" = "--append" ]; then
-            append=1
-        elif [ "$2" = "-a" ]; then
-            append=1
+if [ `uname -s` = "Darwin" ]; then
+    if [ -z "$file" ]; then
+        if [ "$mode" = "copy" ]; then
+            pbcopy
         else
-            target="$2"
+            pbpaste
         fi
+    elif [ "$mode" = "paste" ]; then
+        pbpaste > "$file"
+    elif [ "$mode" = "paste_append" ]; then
+        pbpaste >> "$file"
+    elif [ "$mode" = "copy" ]; then
+        cat "$file" | pbcopy
+    fi
+else
+    xclip=`which xclip`
+    test -z "$xclip" && xclip="/usr/X11R6/bin/xclip"
+    if ! test -x "$xclip"; then
+        echo "No XCLIP!"
+        exit 1
+    fi
+    if [ -z "$file" ]; then
+        if [ "$mode" = "copy" ]; then
+            "$xclip" -i
+        else
+            "$xclip" -o
+        fi
+    elif [ "$mode" = "paste" ]; then
+        "$xclip" -o > "$file"
+    elif [ "$mode" = "paste_append" ]; then
+        "$xclip" -o >> "$file"
     fi
 fi
-
-if [ -z "$target" ]; then
-    xclip -o
-    exit 0
-elif [ "$append" -eq 0 ]; then
-    xclip -o > "$target"
-else
-    xclip -o >> "$target"
-fi
-echo " " >> $target
 
