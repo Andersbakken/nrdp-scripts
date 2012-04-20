@@ -725,22 +725,6 @@ if($display_only eq "default") { #display the currently mapped default
         }
         push @choices, $rest_dir;
         $rest_dir = undef;
-    } elsif($#matches == 0 && $matches[0] =~ /^@(.*)$/) {
-        if(open(EMACSCLIENT, "emacsclient -e '(sam-find-directory \"$1\")'|")) {
-            my $emacs_dir = <EMACSCLIENT>;
-            chomp $emacs_dir;
-            $emacs_dir =~ s,",,g;
-            $emacs_dir = canonicalize($emacs_dir);
-            $emacs_dir = findRootPath($emacs_dir) if(!$detect_rest);
-            display "Emacs detection: $emacs_dir\n" if($verbose);
-            if($emacs_dir) {
-                addRoot("emacs", $emacs_dir) unless(defined(findRoot($emacs_dir)));
-                push @choices, $emacs_dir;
-            }
-            close(EMACSCLIENT);
-        } else {
-            display "Unable to connect emacsclient!\n";
-        }
     } elsif($#matches == 0 && $matches[0] eq "-") {
         push @choices, $default_dir;
     } elsif($#matches == -1 && !$detect_rest && $root_dir) {
