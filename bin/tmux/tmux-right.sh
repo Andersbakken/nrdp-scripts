@@ -20,7 +20,7 @@ if [ "$JOBS_TOTAL" != 0 ]; then
             JOBS_WAIT=$((JOBS_WAIT+1))
         fi
     done
-    if true || [ "$JOBS_COMP" != 0 ] || [ "$JOBS_WAIT" != 0 ]; then
+    if [ "$JOBS_COMP" != 0 ] || [ "$JOBS_WAIT" != 0 ]; then
         MY_JOBS=
         if false && which spark.sh >/dev/null 2>&1; then
             JOBS_FILE="$HOME/.tmux.icecc.jobs"
