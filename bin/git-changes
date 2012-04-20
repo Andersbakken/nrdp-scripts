@@ -17,7 +17,7 @@ while [ "$#" -gt 0 ]; do
          LOG_SWITCHES="$LOG_SWITCHES '${tracking_branch}..${branch}'"
       fi ;;
     -1w) LOG_SWITCHES="$LOG_SWITCHES --since='7 days ago'" ;;
-    *) ;;
+    *) LOG_SWITCHES="$LOG_SWITCHES $OPT";;
     esac
 done
 $PRE git log $LOG_SWITCHES
