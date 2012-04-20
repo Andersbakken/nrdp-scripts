@@ -22,18 +22,19 @@ if [ "$JOBS_TOTAL" != 0 ]; then
     done
     if true || [ "$JOBS_COMP" != 0 ] || [ "$JOBS_WAIT" != 0 ]; then
         MY_JOBS=
-        if which spark.sh >/dev/null 2>&1; then
+        if false && which spark.sh >/dev/null 2>&1; then
             JOBS_FILE="$HOME/.tmux.icecc.jobs"
             TMUX_SESSION=`tmux display-message -p '#S'`
             [ -n "$TMUX_SESSION" ] && JOBS_FILE="${JOBS_FILE}.${TMUX_SESSION}"
             echo "JOBS: $JOBS_FILE" >&2
+            which lockfile >/dev/null 2>&1 && lockfile -1 -r1 "${JOBS_FILE}.lock"
             SPARK_JOBS=`cat $JOBS_FILE | awk '{if(NF < 10) printf "%s", $0; else for(i=NF-10+1;i<=NF;++i) { printf "%s ", $i; } }'`
             SPARK_JOBS="$SPARK_JOBS $((JOBS_WAIT+$JOBS_COMP))"
             echo "$SPARK_JOBS" >"$JOBS_FILE"
+            rm -f "${JOBS_FILE}.lock"
             MY_JOBS=`spark.sh -range 0:$JOBS_COUNT $SPARK_JOBS`
-        else
-            MY_JOBS="${JOBS_COMP}/${JOBS_WAIT}"
         fi
+        [ -z "$MY_JOBS" ] && MY_JOBS="${JOBS_COMP}/${JOBS_WAIT}"
         RESULT="($MY_JOBS|${JOBS_TOTAL}) $RESULT"
     else
         RESULT="(${JOBS_TOTAL}) $RESULT"
