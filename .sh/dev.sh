@@ -15,7 +15,11 @@ reconfigure()
     elif [ "$1" = "-cat" ]; then
         EXTRA=cat
         shift
+    elif [ "$1" = "-reset" ]; then
+        EXTRA=reset
+        shift
     fi
+
     BUILD=
     if [ -d "$1" ]; then
         BUILD="$1"
@@ -24,25 +28,34 @@ reconfigure()
     if [ -z "$BUILD" ] || [ ! -e "$BUILD/config.status" ]; then
         BUILD=`lsdev build $BUILD -r`
     fi
-    if [ -e "$BUILD/config.status" ]; then
-        pushd "$BUILD" >/dev/null 2>&1
+
+    pushd "$BUILD" >/dev/null 2>&1
+    SRC=`lsdev src - -r`
+    echo "Root: $BUILD [$SRC]"
+    if [ -e "config.status" ] && [ ! -e "configure" ]; then
+        if [ "$EXTRA" = "rm" ] || [ "$EXTRA" = "reset" ]; then
+            echo -n "Sure you want to rm -rf in $BUILD? "
+            read REALLY
+            if [ "$REALLY" = "y" ]; then
+                cp "config.status" "/tmp/config.status"
+                rm -rf *
+                cp "/tmp/config.status" "config.status"
+            fi
+        fi
+    fi
+    if [ "$EXTRA" = "reset" ]; then
+        if [ -e "$SRC/configure" ]; then
+            $SRC/configure "$@"
+        fi
+    elif [ -e "config.status" ]; then
         if [ "$EXTRA" = "cat" ]; then
             cat "config.status"
         else
             cat "config.status" | yank -c
-            if [ "$EXTRA" = "rm" ] && [ ! -e "$BUILD/configure" ]; then
-                echo -n "Sure you want to rm -rf in $BUILD? "
-                read REALLY
-                if [ "$REALLY" = "y" ]; then
-                    cp "config.status" "/tmp/config.status"
-                    rm -rf *
-                    cp "/tmp/config.status" "config.status"
-                fi
-            fi
             ./config.status "$@"
         fi
-        popd >/dev/null 2>&1
     fi
+    popd >/dev/null 2>&1
 }
 
 #emacs diff
