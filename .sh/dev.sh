@@ -2,7 +2,7 @@
 #emacs build
 emake()
 {
-    "$HOME/bin/emacsedit.sh" -m -n "${1}"
+    "emacsedit.sh" -m -n "${1}"
 }
 
 #reconfigure
@@ -37,6 +37,7 @@ reconfigure()
             echo -n "Sure you want to rm -rf in $BUILD? "
             read REALLY
             if [ "$REALLY" = "y" ]; then
+                rm -f "/tmp/config.status"
                 cp "config.status" "/tmp/config.status"
                 rm -rf *
                 cp "/tmp/config.status" "config.status"
@@ -66,7 +67,7 @@ ediff()
         f="sam-ediff-binary-files"
         shift
     fi
-    "$HOME/bin/emacsedit.sh" -r -n "($f \"${1}\" \"${2}\")"
+    "emacsedit.sh" -r -n "($f \"${1}\" \"${2}\")"
 }
 
 #global
