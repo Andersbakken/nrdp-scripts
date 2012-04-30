@@ -34,7 +34,8 @@ if [ "$JOBS_TOTAL" != 0 ]; then
         MY_JOBS=`spark.sh -range 0:$JOBS_COUNT $SPARK_JOBS`
     fi
     if [ "$JOBS_COMP" != 0 ] || [ "$JOBS_WAIT" != 0 ]; then
-        [ -z "$MY_JOBS" ] && MY_JOBS="${JOBS_COMP}/${JOBS_WAIT}"
+        JOBS_COMP=$((JOBS_COMP+JOBS_WAIT))
+        [ -z "$MY_JOBS" ] && MY_JOBS="${JOBS_COMP}"
     fi
     if [ -n "$MY_JOBS" ]; then
         RESULT="($MY_JOBS|${JOBS_TOTAL}) $RESULT"
