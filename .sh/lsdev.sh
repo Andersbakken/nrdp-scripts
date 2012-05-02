@@ -164,7 +164,7 @@ setdev() {
 cddev() {
     if [ "$#" = 1 ] && echo "$1" | grep '^@' >/dev/null 2>&1; then
         MATCH=`echo $1 | sed "s,^@,,"`
-        DIR=`emacsclient -e "(sam-find-directory \"$MATCH\")" | sed 's,"\(.*\)",\1,'`
+        DIR=`emacsclient -e "(sam-what-directory \"$MATCH\")" | sed 's,"\(.*\)",\1,'`
     else
         DIR=`lsdev -w $@`
     fi
