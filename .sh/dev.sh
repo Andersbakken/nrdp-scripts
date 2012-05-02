@@ -8,16 +8,24 @@ emake()
 #reconfigure
 reconfigure()
 {
-    EXTRA=
-    if [ "$1" = "-rm" ]; then
-        EXTRA=rm
+    while [ "$1" ]; do
+        if [ "$1" = "-rm" ]; then
+            local RM=1
+        elif [ "$1" = "-cat" ]; then
+            local CAT=1
+        elif [ "$1" = "-reset" ]; then
+            local RESET=1
+        elif [ "$1" = "-editor" ]; then
+            local EDIT=1
+        else
+            break
+        fi
         shift
-    elif [ "$1" = "-cat" ]; then
-        EXTRA=cat
-        shift
-    elif [ "$1" = "-reset" ]; then
-        EXTRA=reset
-        shift
+    done
+
+    if [ "$RESET" -a "$EDIT" ] || [ "$RESET" -a "$CAT" ]; then
+        echo "Invalid combination of arguments." >2
+        return 1
     fi
 
     BUILD=
@@ -33,7 +41,7 @@ reconfigure()
     SRC=`lsdev src - -r`
     echo "Root: $BUILD [$SRC]"
     if [ -e "config.status" ] && [ ! -e "configure" ]; then
-        if [ "$EXTRA" = "rm" ] || [ "$EXTRA" = "reset" ]; then
+        if [ "$RM" ]; then
             echo -n "Sure you want to rm -rf in $BUILD? "
             read REALLY
             if [ "$REALLY" = "y" ]; then
@@ -44,12 +52,17 @@ reconfigure()
             fi
         fi
     fi
-    if [ "$EXTRA" = "reset" ]; then
+    if [ "$RESET" ]; then
         if [ -e "$SRC/configure" ]; then
             $SRC/configure "$@"
         fi
     elif [ -e "config.status" ]; then
-        if [ "$EXTRA" = "cat" ]; then
+        if [ "$EDIT" ]; then
+            test -z "$EDITOR" && EDITOR=vim
+            $EDITOR ./config.status
+        fi
+
+        if [ "$CAT" ]; then
             cat "config.status"
         else
             cat "config.status" | yank -c
