@@ -44,7 +44,7 @@ while [ "$#" -gt 0 ]; do
    OPT="$1"
    case $OPT in
    --test|-test) TEST="echo" ;;
-   --create|-create) CREATE=yes; REWORD=yes ;;
+   --create|-create) INTERACTIVE=yes; CREATE=yes; REWORD=yes ;;
    --move|-move|--reword|-reword) REWORD=yes ;;
    --comment|-c|-comment) COMMENT=yes ;;
    --interactive|-i) INTERACTIVE=yes ;;
