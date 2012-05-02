@@ -83,6 +83,12 @@ ediff()
     "emacsedit.sh" -r -n "($f \"${1}\" \"${2}\")"
 }
 
+#emacs tail
+etail()
+{
+    "emacsedit.sh" -n -t "$1"
+}
+
 #global
 findsym() {
     ROOT=`findancestor GPATH 2>&1 || findancestor GTAGS 2>&1|| findancestor GRTAGS 2>&1`
