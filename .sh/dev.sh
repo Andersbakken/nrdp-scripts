@@ -10,13 +10,13 @@ reconfigure()
 {
     while [ "$1" ]; do
         if [ "$1" = "-rm" ]; then
-            local RM=1
+            local RECONFIG_RM=1
         elif [ "$1" = "-cat" ]; then
-            local CAT=1
+            local RECONFIG_CAT=1
         elif [ "$1" = "-reset" ]; then
-            local RESET=1
-        elif [ "$1" = "-editor" ]; then
-            local EDIT=1
+            local RECONFIG_RESET=1
+        elif [ "$1" = "-editor" ] || [ "$1" = "-edit" ]; then
+            local RECONFIG_EDIT=1
         else
             break
         fi
@@ -41,7 +41,7 @@ reconfigure()
     SRC=`lsdev src - -r`
     echo "Root: $BUILD [$SRC]"
     if [ -e "config.status" ] && [ ! -e "configure" ]; then
-        if [ "$RM" ]; then
+        if [ "$RECONFIG_RM" ]; then
             echo -n "Sure you want to rm -rf in $BUILD? "
             read REALLY
             if [ "$REALLY" = "y" ]; then
@@ -52,17 +52,17 @@ reconfigure()
             fi
         fi
     fi
-    if [ "$RESET" ]; then
+    if [ "$RECONFIG_RESET" ]; then
         if [ -e "$SRC/configure" ]; then
             $SRC/configure "$@"
         fi
     elif [ -e "config.status" ]; then
-        if [ "$EDIT" ]; then
+        if [ "$RECONFIG_EDIT" ]; then
             test -z "$EDITOR" && EDITOR=vim
             $EDITOR ./config.status
         fi
 
-        if [ "$CAT" ]; then
+        if [ "$RECONFIG_CAT" ]; then
             cat "config.status"
         else
             cat "config.status" | yank -c
