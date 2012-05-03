@@ -100,7 +100,10 @@ while(@ARGV) {
         $read_option = 0;
     }
 }
-$show_help = 1 if($#options < 0);
+if(!$show_help && $#options < 0) {
+    print STDERR "Nothing to choose!\n";
+    exit 1;
+}
 
 if($show_help) {
     print STDERR "$argv0 [options] [choices]\n";
