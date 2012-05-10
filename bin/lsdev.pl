@@ -352,22 +352,30 @@ my %roots;
 my $default_dir;
 my $root_dir;
 
-sub findRoot {
-    my ($path, $recurse) = @_;
-    $path = canonicalize($path);
-    my $result = undef;
+sub findRoot_internal {
+    my ($path, $exact) = @_;
+    my $result;
     foreach(keys(%roots)) {
         my $root = $roots{$_};
         my $root_path = $root->{path};
-        if($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
+        if($exact) {
+            $result = $root if($root eq $path);
+        } elsif($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
             $result = $root;
         }
     }
+    return $result;
+}
+
+sub findRoot {
+    my ($path, $recurse) = @_;
+    $path = canonicalize($path);
+    my $result = findRoot_internal($path, 0);
     if(!$result) {
       FIND: for(my $current = $path; $current; $current = dirname($current)) {
           my $p = $current;
           $p = resolveLinks($current);
-          if(my $root = $roots{$p}) {
+          if(my $root = findRoot_internal($p, 1)) {
               $result = $root;
               last FIND;
           }
@@ -394,10 +402,18 @@ sub addRoot {
     $root{path} = canonicalize($path);
     $root{source} = resolveLinks(canonicalize($source)) if($source);
     my $root_location = resolveLinks($root{path});
-    $roots{$root_location} = \%root;
+    my $root_key = $root_location;
+    $root_key =~ s,/,_,g;
+    if($source) {
+        $root_key = $build_prefix . "::" . $root_key;
+    } else {
+        $root_key = $src_prefix . "::" . $root_key;
+    }
+    $root_key .= "::" . $name;
+    $roots{$root_key} = \%root;
     if($verbose) {
         my @c = caller(0);
-        display $c[2], ": Named Root($root_location) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "}\n"
+        display $c[2], ": Named Root($root_key) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location)\n"
     }
     return \%root;
 }
@@ -730,8 +746,11 @@ if($display_only eq "default") { #display the currently mapped default
     } elsif($#matches == -1 && !$detect_rest && $root_dir) {
         push @choices, $root_dir;
     } else {
-        my @match_roots = keys %roots;
-        @choices = filterMatches(@match_roots);
+        foreach(keys %roots) {
+            my $root = $roots{$_};
+            push @choices, $root;
+        }
+        @choices = filterMatches(@choices);
         if($read_devdir_list != 2) {
             my @related_choices;
             for(my $i = 0; $i < @choices; ++$i) {
