@@ -359,7 +359,7 @@ sub findRoot_internal {
         my $root = $roots{$_};
         my $root_path = $root->{path};
         if($exact) {
-            $result = $root if($root eq $path);
+            return $result if($root_path eq $path);
         } elsif($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
             $result = $root;
         }
@@ -372,14 +372,17 @@ sub findRoot {
     $path = canonicalize($path);
     my $result = findRoot_internal($path, 0);
     if(!$result) {
-      FIND: for(my $current = $path; $current; $current = dirname($current)) {
+        my $last;
+        for(my $current = $path, $last; $current; $current = dirname($current)) {
+          last if($current eq $last);
           my $p = $current;
           $p = resolveLinks($current);
           if(my $root = findRoot_internal($p, 1)) {
               $result = $root;
-              last FIND;
+              last;
           }
           last if(!$recurse || $current eq "/");
+          $last = $current;
       }
     }
     display "FindRoot: $path: -> " . ($result ? $result->{name} : "(notfound)") . "\n" if($verbose);
