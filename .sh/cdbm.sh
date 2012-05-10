@@ -1,16 +1,12 @@
 #cdbm
-cd() { 
-   if [ -e "$HOME/bin/cdbm" ]; then
-       D=`$HOME/bin/cdbm "$@"` 
-       builtin cd "$D"
-   else
-       builtin cd "$@"
-   fi
+cd() {
+    D=`cdbm "$@"`
+    builtin cd "$D"
 }
 cdl() {
     dir="$1"
     [ -z "$dir" ] && dir="$PWD"
-    for d in `ls -lt $dir`; do
+    for d in `ls -t $dir`; do
         if [ -d "$d" ]; then
             cd "$d"
             break
