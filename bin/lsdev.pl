@@ -32,6 +32,11 @@ $detect_suffix = ""; #not used currently
 my @matches;
 my %dev_roots;
 
+sub mycaller {
+    my @c = caller(1);
+    return $c[2];
+}
+
 sub parseOptions {
     while(@_) {
         my $option = shift @_;
@@ -87,6 +92,7 @@ if($display_only eq "current") {
 }
 
 sub display {
+    #print STDERR mycaller(), ": ";
     foreach(@_) {
         print STDERR $_;
     }
@@ -359,7 +365,7 @@ sub findRoot_internal {
         my $root = $roots{$_};
         my $root_path = $root->{path};
         if($exact) {
-            return $result if($root_path eq $path);
+            return $root if($root_path eq $path);
         } elsif($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
             $result = $root;
         }
@@ -415,8 +421,7 @@ sub addRoot {
     $root_key .= "::" . $name;
     $roots{$root_key} = \%root;
     if($verbose) {
-        my @c = caller(0);
-        display $c[2], ": Named Root($root_key) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location)\n"
+        display "Named Root($root_key) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
     }
     return \%root;
 }
@@ -751,7 +756,7 @@ if($display_only eq "default") { #display the currently mapped default
     } else {
         foreach(keys %roots) {
             my $root = $roots{$_};
-            push @choices, $root;
+            push @choices, $root->{path};
         }
         @choices = filterMatches(@choices);
         if($read_devdir_list != 2) {
