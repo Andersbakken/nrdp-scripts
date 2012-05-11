@@ -301,9 +301,11 @@ if(-e glob("~/.dev_directories")) {
                     display "Found PathConfig: {$path}{$k} -> $v\n" if($verbose);
                     $path_config{$path}->{$k} = $v;
                 } else {
+                    my $n = $1;
                     my $p = canonicalize($2, dirname($dev_directories_path));
-                    display "Found DevDirectory: $1 -> $p\n" if($verbose);
-                    $dev_roots{$1} = $p;
+                    display "Found DevDirectory: $n -> $p\n" if($verbose);
+                    $dev_roots{$n} = $p;
+                    addRoot($n, $p);
                 }
             }
         }
@@ -331,8 +333,8 @@ sub getRestDir {
     my ($root_dir) = @_;
     my $rest_dir;
     my $resolved_root_dir = resolveLinks($root_dir);
-    $rest_dir = $1 if($cwd =~ /^$resolved_root_dir\/(.*)/);
-    display "GetRestDir($cwd): $root_dir: -> " . $rest_dir . "\n" if($verbose);
+    $rest_dir = $1 if(resolveLinks($cwd) =~ /^$resolved_root_dir\/(.*)/);
+    display "GetRestDir($cwd): $root_dir: -> $rest_dir\n" if($verbose);
     return $rest_dir;
 }
 
