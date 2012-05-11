@@ -142,18 +142,6 @@ sub showHelp {
 }
 showHelp() if($display_help);
 
-sub uniq {
-    my %seen = ();
-    my @r = ();
-    foreach my $a (@_) {
-        unless ($seen{$a}) {
-            push @r, $a;
-            $seen{$a} = 1;
-        }
-    }
-    return @r;
-}
-
 sub findAncestor {
     my ($file, $dir) = @_;
     $dir = $cwd unless(defined($dir));
@@ -361,9 +349,10 @@ my $root_dir;
 sub findRoot_internal {
     my ($path, $exact) = @_;
     my $result;
+    $path = resolveLinks($path);
     foreach(keys(%roots)) {
         my $root = $roots{$_};
-        my $root_path = $root->{path};
+        my $root_path = resolveLinks($root->{path});
         if($exact) {
             return $root if($root_path eq $path);
         } elsif($path =~ /^$root_path/ && (length($root_path) > length($result->{path}))) {
@@ -526,8 +515,9 @@ sub isRootRelated {
 }
 
 sub filterMatches {
-    my @choices;
     my @match_roots = @_;
+
+    my @result;
     foreach(@match_roots) {
         my $root = findRoot($_);
         next if($root->{ignore} || !$root->{path});
@@ -561,11 +551,11 @@ sub filterMatches {
         }
         if(defined($root)) {
             display "AddChoice: [" . $root->{name} . "::" . $root->{path} . "::" . generateRootName($root) . "]\n" if($verbose);
-            push @choices, $root->{path} if(defined($root));
+            push @result, $root->{path} if(defined($root));
         }
     }
-    @choices = sort { (stat($a))[9] < (stat($b))[9] } @choices;
-    return @choices;
+    @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
+    return @result;
 }
 
 #figure out where I am in a shadow build and my relevent source dir
@@ -607,25 +597,6 @@ if(my $dev_directory = findDevRoot($cwd, 1)) {
     $read_devdir_list = -2 if($read_devdir_list == 1 &&
                               ($#matches == -1 || $matches[0] eq "-"));
     $root_dir = dirname($src_marker) unless(defined($root_dir));
-}
-
-#figure out default
-unless(defined($default_dir)) {
-    my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir);
-    $lsdev_default_file = glob("~/.lsdev_default") unless($lsdev_default_file);
-    if($lsdev_default_file && -e $lsdev_default_file) {
-        my $lsdev_default_file_dir = dirname($lsdev_default_file);
-        if(!$root_dir || length(resolveLinks($lsdev_default_file_dir)) >= length(resolveLinks($root_dir))) {
-            display " Found $lsdev_default_file!\n" if($verbose);
-            if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
-                $default_dir = <LSDEV_DEFAULT>;
-                display "   Default $default_dir\n" if($verbose);
-                chomp($default_dir);
-                close(LSDEV_DEFAULT);
-                addRoot("default", $default_dir) unless(defined(findRoot($default_dir)));
-            }
-        }
-    }
 }
 
 #process anything that looks like a build
@@ -706,6 +677,26 @@ foreach(keys(%dev_roots)) {
         }
     }
 }
+
+#figure out default
+unless(defined($default_dir)) {
+    my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir);
+    $lsdev_default_file = glob("~/.lsdev_default") unless($lsdev_default_file);
+    if($lsdev_default_file && -e $lsdev_default_file) {
+        my $lsdev_default_file_dir = dirname($lsdev_default_file);
+        if(!$root_dir || length(resolveLinks($lsdev_default_file_dir)) >= length(resolveLinks($root_dir))) {
+            display " Found $lsdev_default_file!\n" if($verbose);
+            if(open(LSDEV_DEFAULT, "<$lsdev_default_file")) {
+                $default_dir = <LSDEV_DEFAULT>;
+                display "   Default $default_dir\n" if($verbose);
+                chomp($default_dir);
+                close(LSDEV_DEFAULT);
+                addRoot("default", $default_dir) unless(defined(findRoot($default_dir)));
+            }
+        }
+    }
+}
+
 display "root=$root_dir default=$default_dir cwd=$cwd\n" if($verbose);
 
 if($display_only eq "default") { #display the currently mapped default
@@ -769,6 +760,21 @@ if($display_only eq "default") { #display the currently mapped default
         }
     }
     $rest_dir = getRestDir($root_dir) if(!defined($rest_dir) && $detect_rest && $root_dir);
+    {
+        my %seen;
+        my @uniq_choices;
+        for(my $i = 0; $i < @choices; ++$i) {
+            my $root = findRoot($choices[$i]);
+            my $root_name = generateRootName($root);
+            if($seen{$root_name}) {
+                display "Filtered: $root_name\n" if($verbose);
+            } else {
+                push @uniq_choices, $root->{path};
+                $seen{$root_name} = 1;
+            }
+        }
+        @choices = @uniq_choices;
+    }
 
     my $index;
     if($display_only eq "list") {
@@ -795,7 +801,7 @@ if($display_only eq "default") { #display the currently mapped default
             display "> ";
             my $choice = <STDIN>;
             chomp $choice;
-            if($choice =~ /[0-9]+/) {
+            if($choice =~ /^[0-9]+$/) {
                 $index = $choice - 1;
                 last if($index >= 0 && $index <= $#choices);
             }
