@@ -26,14 +26,20 @@ if [ -z "$COMMAND" ]; then
    exit 1
 fi
 
+first=
 for dir in `lsdev.pl -l -b -tp $DEVS`; do
-   if [ -d "$dir" ] && [ -d "$dir/.git" ]; then
-      echo
-      echo
-      echo "============================================================="
-      echo "Processing: $dir ($COMMAND)"
-      echo "============================================================="
-      cd "$dir"
-      $TEST git $COMMAND
+   if [ -d "$dir" ]; then
+       cd "$dir"
+       if git rev-parse >/dev/null 2>&1; then
+           if [ -n "$first" ]; then
+               echo
+               echo
+           fi
+           first=0
+           echo "============================================================="
+           echo "Processing: $dir ($COMMAND)"
+           echo "============================================================="
+           $TEST git $COMMAND
+       fi
    fi
 done
