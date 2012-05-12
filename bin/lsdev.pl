@@ -329,11 +329,26 @@ sub getPathConfig {
     return $result;
 }
 
+sub addRestDir {
+    my ($root_dir, $rest_dir) = @_;
+    my $result = $root_dir . "/$rest_dir";
+    for(my $current = canonicalize($result); $current && length($current) > length($root_dir);
+        $current = dirname($current)) {
+        if(-d $current) {
+            $result = $current;
+            last;
+        }
+    }
+    return $result;
+}
+
 sub getRestDir {
     my ($root_dir) = @_;
     my $rest_dir;
+    $rest_dir = $1 if($cwd =~ /^$root_dir\/(.*)/);
     my $resolved_root_dir = resolveLinks($root_dir);
-    $rest_dir = $1 if(resolveLinks($cwd) =~ /^$resolved_root_dir\/(.*)/);
+    my $resolved_cwd = resolveLinks($cwd);
+    $rest_dir = $1 if($resolved_cwd =~ /^$resolved_root_dir\/(.*)/);
     display "GetRestDir($cwd): $root_dir: -> $rest_dir\n" if($verbose);
     return $rest_dir;
 }
@@ -781,7 +796,9 @@ if($display_only eq "default") { #display the currently mapped default
     my $index;
     if($display_only eq "list") {
         for(my $i = 0; $i < @choices; ++$i) {
-            answer(findRoot($choices[$i]));
+            my %root = %{findRoot($choices[$i])};
+            $root{path} = addRestDir($root{path}, $rest_dir) if(defined($rest_dir));
+            answer(\%root);
         }
     } else {
         while(1) {
@@ -814,16 +831,7 @@ if($display_only eq "default") { #display the currently mapped default
     if(defined($index)) {
         display "Chose: $root_dir($rest_dir): $index: '" . canonicalize($choices[$index]) . "' -> '" . findRoot($choices[$index]) . "'\n" if($verbose);
         my %root = %{findRoot($choices[$index])};
-        if(defined($rest_dir)) {     #handle the rest logic
-            my $rest_cd_dir = $root{path} . "/$rest_dir";
-            for(my $current = canonicalize($rest_cd_dir); $current && length($current) > length($root{path});
-                $current = dirname($current)) {
-                if(-d $current) {
-                    $root{path} = $current;
-                    last;
-                }
-            }
-        }
+        $root{path} = addRestDir($root{path}, $rest_dir) if(defined($rest_dir));
         answer(\%root);
 
         if($write_default_file) {
