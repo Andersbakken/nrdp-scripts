@@ -1188,6 +1188,7 @@ class P4Sync(Command):
                 optparse.make_option("--detect-branches", dest="detectBranches", action="store_true"),
                 optparse.make_option("--changesfile", dest="changesFile"),
                 optparse.make_option("--silent", dest="silent", action="store_true"),
+                optparse.make_option("--import-labels", dest="importLabels", action="store_true"),
                 optparse.make_option("--detect-labels", dest="detectLabels", action="store_true"),
                 optparse.make_option("--verbose", dest="verbose", action="store_true"),
                 optparse.make_option("--import-branches", dest="importBranches", action="store_true"),
@@ -1216,7 +1217,9 @@ class P4Sync(Command):
         self.branch = ""
         self.detectBranches = False
         self.importBranches = False
+        self.detectLabels = True
         self.detectLabels = False
+        self.importLabels = False
         self.changesFile = ""
         self.syncWithOrigin = True
         self.verbose = False
@@ -1237,6 +1240,8 @@ class P4Sync(Command):
             self.detectBranches = True
         if gitConfig("git-p4.syncFromOrigin") == "false":
             self.syncWithOrigin = False
+        if gitConfig("git-p4.detectLabels") == "true":
+            self.detectLabels = True
 
     def extractFilesFromCommit(self, commit):
         self.cloneExclude = [re.sub(r"\.\.\.$", "", path)
@@ -1490,51 +1495,6 @@ class P4Sync(Command):
         self.streamP4Files(new_files)
         self.gitStream.write("\n")
 
-        change = int(details["change"])
-
-        if self.labels.has_key(change):
-            label = self.labels[change]
-            labelDetails = label[0]
-            labelRevisions = label[1]
-            if self.verbose:
-                print "Change %s is labelled %s" % (change, labelDetails)
-
-            files = p4CmdList("files " + ' '.join (["%s...@%s" % (p, change)
-                                                    for p in branchPrefixes]))
-
-            if len(files) == len(labelRevisions):
-
-                cleanedFiles = {}
-                for info in files:
-                    if info["action"] in ("delete", "purge"):
-                        continue
-                    cleanedFiles[info["depotFile"]] = info["rev"]
-
-                if cleanedFiles == labelRevisions:
-                    self.gitStream.write("tag tag_%s\n" % labelDetails["label"])
-                    self.gitStream.write("from %s\n" % branch)
-
-                    owner = labelDetails["Owner"]
-                    tagger = ""
-                    if author in self.users:
-                        tagger = "%s %s %s" % (self.users[owner], epoch, self.tz)
-                    else:
-                        tagger = "%s <a@b> %s %s" % (owner, epoch, self.tz)
-                    self.gitStream.write("tagger %s\n" % tagger)
-                    self.gitStream.write("data <<EOT\n")
-                    self.gitStream.write(labelDetails["Description"])
-                    self.gitStream.write("EOT\n\n")
-
-                else:
-                    if not self.silent:
-                        print ("Tag %s does not match with change %s: files do not match."
-                               % (labelDetails["label"], change))
-
-            else:
-                if not self.silent:
-                    print ("Tag %s does not match with change %s: file count is different."
-                           % (labelDetails["label"], change))
-
     def getUserCacheFilename(self):
         home = os.environ.get("HOME", os.environ.get("USERPROFILE"))
         return home + "/.gitp4-usercache.txt"
@@ -1570,31 +1530,22 @@ class P4Sync(Command):
         except IOError:
             self.getUserMapFromPerforceServer()
 
-    def getLabels(self):
-        self.labels = {}
-
-        l = p4CmdList("labels %s..." % ' '.join (self.depotPaths))
-        if len(l) > 0 and not self.silent:
-            print "Finding files belonging to labels in %s" % `self.depotPaths`
-
+    def getLabels(self, depot, revision):
+        if self.verbose:
+            print "Detecting labels %s...%s" % (depot, revision)
+        l = p4CmdList("labels %s...%s" % (depot, revision))
         for output in l:
             label = output["label"]
             revisions = {}
             newestChange = 0
-            if self.verbose:
-                print "Querying files for label %s" % label
-            for file in p4CmdList("files "
-                                  +  ' '.join (["%s...@%s" % (p, label)
-                                                for p in self.depotPaths])):
+            for file in p4CmdList("files %s...@%s" % (depot, label)):
                 revisions[file["depotFile"]] = file["rev"]
                 change = int(file["change"])
                 if change > newestChange:
                     newestChange = change
-
-            self.labels[newestChange] = [output, revisions]
-
-        if self.verbose:
-            print "Label changes: %s" % self.labels.keys()
+            if self.verbose:
+               print "Found change #%s belongs in label %s (%s...%s)" % (newestChange, label, depot, revision)
+            self.labels[newestChange] = label
 
     def guessProjectName(self):
         for p in self.depotPaths:
@@ -1749,6 +1700,8 @@ class P4Sync(Command):
         # make fast-import flush all changes to disk and update the refs using the checkpoint
         # command so that we can try to find the branch parent in the git history
         self.flushFastImport()
+        if self.detectLabels:
+            self.getLabels(self.depotPaths[0] + branch, range);
         branchPrefix = self.depotPaths[0] + branch + "/"
         #print "prefix" + branchPrefix
         changes = p4ChangesForPaths([branchPrefix], range)
@@ -1837,6 +1790,7 @@ class P4Sync(Command):
                     self.commit(description, files, self.branch, self.depotPaths,
                                 self.initialParent)
                     self.initialParent = ""
+
             except IOError:
                 print self.gitError.read()
                 sys.exit(1)
@@ -2035,11 +1989,13 @@ class P4Sync(Command):
 
         self.depotPaths = newPaths
 
-	self.updatedBranches = set()
+     	self.updatedBranches = set()
         self.loadUserMapFromCache()
         self.labels = {}
+        if self.importLabels:
+            self.getLabels(self.depotPaths[0], "");
         if self.detectLabels:
-            self.getLabels();
+            self.getLabels(self.depotPaths[0], self.changeRange);
 
         if len(self.changesFile) > 0:
             output = open(self.changesFile).readlines()
@@ -2122,6 +2078,15 @@ class P4Sync(Command):
   		       self.importNewBranch(branch, "")
                        self.closeFastImport()
 
+        for change in self.labels.keys():
+            label = "p4/" + self.labels[change]
+            gitChange = lookupFromP4Change(change)
+            if self.verbose:
+                print "Tagging %s %s(%s)" % (label, change, gitChange);
+            if gitChange:
+                if gitBranchExists(label):
+                   system("git tag -d %s" % (label), True)
+                system("git tag %s %s" % (label, gitChange))
 
         if self.detectBranches and self.importBranches:
             for branch in self.knownBranches:
@@ -2349,6 +2314,8 @@ class P4Clone(P4Sync):
         system("git init")
         if self.detectBranches:
             system("git config git-p4.detectBranches true")
+        if self.detectLabels:
+            system("git config git-p4.detectLabels true")
         self.gitdir = os.getcwd() + "/.git"
         if not P4Sync.run(self, depotPaths):
             return False
