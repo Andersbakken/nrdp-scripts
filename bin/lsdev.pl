@@ -437,11 +437,11 @@ sub addRoot {
 
 sub generateName {
     my ($name, $source) = @_;
-    $name =~ s,-,_,g;
+    #$name =~ s,-,_,g;
     if($source) {
         my $src_root = findRoot($source);
         my $src_name = $src_root->{name};
-        $src_name =~ s,-,_,g;
+        #$src_name =~ s,-,_,g;
         $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
         $name = "${build_prefix}${name}";
     } else {
