@@ -235,7 +235,7 @@ complete-cddev ()
         fi
     else
         COMPREPLY=()
-        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.][^A-Za-z0-9.]*, ,g'); do echo $a; done | sort -u | xargs`
+        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.-][^A-Za-z0-9.-]*, ,g'); do echo $a; done | sort -u | xargs`
         idx=0
         while [ "$idx" -lt "${#nondirs[@]}" ]; do
             words=`echo $words | sed "s,\<${nondirs[${idx}]}\>,,g"`
