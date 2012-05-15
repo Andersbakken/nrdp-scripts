@@ -331,12 +331,15 @@ sub getPathConfig {
 
 sub addRestDir {
     my ($root_dir, $rest_dir) = @_;
-    my $result = $root_dir . "/$rest_dir";
-    for(my $current = canonicalize($result); $current && length($current) > length($root_dir);
-        $current = dirname($current)) {
-        if(-d $current) {
-            $result = $current;
-            last;
+    my $result = $root_dir;
+    if(-d "$result/$rest_dir") {
+        $result .= "/$rest_dir";
+        for(my $current = canonicalize($result); $current && length($current) > length($root_dir);
+            $current = dirname($current)) {
+            if(-d $current) {
+                $result = $current;
+                last;
+            }
         }
     }
     return $result;
