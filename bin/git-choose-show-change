@@ -1,7 +1,7 @@
 #!/bin/sh
 
 file=
-number=40
+number=30
 changes="log --pretty=format:'%h %s [%an]' --no-merges"
 if [ -e "$1" ]; then
     echo "File: $1"
@@ -64,13 +64,16 @@ if [ -n "$1" ] && echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
     shift
 fi
 
+choose=
 while true; do
     #echo "git $changes"
-    change=`choose.pl -$number -a -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
+    choose_args="-$number -a "
+    [ -n "$choose" ] && echo "$choose" | grep '[0-9]' && choose_args="$choose_args -c $choose"
+    change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
     if [ -n "$change" ]; then
       git show "$change"
-      echo -n "Done? "
-      read done
+      /bin/echo -n "Next? "
+      read choose
     else
       break;
     fi
