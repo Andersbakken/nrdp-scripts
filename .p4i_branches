@@ -8,4 +8,6 @@ ppd/nrdp/nrdlib/11.1->ppd/nrdp/nrdlib/main
 ppd/nrdp/nrdapp/11.1->ppd/nrdp/nrdapp/main
 ppd/nrdp/nrdlib/12.1->ppd/nrdp/nrdlib/main
 ppd/nrdp/nrdapp/12.1->ppd/nrdp/nrdapp/main
+ppd/nrdp/nrdapp/12.2->ppd/nrdp/nrdapp/main
+ppd/nrdp/nrdlib/12.2->ppd/nrdp/nrdlib/main
 ppd/users/smagnuson/stuff/p4i/branch->ppd/users/smagnuson/stuff/p4i/main
