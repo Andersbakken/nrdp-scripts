@@ -141,7 +141,7 @@
     (setq buffer-read-only nil)
     (goto-char (point-min))
     (delete-char (- (point-max) 1))
-    (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" hd (if (or ignore-builds lsdev-cd-ignore-builds) "-build" ""))
+    (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-r" "-a" "-l" hd (if (or ignore-builds lsdev-cd-ignore-builds) "-build" ""))
     (goto-char (point-min))
     (cond ((= (point-min) (point-max)) (lsdev-cd-bury-buffer) (switch-to-buffer previous))
           ;;((= (count-lines (point-min) (point-max)) 1) (if slash (lsdev-cd-subdir) (lsdev-cd-path-at-point)))
