@@ -816,7 +816,7 @@ class P4Submit(Command):
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
 
-        if system(tryPatchCmd) != 0:
+        if system(tryPatchCmd) == False:
             print "Unfortunately applying the change failed!"
             print "What do you want to do?"
             response = "x"
