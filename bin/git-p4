@@ -74,7 +74,7 @@ def read_write_pipe(c, str, ignore_error=False):
     val = pipe_in.read()
     if pipe_in.close() and not ignore_error:
         die('Command failed(in): %s' % c)
-    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
+    #sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def url_decode(text):
@@ -112,7 +112,7 @@ def read_pipe(c, ignore_error=False):
     val = pipe.read()
     if pipe.close() and not ignore_error:
         die('Command failed: %s' % c)
-    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
+    #sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def p4_read_pipe(c, ignore_error=False):
@@ -128,7 +128,7 @@ def read_pipe_lines(c, ignore_error=False):
     val = pipe.readlines()
     if pipe.close() and not ignore_error:
         die('Command failed: %s' % c)
-    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
+    #sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def p4_read_pipe_lines(c):
@@ -145,7 +145,7 @@ def system(cmd, ignore_error=False):
         if not ignore_error:
             die("command failed: %s" % cmd)
         result = False
-    sys.stderr.write("'%s' took %f\n" % (cmd, time.time()-start));
+    #sys.stderr.write("'%s' took %f\n" % (cmd, time.time()-start));
     return result
 
 def p4_system(cmd):
