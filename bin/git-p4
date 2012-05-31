@@ -64,6 +64,7 @@ def read_write_pipe(c, str, ignore_error=False):
     if verbose:
         sys.stderr.write('Writing pipe: %s\n' % c)
 
+    start = time.time();
     pipe = subprocess.Popen(c, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     pipe_out = pipe.stdin
     pipe_in = pipe.stdout
@@ -73,6 +74,7 @@ def read_write_pipe(c, str, ignore_error=False):
     val = pipe_in.read()
     if pipe_in.close() and not ignore_error:
         die('Command failed(in): %s' % c)
+    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def url_decode(text):
@@ -105,11 +107,12 @@ def read_pipe(c, ignore_error=False):
     if verbose:
         sys.stderr.write('Reading pipe: %s\n' % c)
 
+    start = time.time();
     pipe = os.popen(c, 'rb')
     val = pipe.read()
     if pipe.close() and not ignore_error:
         die('Command failed: %s' % c)
-
+    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def p4_read_pipe(c, ignore_error=False):
@@ -119,11 +122,13 @@ def p4_read_pipe(c, ignore_error=False):
 def read_pipe_lines(c, ignore_error=False):
     if verbose:
         sys.stderr.write('Reading pipe: %s\n' % c)
+    start = time.time();
     ## todo: check return status
     pipe = os.popen(c, 'rb')
     val = pipe.readlines()
     if pipe.close() and not ignore_error:
         die('Command failed: %s' % c)
+    sys.stderr.write("'%s' took %f\n" % (c, time.time()-start));
     return val
 
 def p4_read_pipe_lines(c):
@@ -134,11 +139,14 @@ def p4_read_pipe_lines(c):
 def system(cmd, ignore_error=False):
     if verbose:
         sys.stderr.write("executing %s\n" % cmd)
+    result = True
+    start = time.time();
     if os.system(cmd) != 0:
         if not ignore_error:
             die("command failed: %s" % cmd)
-        return False
-    return True
+        result = False
+    sys.stderr.write("'%s' took %f\n" % (cmd, time.time()-start));
+    return result
 
 def p4_system(cmd):
     """Specifically invoke p4 as the system command. """
@@ -808,7 +816,7 @@ class P4Submit(Command):
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
 
-        if os.system(tryPatchCmd) != 0:
+        if system(tryPatchCmd) != 0:
             print "Unfortunately applying the change failed!"
             print "What do you want to do?"
             response = "x"
@@ -823,7 +831,7 @@ class P4Submit(Command):
                     system("rm %s" %f)
                 return
             elif response == "a":
-                os.system(applyPatchCmd)
+                system(applyPatchCmd)
                 if len(filesToAdd) > 0:
                     print "You may also want to call p4 add on the following files:"
                     print " ".join(filesToAdd)
@@ -1171,7 +1179,7 @@ class P4Integrate(P4Change):
                 cpOpts = "";
                 if(not self.commit):
                     cpOpts = " -n";
-                if os.system("git cherry-pick " + cpOpts + " " + gitChange) != 0:
+                if system("git cherry-pick " + cpOpts + " " + gitChange) != 0:
                     print >> sys.stderr, "Unable to cherry-pick: " + gitChange;
                     break
                 elif(not self.commit):
@@ -2103,8 +2111,10 @@ class P4Rebase(Command):
         self.options = [
                 optparse.make_option("--sync",  dest="sync", action="store_true"),
                 optparse.make_option("--fetch",  dest="sync", action="store_true"),
+                optparse.make_option("--stash", dest="stash", action="store_true"),
         ]
         self.description = ("Rebases the current work (branch) against p4 depot.")
+        self.stash = gitConfig("git-p4.autostash")
         self.verbose = False
         self.sync = False
 
@@ -2116,10 +2126,13 @@ class P4Rebase(Command):
         return self.rebase()
 
     def rebase(self):
-        if os.system("git update-index --refresh") != 0:
-            die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
-        if len(read_pipe("git diff-index HEAD --")) > 0:
-            die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
+        doUnstash = 0
+        if len(read_pipe("git status -s -uno")) > 0:
+            if self.stash:
+                system("git commit -a -m P4Sync")
+                doUnstash = "git reset --soft HEAD~"
+            else:
+                die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
 
         [upstream, settings] = findUpstreamBranchPoint()
         if len(upstream) == 0:
@@ -2132,6 +2145,8 @@ class P4Rebase(Command):
         oldHead = read_pipe("git rev-parse HEAD").strip()
         system("git rebase %s" % upstream)
         system("git diff-tree --stat --summary -M %s HEAD" % oldHead)
+        if doUnstash:
+            system(doUnstash)
         return True
 
 class P4Unshelve(P4Sync):
@@ -2147,7 +2162,7 @@ class P4Unshelve(P4Sync):
         self.doForce = False
         self.description = "Unshelve a change."
     def run(self, args):
-        if os.system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0:
+        if system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0:
             die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
         if len(args) == 0:
             shelves = getShelves(False)
@@ -2380,24 +2395,13 @@ class P4Pull(P4Sync):
     def __init__(self):
         P4Sync.__init__(self)
         self.options += [
-            optparse.make_option("--stash", dest="stash", action="store_true"),
         ]
-        self.stash = gitConfig("git-p4.autostash")
 
     def run(self, args):
         if not P4Sync.run(self, args):
             return False
-
-        doUnstash = 0
-        if self.stash and (os.system("git update-index --refresh") != 0 or len(read_pipe("git diff-index HEAD --")) > 0):
-            if False and os.system("git fstash save P4Sync") == 0:
-                doUnstash = "git fstash pop"
-            elif os.system("git stash save P4Sync") == 0:
-                doUnstash = "git stash pop"
         rebase = P4Rebase()
         rebase.rebase()
-        if doUnstash:
-            os.system(doUnstash)
         return True
 
 class P4Branch(P4Sync):

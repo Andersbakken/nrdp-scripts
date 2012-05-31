@@ -271,17 +271,17 @@ the process output as a string, or nil if the git command failed."
       (apply #'call-process-region start end program
              nil (list output-buffer t) nil args))))
 
-(defun git-run-command-buffer (buffer-name &rest args)
+(defun git-run-command-buffer (buffer-or-name &rest args)
   "Run a git command, sending the output to a buffer named BUFFER-NAME."
   (let ((dir default-directory)
-        (buffer (get-buffer-create buffer-name)))
+        (buffer (if (bufferp buffer-or-name) buffer-or-name (get-buffer-create buffer-or-name))))
     (if git-default-directory (setq dir git-default-directory))
     (message "Running git %s..." (car args))
     (with-current-buffer buffer
       (let ((default-directory dir)
             (buffer-read-only nil))
 	(setq git-default-directory default-directory)
-        (erase-buffer)
+        (if (not (bufferp buffer-or-name)) (erase-buffer))
         (apply #'git-call-process buffer args)))
     (message "Running git %s...done" (car args))
     buffer))
@@ -552,9 +552,10 @@ update the \"HEAD\" reference to the new commit."
 ; fileinfo structure stolen from pcl-cvs
 (defstruct (git-fileinfo
             (:copier nil)
-            (:constructor git-create-fileinfo (state name &optional old-perm new-perm rename-state orig-name marked))
+            (:constructor git-create-fileinfo (staged-state state name &optional old-perm new-perm rename-state orig-name marked))
             (:conc-name git-fileinfo->))
   marked              ;; t/nil
+  staged-state        ;; staged state
   state               ;; current state
   name                ;; file name
   old-perm new-perm   ;; permission flags
@@ -678,7 +679,7 @@ The list must be sorted."
   (let ((old-perm (git-fileinfo->old-perm info))
 	(new-perm (git-fileinfo->new-perm info)))
     (insert (concat "   " (if (git-fileinfo->marked info) (propertize "*" 'face 'git-mark-face) " ")
-		    " " (git-status-code-as-string (git-fileinfo->state info))
+		    " " (git-status-code-as-string (or (git-fileinfo->state info) (git-fileinfo->staged-state info)))
 		    " " (git-permissions-as-string old-perm new-perm)
 		    "  " (git-escape-file-name (git-fileinfo->name info))
 		    (git-file-type-as-string old-perm new-perm)
@@ -724,32 +725,34 @@ The list must be sorted."
                (setq name (and info (git-fileinfo->name info)))))))
     (nconc (nreverse remaining) files)))
 
-(defun git-run-diff-index (status files)
+(defun git-create-info-list (files)
   "Run git-diff-index on FILES and parse the results into STATUS.
 Return the list of files that haven't been handled."
   (let (infolist)
     (with-temp-buffer
-      (apply #'git-call-process t "diff-index" "-z" "-M" "HEAD" "--" files)
+      (apply #'git-call-process t "status" "--porcelain" "--" files)
       (goto-char (point-min))
       (while (re-search-forward
-	      ":\\([0-7]\\{6\\}\\) \\([0-7]\\{6\\}\\) [0-9a-f]\\{40\\} [0-9a-f]\\{40\\} \\(\\([ADMUT]\\)\0\\([^\0]+\\)\\|\\([CR]\\)[0-9]*\0\\([^\0]+\\)\0\\([^\0]+\\)\\)\0"
+	      "^\\([ ADMUT]\\)\\([ ADMUT]\\) \\(.*\\)\\(-> \\(.*\\)\\)?"
               nil t 1)
-        (let ((old-perm (string-to-number (match-string 1) 8))
-              (new-perm (string-to-number (match-string 2) 8))
-              (state (or (match-string 4) (match-string 6)))
-              (name (or (match-string 5) (match-string 7)))
-              (new-name (match-string 8)))
+        (let ((new-perm 0) (old-perm 0)
+              (staged-state (match-string 1))
+              (state (match-string 2))
+              (name (match-string 3))
+              (new-name (match-string 5)))
           (if new-name  ; copy or rename
               (if (eq ?C (string-to-char state))
-                  (push (git-create-fileinfo 'added new-name old-perm new-perm 'copy name) infolist)
-                (push (git-create-fileinfo 'deleted name 0 0 'rename new-name) infolist)
-                (push (git-create-fileinfo 'added new-name old-perm new-perm 'rename name) infolist))
-            (push (git-create-fileinfo (git-state-code state) name old-perm new-perm) infolist)))))
+                  (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'copy name) infolist)
+                (push (git-create-fileinfo (git-state-code staged-state) 'deleted name 0 0 'rename new-name) infolist)
+                (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'rename name) infolist))
+            (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
     (setq infolist (sort (nreverse infolist)
                          (lambda (info1 info2)
                            (string-lessp (git-fileinfo->name info1)
-                                         (git-fileinfo->name info2)))))
-    (git-insert-info-list status infolist files)))
+                                         (git-fileinfo->name info2)))))))
+
+(defun git-run-diff-index (status files)
+    (git-insert-info-list status (git-create-info-list files) files))
 
 (defun git-find-status-file (status file)
   "Find a given file in the status ewoc and return its node."
@@ -767,7 +770,7 @@ Return the list of files that haven't been handled."
       (goto-char (point-min))
       (while (re-search-forward "\\([^\0]*?\\)\\(/?\\)\0" nil t 1)
         (let ((name (match-string 1)))
-          (push (git-create-fileinfo default-state name 0
+          (push (git-create-fileinfo default-state default-state name 0
                                      (if (string-equal "/" (match-string 2)) (lsh ?\110 9) 0))
                 infolist))))
     (setq infolist (nreverse infolist))  ;; assume it is sorted already
@@ -784,7 +787,7 @@ Return the list of files that haven't been handled."
 	(let* ((new-perm (string-to-number (match-string 1) 8))
 	       (old-perm (if (eq default-state 'added) 0 new-perm))
 	       (name (match-string 2)))
-	  (push (git-create-fileinfo default-state name old-perm new-perm) infolist))))
+	  (push (git-create-fileinfo default-state default-state name old-perm new-perm) infolist))))
     (setq infolist (nreverse infolist))  ;; assume it is sorted already
     (git-insert-info-list status infolist files)))
 
@@ -888,10 +891,7 @@ The FILES list must be sorted."
       (list (ewoc-data (ewoc-locate git-status)))
       (let ((file (file-truename (buffer-file-name))))
 	(setq git-default-directory (git-root-dir (file-name-directory file)))
-	(list (git-create-fileinfo 'modified 
-				   (file-relative-name file git-default-directory))))
-      ;;(unless git-status (error "Not in git-status buffer."))
-))
+        (git-create-info-list (list (file-relative-name file git-default-directory))))))
 
 (defun git-marked-files ()
   "Return a list of all marked files, or if none a list containing just the file at cursor position."
@@ -1263,23 +1263,33 @@ The FILES list must be sorted."
   (when (eq (window-buffer) (current-buffer))
     (shrink-window-if-larger-than-buffer)))
 
+(defun git-diff-files-internal (files)
+  (let ((buffer (get-buffer-create "*git-diff*")))
+    (with-current-buffer buffer
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (while files
+        (let ((info (car files)))
+          (setq files (cdr files))
+          (cond
+           ((and (git-fileinfo->state info) (not (git-fileinfo->staged-state info)))
+            (apply #'git-run-command-buffer buffer "diff" "-p" "--" (list (git-fileinfo->name info))))
+           ((and (not (git-fileinfo->state info)) (git-fileinfo->staged-state info))
+            (apply #'git-run-command-buffer buffer "diff" "-p" "--cached" "--" (list (git-fileinfo->name info))))
+           (t (apply #'git-run-command-buffer buffer "diff-index" "-p" "-M" "HEAD" "--" (list (git-fileinfo->name info))))))))
+  buffer))
+
 (defun git-diff-file ()
   "Diff the marked file(s) against HEAD."
   (interactive)
   (let ((files (git-current-file)))
-    (git-setup-diff-buffer
-     (if current-prefix-arg
-         (apply #'git-run-command-buffer "*git-diff*" "diff" "-p" "--" (git-get-filenames files))
-         (apply #'git-run-command-buffer "*git-diff*" "diff-index" "-p" "-M" "HEAD" "--" (git-get-filenames files))))))
+    (git-setup-diff-buffer (git-diff-files-internal files))))
 
 (defun git-diff-files ()
   "Diff the marked file(s) against HEAD."
   (interactive)
   (let ((files (git-marked-files)))
-    (git-setup-diff-buffer
-     (if current-prefix-arg
-         (apply #'git-run-command-buffer "*git-diff*" "diff" "-p" "--" (git-get-filenames files))
-         (apply #'git-run-command-buffer "*git-diff*" "diff-index" "-p" "-M" "HEAD" "--" (git-get-filenames files))))))
+    (git-setup-diff-buffer (git-diff-files-internal files))))
 
 (defun git-diff-against (file sha)
   (git-setup-diff-buffer
