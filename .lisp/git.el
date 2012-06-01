@@ -217,7 +217,7 @@ character events"
      (make-temp-file prefix)))
 
 (defvar git-default-directory nil)
-(make-variable-buffer-local 'git-default-directory)
+;;(make-variable-buffer-local 'git-default-directory)
 
 (defvar git-log-edit-font-lock-keywords
   `(("^\\(Author:\\|Date:\\|Merge:\\|Signed-off-by:\\)\\(.*\\)$"
@@ -730,10 +730,11 @@ The list must be sorted."
 Return the list of files that haven't been handled."
   (let (infolist)
     (with-temp-buffer
+      (if git-default-directory (setq default-directory git-default-directory))
       (apply #'git-call-process t "status" "--porcelain" "--" files)
       (goto-char (point-min))
       (while (re-search-forward
-	      "^\\([ ADMUT]\\)\\([ ADMUT]\\) \\(.*\\)\\(-> \\(.*\\)\\)?"
+	      "^\\([ ADMUT]\\)\\([ ADMUT]\\) \\(.*\\)\\( -> \\(.*\\)\\)?"
               nil t 1)
         (let ((new-perm 0) (old-perm 0)
               (staged-state (match-string 1))
@@ -746,6 +747,11 @@ Return the list of files that haven't been handled."
                 (push (git-create-fileinfo (git-state-code staged-state) 'deleted name 0 0 'rename new-name) infolist)
                 (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'rename name) infolist))
             (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
+    (while files
+      (let ((file (car files)))
+        (dolist (info infolist) (if (string= (git-fileinfo->name info) file) (setq file nil)))
+        (if file (push (git-create-fileinfo nil nil file) infolist))
+        (setq files (cdr files))))
     (setq infolist (sort (nreverse infolist)
                          (lambda (info1 info2)
                            (string-lessp (git-fileinfo->name info1)
@@ -1272,6 +1278,8 @@ The FILES list must be sorted."
         (let ((info (car files)))
           (setq files (cdr files))
           (cond
+           ((and (not (git-fileinfo->state info)) (not (git-fileinfo->staged-state info)))
+            (message "No differences!"))
            ((and (git-fileinfo->state info) (not (git-fileinfo->staged-state info)))
             (apply #'git-run-command-buffer buffer "diff" "-p" "--" (list (git-fileinfo->name info))))
            ((and (not (git-fileinfo->state info)) (git-fileinfo->staged-state info))
@@ -1282,8 +1290,9 @@ The FILES list must be sorted."
 (defun git-diff-file ()
   "Diff the marked file(s) against HEAD."
   (interactive)
-  (let ((files (git-current-file)))
-    (git-setup-diff-buffer (git-diff-files-internal files))))
+  (let ((buffer (git-diff-files-internal (git-current-file))))
+    (with-current-buffer buffer (if (= (point-min) (point-max)) (setq buffer nil)))
+    (if buffer (git-setup-diff-buffer buffer))))
 
 (defun git-diff-files ()
   "Diff the marked file(s) against HEAD."
@@ -1445,7 +1454,11 @@ The FILES list must be sorted."
   (interactive)
   (let* ((files (git-marked-files))
          (coding-system-for-read git-commits-coding-system)
-         (buffer (apply #'git-run-command-buffer "*git-log*" "whatchanged" "--no-color" "--pretty" "HEAD" "--" (git-get-filenames files))))
+         (buffer
+          (if current-prefix-arg
+              (apply #'git-run-command-buffer "*git-log*" "log" "--no-color" "--stat" "HEAD" "--" (git-get-filenames files))
+              (apply #'git-run-command-buffer "*git-log*" "whatchanged" "--no-color" "--pretty" "HEAD" "--" (git-get-filenames files))
+            )))
     (with-current-buffer buffer (git-log-mode 'pretty))
     (display-buffer buffer)))
 
