@@ -74,5 +74,5 @@ function tmuxPane() {
       tmuxRestore "$TMUX_RESURRECT_PANE"
    fi
 }
-tmuxPane
+#tmuxPane
 

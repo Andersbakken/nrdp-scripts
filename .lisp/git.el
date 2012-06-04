@@ -749,8 +749,8 @@ Return the list of files that haven't been handled."
             (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
     (while files
       (let ((file (car files)))
-        (dolist (info infolist) (if (string= (git-fileinfo->name info) file 0 0) (setq file nil)))
-        (if file (push (git-create-fileinfo nil nil file) infolist))
+        (dolist (info infolist) (if (string= (git-fileinfo->name info) file) (setq file nil)))
+        (if file (push (git-create-fileinfo nil nil file 0 0) infolist))
         (setq files (cdr files))))
     (setq infolist (sort (nreverse infolist)
                          (lambda (info1 info2)
