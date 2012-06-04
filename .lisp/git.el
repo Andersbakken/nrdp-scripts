@@ -912,7 +912,7 @@ The FILES list must be sorted."
   (let ((files (git-marked-files))
         result)
     (dolist (info files)
-      (when (memq (git-fileinfo->state info) states)
+      (when (or (memq (git-fileinfo->state info) states) (memq (git-fileinfo->staged-state info) states))
         (push info result)))
     (nreverse result)))
 
@@ -1179,7 +1179,7 @@ The FILES list must be sorted."
                     (format "Revert %d files? " (length files))
                   (format "Revert %s? " (git-fileinfo->name (car files))))))
       (dolist (info files)
-        (case (git-fileinfo->state info)
+        (case (or (git-fileinfo->state info) (git-fileinfo->staged-state info))
           ('added (push (git-fileinfo->name info) added))
           ('deleted (push (git-fileinfo->name info) modified))
           ('unmerged (push (git-fileinfo->name info) modified))
