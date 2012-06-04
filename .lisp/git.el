@@ -749,7 +749,7 @@ Return the list of files that haven't been handled."
             (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
     (while files
       (let ((file (car files)))
-        (dolist (info infolist) (if (string= (git-fileinfo->name info) file) (setq file nil)))
+        (dolist (info infolist) (if (string= (git-fileinfo->name info) file 0 0) (setq file nil)))
         (if file (push (git-create-fileinfo nil nil file) infolist))
         (setq files (cdr files))))
     (setq infolist (sort (nreverse infolist)
@@ -1248,7 +1248,7 @@ The FILES list must be sorted."
 
 (defun git-expand-directory (info)
   "Expand the directory represented by INFO to list its files."
-  (when (eq (lsh (git-fileinfo->new-perm info) -9) ?\110)
+  (when (and (git-fileinfo->new-perm info) (eq (lsh (git-fileinfo->new-perm info) -9) ?\110))
     (let ((dir (git-fileinfo->name info)))
       (git-set-filenames-state git-status (list dir) nil)
       (git-run-ls-files-with-excludes git-status (list (concat dir "/")) 'unknown "-o")
@@ -1713,7 +1713,7 @@ amended version of it."
   (let ((info (ewoc-data (ewoc-locate git-status))))
     (unless (git-expand-directory info)
       (find-file (git-fileinfo->name info))
-      (when (eq 'unmerged (git-fileinfo->state info))
+      (when (and (git-fileinfo->state info) (eq 'unmerged (git-fileinfo->state info)))
         (smerge-mode 1)))))
 
 (defun git-find-file-other-window ()
