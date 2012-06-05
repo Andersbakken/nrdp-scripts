@@ -3,6 +3,7 @@
 TEST=
 COMMAND=
 DEVS=
+ERROR=
 
 while [ "$#" -gt 0 ]; do
   OPT="$1"
@@ -39,7 +40,12 @@ for dir in `lsdev.pl -l -b -tp $DEVS`; do
            echo "============================================================="
            echo "Processing: $dir ($COMMAND)"
            echo "============================================================="
-           $TEST git $COMMAND
+           $TEST git $COMMAND || ERROR=1
        fi
    fi
 done
+
+if [ -n "$ERROR" ]; then
+	echo "\n\nThere were errors!!!!!"
+	exit 1
+fi
