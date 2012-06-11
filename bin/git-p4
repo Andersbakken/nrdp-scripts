@@ -813,6 +813,9 @@ class P4Submit(Command):
         else:
             diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
         patchcmd = diffcmd + " | git apply "
+        #if(gitConfig("diff.noprefix") == "true")
+        #     patchcmd += " -p0 ";
+
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
 

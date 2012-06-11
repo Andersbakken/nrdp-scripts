@@ -31,7 +31,7 @@ elif [ ! -e "$FILE" ]; then
         FILE="$(choose.pl $FILES)"
     else
         #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
-        SYMBOLS=`global -x "$FILE" | awk '{print $3":"$2}'`
+        SYMBOLS=`global -x "$FILE"  2>/dev/null | awk '{print $3":"$2}'`
         [ -n "$SYMBOLS" ] && FILE="$(choose.pl $SYMBOLS)"
     fi
 fi
