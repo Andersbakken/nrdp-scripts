@@ -13,6 +13,9 @@ reconfigure()
             local RECONFIG_RM=1
         elif [ "$1" = "-cat" ]; then
             local RECONFIG_CAT=1
+        elif [ "$1" = "-find" ]; then
+            local RECONFIG_FIND=1
+            local RECONFIG_CAT=1
         elif [ "$1" = "-reset" ]; then
             local RECONFIG_RESET=1
         elif [ "$1" = "-editor" ] || [ "$1" = "-edit" ]; then
@@ -32,6 +35,9 @@ reconfigure()
     if [ -d "$1" ]; then
         BUILD="$1"
         shift
+    fi
+    if [ "$RECONFIG_FIND" ]; then
+        BUILD=`lsdev build $BUILD -r $@`
     fi
     if [ -z "$BUILD" ] || [ ! -e "$BUILD/config.status" ]; then
         BUILD=`lsdev build $BUILD -r`
