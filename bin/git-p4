@@ -49,9 +49,8 @@ def p4_build_cmd(cmd):
     return real_cmd
 
 def chdir(dir):
-    if os.name == 'nt':
-        os.environ['PWD']=dir
     os.chdir(dir)
+    os.environ['PWD']=dir
 
 def die(msg):
     if verbose:
@@ -999,7 +998,7 @@ class P4Submit(Command):
             print "Error: Cannot locate perforce checkout of %s in client view" % self.clientPath
             sys.exit(128)
 
-        print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
+        print "Perforce checkout for depot path %s located at %s [%s]" % (self.depotPath, self.clientPath, os.getcwd())
         print "Synchronizing p4 checkout..."
         p4_system("sync ...")
 
