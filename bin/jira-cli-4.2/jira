@@ -1142,10 +1142,10 @@ def decode(e):
     """Process an exception for useful feedback"""
     # TODO how to log the fact it is an error, but allow info to be unchanged?
     # The faultType class has faultcode, faultstring and detail
-    str = e.faultstring
+    str = e.fault
     if str == 'java.lang.NullPointerException':
         return "Invalid issue key?"
-    return e.faultstring
+    return e.fault
     
 
 def setupLogging(loglevel=logging.INFO):

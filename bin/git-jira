@@ -71,16 +71,16 @@ done
 
 DESCRIPTION=
 [ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
-[ -z "$DESCRIPTION" ] && DESCRIPTION=`git show --quiet --pretty=format':%s' "$GITCOMMIT"`
+[ -z "$DESCRIPTION" ] && DESCRIPTION=`git log -1 --pretty=format':%s' "$GITCOMMIT"`
 echo "Git: $GITCOMMIT ($P4COMMIT)"
 
 if [ -z "$JIRA" ] && [ "$REWORD" = "no" ]; then
     if [ -z "$DESCRIPTION" ]; then
         echo "Description not found!"
     elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
+        JIRA=`/bin/echo "$DESCRIPTION" | sed 's,^\[\([^ ]\+-[0-9]\+\)\].*,\1,g'`
     elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-        JIRA=`echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
+        JIRA=`/bin/echo "$DESCRIPTION" | sed 's,^\([^ ]\+-[0-9]\+\): .*,\1,g'`
     fi
 fi
 
