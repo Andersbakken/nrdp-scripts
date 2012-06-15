@@ -999,8 +999,6 @@ class P4Submit(Command):
             sys.exit(128)
 
         print "Perforce checkout for depot path %s located at %s [%s]" % (self.depotPath, self.clientPath, os.getcwd())
-        print "Synchronizing p4 checkout..."
-        p4_system("sync ...")
 
         self.check()
 
@@ -1013,6 +1011,9 @@ class P4Submit(Command):
         commits.reverse()
 
         while len(commits) > 0:
+            print "Synchronizing p4 checkout..."
+            p4_system("sync ...")
+
             commit = commits[0]
             commits = commits[1:]
             p4commit = "0"
