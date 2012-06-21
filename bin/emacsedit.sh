@@ -12,8 +12,6 @@ OFFSET=
 TEST=
 EMACSDAEMON=no
 
-export EMACS_SERVER_FILE="$HOME/.emacs.d/.socket"
-
 while [ "$#" -gt 0 ]; do
     case "$1" in
     -f) EMACS="emacs" ;;
