@@ -46,7 +46,7 @@ while [ "$#" -gt 0 ]; do
         COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
     fi
     [ -z "$COMMITISH" ] && COMMITISH="HEAD"
-    echo "Print: $FILE @ $COMMITISH"
+    echo "Print: $FILE @ $COMMITISH" >&2
     if [ "$GIT_SHOW" = "file" ]; then
         $TEST git show "${COMMITISH}:${SUBDIR}${FILE}"
     elif [ "$GIT_SHOW" = "blame" ]; then
