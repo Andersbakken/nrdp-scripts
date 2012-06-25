@@ -12,7 +12,7 @@ OFFSET=
 TEST=
 EMACSDAEMON=no
 
-if [ -n "$EMACS_SERVER_FILE" ]; then
+if [ -z "$EMACS_SERVER_FILE" ]; then
     export EMACS_SERVER_FILE="$HOME/.emacs.d/.socket"
 fi
 
