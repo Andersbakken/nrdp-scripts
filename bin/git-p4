@@ -2133,7 +2133,7 @@ class P4Rebase(Command):
         if len(read_pipe("git status -s -uno")) > 0:
             if self.stash:
                 system("git commit -a -m P4Sync")
-                doUnstash = "git reset --soft HEAD~"
+                doUnstash = "git reset --mixed HEAD~"
             else:
                 die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
 
