@@ -959,14 +959,9 @@ class P4Submit(Command):
         return p4commit
 
     def run(self, args):
-        if len(args) == 0:
-            self.master = currentGitBranch()
-            if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
-                die("Detecting current git branch failed!")
-        elif len(args) == 1:
-            self.master = args[0]
-        else:
-            return False
+        self.master = currentGitBranch()
+        if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
+            die("Detecting current git branch failed!")
 
         self.scriptsPath = getScriptsPath()
         allowSubmit = gitConfig("git-p4.allowSubmit")
@@ -1002,13 +997,13 @@ class P4Submit(Command):
 
         self.check()
 
-        commits = []
-        if len(self.commit) == 0:
+        commits = args;
+        if len(self.commit):
+            commits.append(self.commit)
+        if not len(commits):
             for line in read_pipe_lines("git rev-list --no-merges %s..%s" % (self.origin, self.master)):
                 commits.append(line.strip())
-        else:
-                commits.append(self.commit)
-        commits.reverse()
+            commits.reverse()
 
         while len(commits) > 0:
             print "Synchronizing p4 checkout..."
