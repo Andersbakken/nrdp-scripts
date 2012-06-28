@@ -30,7 +30,7 @@ make()
                     *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                     esac
                 done
-                ninja -C `dirname $NINJA` $NINJA_OPTIONS
+                ninja -C `dirname $NINJA` $NINJA_OPTIONS || return
                 MAKE=no
             fi
         fi
