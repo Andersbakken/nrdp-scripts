@@ -27,7 +27,7 @@ make()
                 for opt in $MAKE_OPTIONS; do
                     case $opt in
                     clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
-                    -*) NINJA_OPTIONS="$NINJA_OPTIONSOPTIONS $opt" ;;
+                    *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                     esac
                 done
                 ninja -C `dirname $NINJA` $NINJA_OPTIONS
