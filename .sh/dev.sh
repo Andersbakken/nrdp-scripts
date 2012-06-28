@@ -5,6 +5,41 @@ emake()
     "emacsedit.sh" -m -n "${1}"
 }
 
+#make wrapper
+make()
+{
+     MAKE=yes
+     MAKE_DIR="."
+     MAKE_OPTIONS=
+     while [ "$#" -gt 0 ]; do
+         case $1 in
+         -C) shift; MAKE_DIR="$1" ;;
+         -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
+         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
+         esac
+         shift
+     done
+     if [ ! -e "${MAKE_DIR}/Makefile" ]; then
+        if which ninja >/dev/null 2>&1; then
+            NINJA=`findancestor build.ninja $MAKE_DIR`
+            if [ -e "$NINJA" ]; then
+                NINJA_OPTIONS=
+                for opt in $MAKE_OPTIONS; do
+                    case $opt in
+                    clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
+                    -*) NINJA_OPTIONS="$NINJA_OPTIONSOPTIONS $opt" ;;
+                    esac
+                done
+                ninja -C `dirname $NINJA` $NINJA_OPTIONS
+                MAKE=no
+            fi
+        fi
+     fi
+     if [ "$MAKE" = "yes" ]; then
+         `which make` -C "$MAKE_DIR" $MAKE_OPTIONS
+     fi
+}
+
 #reconfigure
 reconfigure()
 {
