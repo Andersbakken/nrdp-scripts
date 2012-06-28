@@ -12,6 +12,10 @@ OFFSET=
 TEST=
 EMACSDAEMON=no
 
+if [ -z "$EMACS_SERVER_FILE" ]; then
+    export EMACS_SERVER_FILE="$HOME/.emacs.d/.socket"
+fi
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
     -f) EMACS="emacs" ;;
@@ -63,7 +67,12 @@ else
     EMACS="$EMACS $EMACSOPTS"
 fi
 
-if [ -n "$FILE" ]; then
+if [ "$EMACSWAIT" = "no" ] && [ -z "$FILE" ]; then
+   MODE="eval"
+   FILE="(raise-frame)"
+fi
+
+if true || [ -n "$FILE" ]; then
     if [ "$MODE" = "run" ]; then
         $TEST $EMACS -e "$FILE"
         exit 1

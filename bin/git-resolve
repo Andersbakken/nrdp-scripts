@@ -55,7 +55,7 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
    fi
    while [ "$merged" = "false" ]; do
       if [ "$PROMPT" = "true" ]; then
-          echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
+          /bin/echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
           read cmd
       else
           echo "$file unmerged!"
@@ -90,7 +90,7 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
                       fi
                       edit=no
                   fi
-	          echo -n "Accept: [d]iff, [y]es, (n)o, (c)ancel: "
+	          /bin/echo -n "Accept: [d]iff, [y]es, (n)o, (c)ancel: "
 		  read accpt
 		  [ -z "$accpt" ] && accpt=y
 		  case $accpt in

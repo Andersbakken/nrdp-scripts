@@ -15,7 +15,7 @@ do_git_cmd()
 {
   match="$1"
   while true; do
-      echo -n "Run: '${PRE}${COMMAND} $match' ([y]es, (n)o, (c)ancel, (d)iff) "
+      `which echo` -n "Run: '${PRE}${COMMAND} $match' ([y]es, (n)o, (c)ancel, (d)iff) "
       DOIT=no
       read DOIT
       if [ "$DOIT" = "cancel" ] || [ "$DOIT" = "c" ]; then

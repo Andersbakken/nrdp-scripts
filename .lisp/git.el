@@ -1009,6 +1009,7 @@ The FILES list must be sorted."
                         (condition-case nil (delete-file ".git/MERGE_HEAD") (error nil))
                         (condition-case nil (delete-file ".git/MERGE_MSG") (error nil))
                         (with-current-buffer buffer (erase-buffer))
+                        (git-unmark-all)
                         (git-update-status-files (git-get-filenames files))
 			(git-remove-handled)
                         (git-call-process nil "rerere")
@@ -1195,7 +1196,7 @@ The FILES list must be sorted."
                  (or (not modified)
                      (apply 'git-call-process-display-error "checkout" "HEAD" modified))))
             (names (git-get-filenames files)))
-	(if git-status (progn (git-update-status-files names) (git-remove-handled)))
+	(if git-status (progn   (git-unmark-all) (git-update-status-files names) (git-remove-handled)))
         (when ok
           (dolist (file modified)
             (let ((buffer (get-file-buffer file)))

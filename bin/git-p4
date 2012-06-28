@@ -49,9 +49,8 @@ def p4_build_cmd(cmd):
     return real_cmd
 
 def chdir(dir):
-    if os.name == 'nt':
-        os.environ['PWD']=dir
     os.chdir(dir)
+    os.environ['PWD']=dir
 
 def die(msg):
     if verbose:
@@ -813,6 +812,9 @@ class P4Submit(Command):
         else:
             diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
         patchcmd = diffcmd + " | git apply "
+        #if(gitConfig("diff.noprefix") == "true")
+        #     patchcmd += " -p0 ";
+
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
 
@@ -957,14 +959,9 @@ class P4Submit(Command):
         return p4commit
 
     def run(self, args):
-        if len(args) == 0:
-            self.master = currentGitBranch()
-            if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
-                die("Detecting current git branch failed!")
-        elif len(args) == 1:
-            self.master = args[0]
-        else:
-            return False
+        self.master = currentGitBranch()
+        if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
+            die("Detecting current git branch failed!")
 
         self.scriptsPath = getScriptsPath()
         allowSubmit = gitConfig("git-p4.allowSubmit")
@@ -996,21 +993,22 @@ class P4Submit(Command):
             print "Error: Cannot locate perforce checkout of %s in client view" % self.clientPath
             sys.exit(128)
 
-        print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
-        print "Synchronizing p4 checkout..."
-        p4_system("sync ...")
+        print "Perforce checkout for depot path %s located at %s [%s]" % (self.depotPath, self.clientPath, os.getcwd())
 
         self.check()
 
-        commits = []
-        if len(self.commit) == 0:
+        commits = args;
+        if len(self.commit):
+            commits.append(self.commit)
+        if not len(commits):
             for line in read_pipe_lines("git rev-list --no-merges %s..%s" % (self.origin, self.master)):
                 commits.append(line.strip())
-        else:
-                commits.append(self.commit)
-        commits.reverse()
+            commits.reverse()
 
         while len(commits) > 0:
+            print "Synchronizing p4 checkout..."
+            p4_system("sync ...")
+
             commit = commits[0]
             commits = commits[1:]
             p4commit = "0"
@@ -2130,7 +2128,7 @@ class P4Rebase(Command):
         if len(read_pipe("git status -s -uno")) > 0:
             if self.stash:
                 system("git commit -a -m P4Sync")
-                doUnstash = "git reset --soft HEAD~"
+                doUnstash = "git reset --mixed HEAD~"
             else:
                 die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
 
