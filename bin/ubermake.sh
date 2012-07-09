@@ -39,6 +39,18 @@ elif [ -e "${MAKE_DIR}/SConstruct" ]; then
     done
     (cd $MAKE_DIR && scons $SCONS_OPTIONS)
     return
+elif [ -e "${MAKE_DIR}/Sakefile.js" ]; then
+    SAKE_OPTIONS=
+    for opt in $MAKEFLAGS $MAKE_OPTIONS; do
+         case $opt in
+         -j[0-9]) ;;
+         help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
+         distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
+         *) SAKE_OPTIONS="$SAKE_OPTIONS $opt" ;;
+         esac
+    done
+    (cd $MAKE_DIR && sake $SAKE_OPTIONS)
+    return
 else
    if which ninja >/dev/null 2>&1; then
        NINJA=`findancestor build.ninja $MAKE_DIR`
