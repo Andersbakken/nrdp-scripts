@@ -43,7 +43,7 @@ elif [ -e "${MAKE_DIR}/Sakefile.js" ]; then
     SAKE_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
          case $opt in
-         -j[0-9]) ;;
+         -j[0-9]*) ;;
          help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
          distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
          *) SAKE_OPTIONS="$SAKE_OPTIONS $opt" ;;
