@@ -56,6 +56,7 @@ else
        NINJA=`findancestor build.ninja $MAKE_DIR`
        if [ -e "$NINJA" ]; then
            NINJA_OPTIONS=
+           [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
            for opt in $MAKEFLAGS $MAKE_OPTIONS; do
                case $opt in
                clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
