@@ -10,6 +10,11 @@ if [ -e "$1" ]; then
 elif [ "$1" = "p4" ]; then
     changes="p4 changes"
     shift
+elif [ "$1" = "tracking" ]; then
+    tracking=`git tracking`
+    branch=`git branch | grep '^\*' | sed "s,\* ,,"`
+    changes="changes $tracking..$branch"
+    shift
 elif [ "$1" = "mine" ]; then
     changes="mychanges"
     shift
