@@ -2,7 +2,7 @@
 
 file=
 number=30
-changes="log --pretty=format:'%h %s [%an]' --no-merges"
+changes="log --pretty=format:'%h %s [%an]' --no-merges --reverse"
 if [ -e "$1" ]; then
     echo "File: $1"
     changes="changes $1"

@@ -57,7 +57,7 @@ dotfile()
     source "$FILE"
 }
 
-[ -n "$SHELL_FOR" ] && [ $$ -eq "$SHELL_FOR" ] && exit  # Avoid recursive invocation
+[ -n "$SHELL_FOR" ] && [ $$ -eq "$SHELL_FOR" ] && return  # Avoid recursive invocation
 SHELL_FOR=$$
 
 export SHELL_PLATFORM='OTHER'
