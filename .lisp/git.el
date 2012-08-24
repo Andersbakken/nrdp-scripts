@@ -1423,7 +1423,7 @@ The FILES list must be sorted."
                                                    (cons 'git-object git-cur-to))))
                  ))
               (t nil))
-        (next-line)))
+        (next-logical-line)))
       ((equal pretty 'oneline)
        (while (re-search-forward "\\([0-9a-g]*\\) .*$" nil t)
          (let ((commit-match 1))
