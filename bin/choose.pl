@@ -16,7 +16,7 @@ sub choose_show {
     my(@options) = @_;
     my $counter = 1;
     printf STDERR "======================= ($options_from-" . ($options_from + $options_count) . "/" . ($#options+1) . ")\n";
-    for(my $i = $options_from; $counter <= ($#options + 1) && (!options_count || $counter < $options_count); ++$counter, ++$i) {
+    for(my $i = $options_from; $i < ($#options + 1) && (!options_count || $counter <= $options_count); ++$counter, ++$i) {
         my $option = $options[$i];
         my $name = $option->{"name"};
         my $result = $option->{"result"};
@@ -40,9 +40,9 @@ sub filter_options {
             my $result = $option->{"result"};
             for(@matches) {
                 #print STDERR "name $result $_\n";
-                if ( $name =~ /$_/ ) {
+                if ( $name =~ /$_/i ) {
                     ++$match;
-                } elsif ( $result =~ /$_/ ) {
+                } elsif ( $result =~ /$_/i ) {
                     ++$match;
                 }
             }
