@@ -1108,7 +1108,7 @@ class P4Changes(Command):
         #print "Perforce checkout for depot path %s located at %s (%s)" % (self.depotPath, self.clientPath, self.change)
         commits = []
         if len(self.commit) == 0:
-            for line in read_pipe_lines("git rev-list --no-merges %s..%s" % (self.origin, self.master)):
+            for line in read_pipe_lines("git rev-list --reverse --no-merges %s..%s" % (self.origin, self.master)):
                 commits.append(line.strip())
         else:
                 commits.append(self.commit)

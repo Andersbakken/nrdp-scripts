@@ -15,8 +15,8 @@ my @matches;
 sub choose_show {
     my(@options) = @_;
     my $counter = 1;
-    printf STDERR "======================= ($options_from-" . ($options_from + $options_count) . "/" . $#options . ")\n";
-    for(my $i = $options_from; !options_count || $counter < $options_count; ++$counter, ++$i) {
+    printf STDERR "======================= ($options_from-" . ($options_from + $options_count) . "/" . ($#options+1) . ")\n";
+    for(my $i = $options_from; $counter <= ($#options + 1) && (!options_count || $counter < $options_count); ++$counter, ++$i) {
         my $option = $options[$i];
         my $name = $option->{"name"};
         my $result = $option->{"result"};
