@@ -68,7 +68,7 @@ if [ "$EMACSWAIT" = "no" ] && [ -z "$FILE" ]; then
    FILE="(raise-frame)"
 fi
 
-if true || [ -n "$FILE" ]; then
+if [ -n "$FILE" ]; then
     if [ "$MODE" = "run" ]; then
         $TEST $EMACS -e "$FILE"
         exit 1
