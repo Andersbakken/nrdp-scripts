@@ -143,6 +143,8 @@ if($read_option) {
                     $result = $choices[$options_from+$1-1]->{"result"}
                 } elsif( $input eq "n" && $options_count ) {
                     $options_from += $options_count;
+                } elsif( $input eq "p" && $options_count ) {
+                    $options_from -= $options_count;
                 } else {
                     push(@matches, $input);
                 }

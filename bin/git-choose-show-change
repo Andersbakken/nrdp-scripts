@@ -75,7 +75,9 @@ while true; do
     #echo "git $changes"
     choose_args=
     if [ "$choose" = "n" ]; then
-         head=$((head+$number))
+        head=$((head+$number))
+    elif [ "$choose" = "p" ]; then
+        head=$((head-$number))
     elif [ -n "$choose" ] && echo "$choose" | grep '[0-9]'; then
          choose_args="$choose_args -c $choose"
     fi
