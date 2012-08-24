@@ -1267,8 +1267,8 @@ The FILES list must be sorted."
       (setq buffer-read-only t)))
   (display-buffer buffer)
   ; shrink window only if it displays the status buffer
-  (when (eq (window-buffer) (current-buffer))
-    (shrink-window-if-larger-than-buffer)))
+  ;;(when (eq (window-buffer) (current-buffer))
+    (shrink-window-if-larger-than-buffer))
 
 (defun git-diff-files-internal (files)
   (let ((buffer (get-buffer-create "*git-diff*")))
