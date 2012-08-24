@@ -1,7 +1,7 @@
 #!/bin/sh
 
 file=
-number=30
+number=20
 changes="log --pretty=format:'%h %s [%an]' --no-merges --reverse"
 if [ -e "$1" ]; then
     echo "File: $1"
@@ -70,10 +70,16 @@ if [ -n "$1" ] && echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
 fi
 
 choose=
+head=0
 while true; do
     #echo "git $changes"
-    choose_args="-$number -a "
-    [ -n "$choose" ] && echo "$choose" | grep '[0-9]' && choose_args="$choose_args -c $choose"
+    choose_args=
+    if [ "$choose" = "n" ]; then
+         head=$((head+$number))
+    elif [ -n "$choose" ] && echo "$choose" | grep '[0-9]'; then
+         choose_args="$choose_args -c $choose"
+    fi
+    choose_args="$choose_args -+$head -$number -a "
     change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
     if [ -n "$change" ]; then
       git show "$change"

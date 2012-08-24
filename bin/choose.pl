@@ -8,25 +8,25 @@ my $read_option = 1;
 my $read_prompt;
 my $must_ask = 0;
 my $rest_options = 0;
-my $options_use;
+my $options_from=0;
+my $options_count;
 my @matches;
 
 sub choose_show {
     my(@options) = @_;
     my $counter = 1;
-    printf STDERR "=======================\n";
-    for(@options) {
-      my $name = $_->{"name"};
-      my $result = $_->{"result"};
-      if ($name eq $result) {
-          print STDERR "[$counter] $name\n";
-      } else {
-          print STDERR "[$counter] $name [$result]\n";
-      }
-      ++$counter;
-      last if($options_use && $counter > $options_use);
+    printf STDERR "======================= ($options_from-" . ($options_from + $options_count) . "/" . $#options . ")\n";
+    for(my $i = $options_from; !options_count || $counter < $options_count; ++$counter, ++$i) {
+        my $option = $options[$i];
+        my $name = $option->{"name"};
+        my $result = $option->{"result"};
+        if ($name eq $result) {
+            print STDERR "[$counter] $name\n";
+        } else {
+            print STDERR "[$counter] $name [$result]\n";
+        }
     }
-    return $counter
+    return $counter;
 }
 
 sub filter_options {
@@ -92,8 +92,10 @@ while(@ARGV) {
         }
         close( EXE );
 	$? && die "Failure";
-    } elsif( $option =~ /^-([0-9]*)$/) {
-        $options_use = "$1"
+    } elsif( $option =~ /^-\+([0-9]+)$/) {
+        $options_from = "$1"
+    } elsif( $option =~ /^-([0-9]+)$/) {
+        $options_count = "$1"
     } elsif( $option eq "-p" ) {
         $read_prompt = shift @ARGV;
     } elsif( $option eq "-l" ) {
@@ -138,7 +140,9 @@ if($read_option) {
                 my $input = <STDIN>;
                 chomp $input;
                 if( $input =~ /^([1-9]+[0-9]*)$/ ) {
-                    $result = $choices[$1-1]->{"result"}
+                    $result = $choices[$options_from+$1-1]->{"result"}
+                } elsif( $input eq "n" && $options_count ) {
+                    $options_from += $options_count;
                 } else {
                     push(@matches, $input);
                 }
