@@ -2,7 +2,7 @@
 RESULT=`uptime | sed 's/.*load average: \([0-9.]*\), \([0-9.]*\), \([0-9.]*\)/Load: \1 \2 \3/'`
 
 JOBS_TOTAL=0
-for jobs in `/bin/echo -e "listcs\nquit\n" | nc lgux-pnavarro3.netflix.com 8766 | grep jobs= | sed 's,.*jobs=\([0-9]*/[0-9]*\).*,\1,'`; do
+for jobs in `/bin/echo -e "listcs\nquit\n" | nc lgux-pnavarro3.corp.netflix.com 8766 | grep jobs= | sed 's,.*jobs=\([0-9]*/[0-9]*\).*,\1,'`; do
     JOBS_USE=`echo $jobs | cut -d/ -f1`
     JOBS_COUNT=`echo $jobs | cut -d/ -f2`
     JOBS_COUNT=$((JOBS_COUNT-$JOBS_USE))
@@ -13,7 +13,7 @@ if [ "$JOBS_TOTAL" != 0 ]; then
     JOBS_COMP=0
     JOBS_WAIT=0
     HOST=`hostname`
-    for job in `/bin/echo -e "listjobs\nquit\n" | nc lgux-pnavarro3.netflix.com 8766 | grep "$HOST" | awk '{print $2}'`; do
+    for job in `/bin/echo -e "listjobs\nquit\n" | nc lgux-pnavarro3.corp.netflix.com 8766 | grep "$HOST" | awk '{print $2}'`; do
         if [ "$job" = "COMP" ]; then
             JOBS_COMP=$((JOBS_COMP+1))
         elif [ "$job" = "WAIT" ]; then

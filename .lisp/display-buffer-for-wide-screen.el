@@ -147,10 +147,8 @@ FORCE-OTHER-WINDOW is ignored."
       (if (one-window-p)
           (let* ((shrink nil) (new-win
                  (cond
-                  ((< (with-current-buffer buffer (count-lines (point-min) (point-max))) (or split-window-horizontally-threshold-lines 20))
-                   (progn (setq shrink t) (split-window-vertically)))
-                  ((< (window-width) (or split-window-horizontally-threshold-width 160))
-                   (split-window-vertically))
+                  ;;((< (with-current-buffer buffer (count-lines (point-min) (point-max))) (or split-window-horizontally-threshold-lines 20)) (progn (setq shrink t) (split-window-vertically)))
+                  ((< (window-width) (or split-window-horizontally-threshold-width 160)) (split-window-vertically))
                   (t (split-window-horizontally)))))
             (set-window-buffer new-win buffer)
             (if shrink (shrink-window-if-larger-than-buffer new-win))
