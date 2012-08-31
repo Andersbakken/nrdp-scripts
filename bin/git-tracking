@@ -1,14 +1,19 @@
-#!/bin/sh 
+#!/bin/sh
 branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
 echo "$branch" | grep "(" --quiet && exit 1
-remote="`git config \"branch.$branch.remote\"`"
-test -z "$remote" && exit 1
-merge="`git config \"branch.$branch.merge\"`"
-test -z "$merge" && exit 1
-if [ "$remote" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
-    echo $merge | sed -e 's,^refs/remotes/,,'
+
+if [ "$#" -ge 1 ]; then
+    git branch --set-upstream "$branch" "$1"
 else
-    merge="`echo $merge | awk -F/ '{print $NF}'`"
-    echo "$remote/$merge"
+    remote="`git config \"branch.$branch.remote\"`"
+    test -z "$remote" && exit 1
+    merge="`git config \"branch.$branch.merge\"`"
+    test -z "$merge" && exit 1
+    if [ "$remote" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
+        echo $merge | sed -e 's,^refs/remotes/,,'
+    else
+        merge="`echo $merge | awk -F/ '{print $NF}'`"
+        echo "$remote/$merge"
+    fi
 fi
 exit 0
