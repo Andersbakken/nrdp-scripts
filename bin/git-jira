@@ -91,13 +91,17 @@ fi
 
 if [ "$CREATE" = "yes" ]; then
   #project
-  JIRA_PROJECT=""
-  [ -n "$JIRA" ] && JIRA_PROJECT=`echo $JIRA | cut -d'-' -f1`
-  if [ -z "$JIRA_PROJECT" ]; then
-      echo "=================================================="
-      echo -n "Project: "
-      read JIRA_PROJECT
+  PROJECT=""
+  if [ -n "$JIRA" ]; then
+      PROJECT=`echo $JIRA | cut -d'-' -f1`
+  else #find the most likely :)
+      PROJECT=`git log --pretty=format':%s' -100 | sed -e 's,^\[\([^-]*\)-[0-9]*\].*$,\1,' -e 's,^\([^-]*\)-[0-9]*:.*$,\1,' -e 's,^.* .*$,EMPTY,' | sort | uniq -c | sort -r | grep -v EMPTY | head -1 | awk '{print $2}'`
   fi
+  echo "=================================================="
+  echo "Default Project: $PROJECT"
+  echo -n "Project: "
+  read JIRA_PROJECT
+  [ -z "$JIRA_PROJECT" ] && JIRA_PROJECT="$PROJECT"
   if [ -z "$JIRA_PROJECT" ]; then
       echo "Must supply a PROJECT!"
       exit 1
@@ -146,6 +150,7 @@ elif [ "$REWORD" = "yes" ]; then
       echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
   fi
   if [ -n "$DESCRIPTION_FILE" ]; then
+      git stash
       [ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
 
       OLDEDITOR="$EDITOR"
@@ -165,6 +170,7 @@ elif [ "$REWORD" = "yes" ]; then
           $TEST git commit --amend -F "$DESCRIPTION_FILE"
       fi
       $TEST git rebase --continue
+      git stash apply
   fi
 fi
 

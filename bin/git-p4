@@ -1012,6 +1012,11 @@ class P4Submit(Command):
             commit = commits[0]
             commits = commits[1:]
             p4commit = "0"
+            if not self.p4Shelve and self.scriptsPath:
+                pre_p4Submit = self.scriptsPath + "/pre-p4submit"
+                if os.path.exists(pre_p4Submit):
+                    print "Running pre-p4submit: %s" % pre_p4Submit
+                    system(pre_p4Submit + " " + commit )
             p4commit = self.applyCommit(commit)
             if self.p4Shelve:
                 print "Shelved to: %s" % p4commit;
