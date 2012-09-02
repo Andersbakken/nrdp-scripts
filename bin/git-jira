@@ -17,7 +17,7 @@ JIRA=
 INTERACTIVE=no
 COMMENT=maybe
 RESOLVE=maybe
-CREATE=no
+CREATE=maybe
 REWORD=no
 
 if ! which jira >/dev/null 2>&1; then
@@ -87,6 +87,18 @@ fi
 if [ -n "$TEST" ] || true; then
     echo "Description: $DESCRIPTION"
     echo "Jira: $JIRA"
+fi
+
+if [ "$CREATE" = "maybe" ]; then
+    CREATE=no
+    if [ -z "$JIRA" ] && [ "$INTERACTIVE" = "yes" ]; then
+        echo -n "Create? "
+        read input
+        if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+            CREATE=yes
+            REWORD=yes
+        fi
+    fi
 fi
 
 if [ "$CREATE" = "yes" ]; then
