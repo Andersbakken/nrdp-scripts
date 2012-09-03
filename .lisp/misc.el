@@ -136,3 +136,4 @@ the name of the value of file-name is present."
       (let ((b-window (get-buffer-window ediff-buffer-B)))
         (if b-window (delete-window b-window))
         (kill-buffer ediff-buffer-B))))
+(provide 'nrdp-misc)
