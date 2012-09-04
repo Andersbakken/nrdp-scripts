@@ -1,2 +1,2 @@
 #!/bin/sh
-git jira --interactive $1
+git jira --reword --interactive $1

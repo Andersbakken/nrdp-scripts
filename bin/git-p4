@@ -1017,6 +1017,8 @@ class P4Submit(Command):
                 if os.path.exists(pre_p4Submit):
                     print "Running pre-p4submit: %s" % pre_p4Submit
                     system(pre_p4Submit + " " + commit )
+            #print "just kidding"
+            #break
             p4commit = self.applyCommit(commit)
             if self.p4Shelve:
                 print "Shelved to: %s" % p4commit;

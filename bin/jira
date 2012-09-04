@@ -1,12 +1,13 @@
-#!/bin/sh
+#!/bin/bash
 
 [ -z "$JIRAHOST" ] && export JIRAHOST="http://jira.netflix.com"
-if [ -x "$JIRACLIPATH/jira" ]; then
+[ -z "$JIRAUSER" ] && export JIRAUSER=`whoami`
+if [ -x "$JIRACLIPATH/jira.sh" ]; then
     ARGS=
     if [ -n "$JIRAHOST" ]; then
-       ARGS="-s $JIRAHOST"
+       ARGS="$ARGS --user $JIRAUSER --server $JIRAHOST"
     fi
-    PYTHONPATH=$JIRACLIPATH/python-suds-0.3.9/:$PYTHONPATH $JIRACLIPATH/jira $ARGS "$@"
+    $JIRACLIPATH/jira.sh $ARGS "$@"
 else
     echo "Need to get your jira together!"
     exit 1
