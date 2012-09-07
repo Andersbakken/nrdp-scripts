@@ -148,7 +148,7 @@ if [ "$CREATE" = "yes" ]; then
   #version
   echo "=================================================="
   echo -n "Versions: "
-  jira_exec --action getVersionList --project NRDAPP --outputFormat 2 | awk -F, '{print $2 $4}' | grep '\"No\"$' | sed "s,^\"\([^\"]*\)\".*$,\1,"
+  exec_jira --action getVersionList --project NRDAPP --outputFormat 2 | awk -F, '{print $2 $4}' | grep '\"No\"$' | sed "s,^\"\([^\"]*\)\".*$,\1,"
   echo -n "Version: "
   read JIRA_VERSION
 
