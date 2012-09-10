@@ -1443,10 +1443,7 @@ class P4Sync(Command):
 
             files = ''
             for f in filesToRead:
-                if f['rev'][0] == '#' or f['rev'][0] == '@':
-                    file = '%s%s' % (f['path'], f['rev']);
-                else:
-                    file = '%s#%s' % (f['path'], f['rev']);
+                file = self.p4FileName(f['path'], f['rev']);
                 if verbose:
                     sys.stderr.write('Print file: %s\n' % file)
 	        files += "%s\n" % file
@@ -1623,6 +1620,11 @@ class P4Sync(Command):
             name = self.knownBranches[branch]["name"]
         return name
 
+    def p4FileName(self, file, rev):
+        if rev[0] == '#' or rev[0] == '@':
+            return '%s%s' % (file, rev);
+        return '%s#%s' % (file, rev);
+
     def gitCreateP4Branch(self, branch):
         name = self.gitBranchName(branch)
         gitBranch = name
@@ -1759,6 +1761,7 @@ class P4Sync(Command):
                         branchPrefix = self.depotPaths[0] + branch + "/"
 
                         parent = ""
+                        newBranch = False
 
                         filesForCommit = branches[branch]
 
@@ -1772,6 +1775,7 @@ class P4Sync(Command):
                             p4Branch = self.knownBranches[branch]
                             parent = p4Branch["source"]
                             if parent == branch:
+                                newBranch = True
                                 parent = ""
                             else:
                                 fullBranch = self.projectName + branch
@@ -1787,18 +1791,30 @@ class P4Sync(Command):
                                 if self.verbose:
                                     print "parent determined through known branches: %s" % parent
 
-                        branch = self.gitRefForBranch(branch)
-                        parent = self.gitRefForBranch(parent)
-
                         if self.verbose:
                             print "looking for initial parent for %s; current parent is %s" % (branch, parent)
+                        branch = self.gitRefForBranch(branch)
+                        parent = self.gitRefForBranch(parent)
+                        if self.verbose:
+                            print "found initial parent for %s; current parent is %s (%d)" % (branch, parent, newBranch)
 
                         if len(parent) == 0 and branch in self.initialParents:
                             parent = self.initialParents[branch]
                             del self.initialParents[branch]
-
-                        self.commit(description, filesForCommit, branch, [branchPrefix], parent)
+                        if False and newBranch and len(parent) == 0:
+                            for f in filesForCommit:
+                                parent = ""
+                                if f['action'] == "branch":
+                                    file = self.p4FileName(f['path'], f['rev'])
+                                    parentInfo = p4Cmd("filelog -s -i %s" % file)
+                                    if parentInfo.has_key("change0"):
+                                        print "Joy: %s" % (parentInfo["change0"]);
+                                print "Handling %s\n" % (file)
+                                self.commit(description, [f], branch, [branchPrefix], parent)
+                        else:
+                            self.commit(description, filesForCommit, branch, [branchPrefix], parent)
                 else:
+                    print("FOO.3: %s\n" % (change));
                     files = self.extractFilesFromCommit(description)
                     self.commit(description, files, self.branch, self.depotPaths,
                                 self.initialParent)
