@@ -452,7 +452,7 @@ def lookupFromP4Change(change):
 def settingsForGitCommit(commit):
     log = extractSettingsCommit(commit)["log"]
     settings = extractSettingsGitLog(log)
-    notes = read_pipe("git notes show '%s'" % (commit), True);
+    notes = read_pipe("git notes --ref git-p4 show '%s'" % (commit), True);
     if notes:
         notes_settings = extractSettingsGitLog(notes)
         for note in notes_settings.keys():
@@ -866,7 +866,11 @@ class P4Submit(Command):
             setP4ExecBit(f, mode)
 
         commitInfo = extractSettingsCommit(id)
-        logMessage = commitInfo["log"];
+        logMessage = ""
+        jira = read_pipe("git notes --ref git-jira show '%s'" % (id), True);
+        if jira:
+            logMessage += "[%s] " % jira.strip()
+        logMessage += commitInfo["log"];
         if "author" in commitInfo:
             who = commitInfo["author"]
         elif "commiter" in commitInfo:
@@ -941,7 +945,7 @@ class P4Submit(Command):
                     m = re.search (r"hange ([0-9]+)[^0-9]*submitted\.$", result)
                     if m:
                         p4commit = m.group(1)
-                        system("git notes add '%s' -m '[git-p4: change = %s]'" % (id, p4commit));
+                        system("git notes --ref git-p4 add -f '%s' -m '[git-p4: change = %s]'" % (id, p4commit));
             else:
                 revert = True
 
@@ -1084,12 +1088,19 @@ class P4Changes(Command):
         self.isWindows = (platform.system() == "Windows")
 
     def printCommit(self, id):
+        note = ""
+        settings = settingsForGitCommit(id)
+        if settings.has_key("change"):
+            note = " [COMMITED]"
+        elif settings.has_key("ignore"):
+            note = " [IGNORED]"
+
         if self.long:
-            system("git show %s" % id)
+            system("git show %s" % (id, note))
         elif self.stat:
-            print "%s" % (read_pipe("git show --stat --pretty=oneline %s" % id.strip()))
+            print "%s%s" % (read_pipe("git show --stat --pretty=oneline %s" % id.strip()), note)
         else:
-            print "%s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id).strip())
+            print "%s%s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id).strip(), note)
 
     def run(self, args):
         if len(args) == 0:

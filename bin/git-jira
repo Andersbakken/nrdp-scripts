@@ -93,7 +93,8 @@ if [ -z "$JIRA" ]; then
     if [ -z "$DESCRIPTION" ]; then
         echo "Description not found!"
     else
-        JIRA=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
+        JIRA=`git notes --ref git-jira show "$GITCOMMIT"`
+        [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
         [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
         [ -n "$JIRA" ] && JIRA=`echo $JIRA | sed "s,[^a-zA-Z0-9-],,g"`
     fi
@@ -163,6 +164,7 @@ if [ "$CREATE" = "yes" ]; then
           JIRA=`echo $JIRA_CREATED | sed "s,^Issue \(.*\) created with id.*$,\1,"`
       fi
   fi
+  git notes --ref git-jira add -f -m "$JIRA" "$GITCOMMIT"
   echo "Created JIRA: $JIRA"
 else
   REWORD=no
