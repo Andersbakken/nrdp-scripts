@@ -93,7 +93,7 @@ if [ -z "$JIRA" ]; then
     if [ -z "$DESCRIPTION" ]; then
         echo "Description not found!"
     else
-        JIRA=`git notes --ref git-jira show "$GITCOMMIT"`
+        JIRA=`git notes --ref git-jira show "$GITCOMMIT" 2>/dev/null`
         [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
         [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
         [ -n "$JIRA" ] && JIRA=`echo $JIRA | sed "s,[^a-zA-Z0-9-],,g"`
