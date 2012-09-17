@@ -49,7 +49,7 @@ sub canonicalize {
     }
     $result =~ s,/*$,,g;
     $result =~ s,/+,/,g;
-    $result = abs_path($result);
+    $result = abs_path($result) if(length($result) && -e $result);
     $result = "/" unless(length($result));
     return $result;
 }
