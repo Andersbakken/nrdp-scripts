@@ -1,5 +1,11 @@
 #!/bin/sh
 if grep '^ *\[git-p4: ' "$1" >/dev/null 2>&1; then
    echo "Removing GIT-P4 magic!!!" >&2
-   sed -e 's,^ *\[git-p4: .*\]$,,g' -i "$1"
+   GITP4=""
+   if grep '^ *\[git-p4: .*ignore\w*=\w*true' "$1" >/dev/null 2>&1; then
+       echo " Re-Insert: IGNORE"
+       GITP4="ignore=true"
+   fi
+   [ -n "$GITP4" ] && GITP4="[git-p4: $GITP4]"
+   sed -e "s,^ *\[git-p4: .*\]$,$GITP4,g" -i "$1"
 fi
