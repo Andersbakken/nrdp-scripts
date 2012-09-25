@@ -46,7 +46,8 @@ if [ -z "$EMACS" ]; then
     elif which gnuclient >/dev/null 2>&1 && gnuclient -v >/dev/null 2>&1; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
-        EMACS="emacsclient -nw"
+        EMACS="emacsclient"
+        [ "$EMACSWAIT" = "yes" ] && EMACS="$EMACS -nw"
     fi
     if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
