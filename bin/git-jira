@@ -14,9 +14,6 @@ MESSAGE=
 TEST=
 JIRA=
 JIRA_PASSWORD=
-if [ -n "$JIRA_PASSWORD_COMMAND" ]; then
-    JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
-fi
 
 INTERACTIVE=yes
 COMMENT=maybe
@@ -31,6 +28,9 @@ fi
 
 exec_jira() {
     JIRA_ARGS=
+    if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+        JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+    fi
     if [ -z "$JIRA_PASSWORD" ]; then
         read -p "JIRA Password: " -s JIRA_PASSWORD
     fi
