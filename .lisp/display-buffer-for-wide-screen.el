@@ -120,6 +120,11 @@
   :type 'integer
   :group 'display-buffer-for-wide-screen)
 
+(defcustom split-window-horizontally-exclude nil
+  "*If the new buffer is less than this-value lines big, split horizontally, else split vertically."
+  :type 'string
+  :group 'display-buffer-for-wide-screen)
+
 
 ;;; This function is originally written by Tassilo Horn.
 ;;; Rubikitch modified slightly.
@@ -147,6 +152,7 @@ FORCE-OTHER-WINDOW is ignored."
       (if (one-window-p)
           (let* ((shrink nil) (new-win
                  (cond
+                  ((and split-window-horizontally-exclude (string-match split-window-horizontally-exclude (buffer-name buffer))) (split-window-vertically))
                   ;;((< (with-current-buffer buffer (count-lines (point-min) (point-max))) (or split-window-horizontally-threshold-lines 20)) (progn (setq shrink t) (split-window-vertically)))
                   ((< (window-width) (or split-window-horizontally-threshold-width 160)) (split-window-vertically))
                   (t (split-window-horizontally)))))
