@@ -11,6 +11,7 @@ fi
 GITCOMMIT=
 P4COMMIT=
 MESSAGE=
+TAGS=
 TEST=
 JIRA=
 JIRA_PASSWORD=
@@ -20,6 +21,7 @@ COMMENT=maybe
 RESOLVE=maybe
 CREATE=maybe
 REWORD=maybe
+TAG=no
 
 if ! which jira >/dev/null 2>&1; then
    echo "Cannot find jira commandline!"
@@ -45,7 +47,8 @@ usage() {
   echo " --create            : Create a bug for a change"
   echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
   echo " --interactive, -i   : Ask before commenting/resolving"
-  echo " --resolve, -r       : Resolve JIRA ticket as well was commenting"
+  echo " --tag, -c <tag>     : Mark JIRA ticket with tag"
+  echo " --resolve, -r       : Resolve JIRA ticket as well as commenting"
   echo " --jira, -j <ticket> : Use <ticket> instead of calculated from commit message"
   echo " --p4 <p4-commit>    : Use <p4-commit> instead of calculating from commit message"
   echo
@@ -67,6 +70,7 @@ while [ "$#" -gt 0 ]; do
    --interactive|-i) INTERACTIVE=yes ;;
    --no-resolve|-no-resolve) RESOLVE=no; COMMENT=no ;;
    --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
+   --tag|-t) shift; TAGS="$TAGS $1"; TAG=yes ;;
    --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
    --jira|-j) shift; JIRA="$1" ;;
    --p4|-p4) shift; P4COMMIT="$1" ;;
@@ -243,6 +247,15 @@ if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
               DESCRIPTION="$input"
           fi
       fi
+      if [ "$TAG" = "maybe" ]; then
+          TAG=no
+          echo -n "Tags? "
+          read input
+          if [ -n "$input" ]; then
+              TAGS="$TAGS $input"
+              TAG=yes
+          fi
+      fi
   fi
   if [ "$COMMENT" = "yes" ]; then
     if [ -n "$MESSAGE" ]; then
@@ -257,6 +270,9 @@ if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
   fi
   if [ "$RESOLVE" = "yes" ]; then
     exec_jira --action progressIssue --issue "$JIRA" --step "Resolve Issue" --resolution "Fixed"
+  fi
+  if [ "$TAG" = "yes" ]; then
+    exec_jira --action addLabels --issue "$JIRA" --labels "$TAGS"
   fi
 fi
 exit 0
