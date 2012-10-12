@@ -7,7 +7,7 @@ if [ "$1" = "-dry" ]; then
 elif [ "$1" = "-shell" ] || [ "$1" = "-sh" ]; then
     PRE=
     shift
-elif [ "$1" = "-help" ]; then
+elif [ "$1" = "-h" ] || [ "$1" = "-help" ]; then
     SHOW_HELP=yes
 fi
 
