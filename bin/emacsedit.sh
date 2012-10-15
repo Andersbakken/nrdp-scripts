@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -v
 
 EMACS=
 EMACSWAIT=yes
@@ -93,17 +93,13 @@ if [ -n "$FILE" ]; then
         [ -e "$FILE" ] && exit 0
         exit 1
     elif [ "$MODE" = "eval" ]; then
-        $TEST $EMACS -e "(raise-frame)"
         $TEST $EMACS -e "$FILE"
     elif [ "$MODE" = "make" ]; then
         [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="sam-compile-directory"
-        $TEST $EMACS -e "(raise-frame)"
         $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
     elif [ "$MODE" = "tail" ]; then
-        $TEST $EMACS -e "(raise-frame)"
         $TEST $EMACS -e "(tailf \"$FILE\")"
     elif [ -n "$OFFSET" ]; then
-        $TEST $EMACS -e "(raise-frame)"
         $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
     else
         JUMP=
@@ -113,7 +109,6 @@ if [ -n "$FILE" ]; then
         else
             JUMP=0
         fi
-        $TEST $EMACS -e "(raise-frame)"
         $TEST eval $EMACS "+${JUMP}" "$FILE"
     fi
 elif [ "$TEST" != "exists" ]; then
