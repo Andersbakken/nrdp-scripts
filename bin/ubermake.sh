@@ -28,6 +28,7 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 if [ -e "${MAKE_DIR}/Makefile" ]; then
+    [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
     true #ok, make it is...
 elif [ -e "${MAKE_DIR}/SConstruct" ]; then
     SCONS_OPTIONS=
