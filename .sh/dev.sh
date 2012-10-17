@@ -49,37 +49,46 @@ reconfigure()
         BUILD=`lsdev build $BUILD -r`
     fi
 
+    CONFIGURE=
     pushd "$BUILD" >/dev/null 2>&1
     SRC=`lsdev src - -r`
     echo "Root: $BUILD [$SRC]"
-    if [ -e "config.status" ] && [ ! -e "configure" ]; then
-        if [ "$RECONFIG_RM" ]; then
-            echo -n "Sure you want to rm -rf in $BUILD? "
-            read REALLY
-            if [ "$REALLY" = "y" ]; then
-                rm -f "/tmp/config.status"
-                cp "config.status" "/tmp/config.status"
-                rm -rf *
-                cp "/tmp/config.status" "config.status"
-            fi
-        fi
-    fi
     if [ "$RECONFIG_RESET" ]; then
         if [ -e "$SRC/configure" ]; then
-            $SRC/configure "$@"
+            CONFIGURE="$SRC/configure"
         fi
     elif [ -e "config.status" ]; then
+        CONFIGURE="./config.status"
         if [ "$RECONFIG_EDIT" ]; then
             test -z "$EDITOR" && EDITOR=vim
-            $EDITOR ./config.status
+            cp ./config.status /tmp/config.status
+            if $EDITOR /tmp/config.status && ! diff -q ./config.status /tmp/config.status >/dev/null 2>&1 && [ `wc -c /tmp/config.status | awk '{ print $1 }'` -ge 1 ]; then
+                cp /tmp/config.status ./config.status
+            else
+                CONFIGURE=
+            fi
         fi
-
         if [ "$RECONFIG_CAT" ]; then
+            CONFIGURE=
             cat "config.status"
         else
             cat "config.status" | yank -c
-            ./config.status "$@"
         fi
+    fi
+    if [ -n "$CONFIGURE" ]; then
+        if [ -e "config.status" ] && [ ! -e "configure" ]; then
+            if [ "$RECONFIG_RM" ]; then
+                echo -n "Sure you want to rm -rf in $BUILD? "
+                read REALLY
+                if [ "$REALLY" = "y" ]; then
+                    rm -f "/tmp/config.status"
+                    cp "config.status" "/tmp/config.status"
+                    rm -rf *
+                    cp "/tmp/config.status" "config.status"
+                fi
+            fi
+        fi
+        "$CONFIGURE" "$@"
     fi
     popd >/dev/null 2>&1
 }
