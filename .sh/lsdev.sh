@@ -248,4 +248,6 @@ complete-cddev ()
     fi
 }
 
-complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb lsdev
+if [ -n "$BASH" ]; then
+    complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb lsdev
+fi
