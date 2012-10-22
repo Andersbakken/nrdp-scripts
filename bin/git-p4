@@ -516,6 +516,16 @@ def p4BranchesInGit(branchesAreInRemotes = True):
         branches[branch] = parseRevision(line)
     return branches
 
+def getAllP4Branches(importBranches):
+    branches = []
+    if importBranches:
+        for branch in p4CmdList("branches"):
+            branches.append(branch["branch"])
+    else:
+        for branch in p4BranchesInGit().keys():
+            branches.append(gitConfig("git-p4." + branch + ".branch"))
+    return branches;
+
 def findUpstreamBranchPoint(head = "HEAD"):
     branches = p4BranchesInGit()
     # map from depot-path to branch name
@@ -1592,13 +1602,7 @@ class P4Sync(Command):
             return p
 
     def getBranchMapping(self):
-        p4Branches = []
-        if self.importBranches:
-            for branch in p4CmdList("branches"):
-                p4Branches.append(branch["branch"])
-        else:
-            for branch in p4BranchesInGit().keys():
-                p4Branches.append(gitConfig("git-p4." + branch + ".branch"))
+        p4Branches = getAllP4Branches(self.importBranches);
         self.knownBranches = getP4Branches(p4Branches, self.depotPaths[0], self.depotPaths[0])
 
     def getBranchMappingFromGitBranches(self):
@@ -2411,6 +2415,20 @@ class P4Branches(Command):
     def run(self, args):
         if originP4BranchesExist():
             createOrUpdateBranchesFromOrigin()
+
+        if self.detectBranches:
+            p4Branches = getAllP4Branches(True);
+            depotPath = gitConfig("git-p4.detectBranchesRoot");
+            branches = getP4Branches(p4Branches, depotPath, depotPath)
+            for branch in branches:
+                gitBranch = ""
+                if "options" in branches[branch]:
+                    gitBranch = branches[branch]["options"]["branch"]
+                p4Branch = ""
+                if "name" in branches[branch]:
+                    p4Branch = branches[branch]["name"];
+                if p4Branch or gitBranch:
+                    print "* Detected: %s (%s)" % (gitBranch, p4Branch)
 
         cmdline = "git rev-parse --symbolic "
         cmdline += " --remotes"
