@@ -104,6 +104,16 @@ ediff()
     "emacsedit.sh" -r -n "($f \"${1}\" \"${2}\")"
 }
 
+#ecd
+ecd()
+{
+    if [ -n "$1" ]; then
+        emacsedit.sh -n "$1"
+    else
+        cdd "@"
+    fi
+}
+
 #emacs tail
 etail()
 {
