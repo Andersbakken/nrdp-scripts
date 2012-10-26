@@ -72,7 +72,7 @@ reconfigure()
             CONFIGURE=
             cat "config.status"
         else
-            cat "config.status" | yank -c
+            cat "config.status" | yank -c >/dev/null 2>&1
         fi
     fi
     if [ -n "$CONFIGURE" ]; then
