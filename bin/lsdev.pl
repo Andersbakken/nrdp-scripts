@@ -58,6 +58,8 @@ sub parseOptions {
             $answer = "all";
         } elsif($option eq "-tr") {
             $answer = "rest";
+        } elsif($option eq "-ts") {
+            $answer = "simple_name";
         } elsif($option eq "-a") {
             $read_devdir_list = 2;
         } elsif($option eq "-m") {
@@ -107,6 +109,9 @@ sub answer {
             my $src_root = findRoot($root->{source});
             $output .= " [" . generateRootName($src_root) . "]";
         }
+    } elsif($answer eq "simple_name") {
+        $output = getPathConfig($root->{path}, "prompt");
+        $output = generateRootName($root) unless($output);
     } elsif($answer eq "name") {
         $output = generateRootName($root);
     } elsif($answer eq "rest") {

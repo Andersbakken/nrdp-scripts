@@ -138,7 +138,7 @@ lsdevsetenvs() {
 }
 
 whatdev() {
-    NAME=`lsdev -p $@`
+    NAME=`lsdev -p -ts $@`
     export WHATDEV_LAST_ARGS="x${@}x${PWD}"
     export WHATDEV_LAST_NAME="$NAME"
 
