@@ -27,7 +27,7 @@ while [ "$#" -ge 1 ]; do
     elif echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
         number=`echo $1 | sed "s,^-,,g"`
     elif [ "$1" = "-p4submit" ]; then
-         command="p4 submit"
+         command="p4submit"
          [ -z "$changes" ] && changes="p4 changes"
     elif [ -z "$changes" ]; then
         if [ -e "$1" ]; then
@@ -84,13 +84,27 @@ while true; do
     choose_args="$choose_args -+$head -$number -a "
     change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
     if [ -n "$change" ]; then
-      if [ -z "$command" ]; then
-          git show "$change"
-      else
+      if [ "$command" = "p4submit" ]; then
+          while true; do
+              /bin/echo -n "Submit $change? "
+              read choose
+              if [ "$choose" = "d" ]; then
+                  git show "$change"
+              elif [ "$choose" = "a" ]; then
+                  git p4 submit -a "$change"
+              elif [ "$choose" = "y" ]; then
+                  git p4 submit "$change"
+              else
+                  break
+              fi
+          done
+      elif [ -n "$command" ]; then
           exec="git $command $change"
           /bin/echo -n "Run '$exec'? "
           read choose
           [ "$choose" = "y" ] && $exec
+      else
+          git show "$change"
       fi
       /bin/echo -n "Next? "
       read choose
