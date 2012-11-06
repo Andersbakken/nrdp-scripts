@@ -2,9 +2,7 @@
 branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
 echo "$branch" | grep "(" --quiet && exit 1
 
-if [ "$#" -ge 1 ]; then
-    git branch --set-upstream "$branch" "$1"
-else
+lookupTracking() {
     remote="`git config \"branch.$branch.remote\"`"
     test -z "$remote" && exit 1
     merge="`git config \"branch.$branch.merge\"`"
@@ -15,5 +13,14 @@ else
         merge="`echo $merge | awk -F/ '{print $NF}'`"
         echo "$remote/$merge"
     fi
+}
+
+if [ "$#" = 0 ]; then
+    lookupTracking
+elif [ "$1" = "rebase" ]; then
+    tracking=`lookupTracking`
+    git rebase --onto "$tracking" "$branch"
+else
+    git branch --set-upstream "$branch" "$1"
 fi
 exit 0
