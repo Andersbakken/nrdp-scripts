@@ -88,15 +88,16 @@ while true; do
           while true; do
               /bin/echo -n "Submit $change? "
               read choose
+              done=yes
               if [ "$choose" = "d" ]; then
                   git show "$change"
+                  done=no
               elif [ "$choose" = "a" ]; then
                   git p4 submit -a "$change"
               elif [ "$choose" = "y" ]; then
                   git p4 submit "$change"
-              else
-                  break
               fi
+              [ "$done" = "yes" ] && break
           done
       elif [ -n "$command" ]; then
           exec="git $command $change"
