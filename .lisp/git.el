@@ -1172,8 +1172,8 @@ The FILES list must be sorted."
   "Revert changes to the marked file(s)."
   (interactive)
   (let ((files (git-marked-files-state 'added 'deleted 'modified 'unmerged))
+        (default-directory (if git-default-directory git-default-directory default-directory))
         added modified)
-    (if git-default-directory (setq default-directory git-default-directory))
     (when (and files
                (yes-or-no-p
                 (if (cdr files)
