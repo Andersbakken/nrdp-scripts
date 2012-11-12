@@ -1949,5 +1949,26 @@ Meant to be used in `after-save-hook'."
   (interactive)
   (describe-function 'git-status-mode))
 
+(defun git-stash ()
+  (interactive)
+  (git-call-process-display-error "stash"))
+
+(defun git-stash-apply ()
+  (interactive)
+  (git-call-process-display-error "stash" "apply"))
+
+(defun git-stash-pop ()
+  (interactive)
+  (git-call-process-display-error "stash" "pop"))
+
+(defun git-pull ()
+  (interactive)
+  (git-call-process-display-error "pull"))
+
+(defun git-push ()
+  (interactive)
+  (git-call-process-display-error "push"))
+
+
 (provide 'git)
 ;;; git.el ends here
