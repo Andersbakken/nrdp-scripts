@@ -211,7 +211,7 @@ character events"
           (filename (find-file filename))
 	  (t (error "Nothing to do")))))
 
-(defun git-make-temp-file (prefix) 
+(defun git-make-temp-file (prefix)
   (if git-running-xemacs
      (make-temp-name (concat (temp-directory) "/" prefix))
      (make-temp-file prefix)))
@@ -280,7 +280,7 @@ the process output as a string, or nil if the git command failed."
     (with-current-buffer buffer
       (let ((default-directory dir)
             (buffer-read-only nil))
-	(setq git-default-directory default-directory)
+        (setq git-default-directory default-directory)
         (if (not (bufferp buffer-or-name)) (erase-buffer))
         (apply #'git-call-process buffer args)))
     (message "Running git %s...done" (car args))
@@ -456,7 +456,7 @@ Each entry is a cons of (SHORT-NAME . FULL-NAME)."
       (apply #'git-call-process t "for-each-ref" "--format=%(refname)" specs)
       (goto-char (point-min))
       (while (re-search-forward "^[^/\n]+/[^/\n]+/\\(.+\\)$" nil t)
-	(push (cons (match-string 1) (match-string 0)) refs)))
+        (push (cons (match-string 1) (match-string 0)) refs)))
     (nreverse refs)))
 
 (defun git-read-tree (tree &optional index-file)
@@ -570,7 +570,7 @@ update the \"HEAD\" reference to the new commit."
   "Set the state of a file info."
   (unless (eq (git-fileinfo->state info) state)
     (setf (git-fileinfo->state info) state
-	  (git-fileinfo->new-perm info) (git-fileinfo->old-perm info)
+          (git-fileinfo->new-perm info) (git-fileinfo->old-perm info)
           (git-fileinfo->rename-state info) nil
           (git-fileinfo->orig-name info) nil
           (git-fileinfo->needs-update info) nil
@@ -624,29 +624,29 @@ The list must be sorted."
 (defun git-file-type-as-string (old-perm new-perm)
   "Return a string describing the file type based on its permissions."
   (let* ((old-type (lsh (or old-perm 0) -9))
-	 (new-type (lsh (or new-perm 0) -9))
-	 (str (case new-type
-		(64  ;; file
-		 (case old-type
-		   (64 nil)
-		   (80 "   (type change symlink -> file)")
-		   (112 "   (type change subproject -> file)")))
-		 (80  ;; symlink
-		  (case old-type
-		    (64 "   (type change file -> symlink)")
-		    (112 "   (type change subproject -> symlink)")
-		    (t "   (symlink)")))
-		  (112  ;; subproject
-		   (case old-type
-		     (64 "   (type change file -> subproject)")
-		     (80 "   (type change symlink -> subproject)")
-		     (t "   (subproject)")))
+         (new-type (lsh (or new-perm 0) -9))
+         (str (case new-type
+                (64  ;; file
+                 (case old-type
+                   (64 nil)
+                   (80 "   (type change symlink -> file)")
+                   (112 "   (type change subproject -> file)")))
+                 (80  ;; symlink
+                  (case old-type
+                    (64 "   (type change file -> symlink)")
+                    (112 "   (type change subproject -> symlink)")
+                    (t "   (symlink)")))
+                  (112  ;; subproject
+                   (case old-type
+                     (64 "   (type change file -> subproject)")
+                     (80 "   (type change symlink -> subproject)")
+                     (t "   (subproject)")))
                   (72 nil)  ;; directory (internal, not a real git state)
-		  (0  ;; deleted or unknown
-		   (case old-type
-		     (80 "   (symlink)")
-		     (112 "   (subproject)")))
-		  (t (format "   (unknown type %o)" new-type)))))
+                  (0  ;; deleted or unknown
+                   (case old-type
+                     (80 "   (symlink)")
+                     (112 "   (subproject)")))
+                  (t (format "   (unknown type %o)" new-type)))))
     (cond (str (propertize str 'face 'git-status-face))
           ((eq new-type 72) "/")
           (t ""))))
@@ -677,13 +677,13 @@ The list must be sorted."
 (defun git-fileinfo-prettyprint (info)
   "Pretty-printer for the git-fileinfo structure."
   (let ((old-perm (git-fileinfo->old-perm info))
-	(new-perm (git-fileinfo->new-perm info)))
+        (new-perm (git-fileinfo->new-perm info)))
     (insert (concat "   " (if (git-fileinfo->marked info) (propertize "*" 'face 'git-mark-face) " ")
-		    " " (git-status-code-as-string (or (git-fileinfo->state info) (git-fileinfo->staged-state info)))
-		    " " (git-permissions-as-string old-perm new-perm)
-		    "  " (git-escape-file-name (git-fileinfo->name info))
-		    (git-file-type-as-string old-perm new-perm)
-		    (git-rename-as-string info)))))
+                    " " (git-status-code-as-string (or (git-fileinfo->state info) (git-fileinfo->staged-state info)))
+                    " " (git-permissions-as-string old-perm new-perm)
+                    "  " (git-escape-file-name (git-fileinfo->name info))
+                    (git-file-type-as-string old-perm new-perm)
+                    (git-rename-as-string info)))))
 
 (defun git-update-node-fileinfo (node info)
   "Update the fileinfo of the specified node. The names are assumed to match already."
@@ -741,6 +741,8 @@ Return the list of files that haven't been handled."
                 (state (match-string 2))
                 (name (match-string 3))
                 (new-name (match-string 5)))
+            (if (and (string= staged-state "A") (string= state " "))
+                (setq state "A"))
             (if new-name  ; copy or rename
                 (if (eq ?C (string-to-char state))
                     (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'copy name) infolist)
@@ -790,10 +792,10 @@ Return the list of files that haven't been handled."
       (apply #'git-call-process t "ls-files" "-z" "-s" "-c" "--" files)
       (goto-char (point-min))
       (while (re-search-forward "\\([0-7]\\{6\\}\\) [0-9a-f]\\{40\\} 0\t\\([^\0]+\\)\0" nil t)
-	(let* ((new-perm (string-to-number (match-string 1) 8))
-	       (old-perm (if (eq default-state 'added) 0 new-perm))
-	       (name (match-string 2)))
-	  (push (git-create-fileinfo default-state default-state name old-perm new-perm) infolist))))
+        (let* ((new-perm (string-to-number (match-string 1) 8))
+               (old-perm (if (eq default-state 'added) 0 new-perm))
+               (name (match-string 2)))
+          (push (git-create-fileinfo default-state default-state name old-perm new-perm) infolist))))
     (setq infolist (nreverse infolist))  ;; assume it is sorted already
     (git-insert-info-list status infolist files)))
 
@@ -839,7 +841,7 @@ The FILES list must be sorted."
       (git-run-ls-files-cached git-status nil 'uptodate)))
   (let ((remaining-files
           (if (git-empty-db-p) ; we need some special handling for an empty db
-	      (git-run-ls-files-cached git-status files 'added)
+              (git-run-ls-files-cached git-status files 'added)
             (git-run-diff-index git-status files))))
     (git-run-ls-unmerged git-status files)
     (when (or remaining-files (and git-show-unknown (not files)))
@@ -864,7 +866,7 @@ The FILES list must be sorted."
         (if (and file (string-equal (git-fileinfo->name info) file))
             (progn
               (if (and (not (git-fileinfo->marked info))
-		       (not (equal (git-fileinfo->state info) 'uptodate)))
+                       (not (equal (git-fileinfo->state info) 'uptodate)))
                 (setf (git-fileinfo->marked info) t)
                 (setf (git-fileinfo->needs-refresh info) t))
               (setq file (pop files))
@@ -881,13 +883,13 @@ The FILES list must be sorted."
   (interactive)
   (unless directory (setq directory default-directory))
   (let ((check-dir (cond (directory ;; extrapolate from name
-			  (if (equal (substring directory -1) "/")
-			      directory
-			    (concat directory "/")))                           
-			  (t default-directory) ;; hmm, use default
-			  )))
+                          (if (equal (substring directory -1) "/")
+                              directory
+                            (concat directory "/")))
+                          (t default-directory) ;; hmm, use default
+                          )))
     (while (not (or (string-equal check-dir "/")
-		    (file-exists-p (concat check-dir ".git"))))
+                    (file-exists-p (concat check-dir ".git"))))
       (setq check-dir (substring check-dir 0 (string-match "[^/]*/?$" check-dir))))
     (if (not (string-equal check-dir "/")) check-dir nil)))
 
@@ -896,7 +898,7 @@ The FILES list must be sorted."
   (if git-status
       (list (ewoc-data (ewoc-locate git-status)))
       (let ((file (file-truename (buffer-file-name))))
-	(setq git-default-directory (git-root-dir (file-name-directory file)))
+        (setq git-default-directory (git-root-dir (file-name-directory file)))
         (git-create-info-list (list (file-relative-name file git-default-directory))))))
 
 (defun git-marked-files ()
@@ -1011,7 +1013,7 @@ The FILES list must be sorted."
                         (with-current-buffer buffer (erase-buffer))
                         (git-unmark-all)
                         (git-update-status-files (git-get-filenames files))
-			(git-remove-handled)
+                        (git-remove-handled)
                         (git-call-process nil "rerere")
                         (git-call-process nil "gc" "--auto")
                         (message "Committed %s." commit)
@@ -1130,7 +1132,7 @@ The FILES list must be sorted."
     ;; FIXME: add support for directories
     (unless files
       (let ((curr-file (git-fileinfo->name (ewoc-data (ewoc-locate git-status)))))
-	(push (file-relative-name (read-file-name "File to add: " nil nil t curr-file)) files)))
+        (push (file-relative-name (read-file-name "File to add: " nil nil t curr-file)) files)))
     (when (apply 'git-call-process-display-error "update-index" "--add" "--" files)
       (git-update-status-files files)
       (git-success-message "Added" files))))
@@ -1141,7 +1143,7 @@ The FILES list must be sorted."
   (let ((files (git-get-filenames (git-marked-files-state 'unknown))))
     (unless files
       (let ((curr-file (git-fileinfo->name (ewoc-data (ewoc-locate git-status)))))
-	(push (file-relative-name (read-file-name "File to ignore: " nil nil t curr-file)) files)))
+        (push (file-relative-name (read-file-name "File to ignore: " nil nil t curr-file)) files)))
     (dolist (f files) (git-append-to-ignore f))
     (git-update-status-files files)
     (git-success-message "Ignored" files)))
@@ -1152,7 +1154,7 @@ The FILES list must be sorted."
   (let ((files (git-get-filenames (git-marked-files-state 'added 'modified 'unknown 'uptodate 'ignored))))
     (unless files
       (let ((curr-file (git-fileinfo->name (ewoc-data (ewoc-locate git-status)))))
-	(push (file-relative-name (read-file-name "File to remove: " nil nil t curr-file)) files)))
+        (push (file-relative-name (read-file-name "File to remove: " nil nil t curr-file)) files)))
     (if (yes-or-no-p
          (if (cdr files)
              (format "Remove %d files? " (length files))
@@ -1196,7 +1198,7 @@ The FILES list must be sorted."
                  (or (not modified)
                      (apply 'git-call-process-display-error "checkout" "HEAD" modified))))
             (names (git-get-filenames files)))
-	(if git-status (progn   (git-unmark-all) (git-update-status-files names) (git-remove-handled)))
+        (if git-status (progn   (git-unmark-all) (git-update-status-files names) (git-remove-handled)))
         (when ok
           (dolist (file modified)
             (let ((buffer (get-file-buffer file)))
@@ -1303,7 +1305,7 @@ The FILES list must be sorted."
 (defun git-diff-against (file sha)
   (git-setup-diff-buffer
    (apply #'git-run-command-buffer "*git-diff*" "diff" "-p" sha "--" (list file))))
-  
+
 (defun git-diff-file-merge-head (arg)
   "Diff the marked file(s) against the first merge head (or the nth one with a numeric prefix)."
   (interactive "p")
@@ -1352,11 +1354,11 @@ The FILES list must be sorted."
 
 (defun git-set-extent-property (start end property value)
   (cond (git-running-xemacs
-	 (set-extent-property (make-extent start end)
-			      property value))
-	(git-running-emacs
-	 (overlay-put (make-overlay start end)
-		      property value))))
+         (set-extent-property (make-extent start end)
+                              property value))
+        (git-running-emacs
+         (overlay-put (make-overlay start end)
+                      property value))))
 
 (defun git-create-active-link (start end prop-list)
   (git-set-extent-property start end 'face 'bold)
@@ -1368,9 +1370,9 @@ The FILES list must be sorted."
 (defvar git-log-map
   (let ((map (make-sparse-keymap)))
     (cond (git-running-xemacs
-	   (define-key map [button2] 'git-buffer-mouse-clicked))
-	  (git-running-emacs
-	   (define-key map [mouse-2] 'git-buffer-mouse-clicked)))
+           (define-key map [button2] 'git-buffer-mouse-clicked))
+          (git-running-emacs
+           (define-key map [mouse-2] 'git-buffer-mouse-clicked)))
     (define-key map [return]  'git-buffer-commands)
     (define-key map "\r" 'git-buffer-commands)
     (define-key map "q"	 'git-quit-current-buffer)
@@ -1378,7 +1380,7 @@ The FILES list must be sorted."
 
 (defun git-log-mode (pretty)
     (goto-char (point-min))
-    (cond 
+    (cond
      ((equal pretty 'pretty)
       (while (not (eobp))
         (goto-char (point-at-bol))
@@ -1466,9 +1468,9 @@ The FILES list must be sorted."
 (defvar git-show-map
   (let ((map (make-sparse-keymap)))
     (cond (git-running-xemacs
-	   (define-key map [button2] 'git-buffer-mouse-clicked))
-	  (git-running-emacs
-	   (define-key map [mouse-2] 'git-buffer-mouse-clicked)))
+           (define-key map [button2] 'git-buffer-mouse-clicked))
+          (git-running-emacs
+           (define-key map [mouse-2] 'git-buffer-mouse-clicked)))
     (define-key map [return]  'git-buffer-commands)
     (define-key map "q"	 'git-quit-current-buffer)
     map))
@@ -1478,9 +1480,9 @@ The FILES list must be sorted."
   (interactive)
   (let* ((coding-system-for-read git-commits-coding-system)
          (buffer (git-run-command-buffer "*git-show*" "show" "--no-color" "--stat" "-p" object)))
-    (with-current-buffer buffer 
-      (diff-mode) 
-      (setq buffer-read-only t) 
+    (with-current-buffer buffer
+      (diff-mode)
+      (setq buffer-read-only t)
       (set-buffer-modified-p nil)
       (use-local-map git-show-map)(goto-char (point-min)))
     (display-buffer buffer)))
@@ -1490,10 +1492,10 @@ The FILES list must be sorted."
   (interactive)
   (let* ((coding-system-for-read git-commits-coding-system)
          (buffer (git-run-command-buffer (concat "~" file "~ " named) "show" object)))
-    (with-current-buffer buffer 
-      (setq buffer-file-name named) 
-      (set-auto-mode) 
-      (font-lock-fontify-buffer) 
+    (with-current-buffer buffer
+      (setq buffer-file-name named)
+      (set-auto-mode)
+      (font-lock-fontify-buffer)
       (setq buffer-read-only t)
       (set-buffer-modified-p nil)
       (use-local-map git-show-map)(goto-char (point-min)))
@@ -1581,9 +1583,9 @@ The FILES list must be sorted."
               (setq date (match-string 1)))))
         (git-setup-log-buffer buffer (git-get-merge-heads) author-name author-email subject date))
       (if (boundp 'log-edit-diff-function)
-	  (log-edit 'git-do-commit nil '((log-edit-listfun . git-log-edit-files)
-					 (log-edit-diff-function . git-log-edit-diff)) buffer)
-	(log-edit 'git-do-commit nil 'git-log-edit-files buffer))
+          (log-edit 'git-do-commit nil '((log-edit-listfun . git-log-edit-files)
+                                         (log-edit-diff-function . git-log-edit-diff)) buffer)
+        (log-edit 'git-do-commit nil 'git-log-edit-files buffer))
       (setq font-lock-keywords (font-lock-compile-keywords git-log-edit-font-lock-keywords))
       (setq paragraph-separate (concat (regexp-quote git-log-msg-separator) "$\\|Author: \\|Date: \\|Merge: \\|Signed-off-by: \\|\f\\|[ 	]*$"))
       (setq buffer-file-coding-system coding-system)
@@ -1626,7 +1628,7 @@ The FILES list must be sorted."
   "Ask for a commit name, with completion for local branch, remote branch and tag."
   (completing-read prompt
                    (list* "HEAD" "ORIG_HEAD" "FETCH_HEAD" (mapcar #'car (git-for-each-ref)))
-		   nil nil nil nil default))
+                   nil nil nil nil default))
 
 (defun git-checkout (branch &optional merge)
   "Checkout a branch, tag, or any commit.
