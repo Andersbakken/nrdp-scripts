@@ -730,32 +730,32 @@ The list must be sorted."
 Return the list of files that haven't been handled."
   (let (infolist)
     (with-temp-buffer
-      (if git-default-directory (setq default-directory git-default-directory))
-      (apply #'git-call-process t "status" "--porcelain" "--" files)
-      (goto-char (point-min))
-      (while (re-search-forward
-	      "^\\([ ADMUT]\\)\\([ ADMUT]\\) \\(.*\\)\\( -> \\(.*\\)\\)?"
-              nil t 1)
-        (let ((new-perm 0) (old-perm 0)
-              (staged-state (match-string 1))
-              (state (match-string 2))
-              (name (match-string 3))
-              (new-name (match-string 5)))
-          (if new-name  ; copy or rename
-              (if (eq ?C (string-to-char state))
-                  (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'copy name) infolist)
-                (push (git-create-fileinfo (git-state-code staged-state) 'deleted name 0 0 'rename new-name) infolist)
-                (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'rename name) infolist))
-            (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
-    (while files
-      (let ((file (car files)))
-        (dolist (info infolist) (if (string= (git-fileinfo->name info) file) (setq file nil)))
-        (if file (push (git-create-fileinfo nil nil file 0 0) infolist))
-        (setq files (cdr files))))
-    (setq infolist (sort (nreverse infolist)
-                         (lambda (info1 info2)
-                           (string-lessp (git-fileinfo->name info1)
-                                         (git-fileinfo->name info2)))))))
+      (let ((default-directory (if git-default-directory git-default-directory default-directory)))
+        (apply #'git-call-process t "status" "--porcelain" "--" files)
+        (goto-char (point-min))
+        (while (re-search-forward
+                "^\\([ ADMUT]\\)\\([ ADMUT]\\) \\(.*\\)\\( -> \\(.*\\)\\)?"
+                nil t 1)
+          (let ((new-perm 0) (old-perm 0)
+                (staged-state (match-string 1))
+                (state (match-string 2))
+                (name (match-string 3))
+                (new-name (match-string 5)))
+            (if new-name  ; copy or rename
+                (if (eq ?C (string-to-char state))
+                    (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'copy name) infolist)
+                  (push (git-create-fileinfo (git-state-code staged-state) 'deleted name 0 0 'rename new-name) infolist)
+                  (push (git-create-fileinfo (git-state-code staged-state) 'added new-name old-perm new-perm 'rename name) infolist))
+              (push (git-create-fileinfo (git-state-code staged-state) (git-state-code state) name old-perm new-perm) infolist)))))
+      (while files
+        (let ((file (car files)))
+          (dolist (info infolist) (if (string= (git-fileinfo->name info) file) (setq file nil)))
+          (if file (push (git-create-fileinfo nil nil file 0 0) infolist))
+          (setq files (cdr files))))
+      (setq infolist (sort (nreverse infolist)
+                           (lambda (info1 info2)
+                             (string-lessp (git-fileinfo->name info1)
+                                           (git-fileinfo->name info2))))))))
 
 (defun git-run-diff-index (status files)
     (git-insert-info-list status (git-create-info-list files) files))
@@ -1263,7 +1263,6 @@ The FILES list must be sorted."
     (with-current-buffer buffer
       (diff-mode)
       (goto-char (point-min))
-      (setq default-directory dir)
       (setq buffer-read-only t)))
   (display-buffer buffer)
   ; shrink window only if it displays the status buffer
@@ -1344,9 +1343,9 @@ The FILES list must be sorted."
 (defun git-diff-file-idiff ()
   "Perform an interactive diff on the current file."
   (interactive)
-  (let ((files (git-marked-files)))
+  (let ((files (git-marked-files))
+        (default-directory (if git-default-directory git-default-directory default-directory)))
     (dolist (file (git-get-filenames files))
-      (if git-default-directory (setq default-directory git-default-directory))
       (let* ((buff1 (find-file-noselect file))
              (buff2 (git-run-command-buffer (concat file ".~HEAD~") "cat-file" "blob" (concat "HEAD:" file))))
         (ediff-buffers buff1 buff2)))))
