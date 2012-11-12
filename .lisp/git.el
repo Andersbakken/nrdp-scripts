@@ -83,6 +83,9 @@ then to `add-log-full-name' and then to `user-full-name'."
 
 (defcustom git-committer-email nil
   "Email address to use for commits.
+
+
+
 The default is to fall back to the git repository config,
 then to `add-log-mailing-address' and then to `user-mail-address'."
   :group 'git
@@ -1969,6 +1972,12 @@ Meant to be used in `after-save-hook'."
   (interactive)
   (git-call-process-display-error "push"))
 
+(defun git-diff-all ()
+  (interactive)
+  (git-status (git-root-dir))
+  (git-mark-all)
+  (git-diff-file)
+  (switch-to-buffer (other-buffer)))
 
 (provide 'git)
 ;;; git.el ends here
