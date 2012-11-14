@@ -1266,6 +1266,7 @@ The FILES list must be sorted."
   "Setup a buffer for displaying a diff."
   (let ((dir default-directory))
     (with-current-buffer buffer
+      (setq default-directory dir)
       (diff-mode)
       (goto-char (point-min))
       (setq buffer-read-only t)))
