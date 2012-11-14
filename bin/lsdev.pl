@@ -427,7 +427,7 @@ sub addRoot {
     my $root_location = resolveLinks($root{path});
     my $root_key = $root_location;
     $root_key =~ s,/,_,g;
-    if($source) {
+    if($source && !isPathSame($path, $source)) {
         $root_key = $build_prefix . "::" . $root_key;
     } else {
         $root_key = $src_prefix . "::" . $root_key;
