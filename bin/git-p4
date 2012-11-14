@@ -826,13 +826,19 @@ class P4Submit(Command):
         else:
             diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
         patchcmd = diffcmd + " | git apply "
-        #if(gitConfig("diff.noprefix") == "true")
-        #     patchcmd += " -p0 ";
 
-        tryPatchCmd = patchcmd + "--check -"
+        patchApplied = False
+        for i in range(1, 3):
+           tryPatchCmd = patchcmd + "--check -"
+           if system(tryPatchCmd + " 2>/dev/null", True) == True:
+               patchApplied = True
+               break
+           if(gitConfig("diff.noprefix") != "true"):
+               break
+           patchcmd += " -p0 ";
+
         applyPatchCmd = patchcmd + "--check --apply -"
-
-        if system(tryPatchCmd) == False:
+        if not patchApplied:
             print "Unfortunately applying the change failed!"
             print "What do you want to do?"
             response = "x"
@@ -934,6 +940,8 @@ class P4Submit(Command):
                     response = "x"
                     while response != "y" and response != "n":
                         response = raw_input("Submit template unchanged. Submit anyway? [y]es, [n]o (skip this patch) ")
+
+            #return
 
             revert = False
             if response == "y":
