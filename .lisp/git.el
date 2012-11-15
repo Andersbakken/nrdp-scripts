@@ -1955,15 +1955,18 @@ Meant to be used in `after-save-hook'."
 
 (defun git-stash ()
   (interactive)
-  (git-call-process-display-error "stash"))
+  (if (y-or-n-p "git stash? ")
+      (git-call-process-display-error "stash")))
 
 (defun git-stash-apply ()
   (interactive)
-  (git-call-process-display-error "stash" "apply"))
+  (if (y-or-n-p "git stash apply? ")
+      (git-call-process-display-error "stash" "apply")))
 
 (defun git-stash-pop ()
   (interactive)
-  (git-call-process-display-error "stash" "pop"))
+  (if (y-or-n-p "git stash pop? ")
+      (git-call-process-display-error "stash" "pop")))
 
 (defun git-pull ()
   (interactive)
