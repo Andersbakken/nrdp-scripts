@@ -37,7 +37,7 @@
   (let ((name nil))
     (if (bufferp buffer-or-dir) (setq name (with-current-buffer buffer-or-dir _lsdev_name)))
     (unless name
-      (message (format "Calculating lsdev for %s..." (if (bufferp buffer-or-dir) (buffer-file-name buffer-or-dir) buffer-or-dir)))
+      ;; (message "Calculating lsdev for %s...%s" (if (bufferp buffer-or-dir) (buffer-file-name buffer-or-dir) buffer-or-dir))
       (let ((dir (lsdev-get-dir buffer-or-dir)))
         (if dir (setq name (nth 0 (car (apply #'lsdev-dirs-internal "-c" dir "-p" match)))))
         (if (bufferp buffer-or-dir) (with-current-buffer buffer-or-dir
@@ -53,9 +53,14 @@
 
 (defun lsdev-dirs-build (dir &rest match)
   (save-excursion
-    (if dir
-        (cd dir))
-    (apply #'lsdev-dirs-internal "-l" match)))
+    (let ((olddir (if dir default-directory nil))
+          (retval))
+      (if dir
+          (cd dir))
+      (setq retval (apply #'lsdev-dirs-internal "-l" match))
+      (if olddir
+          (cd olddir))
+      retval)))
 
 (defun lsdev-dir-for-name(name)
   (let ((ret nil) (hds (lsdev-dirs-all)))
