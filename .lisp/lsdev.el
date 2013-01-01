@@ -53,10 +53,11 @@
 
 (defun lsdev-dirs-build (dir &rest match)
   (save-excursion
-    (let ((olddir (if dir default-directory nil))
+    (let ((olddir default-directory)
           (retval))
-      (if dir
-          (cd dir))
+      (if (and dir (file-directory-p dir))
+          (cd dir)
+        (setq olddir nil))
       (setq retval (apply #'lsdev-dirs-internal "-l" match))
       (if olddir
           (cd olddir))
