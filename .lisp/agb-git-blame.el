@@ -5,9 +5,16 @@
 (defvar agb-git-blame-last-file nil)
 (defvar agb-git-blame-commit-chain nil)
 (defvar agb-git-blame-last-blame-buffer nil)
+(defvar agb-git-blame-showing-smaller nil)
 (defcustom agb-git-blame-reuse-buffers
   t
   "Whether to reuse temp buffers for agb-git-blame"
+  :group 'rtags
+  :type 'boolean)
+
+(defcustom agb-git-blame-use-relative-date
+  t
+  "Whether to use relative dates for agb-git-blame"
   :group 'rtags
   :type 'boolean)
 
@@ -18,8 +25,10 @@
 (define-key agb-git-blame-mode-map (kbd "q") (function bury-buffer))
 (define-key agb-git-blame-mode-map (kbd "p") (function agb-git-reblame-for-previous-revision))
 (define-key agb-git-blame-mode-map (kbd "n") (function agb-git-reblame-pop))
-(define-key agb-git-blame-mode-map (kbd "=") (function agb-git-blame-show-commit))
-(define-key agb-git-blame-mode-map (kbd "+") (function agb-git-blame-show-commit-other-window))
+(define-key agb-git-blame-mode-map (kbd "=") (function agb-git-blame-show-diff))
+(define-key agb-git-blame-mode-map (kbd "+") (function agb-git-blame-show-diff-other-window))
+(define-key agb-git-blame-mode-map (kbd "s") (function agb-git-blame-toggle-smaller))
+(define-key agb-git-blame-mode-map (kbd "o") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "RET") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "ENTER") (function agb-git-blame-show-revision))
 
@@ -53,13 +62,55 @@
     (switch-to-buffer buf)
     (setq buffer-read-only nil)
     (erase-buffer)
-    (call-process "git" nil (current-buffer) nil "blame" revision "--" buffer-name)
+
+    (let ((args (list revision "--" buffer-name)))
+      (if agb-git-blame-use-relative-date (push "--date=relative" args))
+      (if agb-git-blame-showing-smaller (push "-s" args))
+      (push "blame" args)
+      (apply #'call-process "git" nil (current-buffer) nil args))
     (goto-char (point-min))
-    (if (and (looking-at "fatal") (> (length agb-git-blame-commit-chain) 1))
+    (if (looking-at "fatal")
         (progn
-          (agb-git-blame (nth 1 agb-git-blame-commit-chain))
+          (if (> (length agb-git-blame-commit-chain) 1)
+              (agb-git-blame (nth 1 agb-git-blame-commit-chain)))
           (message "No such commit"))
-      (progn
+      (let ((longest 0)
+            (paren)
+            (rx " +[0-9]+) "))
+        ;; (while (not (eobp))
+        ;;   (save-excursion
+        ;;     (let ((idx (search-forward-regexp rx (point-at-eol) t)))
+        ;;       (when idx
+        ;;         ;; (message "Got %d %d %d %d - %d" idx (point-at-bol) (point-at-eol) (point-max) (match-beginning 0))
+        ;;         (setq idx (- (match-beginning 0) (point-at-bol)))
+        ;;         (if (> idx longest)
+        ;;             (setq longest idx))
+        ;;         (unless paren
+        ;;           (setq paren (- (match-end 0) 2))
+        ;;         )
+        ;;       )
+        ;;     )
+        ;;   (next-line))
+        ;;   ;; (message "start %d end %d" longest paren)
+        ;;   (goto-char (point-min))
+        ;;   (while (not (eobp))
+        ;;     (let ((pos (+ (point-at-bol) longest)))
+        ;;       (when (< pos (point-max))
+        ;;         (goto-char pos)
+        ;;         (delete-char
+        ;;       (let ((idx (search-forward-regexp rx (point-at-eol) t)))
+        ;;         (when idx
+        ;;           ;; (message "Got %d %d %d %d - %d" idx (point-at-bol) (point-at-eol) (point-max) (match-beginning 0))
+        ;;           (setq idx (- (match-beginning 0) (point-at-bol)))
+        ;;           (if (> idx longest)
+        ;;               (setq longest idx))
+        ;;           (unless paren
+        ;;             (setq paren (- (match-end 0) 2))
+        ;;             )
+        ;;           )
+        ;;         )
+        ;;       (next-line))
+          
         (if (search-forward line nil t)
             (beginning-of-line)
           (if (< lineno (line-number-at-pos (point-max)))
@@ -95,7 +146,7 @@
     (if (looking-at "^\\([0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\\) ")
         (match-string 1))))
 
-(defun agb-git-blame-show-commit (&optional otherwindow)
+(defun agb-git-blame-show-diff (&optional otherwindow)
   (interactive "P")
   (let ((commit (agb-git-blame-current-commit)))
     (if commit
@@ -119,9 +170,9 @@
     )
   )
 
-(defun agb-git-blame-show-commit-other-window()
+(defun agb-git-blame-show-diff-other-window()
   (interactive)
-  (agb-git-blame-show-commit t))
+  (agb-git-blame-show-diff t))
 
 (defvar agb-git-blame-show-revision-keymap (make-sparse-keymap))
 (define-key agb-git-blame-show-revision-keymap (kbd "q") 'bury-buffer)
@@ -152,6 +203,14 @@
           (setq buffer-read-only t))
       )
     )
+  )
+
+(defun agb-git-blame-toggle-smaller ()
+  (interactive)
+  (setq agb-git-blame-showing-smaller (not agb-git-blame-showing-smaller))
+  (if (and (agb-git-blame-filename)
+           (>= (length agb-git-blame-commit-chain) 1))
+      (agb-git-blame (car agb-git-blame-commit-chain)))
   )
 
 (provide 'agb-git-blame)
