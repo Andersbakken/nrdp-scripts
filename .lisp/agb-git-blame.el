@@ -6,15 +6,10 @@
 (defvar agb-git-blame-commit-chain nil)
 (defvar agb-git-blame-last-blame-buffer nil)
 (defvar agb-git-blame-showing-smaller nil)
+(defvar agb-git-blame-use-relative-date nil)
 (defcustom agb-git-blame-reuse-buffers
   t
   "Whether to reuse temp buffers for agb-git-blame"
-  :group 'rtags
-  :type 'boolean)
-
-(defcustom agb-git-blame-use-relative-date
-  t
-  "Whether to use relative dates for agb-git-blame"
   :group 'rtags
   :type 'boolean)
 
@@ -28,6 +23,7 @@
 (define-key agb-git-blame-mode-map (kbd "=") (function agb-git-blame-show-diff))
 (define-key agb-git-blame-mode-map (kbd "+") (function agb-git-blame-show-diff-other-window))
 (define-key agb-git-blame-mode-map (kbd "s") (function agb-git-blame-toggle-smaller))
+(define-key agb-git-blame-mode-map (kbd "t") (function agb-git-blame-toggle-use-relative-date))
 (define-key agb-git-blame-mode-map (kbd "o") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "RET") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "ENTER") (function agb-git-blame-show-revision))
@@ -59,12 +55,12 @@
               agb-git-blame-commit-chain nil))
     (if (not (member revision agb-git-blame-commit-chain))
         (push revision agb-git-blame-commit-chain))
-    (switch-to-buffer buf)
+    (set-buffer buf)
     (setq buffer-read-only nil)
     (erase-buffer)
 
     (let ((args (list revision "--" buffer-name)))
-      (if agb-git-blame-use-relative-date (push "--date=relative" args))
+      (push (if agb-git-blame-use-relative-date "--date=relative" "--date=local") args)
       (if agb-git-blame-showing-smaller (push "-s" args))
       (push "blame" args)
       (apply #'call-process "git" nil (current-buffer) nil args))
@@ -74,49 +70,29 @@
           (if (> (length agb-git-blame-commit-chain) 1)
               (agb-git-blame (nth 1 agb-git-blame-commit-chain)))
           (message "No such commit"))
-      (let ((longest 0)
-            (paren)
-            (rx " +[0-9]+) "))
-        ;; (while (not (eobp))
-        ;;   (save-excursion
-        ;;     (let ((idx (search-forward-regexp rx (point-at-eol) t)))
-        ;;       (when idx
-        ;;         ;; (message "Got %d %d %d %d - %d" idx (point-at-bol) (point-at-eol) (point-max) (match-beginning 0))
-        ;;         (setq idx (- (match-beginning 0) (point-at-bol)))
-        ;;         (if (> idx longest)
-        ;;             (setq longest idx))
-        ;;         (unless paren
-        ;;           (setq paren (- (match-end 0) 2))
-        ;;         )
-        ;;       )
-        ;;     )
-        ;;   (next-line))
-        ;;   ;; (message "start %d end %d" longest paren)
-        ;;   (goto-char (point-min))
-        ;;   (while (not (eobp))
-        ;;     (let ((pos (+ (point-at-bol) longest)))
-        ;;       (when (< pos (point-max))
-        ;;         (goto-char pos)
-        ;;         (delete-char
-        ;;       (let ((idx (search-forward-regexp rx (point-at-eol) t)))
-        ;;         (when idx
-        ;;           ;; (message "Got %d %d %d %d - %d" idx (point-at-bol) (point-at-eol) (point-max) (match-beginning 0))
-        ;;           (setq idx (- (match-beginning 0) (point-at-bol)))
-        ;;           (if (> idx longest)
-        ;;               (setq longest idx))
-        ;;           (unless paren
-        ;;             (setq paren (- (match-end 0) 2))
-        ;;             )
-        ;;           )
-        ;;         )
-        ;;       (next-line))
-          
-        (if (search-forward line nil t)
-            (beginning-of-line)
-          (if (< lineno (line-number-at-pos (point-max)))
-              (goto-line lineno)))
-        (agb-git-blame-mode)))
-    (setq buffer-read-only t)
+      (progn
+        (goto-char (- (point-max) 1))
+        ;; (message "point %d point max %d line: [%s]" (point) (point-max) (buffer-substring (point-at-bol) (point-at-eol)))
+        (if (re-search-backward "^[a-f0-9]\\{8\\}[^)]*\\( [0-9]+\\)) ")
+            (let ((count (length (match-string 1)))
+                  (column (- (match-beginning 1) (point-at-bol))))
+              (message "found shit [%s] %d %d at [%s]" (match-string 1) count column (buffer-substring (point-at-bol) (point-at-eol)))
+              (goto-char (point-min))
+              (while (< (+ (point-at-bol) column count) (point-max))
+                (goto-char (+ (point-at-bol) column))
+                (delete-char count)
+                (next-line))))
+        (goto-char (point-min))
+        ;; (if (search-forward line nil t)
+        ;;     (beginning-of-line)
+        ;; (if (< lineno (line-number-at-pos (point-max)))
+        ;;     (goto-line linen o))
+        ;; )
+        (agb-git-blame-mode)
+        (setq buffer-read-only t)
+        (switch-to-buffer buf)
+        )
+      )
     )
   )
 
@@ -143,7 +119,7 @@
 (defun agb-git-blame-current-commit()
   (save-excursion
     (beginning-of-line)
-    (if (looking-at "^\\([0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]\\) ")
+    (if (looking-at "\\([0-9a-f]\\{8\\}\\)[ )]")
         (match-string 1))))
 
 (defun agb-git-blame-show-diff (&optional otherwindow)
@@ -212,5 +188,14 @@
            (>= (length agb-git-blame-commit-chain) 1))
       (agb-git-blame (car agb-git-blame-commit-chain)))
   )
+
+(defun agb-git-blame-toggle-use-relative-date ()
+  (interactive)
+  (setq agb-git-blame-use-relative-date (not agb-git-blame-use-relative-date))
+  (if (and (agb-git-blame-filename)
+           (>= (length agb-git-blame-commit-chain) 1))
+      (agb-git-blame (car agb-git-blame-commit-chain)))
+  )
+  
 
 (provide 'agb-git-blame)
