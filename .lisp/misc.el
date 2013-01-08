@@ -1,5 +1,5 @@
 
-(defun sam-is-ancestor (root child)
+(defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
 			  (if (equal (substring root -1) "/")
@@ -11,8 +11,10 @@
       (setq child (substring child 0 (string-match "[^/]*/?$" child))))
     ;; if we did found a file!
     (if (not (string-equal child "/"))
-	t nil)))
-(defun sam-find-ancestor-file (file-name &optional directory)
+        t nil)))
+(defalias 'sam-is-ancestor 'is-ancestor)
+
+(defun find-ancestor-file (file-name &optional directory)
   "Try to recursively go upwards from this directory and see if a file with
 the name of the value of file-name is present."
   (let ((check-dir (cond (directory ;; extrapolate from name
@@ -26,7 +28,9 @@ the name of the value of file-name is present."
     ;; if we did found a file!
     (if (<= (length check-dir) 1) nil  (concat check-dir file-name))))
 
-(defun sam-what-file (&optional name) ;;I use this function from emacsclient!
+(defalias 'sam-find-ancestor-file 'find-ancestor-file)
+
+(defun what-file (&optional name) ;;I use this function from emacsclient!
   (setq result nil)
   (let* ((buffers (buffer-list)))
     (while (and (not result) buffers)
@@ -43,7 +47,9 @@ the name of the value of file-name is present."
   result
   )
 
-(defun sam-what-directory (&optional name) ;;I use this function from emacsclient!
+(defalias 'sam-what-file 'what-file)
+
+(defun what-directory (&optional name) ;;I use this function from emacsclient!
   (setq result nil)
   (let* ((buffers (buffer-list)))
     (while (and (not result) buffers)
@@ -54,6 +60,8 @@ the name of the value of file-name is present."
         (setq buffers (cdr buffers))))
   result
   )
+
+(defalias 'sam-what-directory 'what-directory)
 
 (defun rotate-windows ()
   "Rotate your windows" 

@@ -271,7 +271,7 @@
                   (if (string-equal (nth 0 n) shadow)
                       (setq shadow-directory (nth 1 n))))))))
         ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
-        (setq parent-makefile (sam-find-ancestor-file "Makefile" shadow-directory))
+        (setq parent-makefile (find-ancestor-file "Makefile" shadow-directory))
         (if parent-makefile (setq shadow-directory (file-name-directory parent-makefile)))
         (lsdev-compile-directory shadow-directory)
         t)
