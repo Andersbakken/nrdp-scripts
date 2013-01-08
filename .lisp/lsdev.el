@@ -114,6 +114,12 @@
         (find-file dirname))
     (message (if dirname dirname "empty"))))
 
+(defun lsdev-compile-at-point ()
+  (interactive)
+  (let ((dir (lsdev-cd-directory-name-at-point)))
+    (if dir
+        (lsdev-compile-directory dir t))))
+
 (defun lsdev-cd-path-at-point ()
   (interactive)
   (lsdev-cd-open (lsdev-cd-directory-name-at-point)))
@@ -168,6 +174,8 @@
                (local-set-key "q" 'lsdev-cd-bury-buffer)
                (local-set-key "/" 'lsdev-cd-subdir)
                (local-set-key "g" 'lsdev-cd-changedir)
+               (local-set-key "c" 'lsdev-compile-at-point)
+               (local-set-key "b" 'lsdev-compile-at-point)
                (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
                (local-set-key [return] 'lsdev-cd-path-at-point)
                (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
@@ -200,5 +208,73 @@
 (defun lsdev-bs-sort(b1 b2)
   (string< (lsdev-name b1) (lsdev-name b2)))
 (add-to-list 'bs-configurations '("lsdev" nil nil nil nil lsdev-bs-sort) t)
+
+;; compile stuff
+
+(defvar lsdev-compile-command nil)
+(defvar lsdev-compile-last-directory nil)
+(defvar lsdev-compile-last-args nil)
+
+(defun lsdev-compile()
+  (interactive)
+  (setq commands (read-shell-command "Command: " lsdev-compile-command))
+  (setq lsdev-compile-command commands)
+  (compile lsdev-compile-command))
+
+(defun lsdev-recompile()
+  (interactive)
+  (if lsdev-compile-command (compile lsdev-compile-command) (call-interactively 'lsdev-compile)))
+
+(defun lsdev-compile-directory(directory &optional usedir)
+  (interactive)
+  (unless (and directory usedir)
+    (setq directory (read-directory-name "Directory: " directory directory)))
+  (setq args (read-shell-command "Args: " (car lsdev-compile-last-args) 'lsdev-compile-last-args))
+  (setq lsdev-compile-last-directory directory) ;save
+  (setq lsdev-compile-command nil)
+  ;;(setq lsdev-compile-command compile-command)
+  (if (or (not lsdev-compile-command) (= 0 (length lsdev-compile-command))) (setq lsdev-compile-command "make"))
+  (if (or (not directory) (= 0 (length directory)))
+      nil (setq lsdev-compile-command (concat lsdev-compile-command " -C " directory)))
+  (setq lsdev-compile-command (concat lsdev-compile-command (format " %s" args)))
+  (compile lsdev-compile-command))
+
+(defun lsdev-recompile-directory()
+  (interactive)
+  (if lsdev-compile-last-directory
+      (lsdev-compile-directory lsdev-compile-last-directory)
+    (lsdev-compile-directory nil)))
+
+(defun lsdev-compile-pop(&optional name)
+  (interactive)
+  (unless name (setq name "*compilation*"))
+  (if (buffer-pop name)
+      (if (and (string= (buffer-name) name) (not (get-buffer-process (current-buffer))) (y-or-n-p "Recompile? ")) (lsdev-recompile))
+    (lsdev-compile-directory)))
+
+(defun lsdev-compile-shadow()
+  (interactive)
+  (setq build-dir (expand-file-name default-directory))
+  (setq src-root (lsdev-root-dir build-dir))
+  (setq shadows (lsdev-dirs-build src-root))
+  (if shadows
+      (progn
+        (setq shadow-directory nil)
+        (if (= (length shadows) 1)
+            (setq shadow-directory (nth 1 (car shadows)))
+          (progn
+            (setq shadow (completing-read "Shadow: " shadows))
+            (let ((s shadows))
+              (while (and s (not shadow-directory))
+                (progn
+                  (setq n (car s) s (cdr s))
+                  (if (string-equal (nth 0 n) shadow)
+                      (setq shadow-directory (nth 1 n))))))))
+        ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
+        (setq parent-makefile (sam-find-ancestor-file "Makefile" shadow-directory))
+        (if parent-makefile (setq shadow-directory (file-name-directory parent-makefile)))
+        (lsdev-compile-directory shadow-directory)
+        t)
+    nil))
 
 (provide 'lsdev)
