@@ -38,11 +38,12 @@
 
 (defun agb-git-blame(&optional revision)
   (interactive)
-  (unless revision (setq revision "HEAD"))
   (let* ((buffer-name (if (buffer-file-name) (buffer-file-name) (agb-git-blame-filename)))
-         (buf (get-buffer-create (format "*%s - Blame - %s*" buffer-name revision)))
+         (buf (get-buffer-create (format "*%s - Blame - %s*" buffer-name (if revision revision "HEAD"))))
          (line (buffer-substring (point-at-bol) (point-at-eol)))
+         (norevision (not revision))
          (lineno (line-number-at-pos)))
+    (unless revision (setq revision "HEAD"))
     (if (and agb-git-blame-reuse-buffers
              agb-git-blame-last-blame-buffer
              (not (eq buf agb-git-blame-last-blame-buffer)))
@@ -81,6 +82,8 @@
         (agb-git-blame-mode)
         (setq buffer-read-only t)
         (switch-to-buffer buf)
+        (if norevision
+            (goto-line lineno))
         )
       )
     )
