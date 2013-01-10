@@ -1,6 +1,7 @@
 (require 'bs)
 (require 'cl)
 (require 'ido)
+(require 'git)
 
 (defgroup lsdev nil
   "Group for lsdev."
@@ -126,6 +127,13 @@
     (if dir
         (lsdev-compile-directory dir (if recompile 1 t)))))
 
+(defun lsdev-git-status-at-point ()
+  (interactive)
+  (let ((root (git-root-dir)))
+    (if root
+        (git-status root)
+      (call-interactively 'git-status))))
+
 (defun lsdev-recompile-at-point ()
   (interactive)
   (lsdev-compile-at-point t))
@@ -179,6 +187,9 @@
                (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)
                (local-set-key (kbd "/") 'lsdev-cd-subdir)
                (local-set-key (kbd "g") 'lsdev-cd-changedir)
+               (local-set-key (kbd "s") 'lsdev-git-status-at-point)
+               (local-set-key (kbd "d") 'git-diff-all)
+               (local-set-key (kbd "=") 'git-diff-all)
                (local-set-key (kbd "c") 'lsdev-compile-at-point)
                (local-set-key (kbd "b") 'lsdev-compile-at-point)
                (local-set-key (kbd "r") 'lsdev-recompile-at-point)

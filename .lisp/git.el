@@ -1977,12 +1977,14 @@ Meant to be used in `after-save-hook'."
   (interactive)
   (git-call-process-display-error "push"))
 
-(defun git-diff-all ()
-  (interactive)
+(defun git-diff-all (&optional switch)
+  (interactive "P")
   (git-status (git-root-dir))
   (git-mark-all)
   (git-diff-file)
-  (switch-to-buffer (other-buffer)))
+  (switch-to-buffer (other-buffer))
+  (if switch
+      (other-window 1)))
 
 (provide 'git)
 ;;; git.el ends here
