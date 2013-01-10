@@ -58,7 +58,9 @@
       (if (and dir (file-directory-p dir))
           (cd dir)
         (setq olddir nil))
-      (setq retval (apply #'lsdev-dirs-internal "-l" "-b" match))
+      (setq retval (apply #'lsdev-dirs-internal "-l" "b" match))
+      (unless (= (length retval) 1)
+        (setq retval (apply #'lsdev-dirs-internal "-l" match)))
       (if olddir
           (cd olddir))
       retval)))
@@ -175,6 +177,7 @@
                (local-set-key [return] 'lsdev-cd-path-at-point)
                (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
                )))))
+
 (defun lsdev-cd(&optional ignore-builds)
   (interactive)
   (let ((args nil) (hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history)))
@@ -215,9 +218,11 @@
 
 ;; compile stuff
 
+(defvar lsdev-compile-args-by-dir (make-hash-table :test 'equal))
 (defvar lsdev-compile-command nil)
 (defvar lsdev-compile-last-directory nil)
-(defvar lsdev-compile-last-args nil)
+(defvar lsdev-compile-last-args (getenv "MAKEFLAGS"))
+(defvar lsdev-compile-args-history nil)
 
 (defun lsdev-compile()
   (interactive)
@@ -229,19 +234,27 @@
   (interactive)
   (if lsdev-compile-command (compile lsdev-compile-command) (call-interactively 'lsdev-compile)))
 
-(defun lsdev-compile-directory(directory &optional usedir)
+(defun lsdev-compile-directory(directory &optional auto)
   (interactive)
-  (unless (and directory usedir)
+  (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
+                                   (auto "t")
+                                   (t "nil")))
+  (unless (and directory auto)
     (setq directory (read-directory-name "Directory: " directory directory)))
-  (setq args (read-shell-command "Args: " (car lsdev-compile-last-args) 'lsdev-compile-last-args))
-  (setq lsdev-compile-last-directory directory) ;save
-  (setq lsdev-compile-command nil)
-  ;;(setq lsdev-compile-command compile-command)
-  (if (or (not lsdev-compile-command) (= 0 (length lsdev-compile-command))) (setq lsdev-compile-command "make"))
-  (if (or (not directory) (= 0 (length directory)))
-      nil (setq lsdev-compile-command (concat lsdev-compile-command " -C " directory)))
-  (setq lsdev-compile-command (concat lsdev-compile-command (format " %s" args)))
-  (compile lsdev-compile-command))
+  (if (> (length directory) 0)
+      (let ((args (gethash directory lsdev-compile-args-by-dir lsdev-compile-last-args))
+            (command (concat (if (> (length lsdev-compile-command) 0) lsdev-compile-command "make") " -C " directory)))
+        (unless (and (integerp auto)
+                     (= auto 1))
+          (setq args (read-shell-command "Args: " args 'lsdev-compile-args-history)))
+        (if args
+            (setq command (concat command " " args)))
+        (setq lsdev-compile-last-args args)
+        (setq lsdev-compile-last-directory directory)
+        (compile command)
+        (if args
+            (puthash directory args lsdev-compile-args-by-dir)))))
+
 
 (defun lsdev-recompile-directory()
   (interactive)
@@ -256,8 +269,12 @@
       (if (and (string= (buffer-name) name) (not (get-buffer-process (current-buffer))) (y-or-n-p "Recompile? ")) (lsdev-recompile))
     (lsdev-compile-directory)))
 
-(defun lsdev-compile-shadow()
-  (interactive)
+(defun lsdev-shadows ()
+  (lsdev-dirs-build (lsdev-root-dir (expand-file-name default-directory))))
+
+(require 'ido)
+(defun lsdev-compile-shadow(&optional auto)
+  (interactive "P")
   (setq build-dir (expand-file-name default-directory))
   (setq src-root (lsdev-root-dir build-dir))
   (setq shadows (lsdev-dirs-build src-root))
@@ -267,7 +284,7 @@
         (if (= (length shadows) 1)
             (setq shadow-directory (nth 1 (car shadows)))
           (progn
-            (setq shadow (completing-read "Shadow: " shadows))
+            (setq shadow (ido-completing-read "Shadow: " shadows))
             (let ((s shadows))
               (while (and s (not shadow-directory))
                 (progn
@@ -277,7 +294,7 @@
         ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
         (setq parent-makefile (find-ancestor-file "Makefile" shadow-directory))
         (if parent-makefile (setq shadow-directory (file-name-directory parent-makefile)))
-        (lsdev-compile-directory shadow-directory)
+        (lsdev-compile-directory shadow-directory auto)
         t)
     nil))
 
