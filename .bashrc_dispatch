@@ -43,6 +43,10 @@ if ! type -p shell_is_login ; then
   shell_is_script      () { ! shell_is_interactive ; }
 fi
 
+shell_dispatch_brief() {
+#    echo "Brief: $@"
+    true
+}
 
 # Make $BASH_ENV the same in interactive and non-interactive scripts
 
@@ -63,11 +67,11 @@ fi
 # Now dispatch special files
 PRF="${HOME}/."
 
-[ -f "${PRF}bashrc_once"  ]       && [ -z "$BRCD_RANONCE" ] && . "${PRF}bashrc_once"  && export BRCD_RANONCE=true
-[ -f "${PRF}bashrc_all" ]                                   && . "${PRF}bashrc_all"
-[ -f "${PRF}bashrc_script" ]      && shell_is_script        && . "${PRF}bashrc_script"
-[ -f "${PRF}bashrc_interactive" ] && shell_is_interactive   && . "${PRF}bashrc_interactive"
-[ -f "${PRF}bashrc_login" ]       && shell_is_login         && . "${PRF}bashrc_login"
+[ -f "${PRF}bashrc_once"  ]       && [ -z "$BRCD_RANONCE" ] && shell_dispatch_brief "exe_once" && . "${PRF}bashrc_once"  && export BRCD_RANONCE=true
+[ -f "${PRF}bashrc_all" ]                                   && shell_dispatch_brief "exe_all" && . "${PRF}bashrc_all"
+[ -f "${PRF}bashrc_script" ]      && shell_is_script        && shell_dispatch_brief "exe_script" && . "${PRF}bashrc_script"
+[ -f "${PRF}bashrc_interactive" ] && shell_is_interactive   && shell_dispatch_brief "exe_interative" && . "${PRF}bashrc_interactive"
+[ -f "${PRF}bashrc_login" ]       && shell_is_login         && shell_dispatch_brief "exe_login" && . "${PRF}bashrc_login"
 
 
 # Unset variables if necessary to avoid env polution

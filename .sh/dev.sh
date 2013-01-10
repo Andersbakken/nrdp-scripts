@@ -11,6 +11,12 @@ make()
     "ubermake.sh" "$@"
 }
 
+#gdb wrapper
+gdb()
+{
+    EDITOR="$HOME/bin/emacsedit.sh -n" `which gdb` "$@"
+}
+
 #reconfigure
 reconfigure()
 {
