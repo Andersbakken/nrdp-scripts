@@ -58,7 +58,7 @@
       (if (and dir (file-directory-p dir))
           (cd dir)
         (setq olddir nil))
-      (setq retval (apply #'lsdev-dirs-internal "-l" match))
+      (setq retval (apply #'lsdev-dirs-internal "-l" "-b" match))
       (if olddir
           (cd olddir))
       retval)))
@@ -178,7 +178,7 @@
 (defun lsdev-cd(&optional ignore-builds)
   (interactive)
   (let ((args nil) (hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history)))
-    (if (or (string= hd "") (not hd)) (push "-w" args)
+    (if (or (string= hd "") (not hd)) (push "-b" args)
       (progn
         (push "-a" args)
         (push "-r" args)
