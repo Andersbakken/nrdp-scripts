@@ -62,7 +62,7 @@
       (if (and dir (file-directory-p dir))
           (cd dir)
         (setq olddir nil))
-      (setq retval (apply #'lsdev-dirs-internal "-l" "b" match))
+      (setq retval (apply #'lsdev-dirs-internal "-l" "-b" match))
       (unless (= (length retval) 1)
         (setq retval (apply #'lsdev-dirs-internal "-l" match)))
       (if olddir
@@ -189,7 +189,11 @@
 
 (defun lsdev-cd(&optional ignore-builds)
   (interactive)
-  (let ((args nil) (hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil t nil 'lsdev-cd-history)))
+  (let* ((args nil)
+         (alternatives (with-temp-buffer
+                         (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
+                         (split-string (buffer-string))))
+         (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (if (or (string= hd "") (not hd)) (push "-b" args)
       (progn
