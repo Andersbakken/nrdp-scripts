@@ -192,7 +192,7 @@
   (let* ((args nil)
          (alternatives (with-temp-buffer
                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
-                         (split-string (buffer-string))))
+                         (remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
          (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (if (or (string= hd "") (not hd)) (push "-b" args)
