@@ -1,3 +1,7 @@
+(require 'bs)
+(require 'cl)
+(require 'ido)
+
 (defgroup lsdev nil
   "Group for lsdev."
   :group 'tools
@@ -31,7 +35,7 @@
         (with-current-buffer buffer-or-dir (setq dir default-directory))))
     dir))
 
-(setq _lsdev_name nil)
+(defvar _lsdev_name nil)
 
 (defun lsdev-name (buffer-or-dir &rest match)
   (let ((name nil))
@@ -180,7 +184,8 @@
 
 (defun lsdev-cd(&optional ignore-builds)
   (interactive)
-  (let ((args nil) (hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil nil nil 'lsdev-cd-history)))
+  (let ((args nil) (hd (completing-read "LSDEV Directory: " 'lsdev-cd-completing nil t nil 'lsdev-cd-history)))
+    (setq lsdev-cd-history (remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (if (or (string= hd "") (not hd)) (push "-b" args)
       (progn
         (push "-a" args)
@@ -189,8 +194,8 @@
     (lsdev-cd-internal args ignore-builds)))
 
 ;;mode string
-(setq lsdev-mode t)
-(setq lsdev-modestring nil)
+(defvar lsdev-mode t)
+(defvar lsdev-modestring nil)
 (defun lsdev-update-modestring (&optional buffer)
   (unless buffer (setq buffer (current-buffer)))
   (let ((modeline (lsdev-name buffer)))
@@ -208,7 +213,6 @@
 
 
 ;;bs integration
-(require 'bs)
 (defun lsdev-bs-get-name(&rest ignored)
   (let ((name (lsdev-name (current-buffer))))
     (if name name "")))
@@ -272,7 +276,6 @@
 (defun lsdev-shadows ()
   (lsdev-dirs-build (lsdev-root-dir (expand-file-name default-directory))))
 
-(require 'ido)
 (defun lsdev-compile-shadow(&optional auto)
   (interactive "P")
   (setq build-dir (expand-file-name default-directory))
