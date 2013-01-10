@@ -1275,36 +1275,37 @@ The FILES list must be sorted."
   ;;(when (eq (window-buffer) (current-buffer))
     (shrink-window-if-larger-than-buffer))
 
-(defun git-diff-files-internal (files)
+(defun git-diff-files-internal (files -w)
   (let ((buffer (get-buffer-create "*git-diff*")))
     (with-current-buffer buffer
       (setq buffer-read-only nil)
       (erase-buffer)
       (while files
-        (let ((info (car files)))
+        (let ((info (car files))
+              (args))
           (setq files (cdr files))
           (cond
            ((and (not (git-fileinfo->state info)) (not (git-fileinfo->staged-state info)))
             (message "No differences!"))
            ((and (git-fileinfo->state info) (not (git-fileinfo->staged-state info)))
-            (apply #'git-run-command-buffer buffer "diff" "-p" "--" (list (git-fileinfo->name info))))
+            (apply #'git-run-command-buffer buffer "diff" (if -w "-w" "-p") "--" (list (git-fileinfo->name info))))
            ((and (not (git-fileinfo->state info)) (git-fileinfo->staged-state info))
-            (apply #'git-run-command-buffer buffer "diff" "-p" "--cached" "--" (list (git-fileinfo->name info))))
-           (t (apply #'git-run-command-buffer buffer "diff-index" "-p" "-M" "HEAD" "--" (list (git-fileinfo->name info))))))))
+            (apply #'git-run-command-buffer buffer "diff" (if -w "-w" "-p") "--cached" "--" (list (git-fileinfo->name info))))
+           (t (apply #'git-run-command-buffer buffer "diff-index" (if -w "-w" "-p") "-M" "HEAD" "--" (list (git-fileinfo->name info))))))))
   buffer))
 
-(defun git-diff-file ()
+(defun git-diff-file (&optional -w)
   "Diff the marked file(s) against HEAD."
-  (interactive)
-  (let ((buffer (git-diff-files-internal (git-current-file))))
+  (interactive "P")
+  (let ((buffer (git-diff-files-internal (git-current-file) -w)))
     (with-current-buffer buffer (if (= (point-min) (point-max)) (setq buffer nil)))
     (if buffer (git-setup-diff-buffer buffer))))
 
-(defun git-diff-files ()
+(defun git-diff-files (&optional -w)
   "Diff the marked file(s) against HEAD."
-  (interactive)
+  (interactive "P")
   (let ((files (git-marked-files)))
-    (git-setup-diff-buffer (git-diff-files-internal files))))
+    (git-setup-diff-buffer (git-diff-files-internal files -w))))
 
 (defun git-diff-against (file sha)
   (git-setup-diff-buffer
