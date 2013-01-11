@@ -134,6 +134,11 @@
         (git-status root)
       (call-interactively 'git-status))))
 
+(defun lsdev-git-diff-all-at-point (&optional -w)
+  (interactive "P")
+  (if (git-diff-all -w)
+      (delete-other-windows)))
+
 (defun lsdev-recompile-at-point ()
   (interactive)
   (lsdev-compile-at-point t))
@@ -189,6 +194,7 @@
                (local-set-key (kbd "g") 'lsdev-cd-changedir)
                (local-set-key (kbd "s") 'lsdev-git-status-at-point)
                (local-set-key (kbd "d") 'git-diff-all)
+               (local-set-key (kbd "D") 'lsdev-git-diff-all-at-point)
                (local-set-key (kbd "=") 'git-diff-all)
                (local-set-key (kbd "c") 'lsdev-compile-at-point)
                (local-set-key (kbd "b") 'lsdev-compile-at-point)

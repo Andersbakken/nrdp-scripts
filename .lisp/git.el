@@ -899,10 +899,13 @@ The FILES list must be sorted."
 (defun git-current-file ()
   "Return a list of all marked files, or if none a list containing just the file at cursor position."
   (if git-status
-      (list (ewoc-data (ewoc-locate git-status)))
-      (let ((file (file-truename (buffer-file-name))))
-        (setq git-default-directory (git-root-dir (file-name-directory file)))
-        (git-create-info-list (list (file-relative-name file git-default-directory))))))
+      (let ((loc (ewoc-locate git-status)))
+        (if loc
+            (list (ewoc-data loc))
+          nil))
+    (let ((file (file-truename (buffer-file-name))))
+      (setq git-default-directory (git-root-dir (file-name-directory file)))
+      (git-create-info-list (list (file-relative-name file git-default-directory))))))
 
 (defun git-marked-files ()
   "Return a list of all marked files, or if none a list containing just the file at cursor position."
@@ -1299,7 +1302,11 @@ The FILES list must be sorted."
   (interactive "P")
   (let ((buffer (git-diff-files-internal (git-current-file) -w)))
     (with-current-buffer buffer (if (= (point-min) (point-max)) (setq buffer nil)))
-    (if buffer (git-setup-diff-buffer buffer))))
+    (if buffer
+        (progn
+          (git-setup-diff-buffer buffer)
+          t)
+      nil)))
 
 (defun git-diff-files (&optional -w)
   "Diff the marked file(s) against HEAD."
@@ -1977,14 +1984,18 @@ Meant to be used in `after-save-hook'."
   (interactive)
   (git-call-process-display-error "push"))
 
-(defun git-diff-all (&optional switch)
+(defun git-diff-all (&optional -w)
   (interactive "P")
   (git-status (git-root-dir))
   (git-mark-all)
-  (git-diff-file)
-  (switch-to-buffer (other-buffer))
-  (if switch
-      (other-window 1)))
+  (if (git-diff-file -w)
+      (progn
+        (switch-to-buffer (other-buffer))
+        (other-window 1)
+        t)
+    (progn
+      (bury-buffer)
+      nil)))
 
 (provide 'git)
 ;;; git.el ends here
