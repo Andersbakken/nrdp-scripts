@@ -14,7 +14,7 @@ make()
 #gdb wrapper
 gdb()
 {
-    EDITOR="$HOME/bin/emacsedit.sh -n" `which gdb` "$@"
+    EDITOR="emacsedit.sh -n" `which gdb` "$@"
 }
 
 #emacs diff
