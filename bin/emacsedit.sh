@@ -96,7 +96,7 @@ if [ -n "$FILE" ]; then
         $TEST $EMACS -e "$FILE"
     elif [ "$MODE" = "make" ]; then
         $TEST $EMACS -e "(raise-frame)"
-        [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="sam-compile-directory"
+        [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
         $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
     elif [ "$MODE" = "tail" ]; then
         $TEST $EMACS -e "(tailf \"$FILE\")"
