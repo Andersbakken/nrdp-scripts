@@ -254,16 +254,6 @@
 (defvar lsdev-compile-last-args (getenv "MAKEFLAGS"))
 (defvar lsdev-compile-args-history nil)
 
-(defun lsdev-compile()
-  (interactive)
-  (setq commands (read-shell-command "Command: " lsdev-compile-command))
-  (setq lsdev-compile-command commands)
-  (compile lsdev-compile-command))
-
-(defun lsdev-recompile()
-  (interactive)
-  (if lsdev-compile-command (compile lsdev-compile-command) (call-interactively 'lsdev-compile)))
-
 (defun lsdev-compile-directory(directory &optional auto)
   (interactive)
   (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
@@ -296,7 +286,7 @@
   (interactive)
   (unless name (setq name "*compilation*"))
   (if (buffer-pop name)
-      (if (and (string= (buffer-name) name) (not (get-buffer-process (current-buffer))) (y-or-n-p "Recompile? ")) (lsdev-recompile))
+      (if (and (string= (buffer-name) name) (not (get-buffer-process (current-buffer))) (y-or-n-p "Recompile? ")) (recompile))
     (lsdev-compile-directory)))
 
 (defun lsdev-shadows ()
