@@ -1514,7 +1514,9 @@ class P4Sync(Command):
         committer = ""
         if author not in self.users:
             self.getUserMapFromPerforceServer()
-        if author in self.users:
+        if True:
+            committer = "%s <%s@%s> %s %s" % (author, author, details["client"], epoch, self.tz)
+        elif author in self.users:
             committer = "%s %s %s" % (self.users[author], epoch, self.tz)
         else:
             committer = "%s <a@b> %s %s" % (author, epoch, self.tz)
