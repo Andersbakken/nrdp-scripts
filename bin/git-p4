@@ -1282,6 +1282,7 @@ class P4Sync(Command):
                 optparse.make_option("--branch", dest="branch"),
                 optparse.make_option("--detect-branches", dest="detectBranches", action="store_true"),
                 optparse.make_option("--changesfile", dest="changesFile"),
+                optparse.make_option("-n", dest="terse", action="store_true"),
                 optparse.make_option("--silent", dest="silent", action="store_true"),
                 optparse.make_option("--import-labels", dest="importLabels", action="store_true"),
                 optparse.make_option("--detect-labels", dest="detectLabels", action="store_true"),
@@ -1306,6 +1307,7 @@ class P4Sync(Command):
 
         self.usage += " //depot/path[@revRange]"
         self.p4Shelve = False
+        self.terse = False
         self.silent = False
         self.createdBranches = set()
         self.committedChanges = set()
@@ -1826,7 +1828,10 @@ class P4Sync(Command):
             self.updateOptionDict(description)
 
             if not self.silent:
-                sys.stdout.write("Importing revision %s (%s%%)\n" % (change, cnt * 100 / len(changes)))
+                if self.terse:
+                    sys.stdout.write("Importing revision %s (%d/%d %s%%)\r" % (change, cnt, len(changes), cnt * 100 / len(changes)))
+                else:
+                    sys.stdout.write("Importing revision %s (%d/%d %s%%)\n" % (change, cnt, len(changes), cnt * 100 / len(changes)))
                 sys.stdout.flush()
             cnt = cnt + 1
 
@@ -2379,6 +2384,7 @@ class P4Clone(P4Sync):
         self.importBranches = True
         self.cloneDestination = None
         self.needsGit = False
+        self.terse = True
 
     # This is required for the "append" cloneExclude action
     def ensure_value(self, attr, value):
@@ -2520,6 +2526,7 @@ class P4Branch(P4Sync):
             optparse.make_option("-D", dest="deleteBranch", action="store_true"),
         ]
         self.deleteBranch = False
+        self.terse = True
 
     def run(self, args):
         if len(args) < 1:
