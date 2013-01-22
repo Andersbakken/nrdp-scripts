@@ -302,42 +302,51 @@ def isModeExecChanged(src_mode, dst_mode):
     return isModeExec(src_mode) != isModeExec(dst_mode)
 
 def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None):
+    tries = 0
     cmd = p4_build_cmd("-G %s" % (cmd))
     if verbose:
         sys.stderr.write("Opening pipe: %s\n" % cmd)
 
-    # Use a temporary file to avoid deadlocks without
-    # subprocess.communicate(), which would put another copy
-    # of stdout into memory.
-    stdin_file = None
-    if stdin is not None:
-        stdin_file = tempfile.TemporaryFile(prefix='p4-stdin', mode=stdin_mode)
-        stdin_file.write(stdin)
-        stdin_file.flush()
-        stdin_file.seek(0)
-        if verbose:
-            sys.stderr.write("stdin is: %s\n" % stdin)
+    while True:
+        # Use a temporary file to avoid deadlocks without
+        # subprocess.communicate(), which would put another copy
+        # of stdout into memory.
+        stdin_file = None
+        if stdin is not None:
+            stdin_file = tempfile.TemporaryFile(prefix='p4-stdin', mode=stdin_mode)
+            stdin_file.write(stdin)
+            stdin_file.flush()
+            stdin_file.seek(0)
+            if verbose:
+                sys.stderr.write("stdin is: %s\n" % stdin)
 
-    p4 = subprocess.Popen(cmd, shell=True,
-                          stdin=stdin_file,
-                          stdout=subprocess.PIPE)
+        p4 = subprocess.Popen("%s" % cmd, shell=True,
+                              stdin=stdin_file,
+                              stdout=subprocess.PIPE)
 
-    result = []
-    try:
-        while True:
-            entry = marshal.load(p4.stdout)
-	    if cb is not None:
-		cb(entry)
-	    else:
-		result.append(entry)
-    except EOFError:
-        pass
-    exitCode = p4.wait()
-    if exitCode != 0:
-        entry = {}
-        entry["p4ExitCode"] = exitCode
-        result.append(entry)
-
+        result = []
+        try:
+            while True:
+                entry = marshal.load(p4.stdout)
+                if cb is not None:
+                    cb(entry)
+                else:
+                    result.append(entry)
+        except EOFError:
+            pass
+        exitCode = p4.wait()
+        if exitCode != 0:
+            tries = tries + 1
+            if tries == 5:
+                entry = {}
+                entry["p4ExitCode"] = exitCode
+                result.append(entry)
+                die("Problems executing p4");
+                break
+            sys.stderr.write("Failure(try %d): %s\n" % (tries, cmd))
+            time.sleep(3*tries)
+        else:
+            break
     return result
 
 def p4Cmd(cmd):
@@ -1188,7 +1197,6 @@ class P4Changes(Command):
             else:
                 cmd += " %s..%s" % (self.origin, self.master)
 
-            print "Going for: %s" % cmd
             for line in read_pipe_lines(cmd):
                 commits.append(line.strip())
         else:
