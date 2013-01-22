@@ -621,6 +621,35 @@ class Command:
     def __init__(self):
         self.usage = "usage: %prog [options]"
         self.needsGit = True
+        self.paged = False
+        self.pager = 0
+
+    def close_pager(self):
+        if self.pager:
+            self.pager.stdin.close()
+            self.pager = 0;
+
+    def run_pager(self):
+        pager_cmd = ""
+        if os.environ.has_key("GIT_PAGER"):
+            pager_cmd = os.environ['GIT_PAGER'];
+        if os.environ.has_key("PAGER"):
+            pager_cmd = os.environ['PAGER'];
+        if pager_cmd == "cat":
+            pager_cmd = ""
+        if pager_cmd != "":
+           if not os.environ.has_key("LESS"):
+               os.environ["LESS"] = 'FRSX'
+           process = subprocess.Popen([pager_cmd], stdin=subprocess.PIPE)
+        return process
+
+    def write_pager(self, message):
+        if not self.pager and self.paged:
+            self.pager = self.run_pager()
+        if self.pager:
+            self.pager.stdin.write("%s\n" % message)
+        else:
+            print message
 
 class P4Debug(Command):
     def __init__(self):
@@ -1081,42 +1110,45 @@ class P4Changes(Command):
                 optparse.make_option("--verbose", dest="verbose", action="store_true"),
                 optparse.make_option("--long", dest="long", action="store_true"),
                 optparse.make_option("--stat", dest="stat", action="store_true"),
+                optparse.make_option("-a", dest="all", action="store_true"),
                 optparse.make_option("-l", dest="long", action="store_true"),
                 optparse.make_option("--origin", dest="origin"),
-                optparse.make_option("-c", dest="commit"),                
+                optparse.make_option("-c", dest="commit"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
         ]
         self.description = "Print oustanding changes."
         self.usage += " [name of git branch to submit into perforce depot]"
         self.long = False
         self.stat = False
+        self.all = False
         self.interactive = True
         self.origin = ""
         self.commit = ""
         self.detectRename = False
         self.verbose = False
+        #self.paged = True
         self.isWindows = (platform.system() == "Windows")
 
     def printCommit(self, id):
         note = ""
         settings = settingsForGitCommit(id)
         if settings.has_key("change"):
-            note = " [COMMITED]"
+            note = " [COMMITED: %s]" % settings["change"]
         elif settings.has_key("ignore"):
             note = " [IGNORED]"
 
         if self.long:
             system("git show %s" % (id, note))
         elif self.stat:
-            print "%s%s" % (read_pipe("git show --stat --pretty=oneline %s" % id.strip()), note)
+            self.write_pager("%s%s" % (read_pipe("git show --stat --pretty=oneline %s" % id.strip()), note))
         else:
-            print "%s%s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id).strip(), note)
+            self.write_pager("%s%s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id).strip(), note))
 
     def run(self, args):
         if len(args) == 0:
             self.master = currentGitBranch()
             if self.verbose:
-                print "Master is " + self.master;
+                self.write_pager("Master is " + self.master);
             if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
                 die("Detecting current git branch failed!")
         elif len(args) == 1:
@@ -1150,7 +1182,14 @@ class P4Changes(Command):
         #print "Perforce checkout for depot path %s located at %s (%s)" % (self.depotPath, self.clientPath, self.change)
         commits = []
         if len(self.commit) == 0:
-            for line in read_pipe_lines("git rev-list --reverse --no-merges %s..%s" % (self.origin, self.master)):
+            cmd = "git rev-list --reverse --no-merges";
+            if self.all:
+                cmd += " %s" % (self.master)
+            else:
+                cmd += " %s..%s" % (self.origin, self.master)
+
+            print "Going for: %s" % cmd
+            for line in read_pipe_lines(cmd):
                 commits.append(line.strip())
         else:
                 commits.append(self.commit)
@@ -2586,6 +2625,7 @@ def main():
     if not cmd.run(args):
         parser.print_help()
 
+    cmd.close_pager()
 
 if __name__ == '__main__':
     main()
