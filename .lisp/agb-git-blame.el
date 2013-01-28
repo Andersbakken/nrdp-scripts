@@ -73,7 +73,7 @@
           (message "No such commit"))
       (progn
         (goto-char (- (point-max) 1))
-        (if (re-search-backward "^[a-f0-9]\\{8\\}[^)]*\\( [0-9]+\\)) ")
+        (if (re-search-backward "^[a-f0-9^]\\{8\\}[^)]*\\( [0-9]+\\)) ")
             (let ((count (length (match-string 1)))
                   (column (- (match-beginning 1) (point-at-bol))))
               (goto-char (point-min))
