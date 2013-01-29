@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ -f "CMakeLists.txt" ]; then
+    echo "There's already a CMakeLists.txt here"
+    exit 1
+fi
+
+echo "cmake_minimum_required(VERSION 2.8)" > CMakeLists.txt
+echo "include_directories(\${CMAKE_CURRENT_LIST_DIR})" >> CMakeLists.txt
+echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
