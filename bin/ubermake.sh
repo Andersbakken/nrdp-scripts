@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 findancestor() {
     file="$1"
@@ -17,12 +17,14 @@ findancestor() {
     return 0
 }
 
-MAKE_DIR="."
+MAKE_DIR=
 MAKE_OPTIONS=
+UBERTAGS=
 while [ "$#" -gt 0 ]; do
     case $1 in
     -C) shift; MAKE_DIR="$1" ;;
     -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
+    -r|--rtags) UBERTAGS=1 ;;
     *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
     shift
@@ -54,8 +56,17 @@ elif [ -e "${MAKE_DIR}/Sakefile.js" ]; then
     return
 else
    if which ninja >/dev/null 2>&1; then
-       NINJA=`findancestor build.ninja $MAKE_DIR`
+       NINJA_DIR=$MAKE_DIR
+       [ -z "$NINJA_DIR" ] && NINJA_DIR=.
+       NINJA=`findancestor build.ninja $NINJA_DIR`
        if [ -e "$NINJA" ]; then
+	   cd `dirname $NINJA`
+	   if [ -n "$UBERTAGS" ]; then
+	       ninja -t commands | while read i; do
+		   rc --compile $i
+	       done
+	       exit 0
+	   fi
            NINJA_OPTIONS=
            [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
            for opt in $MAKEFLAGS $MAKE_OPTIONS; do
@@ -64,9 +75,15 @@ else
                *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                esac
            done
-           ninja -C `dirname $NINJA` $NINJA_OPTIONS
-           return
+           ninja $NINJA_OPTIONS
+           exit 0
        fi
    fi
+fi
+[ -z "$MAKE_DIR" ] && MAKE_DIR=`dirname \`findancestor Makefile .\``
+[ -z "$MAKE_DIR" ] && MAKE_DIR=.
+if [ -n "$UBERTAGS" ]; then
+    RTAGS_RMAKE=1 `which make` -C "$MAKE_DIR" -B
+    exit 0
 fi
 `which make` -C "$MAKE_DIR" $MAKE_OPTIONS #go for the real make
