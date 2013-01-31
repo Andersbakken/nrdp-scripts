@@ -1,0 +1,35 @@
+#!/bin/bash
+if [ -z "$NF_HTTPD_PREFIX" ]; then
+    echo "Need to specific NF_HTTPD_PREFIX [dir:url]!"
+    return
+fi
+bug="$1"
+name="$bug"
+echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
+url="$2"
+if [ -z "$url" ] && which jira >/dev/null 2>&1; then
+    if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+        JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+    fi
+    JIRA_ARGS=
+    if [ -z "$JIRA_PASSWORD" ]; then
+        read -p "JIRA Password: " -s JIRA_PASSWORD
+    fi
+    [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
+    urls=
+    urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
+    urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
+    url=`choose.pl -a $urls`
+fi
+if [ -z "$url" ]; then
+    echo "No known URL!"
+else
+
+    file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/$name"
+    echo "nrdp.gibbon._baseUrl = \"$url\";" >$file
+    curl "$url" >>$file
+    echo "File: $file"
+    echo "URL: `echo $NF_HTTPD_PREFIX | cut -d: -f2-`/$name"
+fi
+
+
