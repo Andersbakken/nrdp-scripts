@@ -60,13 +60,13 @@ else
        [ -z "$NINJA_DIR" ] && NINJA_DIR=.
        NINJA=`findancestor build.ninja $NINJA_DIR`
        if [ -e "$NINJA" ]; then
-	   cd `dirname $NINJA`
-	   if [ -n "$UBERTAGS" ]; then
-	       ninja -t commands | while read i; do
-		   rc --compile $i
-	       done
-	       exit 0
-	   fi
+           cd `dirname $NINJA`
+           if [ -n "$UBERTAGS" ]; then
+               ninja -t commands | while read i; do
+                   rc --compile $i
+               done
+               exit 0
+           fi
            NINJA_OPTIONS=
            [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
            for opt in $MAKEFLAGS $MAKE_OPTIONS; do
@@ -80,7 +80,7 @@ else
        fi
    fi
 fi
-[ -z "$MAKE_DIR" ] && MAKE_DIR=`dirname \`findancestor Makefile .\``
+[ -z "$MAKE_DIR" ] && MAKE_DIR=`dirname "\`findancestor Makefile .\`"`
 [ -z "$MAKE_DIR" ] && MAKE_DIR=.
 if [ -n "$UBERTAGS" ]; then
     RTAGS_RMAKE=1 `which make` -C "$MAKE_DIR" -B
