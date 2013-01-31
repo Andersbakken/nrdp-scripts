@@ -7,6 +7,7 @@ my $show_help = 0;
 my $read_option = 1;
 my $read_prompt;
 my $must_ask = 0;
+my $unique = 0;
 my $rest_options = 0;
 my $options_from=0;
 my $options_count;
@@ -54,6 +55,20 @@ sub filter_options {
     return @result;
 }
 
+sub unique_options {
+    my %seen = ();
+    my @result;
+    for(@options) {
+        my $option = $_;
+        my $name = $option->{"name"};
+        if (!$seen{$name}) {
+            $seen{$name} = 1;
+            push @result, $option;
+        }
+    }
+    return @result;
+}
+
 while(@ARGV) {
     my $option = shift @ARGV;
     if($rest_options || !($option =~ /^-/)) {
@@ -72,6 +87,8 @@ while(@ARGV) {
         $rest_options = 1;
     } elsif($option eq "-c") {
         $choose = shift @ARGV;
+    } elsif($option eq "-u") {
+        $unique = 1;
     } elsif($option eq "-m") {
         push(@matches, shift @ARGV);
     } elsif($option eq "-a") {
@@ -106,7 +123,7 @@ if(!$show_help && $#options < 0) {
     print STDERR "Nothing to choose!\n";
     exit 1;
 }
-
+@options = unique_options() if ($unique);
 if($show_help) {
     print STDERR "$argv0 [options] [choices]\n";
     print STDERR "\n";
@@ -116,6 +133,7 @@ if($show_help) {
     print STDERR "  -e        Stop interpreting options.\n";
     print STDERR "  -m <s>    Only show choices that match <s>.\n";
     print STDERR "  -l        Just print options don't query.\n";
+    print STDERR "  -u        Ensure unique options.\n";
     print STDERR "  -p <msg>  Display <msg> in prompt.\n";
     print STDERR "  -r <key> <value> Show key and return value.\n";
     print STDERR "  -x <exe>  Run <exe> to gather the list of choices.\n";

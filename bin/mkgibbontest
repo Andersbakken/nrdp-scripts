@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ -z "$NF_HTTPD_PREFIX" ]; then
     echo "Need to specific NF_HTTPD_PREFIX [dir:url]!"
-    return
+    exit 1
 fi
 bug="$1"
 name="$bug"
@@ -19,7 +19,7 @@ if [ -z "$url" ] && which jira >/dev/null 2>&1; then
     urls=
     urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
     urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
-    url=`choose.pl -a $urls`
+    url=`choose.pl -u -a $urls`
 fi
 if [ -z "$url" ]; then
     echo "No known URL!"
