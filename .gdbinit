@@ -47,6 +47,9 @@ define nosigpipe
     nosignal SIGPIPE
 end
 
+define tbt
+    thread apply all bt
+end
 
 define make
     shell ubermake.sh
