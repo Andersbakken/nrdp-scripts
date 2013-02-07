@@ -3,33 +3,46 @@ if [ -z "$NF_HTTPD_PREFIX" ]; then
     echo "Need to specific NF_HTTPD_PREFIX [dir:url]!"
     exit 1
 fi
+force=0
+if [ "$1" = "-f" ]; then
+    force=1
+    shift
+fi
 bug="$1"
+url="$2"
+
 name="$bug"
 echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
-url="$2"
-if [ -z "$url" ] && which jira >/dev/null 2>&1; then
-    if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
-        JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
-    fi
-    JIRA_ARGS=
-    if [ -z "$JIRA_PASSWORD" ]; then
-        read -p "JIRA Password: " -s JIRA_PASSWORD
-    fi
-    [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
-    urls=
-    urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
-    urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
-    url=`choose.pl -u -a $urls`
-fi
-if [ -z "$url" ]; then
-    echo "No known URL!"
-else
+test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/$name"
+test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/$name"
 
-    file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/$name"
-    echo "nrdp.gibbon._baseUrl = \"$url\";" >$file
-    curl "$url" >>$file
-    echo "File: $file"
-    echo "URL: `echo $NF_HTTPD_PREFIX | cut -d: -f2-`/$name"
+if [ '!' -e "$test_file" ] || [ "$force" = "1" ]; then
+    if [ -z "$url" ] && which jira >/dev/null 2>&1; then
+        if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+            JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+        fi
+        JIRA_ARGS=
+        if [ -z "$JIRA_PASSWORD" ]; then
+            read -p "JIRA Password: " -s JIRA_PASSWORD
+        fi
+        [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
+        urls=
+        urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
+        urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
+        url=`choose.pl -u -a $urls`
+    fi
+
+    if [ -z "$url" ]; then
+        echo "No known URL!"
+    else
+        echo "nrdp.gibbon._baseUrl = \"$url\";" >$test_file
+        curl "$url" >>$test_file
+    fi
 fi
+if [ -e "$test_file" ]; then
+    echo "File: $test_file"
+    echo "URL: $test_url"
+fi
+
 
 
