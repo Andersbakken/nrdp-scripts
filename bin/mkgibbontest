@@ -9,12 +9,17 @@ if [ "$1" = "-f" ]; then
     shift
 fi
 bug="$1"
+if [ -z "$bug" ]; then
+    TESTS="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-*"
+    bug=`choose.pl -a -x "ls -t $TESTS"`
+    bug=`basename $bug | sed -e 's,^gibbontest-,,' -e 's,\.js$,,'`
+fi
 url="$2"
 
 name="$bug"
 echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
-test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/$name"
-test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/$name"
+test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-$name"
+test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
 
 if [ '!' -e "$test_file" ] || [ "$force" = "1" ]; then
     if [ -z "$url" ] && which jira >/dev/null 2>&1; then
