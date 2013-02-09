@@ -1896,7 +1896,6 @@ class P4Sync(Command):
                         else:
                             self.commit(description, filesForCommit, branch, [branchPrefix], parent)
                 else:
-                    print("FOO.3: %s\n" % (change));
                     files = self.extractFilesFromCommit(description)
                     self.commit(description, files, self.branch, self.depotPaths,
                                 self.initialParent)
