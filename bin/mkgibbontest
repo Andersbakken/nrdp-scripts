@@ -15,8 +15,9 @@ if [ -z "$bug" ]; then
     bug=`basename $bug | sed -e 's,^gibbontest-,,' -e 's,\.js$,,'`
 fi
 url="$2"
+name="$3"
 
-name="$bug"
+[ -z "$name" ] && name="$bug"
 echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
 test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-$name"
 test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
