@@ -22,19 +22,35 @@ test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-$name"
 test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
 
 if [ '!' -e "$test_file" ] || [ "$force" = "1" ]; then
-    if [ -z "$url" ] && which jira >/dev/null 2>&1; then
-        if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
-            JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+    if which jira >/dev/null 2>&1; then
+        if [ -z "$url" ]; then
+            if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+                JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+            fi
+            JIRA_ARGS=
+            if [ -z "$JIRA_PASSWORD" ]; then
+                read -p "JIRA Password: " -s JIRA_PASSWORD
+            fi
+            [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
+            urls=
+            urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
+            urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
+            url=`choose.pl -u -a $urls`
         fi
-        JIRA_ARGS=
-        if [ -z "$JIRA_PASSWORD" ]; then
-            read -p "JIRA Password: " -s JIRA_PASSWORD
+        if echo "$url" | grep "/secure/attachment/" >/dev/null 2>&1; then
+            if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+                JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+            fi
+            JIRA_ARGS=
+            if [ -z "$JIRA_PASSWORD" ]; then
+                read -p "JIRA Password: " -s JIRA_PASSWORD
+            fi
+            [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
+            tmpfile=`echo $url | sed "s,^.*/secure/attachment/[0-9]*/,,"`
+            mkdir -p "/tmp/`dirname $tmpfile`"
+            (cd /tmp; jira $JIRA_ARGS --action getAttachment --issue "$bug" --file "$tmpfile")
+            url="file:///tmp/$tmpfile"
         fi
-        [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
-        urls=
-        urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
-        urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
-        url=`choose.pl -u -a $urls`
     fi
 
     if [ -z "$url" ]; then
