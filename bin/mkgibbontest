@@ -16,6 +16,10 @@ if [ -z "$bug" ]; then
 fi
 url="$2"
 name="$3"
+if [ -z "$name" ] && echo $url | grep -v "^https*://" >/dev/null 2>&1; then
+    name="$url"
+    url=""
+fi
 
 [ -z "$name" ] && name="$bug"
 echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
