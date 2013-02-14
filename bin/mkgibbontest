@@ -15,6 +15,7 @@ while [ "$#" -gt 0 ]; do
         shift
     elif [ "$1" = "-o" ]; then
         openfile=1
+        shift
     else
         break
     fi
@@ -49,12 +50,18 @@ function networkResponseHandler(event) {
 function onImageLoaded(event) {
     nrdp.log.console("Got image loaded " + JSON.stringify(event));
 }
+function onTimeout() {
+    nrdp.log.console("Timer fired");
+}
+
 var w;
 function main() {
     nrdp.gibbon.addEventListener("key", keyboardHandler);
     // nrdp.gibbon.load("https://movies.netflix.com/WiHome");
     nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:{g:255}});
     // w.image.url = "http://cdn-1.nflximg.com/images/7516/817516.jpg";
+    // nrdp.gibbon.setTimeout(onTimeout, 1000);
+    // nrdp.gibbon.setInterval(onTimeout, 1000);
 }
 nrdp.qa.init(main);
 EOF
@@ -102,7 +109,7 @@ if [ -e "$test_file" ]; then
     echo "File: $test_file"
     echo "URL: $test_url"
     [ -x `which xclip` ] && echo "$test_url" | xclip -in
-    if [ -n "$openfile" ]; then
+    if [ "$openfile" = "1" ]; then
         if [ -n "$NF_EDITOR" ]; then
             "$NF_EDITOR" "$test_file"
         elif [ -n "$EDITOR" ]; then
