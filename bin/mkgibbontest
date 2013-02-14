@@ -107,15 +107,16 @@ EOF
         fi
   fi
 fi
+
 if [ -e "$test_file" ]; then
     echo "File: $test_file"
     echo "URL: $test_url"
     [ -x `which xclip` ] && echo "$test_url" | xclip -in
     if [ "$openfile" = "1" ]; then
         if [ -n "$NF_EDITOR" ]; then
-            "$NF_EDITOR" "$test_file"
+            $NF_EDITOR "$test_file"
         elif [ -n "$EDITOR" ]; then
-            "$EDITOR" "$test_file"
+            $EDITOR "$test_file"
         else
             echo "Neither \$EDITOR nor \$NF_EDITOR are set. Not sure what to do"
         fi
