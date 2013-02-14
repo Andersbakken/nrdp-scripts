@@ -45,23 +45,25 @@ function keyboardHandler(key) {
     nrdp.log.console("Got Key: " + JSON.stringify(key));
 }
 function networkResponseHandler(event) {
-    nrdp.log.console("Got response " + JSON.stringify(event));
+    nrdp.log.console("Got response " + event.state + " data: " + event.size);
+    onTimeout();
 }
 function onImageLoaded(event) {
     nrdp.log.console("Got image loaded " + JSON.stringify(event));
 }
 function onTimeout() {
-    nrdp.log.console("Timer fired");
+    nrdp.gibbon.load({ url:"https://movies.netflix.com/WiHome",
+                       headers: {"X-Gibbon-Cache-Control":"key=foo,refresh,no-memory-cache"}
+                     }, networkResponseHandler);
 }
 
 var w;
 function main() {
     nrdp.gibbon.addEventListener("key", keyboardHandler);
     // nrdp.gibbon.load("https://movies.netflix.com/WiHome");
-    nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:{g:255}});
+    nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:"#00ff00"});
     // w.image.url = "http://cdn-1.nflximg.com/images/7516/817516.jpg";
-    // nrdp.gibbon.setTimeout(onTimeout, 1000);
-    // nrdp.gibbon.setInterval(onTimeout, 1000);
+    nrdp.gibbon.setTimeout(onTimeout, 0);
 }
 nrdp.qa.init(main);
 EOF
