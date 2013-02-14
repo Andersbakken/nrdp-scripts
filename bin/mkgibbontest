@@ -37,7 +37,11 @@ test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
 if [ '!' -e "$test_file" ] || [ "$force" = "1" ]; then
     if [ "$stub" = "1" ]; then
         cat >$test_file <<EOF
+function keyboardHandler(key) {
+    nrdp.log.console("Got Key: " + JSON.stringify(key));
+}
 function main() {
+    nrdp.gibbon.addEventListener("key", keyboardHandler);
     nrdp.gibbon.scene.widget = nrdp.gibbon.makeWidget({width:1280, height:720, color:{g:255}});
 }
 nrdp.qa.init(main);
