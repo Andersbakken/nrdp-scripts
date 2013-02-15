@@ -87,3 +87,4 @@ if [ -n "$UBERTAGS" ]; then
     exit 0
 fi
 `which make` -C "$MAKE_DIR" $MAKE_OPTIONS #go for the real make
+exit $?
