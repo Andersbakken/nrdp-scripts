@@ -76,7 +76,7 @@ else
                esac
            done
            ninja $NINJA_OPTIONS
-           exit 0
+           exit $?
        fi
    fi
 fi
