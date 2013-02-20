@@ -1,80 +1,58 @@
 #!/bin/sh
 PRE="git "
+DEFAULT=
 SHOW_HELP=no
-if [ "$1" = "-dry" ]; then
-    PRE="echo "
-    shift
-elif [ "$1" = "-shell" ] || [ "$1" = "-sh" ]; then
-    PRE=
-    shift
-elif [ "$1" = "-h" ] || [ "$1" = "-help" ]; then
-    SHOW_HELP=yes
-fi
-
-do_git_cmd() 
-{
-  match="$1"
-  while true; do
-      `which echo` -n "Run: '${PRE}${COMMAND} $match' ([y]es, (n)o, (c)ancel, (d)iff) "
-      DOIT=no
-      read DOIT
-      if [ "$DOIT" = "cancel" ] || [ "$DOIT" = "c" ]; then
-          exit
-      elif [ -z "$DOIT" ] || [ "$DOIT" = "yes" ] || [ "$DOIT" = "y" ]; then
-          $PRE $COMMAND $match
-          break
-      elif [ "$DOIT" = "no" ] || [ "$DOIT" = "n" ]; then
-          break
-      elif [ "$DOIT" = "diff" ] || [ "$DOIT" = "d" ]; then
-          git diff HEAD -- $match
-      fi
-  done
-}
-
 STATUS_SWITCH=
 STATUS_MATCH=
-if [ "$1" = "-a" ]; then
-   shift
-   STATUS_MATCH=" *A"
-elif [ "$1" = "-sa" ]; then
-   shift
-   STATUS_MATCH="A."
-elif [ "$1" = "-ua" ]; then
-   shift
-   STATUS_MATCH=".A"
-elif [ "$1" = "-d" ]; then
-   shift
-   STATUS_MATCH=" *D"
-elif [ "$1" = "-sd" ]; then
-   shift
-   STATUS_MATCH="D."
-elif [ "$1" = "-ud" ]; then
-   shift
-   STATUS_MATCH=".D"
-elif [ "$1" = "-m" ]; then
-   shift
-   STATUS_MATCH=" *M"
-elif [ "$1" = "-sm" ]; then
-   shift
-   STATUS_MATCH="M."
-elif [ "$1" = "-um" ]; then
-   shift
-   STATUS_MATCH=".M"
-elif [ "$1" = "-u" ]; then
-   shift
-   STATUS_MATCH="??"
-fi
-if [ -z "$STATUS_MATCH" ]; then
-    if [ `git config status.showuntrackedfiles` = "no" ]; then
-        STATUS_MATCH="[ADM ][ADM ]"
+
+while [ "$#" -gt 1 ]; do
+    if [ "$1" = "-dry" ]; then
+        shift
+        PRE="echo "
+    elif [ "$1" = "-shell" ] || [ "$1" = "-sh" ]; then
+        shift
+        PRE=
+    elif [ "$1" = "-h" ] || [ "$1" = "-help" ]; then
+        shift
+        SHOW_HELP=yes
+    elif [ "$1" = "-y" ] || [ "$1" = "-yes" ]; then
+        shift
+        DEFAULT=yes
+    elif [ "$1" = "-a" ]; then
+        shift
+        STATUS_MATCH=" *A"
+    elif [ "$1" = "-sa" ]; then
+        shift
+        STATUS_MATCH="A."
+    elif [ "$1" = "-ua" ]; then
+        shift
+        STATUS_MATCH=".A"
+    elif [ "$1" = "-d" ]; then
+        shift
+        STATUS_MATCH=" *D"
+    elif [ "$1" = "-sd" ]; then
+        shift
+        STATUS_MATCH="D."
+    elif [ "$1" = "-ud" ]; then
+        shift
+        STATUS_MATCH=".D"
+    elif [ "$1" = "-m" ]; then
+        shift
+        STATUS_MATCH=" *M"
+    elif [ "$1" = "-sm" ]; then
+        shift
+        STATUS_MATCH="M."
+    elif [ "$1" = "-um" ]; then
+        shift
+        STATUS_MATCH=".M"
+    elif [ "$1" = "-u" ]; then
+        shift
+        STATUS_MATCH="??"
     else
-        STATUS_MATCH="[ADM? ][ADM? ]"
+        break
     fi
-else
-    STATUS_SWITCH="-u"
-fi
+done
 COMMAND="$@"
-MATCHES=`git status $STATUS_SWITCH --untracked -s . | grep "^$STATUS_MATCH " | awk '{print $2}'`
 [ -z "$COMMAND" ] && SHOW_HELP="yes"
 
 if [ "$SHOW_HELP" = "yes" ]; then
@@ -97,6 +75,45 @@ if [ "$SHOW_HELP" = "yes" ]; then
     echo "  -u: All currently untracked files."
     exit 1
 fi
+
+do_git_cmd() 
+{
+  match="$1"
+  while true; do
+      DOIT=$DEFAULT
+      `which echo` -n "Run: '${PRE}${COMMAND} $match' ([y]es, (n)o, (c)ancel, (d)iff) "
+      if [ -z "$DOIT" ]; then
+          read DOIT
+      else
+          echo "$DOIT"
+      fi
+      if [ "$DOIT" = "cancel" ] || [ "$DOIT" = "c" ]; then
+          exit
+      elif [ -z "$DOIT" ] || [ "$DOIT" = "yes" ] || [ "$DOIT" = "y" ] || [ "$DOIT" = "a" ] || [ "$DOIT" = "all" ]; then
+          $PRE $COMMAND $match
+          if [ "$DOIT" = "a" ] || [ "$DOIT" = "all" ]; then
+              DEFAULT=yes
+          fi
+          break
+      elif [ "$DOIT" = "no" ] || [ "$DOIT" = "n" ]; then
+          break
+      elif [ "$DOIT" = "diff" ] || [ "$DOIT" = "d" ]; then
+          git diff HEAD -- $match
+      fi
+  done
+}
+
+if [ -z "$STATUS_MATCH" ]; then
+    if [ `git config status.showuntrackedfiles` = "no" ]; then
+        STATUS_MATCH="[ADM ][ADM ]"
+    else
+        STATUS_MATCH="[ADM? ][ADM? ]"
+    fi
+else
+    STATUS_SWITCH="-u"
+fi
+MATCHES=`git status $STATUS_SWITCH --untracked -s . | grep "^$STATUS_MATCH " | awk '{print $2}'`
+
 for match in $MATCHES; do
   do_git_cmd $match
 done
