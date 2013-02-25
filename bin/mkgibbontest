@@ -63,7 +63,7 @@ function main() {
     // nrdp.gibbon.load("https://movies.netflix.com/WiHome");
     nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:"#00ff00"});
     // w.image.url = "http://cdn-1.nflximg.com/images/7516/817516.jpg";
-    nrdp.gibbon.setTimeout(onTimeout, 0);
+    // nrdp.gibbon.setTimeout(onTimeout, 0);
 }
 nrdp.qa.init(main);
 EOF
