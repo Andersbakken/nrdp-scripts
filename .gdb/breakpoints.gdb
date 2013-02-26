@@ -19,3 +19,13 @@ document brestore
   restore breakpoints saved by bsave
 end
 
+set $first_restore = 1
+define hookpost-run
+  if ($first_restore == 1)
+    set $first_restore = 0
+    brestore
+  end
+end
+define hook-quit
+   bsave
+end

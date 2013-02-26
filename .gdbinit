@@ -1,11 +1,9 @@
 
-source ~/.gdb/init_os_start.gdb
-source ~/.gdb/init_host_start.gdb
-
 #------------
 #Options
 #------------
 set history save on
+set $AUTO_BREAK_RESTORE = 1
 # These make gdb never pause in its output
 set height 0
 set width 0
@@ -17,6 +15,9 @@ set print vtbl on
 set print demangle on
 set demangle-style gnu-v3
 set print sevenbit-strings off
+
+source ~/.gdb/init_os_start.gdb
+source ~/.gdb/init_host_start.gdb
 
 #stdc++ pretty printers
 #python
@@ -67,14 +68,10 @@ source ~/.gdb/init_host_end.gdb
 
 define hook-run
   setup-detect-target
-  brestore
 end
 define hook-file
   setup-detect-target
 end
 define hook-core-file
   setup-detect-target
-end
-define hook-quit
-  bsave
 end
