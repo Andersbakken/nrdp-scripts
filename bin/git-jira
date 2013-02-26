@@ -164,7 +164,7 @@ if [ "$CREATE" = "yes" ]; then
   if [ -n "$TEST" ]; then
       exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION"
   else
-      CREATED_JIRA_FILE=`mktemp`
+      CREATED_JIRA_FILE=`mktemp -t gitjiraXXXX`
       exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION" --fixVersions "$JIRA_VERSION" >$CREATED_JIRA_FILE
       JIRA_CREATED=`tail -1 $CREATED_JIRA_FILE`
       if echo "$JIRA_CREATED" | grep 'created with id' >/dev/null 2>&1; then
@@ -191,7 +191,7 @@ fi
 if [ "$REWORD" = "yes" ] && [ -n "$P4COMMIT" ]; then
   echo "Cannot reword as this commit has been pushed into P4!"
 elif [ "$REWORD" = "yes" ]; then
-  DESCRIPTION_FILE=`mktemp`
+  DESCRIPTION_FILE=`mktemp -t gitjiraXXXX`
   if [ -z "$JIRA" ] || echo "$DESCRIPTION" | grep "$JIRA" >/dev/null 2>&1; then
       DESCRIPTION_FILE=
   elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
@@ -261,7 +261,7 @@ if [ -n "$P4COMMIT" ] && [ -n "$JIRA" ]; then
     if [ -n "$MESSAGE" ]; then
       exec_jira --action addComment --issue "$JIRA" --comment "$MESSAGE"
     elif [ -n "$P4COMMIT" ]; then
-      JIRA_COMMENTS_FILE=`mktemp`
+      JIRA_COMMENTS_FILE=`mktemp -t gitjiraXXXX`
       exec_jira --action getComments --issue "$JIRA" >$JIRA_COMMENTS_FILE
       if ! grep $P4COMMIT $JIRA_COMMENTS_FILE -q; then
           exec_jira --action addComment --issue "$JIRA" --comment "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $DESCRIPTION"
