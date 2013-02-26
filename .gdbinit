@@ -64,13 +64,15 @@ source ~/.gdb/breakpoints.gdb
 source ~/.gdb/init_os_end.gdb
 source ~/.gdb/init_host_end.gdb
 
-set $first_restore = 1
+define hook-delete
+  bclear
+end
+define hook-break
+  brestore-once
+end
 define hook-run
   setup-detect-target
-  if ($first_restore == 1)
-    set $first_restore = 0
-    brestore
-  end
+  brestore-once
 end
 define hook-file
   setup-detect-target
@@ -79,5 +81,7 @@ define hook-core-file
   setup-detect-target
 end
 define hook-quit
-   bsave
+   if ($brestore_once_flag == 1)
+     bsave
+   end
 end

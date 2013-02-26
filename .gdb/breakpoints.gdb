@@ -19,3 +19,18 @@ document brestore
   restore breakpoints saved by bsave
 end
 
+define bclear
+  shell rm -f .gdb_brestore
+end
+document brestore
+  clear breakpoints saved by bsave
+end
+
+set $brestore_once_flag = 0
+define brestore-once
+  if ($brestore_once_flag == 0)
+    set $brestore_once_flag = 1
+    brestore
+  end
+end
+
