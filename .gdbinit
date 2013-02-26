@@ -20,15 +20,6 @@ set print sevenbit-strings off
 source ~/.gdb/init_os_start.gdb
 source ~/.gdb/init_host_start.gdb
 
-#stdc++ pretty printers
-#python
-#import sys
-#import os
-#sys.path.insert(0, os.path.expanduser("~") + '/.gdb_printers/stdcxx')
-#from libstdcxx.v6.printers import register_libstdcxx_printers
-#register_libstdcxx_printers (None)
-#end
-
 define setup-detect-target
   set $ARM = 0
   set $X86 = 0
