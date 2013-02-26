@@ -73,12 +73,20 @@ source ~/.gdb/breakpoints.gdb
 source ~/.gdb/init_os_end.gdb
 source ~/.gdb/init_host_end.gdb
 
+set $first_restore = 1
 define hook-run
   setup-detect-target
+  if ($first_restore == 1)
+    set $first_restore = 0
+    brestore
+  end
 end
 define hook-file
   setup-detect-target
 end
 define hook-core-file
   setup-detect-target
+end
+define hook-quit
+   bsave
 end
