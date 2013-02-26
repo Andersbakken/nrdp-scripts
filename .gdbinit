@@ -1,5 +1,11 @@
 
+source ~/.gdb/init_os_start.gdb
+source ~/.gdb/init_host_start.gdb
+
 set history save on
+# These make gdb never pause in its output
+set height 0
+set width 0
 
 #stdc++ pretty printers
 #python
@@ -10,62 +16,17 @@ set history save on
 #register_libstdcxx_printers (None)
 #end
 
-#run like "bcom 10.2.228.16:6969"
-define bcom
+#run like "attach 10.2.228.16:6969"
+define attach
+     #set solib-absolute-prefix /exports/panasonic/am-linux-pf_b_025r/root
+     #set solib-search-path /exports/panasonic/am-linux-pf_b_025r/root
     target remote $arg0
     handle SIG32 nostop noprint
     set heuristic-fence-post 10000
 end
 
-#run like "panaic 10.2.228.16:6969"
-define panaic
-  #set solib-absolute-prefix /exports/panasonic/am-linux-pf_b_025r/root
-  #set solib-search-path /exports/panasonic/am-linux-pf_b_025r/root
-  target remote $arg0
-  handle SIG32 nostop noprint
-end
-
-define dump-layers
-    set environment QT_WEBKIT_LOG rendering
-    set environment QT_WEBKIT_SAVE_LAYERS 1
-end
-define no-dump-layers
-    set environment QT_WEBKIT_LOG
-    set environment QT_WEBKIT_SAVE_LAYERS
-end
-
-# Save bookmarks
-define bsave
-    shell rm -f brestore.txt
-    set logging file brestore.txt
-    set logging on
-    info break
-    set logging off
-    # reformat on-the-fly to a valid gdb command file
-    shell perl -n -e 'print "break $1\n" if /^\d+.+?(\S+)$/g' brestore.txt > brestore.gdb
-end
-document bsave
-  store actual breakpoints
-end
-
-define brestore
-  source brestore.gdb
-end
-document brestore
-  restore breakpoints saved by bsave
-end
-
-
 define thread-lock
     set scheduler-locking $arg0
-end
-
-define nosignal
-    handle $arg0 nostop noprint pass
-end
-
-define nosigpipe
-    nosignal SIGPIPE
 end
 
 define tbt
@@ -76,28 +37,52 @@ define make
     shell ubermake.sh
 end
 
-define econtinue
-    shell echo tbreak $(emacsclient -e '(sam-what-file)') >/tmp/foo.gdb
-    source /tmp/foo.gdb
-    continue
+define setup-detect-target
+  set $ARM = 0
+  set $X86 = 0
+  set $X86_64 = 0
+  set $MIPS = 0
+
+  set $64BITS = 0
+
+  set logging file /tmp/gdb_info_target
+  set logging overwrite on
+  set logging redirect on
+  set logging on
+  set pagination off
+  info target
+  set pagination on
+  set logging off
+  set logging redirect off
+  set logging overwrite off
+
+  shell ~/.gdb/detect-target.sh
+  source /tmp/gdb_target_arch.gdb
+  shell rm -f /tmp/gdb_info_target /tmp/gdb_target_arch.gdb
 end
-define ebreak
-    shell echo break $(emacsclient -e '(sam-what-file)') >/tmp/foo.gdb
-    source /tmp/foo.gdb
-end
-define ecd
-    shell emacsclient -n $PWD
-end
-define emake
-    shell "emacsedit.sh" -m -n
-end
-define rez
-   if $argc == 0
-      edit
-   else
-      edit $arg0
-   end
+document setup-detect-target
+Sets up various globals used throughout the GDB macros to provide
+architecture-specific support.
 end
 
-nosigpipe
-nosignal SIGTTIN
+source ~/.gdb/emacs.gdb
+source ~/.gdb/data.gdb
+source ~/.gdb/signals.gdb
+source ~/.gdb/breakpoints.gdb
+
+source ~/.gdb/init_os_end.gdb
+source ~/.gdb/init_host_end.gdb
+
+define hook-run
+  setup-detect-target
+  brestore
+end
+define hook-file
+  setup-detect-target
+end
+define hook-core-file
+  setup-detect-target
+end
+define hook-quit
+  bsave
+end
