@@ -3,6 +3,7 @@
 #Options
 #------------
 set history save on
+set confirm off
 set $AUTO_BREAK_RESTORE = 1
 # These make gdb never pause in its output
 set height 0

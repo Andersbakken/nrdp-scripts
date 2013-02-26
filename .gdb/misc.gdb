@@ -1,5 +1,5 @@
-#run like "attach 10.2.228.16:6969"
-define attach
+#run like "attach-board 10.2.228.16:6969"
+define attach-board
      #set solib-absolute-prefix /exports/panasonic/am-linux-pf_b_025r/root
      #set solib-search-path /exports/panasonic/am-linux-pf_b_025r/root
     target remote $arg0
