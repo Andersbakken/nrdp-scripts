@@ -34,6 +34,8 @@ define setup-detect-target
   set $X86 = 0
   set $X86_64 = 0
   set $MIPS = 0
+  set $PYTHON = 0
+  set $CPU = 0
 
   set $64BITS = 0
 
@@ -43,6 +45,7 @@ define setup-detect-target
   set logging on
   set pagination off
   info target
+  help python
   set pagination on
   set logging off
   set logging redirect off
@@ -51,6 +54,9 @@ define setup-detect-target
   shell ~/.gdb/detect-target.sh
   source /tmp/gdb_target_arch.gdb
   shell rm -f /tmp/gdb_info_target /tmp/gdb_target_arch.gdb
+  if ($PYTHON == 1)
+     source ~/.gdb/python.gdb
+  end
 end
 document setup-detect-target
 Sets up various globals used throughout the GDB macros to provide
