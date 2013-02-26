@@ -45,7 +45,7 @@ define setup-detect-target
   set logging on
   set pagination off
   info target
-  help python
+  help all
   set pagination on
   set logging off
   set logging redirect off
