@@ -2,10 +2,21 @@
 source ~/.gdb/init_os_start.gdb
 source ~/.gdb/init_host_start.gdb
 
+#------------
+#Options
+#------------
 set history save on
 # These make gdb never pause in its output
 set height 0
 set width 0
+#c++ print options
+set print pretty on
+set print object on
+set print static-members on
+set print vtbl on
+set print demangle on
+set demangle-style gnu-v3
+set print sevenbit-strings off
 
 #stdc++ pretty printers
 #python
@@ -15,27 +26,6 @@ set width 0
 #from libstdcxx.v6.printers import register_libstdcxx_printers
 #register_libstdcxx_printers (None)
 #end
-
-#run like "attach 10.2.228.16:6969"
-define attach
-     #set solib-absolute-prefix /exports/panasonic/am-linux-pf_b_025r/root
-     #set solib-search-path /exports/panasonic/am-linux-pf_b_025r/root
-    target remote $arg0
-    handle SIG32 nostop noprint
-    set heuristic-fence-post 10000
-end
-
-define thread-lock
-    set scheduler-locking $arg0
-end
-
-define tbt
-    thread apply all bt
-end
-
-define make
-    shell ubermake.sh
-end
 
 define setup-detect-target
   set $ARM = 0
@@ -65,6 +55,8 @@ Sets up various globals used throughout the GDB macros to provide
 architecture-specific support.
 end
 
+source ~/.gdb/misc.gdb
+source ~/.gdb/stl.gdb
 source ~/.gdb/emacs.gdb
 source ~/.gdb/data.gdb
 source ~/.gdb/signals.gdb
