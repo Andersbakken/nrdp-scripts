@@ -66,28 +66,22 @@ define hexdump_aux
   if $argc != 1
     help hexdump_aux
   else
-    echo \033[1m
     if ($64BITS == 1)
       printf "0x%016lX : ", $arg0
     else
       printf "0x%08X : ", $arg0
     end
-    echo \033[0m
     hex_quad $arg0
-    echo \033[1m
     printf " - "
-    echo \033[0m
     set $_addr = $arg0 + 8
     hex_quad $_addr
     printf " |"
-    echo \033[1m
     set $_count = 0
     while ($_count <= 0xf)
       set $_addr = $arg0 + $_count
       ascii_char $_addr
       set $_count++
     end
-    echo \033[0m
     printf "|\n"
   end
 end
