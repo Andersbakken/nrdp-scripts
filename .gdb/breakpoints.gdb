@@ -26,9 +26,8 @@ document brestore
   clear breakpoints saved by bsave
 end
 
-set $brestore_once_flag = 0
 define brestore-once
-  if ($brestore_once_flag == 0)
+  if ! $brestore_once_flag
     set $brestore_once_flag = 1
     brestore
   end

@@ -81,7 +81,7 @@ define hook-core-file
   setup-detect-target
 end
 define hook-quit
-   if ($brestore_once_flag == 1)
+   if $brestore_once_flag
      bsave
    end
 end
