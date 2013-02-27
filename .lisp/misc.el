@@ -167,3 +167,43 @@ the name of the value of file-name is present."
         (if b-window (delete-window b-window))
         (kill-buffer ediff-buffer-B))))
 (provide 'nrdp-misc)
+
+;;===================
+;; Insert prints all over the board
+;;===================
+(require 'cc-mode)
+(defun litter-printf (&optional begin end)
+  (interactive)
+  (unless begin
+    (setq begin (or (if mark-active (region-beginning))
+                    (save-excursion
+                      (c-beginning-of-defun)
+                      (while (not (or (eobp) (looking-at "{")))
+                        (forward-char))
+                      (if (eobp)
+                          (point-max)
+                        (+ (point) 1))))))
+  (unless end
+    (setq end (or (if mark-active (region-end))
+                  (save-excursion
+                    (c-end-of-defun)
+                    (while (not (or (bobp) (looking-at "}")))
+                      (backward-char))
+                    (point)))))
+  (goto-char begin)
+  (let ((points (list (point))))
+    (while (<= (point) end)
+      (let ((old (point)))
+        (c-end-of-statement)
+        (if (= old (point))
+            (goto-char end)
+          (save-excursion
+            (backward-char)
+            (if (looking-at ";")
+                (add-to-list 'points (+ (point) 1)))))))
+    (while points
+      (goto-char (car points))
+      (insert "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")
+      (setq points (cdr points))))
+  (c-indent-defun)
+  )
