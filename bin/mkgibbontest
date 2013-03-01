@@ -6,28 +6,40 @@ fi
 force=0
 stub=0
 editfile=0
+bug=
+url=
+name=
 while [ "$#" -gt 0 ]; do
-    if [ "$1" = "-f" ]; then
-        force=1
-        shift
-    elif [ "$1" = "-s" ]; then
-        stub=1
-        shift
-    elif [ "$1" = "-e" ]; then
-        editfile=1
-        shift
-    else
-        break
-    fi
+    case "$1" in
+        -f|--force)
+            force=1
+            ;;
+        -s|--stub)
+            stub=1
+            ;;
+        -e|--edit|-o|--open)
+            editfile=1
+            ;;
+        *)
+            if [ -z "$bug" ]; then
+                bug="$1"
+            elif [ -z "$url" ]; then
+                url="$1"
+            elif [ -z "$name" ]; then
+                name="$1"
+            else
+                echo "Not sure what to do with this argument. I already have a bug [$bug], a url [$url] and a name [$name]"
+                exit 1
+            fi
+            ;;
+    esac
+    shift
 done
-bug="$1"
 if [ -z "$bug" ]; then
     TESTS="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-*"
     bug=`choose.pl -a -x "ls -t $TESTS"`
     bug=`basename $bug | sed -e 's,^gibbontest-,,' -e 's,\.js$,,'`
 fi
-url="$2"
-name="$3"
 if [ -z "$name" ] && echo $url | grep -v "^https*://" >/dev/null 2>&1; then
     name="$url"
     url=""
