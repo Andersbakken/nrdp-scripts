@@ -58,7 +58,6 @@ function keyboardHandler(key) {
 }
 function networkResponseHandler(event) {
     nrdp.log.console("Got response " + event.state + " data: " + event.size);
-    onTimeout();
 }
 function onImageLoaded(event) {
     nrdp.log.console("Got image loaded " + JSON.stringify(event));
