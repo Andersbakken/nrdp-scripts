@@ -68,11 +68,11 @@ define hook-delete
   bclear
 end
 define hook-break
-  brestore-once
+  brestore
 end
 define hook-run
   setup-detect-target
-  brestore-once
+  brestore
 end
 define hook-file
   setup-detect-target
