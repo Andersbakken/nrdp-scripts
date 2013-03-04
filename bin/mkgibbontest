@@ -5,7 +5,7 @@ if [ -z "$NF_HTTPD_PREFIX" ]; then
 fi
 force=0
 stub=0
-editfile=0
+editfile=1
 bug=
 url=
 name=
@@ -16,6 +16,9 @@ while [ "$#" -gt 0 ]; do
             ;;
         -s|--stub)
             stub=1
+            ;;
+        -n|--no-edit|--no-open)
+            editfile=0
             ;;
         -e|--edit|-o|--open)
             editfile=1

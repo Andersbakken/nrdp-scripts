@@ -1455,7 +1455,7 @@ The FILES list must be sorted."
 
 (defun git-log-directory (directory)
   "Display a log of changes to the directory."
-  (interactive)
+  (interactive "DDirectory: ")
   (if (not (equal (substring directory -1) "/")) (setq directory (concat directory "/")))
   (setq git-default-directory directory)
   (let* ((coding-system-for-read git-commits-coding-system)
