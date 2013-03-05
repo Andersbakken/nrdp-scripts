@@ -1,0 +1,22 @@
+#!/bin/bash
+
+root=`git rev-parse --show-toplevel`
+if [ -z "$root" ]; then
+    echo "Not a git repo"
+    exit 1
+fi
+cd $root
+case `basename $PWD` in
+    nrdlib|mdxlib)
+        cd ..
+        ;;
+    *)
+        ;;
+esac
+
+git p4 sync
+cd nrdlib
+git p4 sync
+test -d ../mdxlib && cd ../mdxlib && git p4 sync
+
+
