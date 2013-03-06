@@ -451,12 +451,21 @@ def lookupFromGitChange(change):
         return settings['change'];
     return False;
 
-def lookupFromP4Change(change):
-    logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + str(change) + "'";
+def lookupFromP4Change(p4Change):
+    logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + str(p4Change) + "'";
     changes = read_pipe("git log %s" % logOpts, ignore_error=True).split("\n");
-    if changes and len(changes):
+    if changes and len(changes) and len(changes[0]):
         return changes[0].strip();
+    #try the hard way
+    logOpts = "--all --no-merges --pretty=format:'%h'";
+    changes = read_pipe("git log %s" % logOpts, ignore_error=True).split("\n");
+    for change in changes:
+        gitChange = change.strip();
+        settings = settingsForGitCommit(gitChange);
+        if settings and settings.has_key("change") and settings["change"] <= p4Change:
+            return gitChange;
     return False;
+
 
 def settingsForGitCommit(commit):
     log = extractSettingsCommit(commit)["log"]
