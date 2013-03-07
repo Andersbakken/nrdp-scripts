@@ -1244,9 +1244,10 @@ class P4Change(Command):
         return lookupFromP4Change(change);
 
     def run(self, args):
+        changes = args;
         if len(args) < 1:
-            return False
-        for change in args:
+            changes = [ "HEAD" ];
+        for change in changes:
             mappedChange = self.lookupChange(change);
             if mappedChange:
                 print "Change: %s -> %s" % (change, mappedChange);
