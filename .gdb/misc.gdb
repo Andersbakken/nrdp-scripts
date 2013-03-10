@@ -9,18 +9,20 @@ Run program; break on main()
 end
 
 define attach-board
-  if $argc != 1
+  if $argc < 1
     help attach-board
   else
-    #set solib-absolute-prefix /exports/panasonic/am-linux-pf_b_025r/root
-    #set solib-search-path /exports/panasonic/am-linux-pf_b_025r/root
+    if $argc == 2
+       set solib-absolute-prefix $arg1
+       set solib-search-path $arg1
+    end
     target remote $arg0
     handle SIG32 nostop noprint
     set heuristic-fence-post 10000
   end
 end
 document attach-board
-Attach to gdb-server: ip:port
+Attach to gdb-server: ip:port [so-path]
 end
 
 define thread-lock
