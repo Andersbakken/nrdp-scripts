@@ -207,3 +207,27 @@ the name of the value of file-name is present."
       (setq points (cdr points))))
   (c-indent-defun)
   )
+
+;;===================
+;; Insert prints all over the board
+;;===================
+(defun magit-show-revision-at-current-line()
+  (interactive)
+  (let ((file)
+        (sha (buffer-substring (point-at-bol) (+ (point-at-bol) 7))))
+    (save-excursion
+      (goto-char (point-min))
+      (if (looking-at "Commits for file \\(.*\\) in [^ ]+$")
+          (setq file (match-string 1))
+        (error "Not in approriate magit-log buffer it seems")))
+    (magit-git-command (format "show %s:%s" sha file))))
+
+(defun magit-refresh-status-buffer()
+  (let ((topdir (magit-get-top-dir default-directory)))
+    (if topdir
+        (let ((buf (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*")))
+          (if (get-buffer buf)
+              (with-current-buffer buf
+                (magit-refresh)))))
+    )
+  )
