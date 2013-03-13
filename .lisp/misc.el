@@ -209,7 +209,7 @@ the name of the value of file-name is present."
   )
 
 ;;===================
-;; Insert prints all over the board
+;; Magit stuff
 ;;===================
 (defun magit-show-revision-at-current-line()
   (interactive)
