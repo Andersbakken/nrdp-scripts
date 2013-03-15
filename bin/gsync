@@ -1,0 +1,19 @@
+#!/bin/bash
+
+sync=`which git-sync`
+test -z "$sync" && sync="git pull"
+lsdev=`which lsdev.pl`
+
+# if [ ! -x "`which git-sync`" ] || [ ! -x "`which lsdev.pl`" ]; then
+#     echo "You gotta get your tools right! Can't find either lsdev.pl or git-sync"
+#     exit 1
+# fi
+
+srcRoot=`pwd`
+if [ -n "$lsdev" -a -n "`$lsdev -p`" ]; then
+    root="`$lsdev -r src`"
+    [ -n "$root" ] && srcRoot="$root"
+fi
+find "$srcRoot" -maxdepth 4 -type d -name ".git" | while read i; do
+    cd $i && "$sync";
+done
