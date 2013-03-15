@@ -15,5 +15,5 @@ if [ -n "$lsdev" -a -n "`$lsdev -p`" ]; then
     [ -n "$root" ] && srcRoot="$root"
 fi
 find "$srcRoot" -maxdepth 4 -type d -name ".git" | while read i; do
-    cd $i && "$sync";
+    cd $i/.. && "$sync";
 done
