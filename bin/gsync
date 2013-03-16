@@ -20,5 +20,6 @@ else
     srcRoot=`pwd`
 fi
 find "$srcRoot" -maxdepth 4 -type d -name ".git" | while read i; do
-    cd $i/.. && "$sync";
+    cd $i/..
+    test -f ../.nogsync || "$sync";
 done
