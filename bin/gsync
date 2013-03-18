@@ -19,7 +19,7 @@ if [ -n "$lsdev" ]; then
 else
     srcRoot=`pwd`
 fi
-find "$srcRoot" -maxdepth 4 -type d -name ".git" | while read i; do
+find -L "$srcRoot" -maxdepth 4 -type d -name ".git" | while read i; do
     cd $i/..
     test -f ../.nogsync || "$sync";
 done
