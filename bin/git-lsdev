@@ -16,11 +16,20 @@ while [ "$#" -gt 0 ]; do
   --) COMMAND="$@"; break ;;
   --*) COMMAND=`echo $OPT | sed "s,^--,,g"` ;;
   *)
-     if [ -z "$COMMAND" ] && [ "$#" = "0" ]; then
-        COMMAND="$OPT"
-     else
-        LSDEV_DIRS="$LSDEV_DIRS $OPT"
-     fi ;;
+     if [ -z "$COMMAND" ]; then
+         ALL_COMMAND=yes
+         for arg in "$@"; do
+             if echo "$arg" | grep -v '^-' >/dev/null 2>&1; then
+                 ALL_COMMAND=no
+                 break
+             fi
+         done
+         if [ "$ALL_COMMAND" = "yes" ]; then
+             COMMAND="$OPT $@"
+             break
+         fi
+     fi
+     LSDEV_DIRS="$LSDEV_DIRS $OPT" ;;
   esac
 done
 
