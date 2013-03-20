@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 TEST=
 COMMAND=
@@ -58,6 +58,10 @@ for ROOTDIR in $ROOTDIRS; do
                    cd "$i/.."
                    SUBDIR=`pwd`
                    if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
+                       if [ -e ".lsdev_config" ]; then
+                           source .lsdev_config
+                           [ -n "$git_ignore" ] && continue
+                       fi
                        echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
                        $TEST git $COMMAND || ERROR=1
                    fi
