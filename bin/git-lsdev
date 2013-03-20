@@ -2,13 +2,16 @@
 
 TEST=
 COMMAND=
-DEVS=
 ERROR=
+RECURSIVE=no
+LSDEV_OPTS="-b src"
+LSDEV_DIRS=
 
 while [ "$#" -gt 0 ]; do
   OPT="$1"
   shift
   case $OPT in
+  -r) RECURSIVE=yes; LSDEV_OPTS="$LSDEV_OPTS -r" ;;
   -dry) TEST="echo" ;;
   --) COMMAND="$@"; break ;;
   --*) COMMAND=`echo $OPT | sed "s,^--,,g"` ;;
@@ -16,36 +19,46 @@ while [ "$#" -gt 0 ]; do
      if [ -z "$COMMAND" ] && [ "$#" = "0" ]; then
         COMMAND="$OPT"
      else
-        DEVS="$DEVS $OPT"
+        LSDEV_DIRS="$LSDEV_DIRS $OPT"
      fi ;;
   esac
 done
-
 
 if [ -z "$COMMAND" ]; then
    echo "No command provided!"
    exit 1
 fi
 
-first=
-for dir in `lsdev.pl -l -b -tp $DEVS`; do
-   if [ -d "$dir" ]; then
-       cd "$dir"
+FIRST=yes
+ROOTDIRS=`lsdev.pl $LSDEV_OPTS -tp $LSDEV_DIRS`
+for ROOTDIR in $ROOTDIRS; do
+   if [ -d "$ROOTDIR" ]; then
+       cd "$ROOTDIR"
        if git rev-parse >/dev/null 2>&1; then
-           if [ -n "$first" ]; then
+           if [ "$FIRST" = "yes" ]; then
+               FIRST=no
                echo
                echo
            fi
-           first=0
            echo "============================================================="
-           echo "Processing: $dir ($COMMAND)"
+           echo "Processing: $ROOTDIR ($COMMAND)"
            echo "============================================================="
            $TEST git $COMMAND || ERROR=1
+           if [ "$RECURSIVE" = "yes" ]; then
+               find -L "$ROOTDIR" -maxdepth 4 -type d -name ".git" | while read i; do
+                   cd "$i/.."
+                   SUBDIR=`pwd`
+                   if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
+                       echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
+                       $TEST git $COMMAND || ERROR=1
+                   fi
+               done
+           fi
        fi
    fi
 done
 
 if [ -n "$ERROR" ]; then
-	echo "\n\nThere were errors!!!!!"
-	exit 1
+    echo "\n\nThere were errors!!!!!"
+    exit 1
 fi

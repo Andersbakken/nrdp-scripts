@@ -1,6 +1,7 @@
 #!/bin/sh
 
 GITDIR=`git rev-parse --git-dir`
+ROOTDIR=`cd $GITDIR/.. && pwd`
 if git config -l | grep "^svn-remote" --quiet; then
     git svn update
 elif [ -d "$GITDIR/refs/remotes/p4" ]; then
@@ -8,3 +9,15 @@ elif [ -d "$GITDIR/refs/remotes/p4" ]; then
 else
     git pull
 fi
+if [ "$1" = "-r" ]; then
+    echo "Recurse... "
+    find -L "$ROOTDIR" -maxdepth 4 -type d -name ".git" | while read i; do
+        cd "$i/.."
+        SUBDIR=`pwd`
+        if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
+            echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
+            git sync;
+        fi
+    done
+fi
+
