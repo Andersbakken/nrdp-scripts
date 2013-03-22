@@ -29,6 +29,7 @@
 (define-key backup-file-mode-map (kbd "+") (function backup-file-show-diff-inline))
 (define-key backup-file-mode-map (kbd "o") (function backup-file-select-revision-at-point))
 (define-key backup-file-mode-map (kbd "f") (function backup-file-select-revision-at-point))
+(define-key backup-file-mode-map (kbd "r") (function backup-file-revert-to-revision-at-point))
 (define-key backup-file-mode-map (kbd "D") (function backup-file-toggle-showing-inline-diffs))
 (define-key backup-file-mode-map (kbd "RET") (function backup-file-select-revision-at-point-or-diff-goto-source))
 (define-key backup-file-mode-map (kbd "ENTER") (function backup-file-select-revision-at-point-or-diff-goto-source))
@@ -228,6 +229,25 @@
     (if index
         (backup-file-show-revision index)
       (diff-goto-source))))
+
+(defun backup-file-revert-to-revision-at-point ()
+  (interactive)
+  (let ((index (backup-file-data-index))
+        (buf (get-file-buffer backup-file-last-file)))
+    (when (or (not buf)
+              (not (buffer-modified-p buf))
+              (y-or-n-p (format "%s is modified. Are you sure you want to discard your changes? " backup-file-last-file)))
+      (find-file backup-file-last-file)
+      (erase-buffer)
+      (backup-file-git "show" (concat (car (nth index backup-file-last-data)) ":." backup-file-last-file))
+      (goto-char (point-min))
+      (message "Reverted to revision #%d - %s - %s"
+               index
+               (car (nth index backup-file-last-data))
+               (cdr (nth index backup-file-last-data)))
+      )
+    )
+  )
 
 (defun backup-file-jump (offset)
   (if (and (string-match "\\*\\(.*\\)#\\([0-9]+\\)\\*" (buffer-name))
