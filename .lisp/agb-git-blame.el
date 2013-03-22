@@ -22,6 +22,8 @@
 (define-key agb-git-blame-mode-map (kbd "n") (function agb-git-reblame-pop))
 (define-key agb-git-blame-mode-map (kbd "=") (function agb-git-blame-show-diff))
 (define-key agb-git-blame-mode-map (kbd "+") (function agb-git-blame-show-diff-other-window))
+(define-key agb-git-blame-mode-map (kbd "SPC") (function agb-git-blame-show-diff-other-window))
+(define-key agb-git-blame-mode-map (kbd "DEL") (function agb-git-blame-show-diff-other-window-back))
 (define-key agb-git-blame-mode-map (kbd "s") (function agb-git-blame-toggle-smaller))
 (define-key agb-git-blame-mode-map (kbd "t") (function agb-git-blame-toggle-use-relative-date))
 (define-key agb-git-blame-mode-map (kbd "o") (function agb-git-blame-show-revision))
@@ -115,33 +117,53 @@
     (if (looking-at "\\([0-9a-f]\\{8\\}\\)[ )]")
         (match-string 1))))
 
+(defun agb-git-blame-buffer-visible (buffer)
+  (car (member-if #'(lambda (arg) (eq buffer (window-buffer arg))) (window-list))))
+
 (defun agb-git-blame-show-diff (&optional otherwindow)
   (interactive "P")
   (let ((commit (agb-git-blame-current-commit)))
     (if commit
-        (let ((bufname (format "*%s - %s*" (agb-git-blame-filename) commit)))
-          (if (get-buffer bufname)
-              (kill-buffer bufname))
-          (if (and agb-git-blame-reuse-buffers agb-git-blame-last-temp-buffer)
-              (kill-buffer agb-git-blame-last-temp-buffer))
-          (if (not otherwindow)
-              (switch-to-buffer (get-buffer-create bufname))
+        (let* ((bufname (format "*%s - %s*" (agb-git-blame-filename) commit))
+               (buffer (get-buffer bufname))
+               (visible (and buffer (agb-git-blame-buffer-visible buffer))))
+          (if buffer
+              (progn
+                (when otherwindow
+                  (if visible
+                      (if (= otherwindow 1)
+                          (scroll-other-window)
+                        (scroll-other-window-down))
+                    (progn
+                      (if (= 1 (length (window-list)))
+                          (split-window))
+                      (switch-to-buffer-other-window buffer)
+                      (other-window 1)))))
             (progn
-              (if (= 1 (length (window-list)))
-                  (split-window-vertically))
-              (switch-to-buffer-other-window (get-buffer-create bufname))))
-          (setq agb-git-blame-last-temp-buffer (current-buffer))
-          (call-process "git" nil (current-buffer) nil "show" commit)
-          (goto-char (point-min))
-          (diff-mode)
-          (setq buffer-read-only t))
-      )
-    )
+              (if (and agb-git-blame-reuse-buffers agb-git-blame-last-temp-buffer)
+                  (kill-buffer agb-git-blame-last-temp-buffer))
+              (if (not otherwindow)
+                  (switch-to-buffer (get-buffer-create bufname))
+                (progn
+                  (if (= 1 (length (window-list)))
+                      (split-window-vertically))
+                  (switch-to-buffer-other-window (get-buffer-create bufname))
+                  (other-window 1)))
+              (setq agb-git-blame-last-temp-buffer (current-buffer))
+              (call-process "git" nil (current-buffer) nil "show" commit)
+              (goto-char (point-min))
+              (diff-mode)
+              (setq buffer-read-only t))))))
   )
 
 (defun agb-git-blame-show-diff-other-window()
   (interactive)
-  (agb-git-blame-show-diff t))
+  (agb-git-blame-show-diff 1))
+
+(defun agb-git-blame-show-diff-other-window-back()
+  (interactive)
+  (agb-git-blame-show-diff -1))
+
 
 (defvar agb-git-blame-show-revision-keymap (make-sparse-keymap))
 (define-key agb-git-blame-show-revision-keymap (kbd "q") 'bury-buffer)
