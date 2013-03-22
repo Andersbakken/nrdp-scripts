@@ -144,6 +144,9 @@
     )
   )
 
+(defun backup-file-data-nth (index)
+  (nth (- index 1) backup-file-last-data))
+
 (defun backup-file-show-diff (&optional pos)
   (interactive)
   (let ((index (backup-file-data-index)))
@@ -155,7 +158,7 @@
               (kill-buffer backup-file-last-temp-buffer))
           (switch-to-buffer (get-buffer-create bufname))
           (setq backup-file-last-temp-buffer (current-buffer))
-          (backup-file-git "show" (car (nth index backup-file-last-data)))
+          (backup-file-git "show" (car (backup-file-data-nth index)))
           (goto-char (point-min))
           (save-excursion
             (replace-regexp "^--- a/" "--- /")
@@ -214,7 +217,7 @@
             (kill-buffer backup-file-last-temp-buffer))
         (switch-to-buffer (get-buffer-create bufname))
         (setq backup-file-last-temp-buffer (current-buffer))
-        (backup-file-git "show" (concat (car (nth index backup-file-last-data)) ":." backup-file-last-file))
+        (backup-file-git "show" (concat (car (backup-file-data-nth index)) ":." backup-file-last-file))
         (setq buffer-file-name backup-file-last-file)
         (set-auto-mode)
         (setq buffer-file-name nil)
@@ -239,12 +242,12 @@
               (y-or-n-p (format "%s is modified. Are you sure you want to discard your changes? " backup-file-last-file)))
       (find-file backup-file-last-file)
       (erase-buffer)
-      (backup-file-git "show" (concat (car (nth index backup-file-last-data)) ":." backup-file-last-file))
+      (backup-file-git "show" (concat (car (backup-file-data-nth index)) ":." backup-file-last-file))
       (goto-char (point-min))
       (message "Reverted to revision #%d - %s - %s"
                index
-               (car (nth index backup-file-last-data))
-               (cdr (nth index backup-file-last-data)))
+               (car (backup-file-data-nth index))
+               (cdr (backup-file-data-nth index)))
       )
     )
   )
