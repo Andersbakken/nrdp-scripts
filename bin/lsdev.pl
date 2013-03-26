@@ -556,7 +556,7 @@ sub filterMatches {
                 }
                 my $matches = 0;
                 if($match eq "src" || $match eq "source") {
-                    $matches = !defined($root->{source});
+                    $matches = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
                 } elsif($match eq "build") {
                     $matches = defined($root->{source});
                 } elsif($match =~ /^path:(.*)/) {
