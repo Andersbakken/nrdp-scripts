@@ -25,7 +25,8 @@ while [ "$#" -gt 0 ]; do
              fi
          done
          if [ "$ALL_COMMAND" = "yes" ]; then
-             COMMAND="$OPT $@"
+             COMMAND="$OPT"
+             [ "$#" -gt 1 ] && COMMAND="$COMMAND $@"
              break
          fi
      fi
