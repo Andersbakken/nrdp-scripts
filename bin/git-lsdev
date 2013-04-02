@@ -63,7 +63,9 @@ for ROOTDIR in $ROOTDIRS; do
                            source .lsdev_config
                            [ -n "$git_ignore" ] && continue
                        fi
+                       echo "============================================================="
                        echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
+                       echo "============================================================="
                        $TEST git $COMMAND || ERROR=1
                    fi
                done
