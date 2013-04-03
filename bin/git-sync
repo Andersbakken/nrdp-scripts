@@ -5,24 +5,21 @@ function syncdir
     cd "$1"
     GITDIR=`git rev-parse --git-dir`
     ROOTDIR=`cd $GITDIR/.. && pwd`
+
+    stashed=
+    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+        stashed=1
+        git commit -a -m "git-sync"
+    fi
     if [ -d "$GITDIR/refs/remotes/p4" ]; then
         git p4 sync
-        return;
-    fi
-
-    if [ -n "$autostash" ] && git status --porcelain | grep "^ *M" --quiet; then
-        stashed=1
-        git stash
-    fi
-
-    if git config -l | grep "^svn-remote" --quiet; then
+    elif git config -l | grep "^svn-remote" --quiet; then
         git svn update
     else
         git pull
     fi
-
     if [ -n "$stashed" ]; then
-        git stash pop
+        git reset HEAD~
     fi
 }
 
