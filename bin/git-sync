@@ -1,23 +1,56 @@
-#!/bin/sh
+#!/bin/bash
 
-GITDIR=`git rev-parse --git-dir`
-ROOTDIR=`cd $GITDIR/.. && pwd`
-if git config -l | grep "^svn-remote" --quiet; then
-    git svn update
-elif [ -d "$GITDIR/refs/remotes/p4" ]; then
-    git p4 sync
-else
-    git pull
-fi
-if [ "$1" = "-r" ]; then
-    echo "Recurse... "
-    find -L "$ROOTDIR" -maxdepth 4 -type d -name ".git" | while read i; do
-        cd "$i/.."
-        SUBDIR=`pwd`
-        if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
-            echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
-            git sync;
-        fi
-    done
+function syncdir
+{
+    cd "$1"
+    GITDIR=`git rev-parse --git-dir`
+    ROOTDIR=`cd $GITDIR/.. && pwd`
+    if [ -n "$autostash" ] && git status --porcelain | grep "^ *M" --quiet; then
+        stashed=1
+        git stash
+    fi
+    if git config -l | grep "^svn-remote" --quiet; then
+        git svn update
+    elif [ -d "$GITDIR/refs/remotes/p4" ]; then
+        git p4 sync
+    else
+        git pull
+    fi
+    if [ -n "$stashed" ]; then
+        git stash pop
+    fi
+}
+
+idx=0
+while [ -n "$1" ]; do
+    case "$1" in
+        -r|--recursive)
+            recursive=1
+            ;;
+        --autostash|-a)
+            autostash=1
+            ;;
+        *)
+            if [ -d "$1" ]; then
+                dirs[$idx]="$1"
+                idx=`expr $idx + 1`
+            else
+                echo "$1 is not a directory"
+            fi
+            ;;
+    esac
+    shift
+done
+if [ $idx -eq 0 ]; then
+    idx=1
+    dirs[0]=`pwd`
 fi
 
+i=0
+while [ $i -lt $idx ]; do
+    syncdir "${dirs[$i]}"
+    if [ -n "$recursive" ]; then
+        find -L "${dirs[$1]}" -mindepth 1 -maxdepth 4 -type d -name ".git" | while read i; do syncdir "$i/.."; done
+    fi
+    i=`expr $i + 1`
+done
