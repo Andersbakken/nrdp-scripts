@@ -73,8 +73,8 @@
 (defun lsdev-dir-for-name(name)
   (let ((ret nil) (hds (lsdev-dirs-all)))
     (while (and hds (not ret))
-      (let ((hd (car hds))
-            (hds (cdr hds)))
+      (let ((hd (car hds)))
+        (setq hds (cdr hds))
         (if (string-equal (nth 0 hd) name)
             (setq ret (nth 1 hd)))))
     ret))
@@ -318,4 +318,42 @@
         t)
     nil))
 
+(defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
+  (if (file-exists-p (concat src path))
+      (concat src path)
+    (let ((out (shell-command-to-string (format "GTAGSROOT=%s global -Poa /%s" src (file-name-nondirectory path)))))
+      (when (and (> (length out) 0)
+                 (not (string-match "^global: " out)))
+        (setq out (substring out 0 (- (length out) 1)))
+        (if (file-exists-p out) out nil))))
+  )
+
+(defun lsdev-open-equivalent ()
+  (interactive)
+  (if (buffer-file-name)
+      (let* ((default-directory "/")
+             (current-root (lsdev-root-dir (buffer-file-name)))
+             (relative (substring (buffer-file-name) (length current-root)))
+             (all (lsdev-dirs-all "src"))
+             (alternatives))
+        (while all
+          (let* ((cur (car all))
+                 (name (substring (car cur) 4))
+                 (path (car (cdr cur))))
+            (if (and (not (string= path current-root))
+                     (lsdev-file-path-in-project path relative))
+                (setq alternatives (append (list name) alternatives))))
+          (setq all (cdr all)))
+        (if alternatives
+            (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) alternatives)))
+              (if project
+                  (find-file (lsdev-file-path-in-project (lsdev-dir-for-name (concat "src_" project)) relative))))
+
+          )
+        )
+    )
+  )
 (provide 'lsdev)
+
+
+
