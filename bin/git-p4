@@ -451,13 +451,13 @@ def lookupFromGitChange(change):
         return settings['change'];
     return False;
 
-def lookupFromP4Change(p4Change):
-    logOpts = "--all --no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + str(p4Change) + "'";
+def lookupFromP4Change(p4Change, branch="--all"):
+    logOpts = "--no-merges --pretty=format:'%h' --grep='\\[git-p4:.*change *= *" + str(p4Change) + "' " + branch;
     changes = read_pipe("git log %s" % logOpts, ignore_error=True).split("\n");
     if changes and len(changes) and len(changes[0]):
         return changes[0].strip();
     #try the hard way
-    logOpts = "--all --no-merges --pretty=format:'%h'";
+    logOpts = "--no-merges --pretty=format:'%h' " + branch;
     changes = read_pipe("git log %s" % logOpts, ignore_error=True).split("\n");
     for change in changes:
         gitChange = change.strip();
@@ -1551,8 +1551,8 @@ class P4Sync(Command):
         epoch = details["time"]
         author = details["user"]
         if self.p4Shelve:
-            parent = "HEAD"
-            branch = "refs/heads/" + currentGitBranch()
+            parent = lookupFromP4Change(details["shelf"], branch);
+            branch = "refs/remotes/p4/shelf";
 	self.branchPrefixes = branchPrefixes
 
         if self.verbose:
@@ -1984,6 +1984,8 @@ class P4Sync(Command):
         self.changeRange = ""
         self.initialParent = ""
         self.previousDepotPaths = []
+        if gitBranchExists("p4/shelf"):
+            system("git push . :p4/shelf")
         detectBranchesRoot = gitConfig("git-p4.detectBranchesRoot")
         if detectBranchesRoot:
             self.previousDepotPaths.append(detectBranchesRoot)
@@ -2282,10 +2284,10 @@ class P4Unshelve(P4Sync):
         if len(self.changes) == 0:
             print "Nothing to unshelve!"
         elif P4Sync.run(self, []):
-            system("git reset --hard -q HEAD")
-            if not self.doCommit:
-                system("git reset -q HEAD^")
-                system("git status")
+            if self.doCommit:
+                system("git cherry-pick p4/shelf")
+            else:
+                system("git cherry-pick -n p4/shelf")
         return True
 
 class P4Shelve(P4Submit):
