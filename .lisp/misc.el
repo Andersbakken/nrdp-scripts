@@ -199,7 +199,7 @@ the name of the value of file-name is present."
             (goto-char end)
           (save-excursion
             (backward-char)
-            (if (looking-at ";")
+            (if (looking-at "; *$")
                 (add-to-list 'points (+ (point) 1)))))))
     (while points
       (goto-char (car points))
