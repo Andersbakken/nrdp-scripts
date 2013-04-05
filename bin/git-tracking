@@ -1,5 +1,10 @@
 #!/bin/sh
-branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+if [ "$#" = 2 ]; then
+    branch="$1"
+    shift
+else
+    branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+fi
 echo "$branch" | grep "(" --quiet && exit 1
 
 lookupTracking() {
