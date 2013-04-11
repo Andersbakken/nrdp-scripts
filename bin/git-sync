@@ -18,6 +18,9 @@ function syncdir
     else
         git pull
     fi
+    if [ -f "$ROOTDIR/.gitmodules" ]; then
+        git submodule update
+    fi
     if [ -n "$stashed" ]; then
         git reset HEAD~
     fi

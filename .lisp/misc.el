@@ -63,30 +63,32 @@ the name of the value of file-name is present."
 
 (defalias 'sam-what-directory 'what-directory)
 
-(defun rotate-windows ()
-  "Rotate your windows" 
-  (interactive) 
-  (cond ((not (> (count-windows) 1)) (message "You can't rotate a single window!"))
-        (t
-         (setq i 1)
-         (setq numWindows (count-windows))
-         (while  (< i numWindows)
-           (let* (
-                  (w1 (elt (window-list) i))
-                  (w2 (elt (window-list) (+ (% i numWindows) 1)))
-                  (b1 (window-buffer w1))
-                  (b2 (window-buffer w2))
-                  (s1 (window-start w1))
-                  (s2 (window-start w2))
-                  )
-             (set-window-buffer w1  b2)
-             (set-window-buffer w2 b1)
-             (set-window-start w1 s2)
-             (set-window-start w2 s1)
-             (setq i (1+ i)))))))
+(defun rotate-windows (&optional toggle-split)
+  "Rotate your windows or split the toggle"
+  (interactive "P")
+  (if toggle-split
+      (toggle-window-split)
+    (cond ((not (> (count-windows) 1)) (message "You can't rotate a single window!"))
+          (t
+           (setq i 1)
+           (setq numWindows (count-windows))
+           (while  (< i numWindows)
+             (let* (
+                    (w1 (elt (window-list) i))
+                    (w2 (elt (window-list) (+ (% i numWindows) 1)))
+                    (b1 (window-buffer w1))
+                    (b2 (window-buffer w2))
+                    (s1 (window-start w1))
+                    (s2 (window-start w2))
+                    )
+               (set-window-buffer w1  b2)
+               (set-window-buffer w2 b1)
+               (set-window-start w1 s2)
+               (set-window-start w2 s1)
+               (setq i (1+ i))))))))
 
 (defun toggle-window-split (&optional splitter)
-  (interactive)
+  (interactive "P")
   (if (= (count-windows) 2)
       (let* ((this-win-buffer (window-buffer))
              (next-win-buffer (window-buffer (next-window)))
