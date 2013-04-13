@@ -210,6 +210,113 @@ the name of the value of file-name is present."
   (c-indent-defun)
   )
 
+
+(defun keyboard-quit-kill-minibuffer ()
+  (interactive)
+  (if (and (not (window-minibuffer-p)) (active-minibuffer-window))
+      (progn
+        (select-window (active-minibuffer-window))
+        (minibuffer-keyboard-quit))
+    (progn
+      (setq mark-active nil)
+      (keyboard-quit)))
+  )
+
+(defun switch-cpp-h ()
+  "Switch to the corresponding .cpp, .C, .cc or .h file."
+  (interactive)
+  (let ((n (buffer-file-name)) (attempts) (all-attempts)(found nil))
+    (save-excursion
+      (goto-char (point-min))
+      (if (re-search-forward "\\(//\\|/\\*\\) *SWITCH_FILE: *\"" nil t)
+          (progn
+            (setq start (point))
+            (if (search-forward "\"") (progn (backward-char)
+                                             (push (buffer-substring start (point)) all-attempts))))))
+    (if (string-match "\\.ui.h$" n) (push (replace-match ".ui" t t n ) all-attempts))
+    (if (string-match "\\.ui$" n) (push (replace-match ".ui.h" t t n ) all-attempts))
+    (if (string-match "_p\\.h$" n) (push (replace-match ".cpp" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".cc" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".C" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".mm" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".m" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".c" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match ".cpp" t t n ) all-attempts))
+    (if (string-match "_p\\.h$" n) (push (replace-match "_p.cpp" t t n ) all-attempts))
+    (if (string-match "\\.h$" n) (push (replace-match "_p.cpp" t t n ) all-attempts))
+    (if (string-match "\\.hpp$" n) (push (replace-match ".cpp" t t n ) all-attempts))
+    (if (string-match "\\.hxx$" n) (push (replace-match ".cxx" t t n ) all-attempts))
+
+    (if (string-match "_x11\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "_unix\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "_mac\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "_thn\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "_win\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "_qws\\.cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match ".cpp$" n) (push (replace-match "_p.h" t t n ) all-attempts))
+    (if (string-match ".cpp$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match ".cc$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match ".c$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match ".cpp$" n) (push (replace-match ".hpp" t t n ) all-attempts))
+    (if (string-match ".cxx$" n) (push (replace-match ".hxx" t t n ) all-attempts))
+
+    (if (string-match "\\.mm$" n) (push (replace-match ".h" t t n ) all-attempts))
+    (if (string-match "\\.m$" n) (push (replace-match ".h" t t n ) all-attempts))
+
+    (setq attempts all-attempts)
+    (while (and (not found) attempts)  ;;simple search first
+      (let ((attempt (car attempts)))
+        ;;Does the file exist?
+        (if (file-readable-p attempt) (setq found attempt))
+        (setq attempts (cdr attempts))))
+
+    (if (and (not found) (gtags-get-rootpath))
+        (dolist (attempt all-attempts)
+          (unless found
+            (with-temp-buffer
+              (call-process (executable-find "global") nil t nil "-Pa" (concat "/" (file-name-nondirectory attempt) "$"))
+              (if (eq (count-lines (point-min) (point-max)) 1)
+                  (setq found (buffer-substring (point-min) (- (point-max) 1))))))))
+
+    (if found
+        (find-file found)
+      (ff-find-other-file))))
+
+(defun point-is-at-eol (pos) (save-excursion (goto-char pos) (= pos (point-at-eol))))
+(defun point-is-at-bol (pos) (save-excursion (goto-char pos) (= pos (point-at-bol))))
+(defun smart-comment-or-uncomment-region (&optional prefix)
+  (interactive "P")
+  (let ((start (if (region-active-p) (point) (point-at-bol)))
+        (end (if (region-active-p) (mark) (point-at-eol)))
+        (needs-c-style-override nil))
+    (if (< end start)
+        (let ((tmp end))
+          (setq end start)
+          (setq start tmp)))
+    (if (and
+         (eq major-mode 'c++-mode)
+         (not (and (or (point-is-at-eol start) (point-is-at-bol start))
+                   (or (point-is-at-eol end) (point-is-at-bol end)))))
+        (setq needs-c-style-override t))
+    (if (and needs-c-style-override
+             (= (point-at-bol) start)
+             (= (point-at-eol) end))
+        (setq needs-c-style-override nil))
+
+    (if needs-c-style-override
+        (progn
+          (setq comment-start "/*")
+          (setq comment-end "*/")))
+    (if prefix
+        (uncomment-region start end)
+      (comment-or-uncomment-region start end prefix))
+    (if needs-c-style-override
+        (progn
+          (setq comment-start "// ")
+          (setq comment-end ""))))
+  )
+
+
 ;;===================
 ;; Magit stuff
 ;;===================
