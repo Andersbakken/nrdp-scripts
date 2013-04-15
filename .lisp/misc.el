@@ -233,3 +233,32 @@ the name of the value of file-name is present."
                 (magit-refresh)))))
     )
   )
+
+;;===================
+;; smart-keyboard-quit
+;;===================
+
+(defun smart-keyboard-quit ()
+  (interactive)
+  (cond ((window-minibuffer-p) (minibuffer-keyboard-quit))
+        ((active-minibuffer-window)
+         (select-window (active-minibuffer-window))
+         (minibuffer-keyboard-quit))
+        (t (keyboard-quit)))
+  )
+
+;; ================================================================================
+;; Super keyboard-quit C-g
+;; ================================================================================
+
+(defun smart-keyboard-quit ()
+  (interactive)
+  (if (and (not (window-minibuffer-p)) (active-minibuffer-window))
+      (progn
+        (select-window (active-minibuffer-window))
+        (minibuffer-keyboard-quit))
+    (progn
+      (setq mark-active nil)
+      (keyboard-quit)))
+  )
+
