@@ -210,6 +210,118 @@ the name of the value of file-name is present."
   (c-indent-defun)
   )
 
+;;skeleton thingie
+(defun make-member ()
+  "make a skeleton member function in the .cpp file"
+  (interactive)
+  (let ((class nil)
+        (function nil)
+        (file (buffer-file-name))
+        (insertion-string nil)
+        (start nil))
+    (save-excursion
+      (and (re-search-backward "^[ \t]*class[ \t\n]" nil t)
+           (progn
+             (forward-word 1)
+             (while (looking-at "[ \t]*DLLEXPORT")
+               (forward-word 1))
+             (while (looking-at "[ \t]*Q_[a-zA-Z0-9]*_EXPORT")
+               (forward-word 3))
+             (while (looking-at "[ \t\n]")
+               (forward-char 1))
+             (setq start (point))
+             (while (looking-at "[A-Za-z0-9_]")
+               (forward-char 1))
+             (setq class (buffer-substring start (point))))))
+    (progn
+      (and (looking-at "$")
+           (progn
+             (search-backward ")" nil t)
+             (forward-char)
+             (backward-sexp)))
+      (and (stringp class)
+           (re-search-backward "^[ \t]")
+           (progn
+             (while (looking-at "[ \t]")
+               (forward-char 1))
+             (setq start (point))
+             (and (search-forward "(" nil t)
+                  (progn
+                    (forward-char -1)
+                    (forward-sexp)))
+             (and (looking-at "[ \t]+const")
+                  (forward-word 1))
+             (and (looking-at ";")
+                  (setq function (buffer-substring start (point))))
+             (re-search-forward "(" nil t))))
+    (and (stringp function)
+         (progn
+           (and (string-match "[ \t]*\\<virtual\\>[ \t]*" function)
+                (setq function (replace-match " " t t function)))
+           (and (string-match "^\\(virtual\\>\\)?[ \t]*" function)
+                (setq function (replace-match "" t t function)))
+           (while (string-match "  +" function)
+             (setq function (replace-match " " t t function)))
+           (while (string-match "\t+" function)
+             (setq function (replace-match " " t t function)))
+           (while (string-match " ?=[^,)]+" function)
+             (setq function (replace-match " " t t function)))
+           (while (string-match " +," function)
+             (setq function (replace-match "," t t function)))))
+    (and (stringp function)
+         (stringp class)
+         (stringp file)
+         (progn
+           (cond ((string-match (concat "^ *" class "[ \\t]*(") function)
+                  (progn
+                    (setq insertion-string 
+                          (concat 
+                           "\n"
+                           (replace-match
+                            (concat class "::" class "(")
+                            t t function)
+                           "\n{\n    \n}\n"))))
+                 ((string-match (concat "^ *~" class "[ \\t]*(") function)
+                  (progn
+                    (setq insertion-string 
+                          (concat 
+                           "\n"
+                           (replace-match
+                            (concat class "::~" class "(")
+                            t t function)
+                           "\n{\n    \n}\n"))))
+                 ((string-match " *\\([a-z0-9_]+\\)[ \\t]*(" function)
+                  (progn
+                    (setq insertion-string
+                          (concat
+                           "\n"
+                           (replace-match
+                            (concat " " class "::" "\\1(")
+                            t nil function)
+                           "\n{\n    \n}\n"))))
+                 (t
+                  (error (concat "Can't parse declaration ``"
+                                 function "'' in class ``" class
+                                 "'', aborting"))))
+           (stringp insertion-string))
+         (condition-case nil (sam-switch-cpp-h) 
+           (error (progn
+                    (string-match "\\.h$" file) 
+                    (find-file (replace-match ".cpp" t t file)))))
+         (progn
+           (goto-char (point-max))
+           (insert insertion-string)
+           (forward-char -3)
+           (save-excursion
+             (and (string-match ".*/" file)
+                  (setq file (replace-match "" t nil file)))
+             (or (re-search-backward 
+                  (concat "^#include *\"" file "\"$") nil t)
+                 (progn
+                   (goto-char (point-min))
+                   (re-search-forward "^$" nil t)
+                   (insert "\n#include \"" file "\"\n"))))))))
+(defalias 'agulbra-make-member 'make-member)
 
 (defun keyboard-quit-kill-minibuffer ()
   (interactive)
@@ -341,19 +453,6 @@ the name of the value of file-name is present."
     )
   )
 
-;;===================
-;; smart-keyboard-quit
-;;===================
-
-(defun smart-keyboard-quit ()
-  (interactive)
-  (cond ((window-minibuffer-p) (minibuffer-keyboard-quit))
-        ((active-minibuffer-window)
-         (select-window (active-minibuffer-window))
-         (minibuffer-keyboard-quit))
-        (t (keyboard-quit)))
-  )
-
 ;; ================================================================================
 ;; Super keyboard-quit C-g
 ;; ================================================================================
@@ -368,4 +467,37 @@ the name of the value of file-name is present."
       (setq mark-active nil)
       (keyboard-quit)))
   )
+
+;;====================
+;; clean up white spaces hook
+;;===================
+(defun sam-fix-tabs (b e) (if indent-tabs-mode (tabify b e) (untabify b e)))
+(defun sam-fix-tabs-region ()
+  (interactive) 
+  (sam-fix-tabs  (region-beginning) (region-end)) (untabify  (region-beginning) (region-end)))
+(defun sam-clean-out-spaces ()
+  "Remove spaces at ends of lines"
+  (interactive)
+  (sam-fix-tabs (point-min) (point-max))
+  (and (not buffer-read-only)
+       (save-excursion
+	 (goto-char (point-min))
+	 (let ((count 0)
+	       (bmp (buffer-modified-p)))
+	   (while (re-search-forward "[ \t]+$" nil t)
+	     (setq count (1+ count))
+	     (replace-match "" t t))
+	   (and (> count 0)
+		(progn
+		  (set-buffer-modified-p bmp)
+		  (message "Cleaned %d lines" count)))))))
+(defvar sam-auto-clean-whitespace nil)
+(make-variable-buffer-local 'sam-auto-clean-whitespace)
+(defun sam-c-clean-out-spaces-hooked ()
+  "Cleanup spaces, only in c mode"
+  (interactive)
+  (if (and sam-auto-clean-whitespace (or (eq major-mode 'c++-mode) (eq major-mode 'c-mode)))
+      (sam-clean-out-spaces))
+  nil)
+(add-hook 'write-file-hooks 'sam-c-clean-out-spaces-hooked)
 
