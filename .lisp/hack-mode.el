@@ -82,8 +82,13 @@
       )))
 (defun netflix-log-message (msg) "Insert Netflix logging message."
   (let ((result))
-    (insert (concat "netflix::base::Log::error(TRACE_LOG, \"[%s:%d]: " msg "\", __func__, __LINE__"))
-    (if (string-match "%" msg) (progn (insert ", ") (setq result (point))))
+    (if (or (eq major-mode 'js2-mode) (eq major-mode 'js-mode))
+        (progn
+          (insert "nrdp.log.error('" msg "'")
+          (setq result (point)))
+      (progn
+        (insert "netflix::base::Log::error(TRACE_LOG, \"[%s:%d]: " msg "\", __func__, __LINE__")
+        (if (string-match "%" msg) (progn (insert ", ") (setq result (point))))))
     (insert ");")
     result))
 (defun netflix-c-mode-hook () (setq
@@ -99,12 +104,15 @@
 (setq hack-mode-netflix '("Netflix" netflix-templatize-file netflix-c-mode-hook netflix-find-file-hook netflix-log-message))
 
 ;;printf handling
-(defun hack-mode-insert-debug-printf(msg)
-  (interactive "sString: ")
+(defun hack-mode-insert-debug-printf(&optional prefix msg)
+  (interactive "P")
+  (unless msg
+    (setq msg (read-from-minibuffer "String: ")))
   (beginning-of-line)
   (indent-for-tab-command)
   (let ((msg-pos))
-    (if (nth hack-mode-find-log-nth hack-mode) (setq msg-pos (funcall (nth hack-mode-find-log-nth hack-mode) msg))
+    (if (and (not prefix) (nth hack-mode-find-log-nth hack-mode))
+        (setq msg-pos (funcall (nth hack-mode-find-log-nth hack-mode) msg))
       (progn
         (insert (concat "printf(\"[%s:%d]: " msg "\\n\", __func__, __LINE__"))
         (if (string-match "%" msg) (progn (insert ", ") (setq msg-pos (point))))
@@ -114,10 +122,12 @@
     (indent-for-tab-command)
     (if msg-pos (goto-char msg-pos))))
 (setq hack-mode-insert-debug-serial-value 0)
-(defun hack-mode-insert-debug-serial()
-  (interactive)
-  (hack-mode-insert-debug-printf (format "%d" (setq hack-mode-insert-debug-serial-value (+ hack-mode-insert-debug-serial-value 1)))))
-(defun hack-mode-insert-debug-code-line(&optional arg)
+
+(defun hack-mode-insert-debug-serial(&optional prefix)
+  (interactive "P")
+  (hack-mode-insert-debug-printf prefix (format "%d" (setq hack-mode-insert-debug-serial-value (+ hack-mode-insert-debug-serial-value 1)))))
+
+(defun hack-mode-insert-debug-code-line(prefix arg)
   (beginning-of-line)
   (indent-for-tab-command)
   (let((b(point-marker)))
@@ -136,7 +146,7 @@
           (next-line 1)
           (beginning-of-line)
           (indent-for-tab-command)))
-    (hack-mode-insert-debug-printf (current-kill 0))
+    (hack-mode-insert-debug-printf prefix (current-kill 0))
     (previous-line 1)
     (beginning-of-line)
     (indent-for-tab-command)
@@ -145,13 +155,14 @@
     (indent-for-tab-command)
     (previous-line 1)
     (if arg (transpose-lines 1))))
-(defun hack-mode-insert-debug-code-line-pre()
-  (interactive)
-  (hack-mode-insert-debug-code-line t))
 
-(defun hack-mode-insert-debug-code-line-post()
-  (interactive)
-  (hack-mode-insert-debug-code-line nil))
+(defun hack-mode-insert-debug-code-line-pre(&optional prefix)
+  (interactive "P")
+  (hack-mode-insert-debug-code-line prefix t))
+
+(defun hack-mode-insert-debug-code-line-post(&optional prefix)
+  (interactive "P")
+  (hack-mode-insert-debug-code-line prefix nil))
 
 (defun hack-mode-templatize-file () "Maybe stick in a standard multiple-inclusion check for a header file"
   (if (and (buffer-file-name) (not buffer-read-only))
