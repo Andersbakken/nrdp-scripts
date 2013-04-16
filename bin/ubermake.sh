@@ -29,10 +29,13 @@ while [ "$#" -gt 0 ]; do
     esac
     shift
 done
-if [ -e "${MAKE_DIR}/Makefile" ]; then
+if [ -n "$MAKE_DIR" ] && ! echo $MAKE_DIR | grep --quiet "/$"; then
+    MAKE_DIR="${MAKE_DIR}/"
+fi
+if [ -e "${MAKE_DIR}Makefile" ]; then
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
     true #ok, make it is...
-elif [ -e "${MAKE_DIR}/SConstruct" ]; then
+elif [ -e "${MAKE_DIR}SConstruct" ]; then
     SCONS_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
          case $opt in
@@ -42,7 +45,7 @@ elif [ -e "${MAKE_DIR}/SConstruct" ]; then
     done
     (cd $MAKE_DIR && scons $SCONS_OPTIONS)
     return
-elif [ -e "${MAKE_DIR}/Sakefile.js" ]; then
+elif [ -e "${MAKE_DIR}Sakefile.js" ]; then
     SAKE_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
          case $opt in
