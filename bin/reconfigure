@@ -33,9 +33,9 @@ if [ -z "$BUILD" ] || [ ! -e "$BUILD/config.status" ]; then
 fi
  CONFIGURE=
 cd "$BUILD"
-SRC=`lsdev.pl src - -r`
-echo "Root: $BUILD [$SRC]"
+echo "Root: $BUILD"
 if [ "$RECONFIG_RESET" ]; then
+    SRC=`lsdev.pl src - -r`
     if [ -e "$SRC/configure" ]; then
         CONFIGURE="$SRC/configure"
     fi
