@@ -199,7 +199,7 @@
   (remove-overlays (point-min) (point-max) 'invisible 'area)
   (netflix-log-hide-nrdp-log-log))
 
-(defun netflix-log-mode-map
+(defvar netflix-log-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "C-c C-t") 'netflix-log-limit-to-thread)
     (define-key map (kbd "C-c C-l") 'netflix-log-remove-traces)
