@@ -443,11 +443,21 @@ the name of the value of file-name is present."
         (error "Not in approriate magit-log buffer it seems")))
     (magit-git-command (format "show %s:%s" sha file))))
 
+(defun buffer-is-visible (buffer)
+  (let ((windows (window-list)) (ret))
+    (while windows
+      (when (eq buffer (window-buffer (car windows)))
+        (setq windows nil)
+        (setq ret t))
+      (setq windows (cdr windows)))
+    ret)
+  )
+
 (defun magit-refresh-status-buffer()
   (let ((topdir (magit-get-top-dir default-directory)))
     (if topdir
-        (let ((buf (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*")))
-          (if (get-buffer buf)
+        (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
+          (if (and buf (buffer-is-visible buf))
               (with-current-buffer buf
                 (magit-refresh)))))
     )
