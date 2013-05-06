@@ -478,6 +478,24 @@ the name of the value of file-name is present."
       (keyboard-quit)))
   )
 
+;; ================================================================================
+;; strerror
+;; ================================================================================
+
+(defun strerror ()
+  (interactive)
+  (if (executable-find "strerror")
+      (let* ((def (current-word))
+             (query (read-from-minibuffer (concat "Strerror (default " def "): "))))
+        (if (string= query "")
+            (setq query def))
+        (if (and query (> (length query) 0))
+            (let ((res (shell-command-to-string (concat "strerror " query))))
+              (message (substring res 0 (1- (length res))))))
+        )
+    (message "No strerror in $PATH"))
+    )
+
 ;;====================
 ;; clean up white spaces hook
 ;;===================
