@@ -1,10 +1,10 @@
 define econtinue
-    shell echo tbreak $(emacsedit -e '(sam-what-file)') >/tmp/foo.gdb
+    shell echo tbreak $(emacsedit.sh -n -e '(sam-what-file)') >/tmp/foo.gdb
     source /tmp/foo.gdb
     continue
 end
 define ebreak
-    shell echo break $(emacsedit.sh -e '(sam-what-file)') >/tmp/foo.gdb
+    shell echo break $(emacsedit.sh -n -e '(sam-what-file)') >/tmp/foo.gdb
     source /tmp/foo.gdb
 end
 define ecd
