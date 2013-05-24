@@ -26,6 +26,10 @@ elif [ "$1" = "rebase" ]; then
     tracking=`lookupTracking`
     git rebase --onto "$tracking" "$branch"
 else
-    git branch --set-upstream "$branch" "$1"
+    if [ "`git --version | sed -e 's,[^0-9],,g' | cut -b1,2`" -lt "18" ]; then
+        git branch --set-upstream "$branch" "$1"
+    else
+        git branch --set-upstream-to="$1" "$branch"
+    fi
 fi
 exit 0
