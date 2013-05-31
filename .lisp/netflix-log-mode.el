@@ -78,20 +78,25 @@
   "List of trace areas that should be displayed, or nil for all")
 (make-variable-buffer-local 'netflix-log-filtered-areas)
 
+(defvar netflix-log-excluded-areas nil
+  "List of trace ares that should not be displayed")
+(make-variable-buffer-local 'netflix-log-excluded-areas)
+
 (defvar netflix-log-areas '(
-  "ASFDEMUX" "BUFFERMANAGER" "CONFIGDATA" "CRLOCSP" "CRYPTO" "CURL_MULTI_THREAD" "DISK_STORE"
-  "DNS_WORKER" "DPI" "EVENTCONNECTION" "GIBBON_ANIMATION" "GIBBON_DISK_CACHE" "GIBBON_FONTS"
-  "GIBBON_GRAPHICS" "GIBBON_HTTP" "GIBBON_NETWORK" "GIBBON_NETWORK_CURL" "GIBBON_NETWORK_HST"
-  "GIBBON_SAMPLE" "GIBBON_SCRIPT" "GIBBON_SURFACE" "GIBBON_TEXT" "GIBBON_WIDGET" "HEARTBEAT"
-  "HTTP" "HTTPCONN" "HTTP_SERVICE_THREAD" "INSTRUMENTATION" "IP_CONNECTIVITY_MANAGER"
-  "JAVASCRIPT" "LICENSEACQUISITION" "LOG" "MANIFESTCACHE" "MDX" "MDXLISTENER" "MDX_MONGOOSE"
-  "MDX_MONGOOSE_REQUEST" "MEDIACONTROL" "MEDIALISTENER" "MEDIAPLAYBACK" "MEDIASTARTUP"
-  "MONGOOSE" "MONGOOSE_PROXY" "MONGOOSE_REQUEST" "NBP" "NBP_NCCPHANDLER" "NBP_SIGNING" "NCCP"
-  "NCCPLOGGER" "NCCP_AUTH" "NCCP_REG" "NETWORK" "PERFORMANCE" "PERIODIC_WORKER"
-  "PLAYBACK_REPORTER" "PLAYDATA" "RESOURCES" "SECURE_STORE" "SSL" "STARTUP" "STREAMERSLOG"
-  "STREAMINGMANAGER" "STREAMINGSTAT" "SUBTITLEMANAGER" "SYSTEM" "TELNET" "THREAD" "THREADPOOL"
-  "TRACE" "TRICKPLAYMANAGER" "UI_ENGINE" "UI_SCRIPT" "VARIANT" "WEBSOCKET" "WMDRM" "XML"
-  "RESOURCEMANAGER"
+  "ASFDEMUX" "BUFFERMANAGER" "CONFIGDATA" "CRLOCSP" "CRYPTO" "CURL_MULTI_THREAD" "DISK_CACHE"
+  "DISK_STORE" "DNS_MANAGER" "DNS_WORKER" "DPI" "EVENTCONNECTION" "GIBBON_ANIMATION"
+  "GIBBON_DISK_CACHE" "GIBBON_FONTS" "GIBBON_GRAPHICS" "GIBBON_HTTP" "GIBBON_NETWORK"
+  "GIBBON_NETWORK_CURL" "GIBBON_NETWORK_HST" "GIBBON_SAMPLE" "GIBBON_SCRIPT" "GIBBON_SURFACE"
+  "GIBBON_TEXT" "GIBBON_WIDGET" "HEARTBEAT" "HTTP" "HTTPCONN" "HTTPLIB" "HTTP_SERVICE_THREAD"
+  "INSTRUMENTATION" "IP_CONNECTIVITY_MANAGER" "JAVASCRIPT" "LICENSEACQUISITION" "LOG"
+  "MANIFESTCACHE" "MDX" "MDXLISTENER" "MDX_MONGOOSE" "MDX_MONGOOSE_REQUEST" "MEDIACONTROL"
+  "MEDIALISTENER" "MEDIAPLAYBACK" "MEDIASTARTUP" "MONGOOSE" "MONGOOSE_PROXY"
+  "MONGOOSE_REQUEST" "NBP" "NBP_NCCPHANDLER" "NBP_SIGNING" "NCCP" "NCCPLOGGER" "NCCP_AUTH"
+  "NCCP_REG" "NETWORK" "NETWORKMANAGER" "NETWORKMANAGER_CURL" "NETWORKMANAGER_HST" "NRDJS"
+  "PERFORMANCE" "PERIODIC_WORKER" "PLAYBACK_REPORTER" "PLAYDATA" "RESOURCEMANAGER"
+  "RESOURCES" "SECURE_STORE" "SSL" "STARTUP" "STREAMERSLOG" "STREAMINGMANAGER"
+  "STREAMINGSTAT" "SUBTITLEMANAGER" "SYSTEM" "TELNET" "THREAD" "THREADPOOL" "TRACE"
+  "TRICKPLAYMANAGER" "UI_ENGINE" "UI_SCRIPT" "VARIANT" "WEBSOCKET" "WMDRM" "XML"
   ))
 
 (defun netflix-log-hide-nrdp-log-log ()
@@ -103,18 +108,21 @@
             (overlay-put o 'invisible 'log-log))
         (error)))))
 
-(defun netflix-log-limit (regexp subexp str-match overval)
-  (message "limiting %s to lines that match: %s" (symbol-name overval) str-match)
+(defun netflix-log-limit (regexp subexp str-match overval &optional exclude)
+  (message "limiting %s to lines that %smatch: %s"
+           (symbol-name overval) (if exclude "do not " "") str-match)
   (remove-overlays (point-min) (point-max) 'invisible overval)
   (save-excursion
     (goto-char (point-min))
-    (let ((prev-point (point)) ln-match)
+    (let ((prev-point (point))
+          (ex-fn (if exclude 'not 'identity))
+          ln-match)
       (while (search-forward-regexp regexp nil t)
         (setq ln-match (match-string subexp))
         (if (or (and (stringp str-match)
-                     (string-match (concat "^" str-match "$") ln-match))
+                     (apply ex-fn (list (string-match (concat "^" str-match "$") ln-match))))
                 (and (listp str-match)
-                     (member ln-match str-match)))
+                     (apply ex-fn (list (member ln-match str-match)))))
             (progn
               (if (and prev-point
                        (not (= prev-point (point-at-bol))))
@@ -170,17 +178,27 @@
     (let ((regexp (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)))
       (netflix-log-limit regexp 7 "\\(debug\\|info\\|warn\\|error\\|fatal\\)" 'level))))
 
+(defun netflix-log-current-area ()
+  (netflix-log-current-name
+   (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)
+   6))
+
 (defun netflix-log-limit-to-area (&optional arg)
   (interactive "P")
-  (let* ((regexp (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp))
-         (area-name (netflix-log-current-name regexp 6)))
+  (let ((area-name (netflix-log-current-area)))
     (if area-name
         (if current-prefix-arg
             (netflix-log-remove-area-from-limit area-name)
           (netflix-log-add-area-to-limit area-name)))))
 
 (defun netflix-log-add-area-to-limit (area)
-  (interactive (list (completing-read "Add area: " netflix-log-areas)))
+  (interactive (list (completing-read (concat "Add area (default: " (netflix-log-current-area) "): ")
+                                      netflix-log-areas
+                                      nil ; predicate
+                                      nil ; require-match
+                                      nil ; initial-input
+                                      nil ; hist
+                                      (netflix-log-current-area))))
   (add-to-list 'netflix-log-filtered-areas area)
   (let ((regexp (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)))
     (netflix-log-limit regexp 6 netflix-log-filtered-areas 'area)))
@@ -197,8 +215,21 @@
 (defun netflix-log-clear-area-limit ()
   (interactive)
   (setq netflix-log-filtered-areas nil)
+  (setq netflix-log-excluded-areas nil)
   (remove-overlays (point-min) (point-max) 'invisible 'area)
   (netflix-log-hide-nrdp-log-log))
+
+(defun netflix-log-exclude-area (area)
+  (interactive (list (completing-read (concat "Exclude area (default: " (netflix-log-current-area) "): ")
+                                      netflix-log-areas
+                                      nil ; predicate
+                                      nil ; require-match
+                                      nil ; initial-input
+                                      nil ; hist
+                                      (netflix-log-current-area))))
+  (add-to-list 'netflix-log-excluded-areas area)
+  (let ((regexp (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)))
+    (netflix-log-limit regexp 6 netflix-log-excluded-areas 'area t)))
 
 (defvar netflix-log-mode-map
   (let ((map (make-sparse-keymap)))
@@ -207,6 +238,7 @@
     (define-key map (kbd "C-c C-a") 'netflix-log-limit-to-area)
     (define-key map (kbd "C-c C-i") 'netflix-log-add-area-to-limit)
     (define-key map (kbd "C-c C-e") 'netflix-log-remove-area-from-limit)
+    (define-key map (kbd "C-c C-k") 'netflix-log-exclude-area)
     (define-key map (kbd "C-c C-c") 'netflix-log-clear-area-limit)
     map))
 
