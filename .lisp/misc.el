@@ -534,3 +534,54 @@ the name of the value of file-name is present."
   (interactive "FSudo Find File: ")
   (let ((tramp-file-name (concat "/sudo::" (expand-file-name file-name))))
     (find-file tramp-file-name)))
+
+;;====================
+;; insert loops
+;;===================
+
+(defun find-containers ()
+  (let (containers)
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "<[A-Za-z_]" nil t)
+        (unless (string= (buffer-substring-no-properties (point-at-bol) (1- (point))) "#include <")
+          (let (start end namestart name type)
+            (backward-char 2)
+            (setq start (point))
+            (forward-sexp)
+            (setq end (point))
+            (skip-chars-forward " &")
+            (setq namestart (point))
+            (skip-chars-forward "A-Za-z0-9_")
+            (setq name (buffer-substring-no-properties namestart (point)))
+            (goto-char start)
+            (skip-chars-backward "A-Za-z0-9:_")
+            (setq type (buffer-substring-no-properties (point) end))
+            (unless (or (string-match "^[^<]*\\(ptr\\|pointer\\|Ptr\\|Pointer\\)" type) (string= name ""))
+              (add-to-list 'containers (concat type " " name)))))
+        (next-line)))
+    containers)
+  )
+
+(defun insert-loop (&optional prefix)
+  (interactive "P")
+  (if prefix
+      (let ((containers (find-containers)))
+        (unless containers
+          (setq containers (list "std::map<std::string, int> map")))
+        (let ((container (ido-completing-read "Container: " containers))
+              (it (read-from-minibuffer "Iterator name (default 'it'): ")))
+          (when (not (string= container "" ))
+            (let (name type (space (string-match " [^ ]*$" container)))
+              (unless space
+                (error "Invalid container %s" container))
+              (setq type (substring container 0 space))
+              (setq name (substring container (1+ space)))
+              (if (string= it "")
+                  (setq it "it"))
+              (insert (format "for (%s::const_iterator %s = %s.begin(); %s != %s.end(); ++%s) {\n\n}\n" type it name it name it))
+              (indent-prev-lines 3)
+              (forward-line -2)
+              (indent-according-to-mode)))))
+    (insert-for-loop))
+  )
