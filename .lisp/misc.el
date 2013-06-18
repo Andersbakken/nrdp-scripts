@@ -2,11 +2,11 @@
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
-			  (if (equal (substring root -1) "/")
-			      root
-			    (concat root "/")))                           
-			  (t default-directory) ;; hmm, use default
-			  )))
+              (if (equal (substring root -1) "/")
+                  root
+                (concat root "/")))
+              (t default-directory) ;; hmm, use default
+              )))
     (while (not (or (string-equal child "/") (string-equal child root-dir)))
       (setq child (substring child 0 (string-match "[^/]*/?$" child))))
     ;; if we did found a file!
@@ -17,9 +17,9 @@
   "Try to recursively go upwards from this directory and see if a file with
 the name of the value of file-name is present."
   (let ((check-dir (cond (directory ;; extrapolate from name
-			  (if (equal (substring directory -1) "/")
-			      directory
-			    (concat directory "/")))                           
+              (if (equal (substring directory -1) "/")
+                  directory
+                (concat directory "/")))
                          (t default-directory) ;; hmm, use default
                          )))
     (while (not (or (<= (length check-dir) 0) (string-equal check-dir "/") (file-exists-p (concat check-dir file-name))))
@@ -97,7 +97,7 @@ the name of the value of file-name is present."
                                          (car next-win-edges))
                                      (<= (cadr this-win-edges)
                                          (cadr next-win-edges))))))
-        (unless splitter (setq splitter 
+        (unless splitter (setq splitter
                                (if (= (car this-win-edges)
                                       (car (window-edges (next-window))))
                                    'split-window-horizontally
@@ -273,8 +273,8 @@ the name of the value of file-name is present."
          (progn
            (cond ((string-match (concat "^ *" class "[ \\t]*(") function)
                   (progn
-                    (setq insertion-string 
-                          (concat 
+                    (setq insertion-string
+                          (concat
                            "\n"
                            (replace-match
                             (concat class "::" class "(")
@@ -282,8 +282,8 @@ the name of the value of file-name is present."
                            "\n{\n    \n}\n"))))
                  ((string-match (concat "^ *~" class "[ \\t]*(") function)
                   (progn
-                    (setq insertion-string 
-                          (concat 
+                    (setq insertion-string
+                          (concat
                            "\n"
                            (replace-match
                             (concat class "::~" class "(")
@@ -303,9 +303,9 @@ the name of the value of file-name is present."
                                  function "'' in class ``" class
                                  "'', aborting"))))
            (stringp insertion-string))
-         (condition-case nil (sam-switch-cpp-h) 
+         (condition-case nil (sam-switch-cpp-h)
            (error (progn
-                    (string-match "\\.h$" file) 
+                    (string-match "\\.h$" file)
                     (find-file (replace-match ".cpp" t t file)))))
          (progn
            (goto-char (point-max))
@@ -314,7 +314,7 @@ the name of the value of file-name is present."
            (save-excursion
              (and (string-match ".*/" file)
                   (setq file (replace-match "" t nil file)))
-             (or (re-search-backward 
+             (or (re-search-backward
                   (concat "^#include *\"" file "\"$") nil t)
                  (progn
                    (goto-char (point-min))
@@ -500,7 +500,7 @@ the name of the value of file-name is present."
 ;;===================
 (defun sam-fix-tabs (b e) (if indent-tabs-mode (tabify b e) (untabify b e)))
 (defun sam-fix-tabs-region ()
-  (interactive) 
+  (interactive)
   (sam-fix-tabs  (region-beginning) (region-end)) (untabify  (region-beginning) (region-end)))
 (defun sam-clean-out-spaces ()
   "Remove spaces at ends of lines"
@@ -508,16 +508,16 @@ the name of the value of file-name is present."
   (sam-fix-tabs (point-min) (point-max))
   (and (not buffer-read-only)
        (save-excursion
-	 (goto-char (point-min))
-	 (let ((count 0)
-	       (bmp (buffer-modified-p)))
-	   (while (re-search-forward "[ \t]+$" nil t)
-	     (setq count (1+ count))
-	     (replace-match "" t t))
-	   (and (> count 0)
-		(progn
-		  (set-buffer-modified-p bmp)
-		  (message "Cleaned %d lines" count)))))))
+     (goto-char (point-min))
+     (let ((count 0)
+           (bmp (buffer-modified-p)))
+       (while (re-search-forward "[ \t]+$" nil t)
+         (setq count (1+ count))
+         (replace-match "" t t))
+       (and (> count 0)
+        (progn
+          (set-buffer-modified-p bmp)
+          (message "Cleaned %d lines" count)))))))
 (defvar sam-auto-clean-whitespace nil)
 (make-variable-buffer-local 'sam-auto-clean-whitespace)
 (defun sam-c-clean-out-spaces-hooked ()
@@ -571,28 +571,36 @@ the name of the value of file-name is present."
   (interactive "P")
   (if (integerp prefix)
       (setq erase t))
-  (if (and prefix (not erase))
+  (if (and prefix (not (stringp prefix)) (not erase))
       (insert-for-loop)
-    (let ((containers (find-containers)))
-      (unless containers
-        (setq containers (list "std::map<std::string, int> map")))
-      (let ((container (ido-completing-read "Container: " containers))
-            (it (read-from-minibuffer "Iterator name (default 'it'): ")))
-        (when (not (string= container "" ))
-          (let (name type (space (string-match " [^ ]*$" container)))
-            (unless space
-              (error "Invalid container %s" container))
-            (setq type (substring container 0 space))
-            (setq name (substring container (1+ space)))
-            (if (string= it "")
-                (setq it "it"))
-            (if erase
-                (insert (format "%s::iterator %s = %s.begin();\nwhile%s(%s != %s.end()) {\nif%s(remove) {\n%s.erase(%s++);\n} else {\n++%s;\n}\n}"
-                                type it name for-loop-space it name for-loop-space name it it))
-              (insert (format "for (%s::const_iterator %s = %s.begin(); %s != %s.end(); ++%s) {\n\n}\n"
-                              type it name it name it)))
-            (indent-prev-lines (if erase 6 3))
-            (forward-line (if erase -5 -2))
-            (indent-according-to-mode))))))
-      )
-
+    (let (container it)
+      (cond ((stringp prefix) (setq container prefix))
+            ((region-active-p) (setq container (buffer-substring-no-properties (region-beginning) (region-end))))
+            (t
+             (let ((containers (find-containers)))
+               (unless containers (setq containers (list "std::map<std::string, int> map")))
+               (add-to-list 'containers "")
+               (setq container (ido-completing-read "Container: " containers))
+               (if (string= container "")
+                   (setq container (read-from-minibuffer "Container: "))))))
+      (when (not (string= container "" ))
+        (setq it (read-from-minibuffer "Iterator name (default 'it'): "))
+        (let (name type (space (string-match " [^ ]*$" container)))
+          (unless space
+            (error "Invalid container %s" container))
+          (setq type (substring container 0 space))
+          (setq name (substring container (1+ space)))
+          (if (string= it "")
+              (setq it "it"))
+          (when (region-active-p)
+            (goto-char (point-at-eol))
+            (insert "\n"))
+          (if erase
+              (insert (format "%s::iterator %s = %s.begin();\nwhile%s(%s != %s.end()) {\nif%s(remove) {\n%s.erase(%s++);\n} else {\n++%s;\n}\n}"
+                              type it name for-loop-space it name for-loop-space name it it))
+            (insert (format "for (%s::const_iterator %s = %s.begin(); %s != %s.end(); ++%s) {\n\n}\n"
+                            type it name it name it)))
+          (indent-prev-lines (if erase 6 3))
+          (forward-line (if erase -5 -2))
+          (indent-according-to-mode))))))
+)
