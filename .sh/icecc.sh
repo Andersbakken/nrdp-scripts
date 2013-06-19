@@ -1,5 +1,6 @@
 [ -z "$ICECC_JOBS_MAX" ] && ICECC_JOBS_MAX=10
 [ -z "$ICECC_JOBS_MIN" ] && ICECC_JOBS_MIN=1
+[ -z "$ICECC_SCHEDULER_HOST" ] && [ -e "/etc/icecc/icecc.conf" ] && . /etc/icecc/icecc.conf
 [ ! -d "$ICECC_DIR" ] && ICECC_DIR=
 if [ ! -z "$ICECC_DIR" ]; then
    true #do nothing
@@ -10,9 +11,24 @@ elif [ -d "/usr/lib/icecc/bin" ]; then
 fi
 
 blockcs() {
-    [ -e "/etc/icecc/icecc.conf" ] && . /etc/icecc/icecc.conf
-    [ -z "$ICECC_SCHEDULER_HOST" ] && ICECC_SCHEDULER_HOST="lgux-pnavarro3.corp.netflix.com"
     echo blockcs "$1" | nc "$ICECC_SCHEDULER_HOST" 8766
+}
+cleancs() {
+    CLEAN_FILE="/tmp/cleancs.tmp"
+    rm -f "$CLEAN_FILE"
+    for a in `echo listcs | nc $ICECC_SCHEDULER_HOST 8766 | grep '^ ' | sed "s,^ *\(.*\) (\(.*\)) .*$,HOST:\1:\2," | grep HOST`; do
+        #echo "Trying: $a"
+        NAME=`echo $a | cut -d: -f2`
+        IP=`echo $a | cut -d: -f3`
+        PORT=`echo $a | cut -d: -f4`
+        if nc $IP $PORT -z -w 2 >/dev/null 2>&1; then
+            echo "$NAME is listening!"
+        else
+            echo "$NAME is not listening!"
+            echo "blockcs $IP" >>"$CLEAN_FILE"
+        fi
+    done
+    [ -e "$CLEAN_FILE" ] && cat "$CLEAN_FILE" | nc "$ICECC_SCHEDULER_HOST" 8766
 }
 
 seticecc() {
