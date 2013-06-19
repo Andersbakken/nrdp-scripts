@@ -594,7 +594,8 @@ the name of the value of file-name is present."
               (setq it "it"))
           (when (region-active-p)
             (goto-char (point-at-eol))
-            (insert "\n"))
+            (insert "\n")
+            (indent-according-to-mode))
           (if erase
               (insert (format "%s::iterator %s = %s.begin();\nwhile%s(%s != %s.end()) {\nif%s(remove) {\n%s.erase(%s++);\n} else {\n++%s;\n}\n}"
                               type it name for-loop-space it name for-loop-space name it it))
