@@ -95,11 +95,28 @@ block-icecream() {
 
 complete-netflix ()
 {
+    app=${COMP_WORDS[0]}
+    modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
+    if [ ! -e "/tmp/netflix-completions-helper" ] || [ "$modified" != "`head -n 1 /tmp/netflix-completions-helper`" ]; then
+        echo $modified > /tmp/netflix-completions-helper
+        "$app" --help | grep '^ \+-' | grep "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
+        "$app" --help | grep '^ \+-' | grep -v "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
+    fi
+    local valueopts=`head -n 2 /tmp/netflix-completions-helper | tail -n 1`
+    local prev=${COMP_WORDS[COMP_CWORD-1]}
+    if [ -n "$prev" ] && printf -- "${valueopts}\n" | grep --quiet -- "$prev"; then
+        COMPREPLY=()
+        return;
+    fi
+
     local cur=${COMP_WORDS[COMP_CWORD]}
-    local valueopts="--write-data-path= -R= --resources-path= -x= --config-file= --cache-path= --log-cache-capacity= --ui-cache-capacity= -D= --define-environment= -l= --loglevel= -L= --logfile= --cached-dns-domains= --telnet-port= -M= --mutex-lock-time-tracking-interval= --binary-hash= --terminal-log-header-color= --terminal-trace-color= --terminal-info-color= --terminal-warning-color= --terminal-error-color= --terminal-fatal-color= -S= --nccp-url= -C= --nccp-cert= -T= --trace-areas= --nbp-threadpool-threadcount= --video-bitrate-ranges= --min-audio-bitrate= --max-audio-bitrate= --num-of-images-per-bifcache= --num-of-bifCache= --max-available-memory-for-bifcache= --num-of-reuse-socket-connection= --inst-thread-throttle-ms= --inst-thread-throttle-events= --inst-max-buffer-size= --inst-max-buffer-count= --inst-max-buffer-time= --inst-post-url= -U= --ui-url= -b= --boot-url= -B= --appboot-url= --appboot-params= -J= --js-opts= -Q= --ui-query-string= -c= --ui-cert= --screen-width= --screen-height= --ui-width= --ui-height= --ui-aspect-ratio= -p= --nbpd-port= -I= --idfile= --appboot-key= --dpi-x509-cert= --dpi-x509-key= --dpi-language= --dpi-friendlyname= --dpi-videobufferpoolsize= --dpi-audiobufferpoolsize= --dpi-videoscreenwidth= --dpi-videoscreenheight= --mdx-interface= --user-name= --user-password= --debug-flags= --surface-cache-capacity= --surface-cache-playback-capacity= --disk-cache-capacity= --disk-cache-max-pending= --disk-cache-max-writes= --resource-cache-capacity= --disk-cache-path= --fps-target= --key-repeat-style= --key-repeat-interval= --key-repeat-delay= --animation-image-threads= --image-threads= --garbage-collect-timeout= --inject-js= --alpha-format= --opaque-format= --default-network-timeout= --default-network-connect-timeout= --text-font-path= --default-locale= --font-face-cache-capacity= --font-glyph-cache-width= --font-glyph-cache-height="
-    local nonvalueopts="-h --help -Z --dump-config -z --dump --disable-logcolor --disable-logabsolute --disable-dnscache --disable-telnet --disable-mutex-stack -t --write-enabled-trace-only -P --disable-ssl-peer-verification --enable-js-assert --enable-reuse-socket-connection --inst-switched-events-initially-on --inst-switched-events-always-on --inst-disable-log --inst-ignore-config --inst-print --inst-nts-post --inst-stash --inst-stash-initially-off -f --show-fps --no-mdx -u --disable-updated-truststore -X --disable-url-filter -i --nbpd-all-interfaces --disable-nbpd --dpi-mgk --dpi-has-pointer --dpi-has-keyboard --dpi-has-osk --dpi-support-videoseamlessswitch --dpi-support-3Dvideoseamlessswitch --dpi-support-videoskipback --dpi-support-3Dvideoskipback --dpi-support-videoovergraphics --dpi-support-2DVideoResize --dpi-support-3DVideoResize --dpi-support-2DVideoResizeDuringPlayback --dpi-support-3DVideoResizeDuringPlayback --dpi-support-video2DResizeAnimation --dpi-support-video3DResizeAnimation --dpi-support-DrmPlaybackTransition --cache-animations --no-libedit -K --send-secure-cookies --no-splash-screen --no-platform-surface-decoders"
+    local nonvalueopts=`tail -n 1 /tmp/netflix-completions-helper`
     COMPREPLY=(`compgen -W "$valueopts $nonvalueopts" -- $cur`)
+    if [ -n "$cur" ] && [ ${#COMPREPLY[@]} -eq 0 ] && printf -- "$cur\n" | grep --quiet -- "^-[^-]"; then
+        COMPREPLY=(`compgen -W "$valueopts $nonvalueopts" -- -$cur`)
+    fi
 }
+
 if [ -n "$BASH" ]; then
-    complete -F complete-netflix -o nospace netflix ./netflix
+    complete -F complete-netflix -o default netflix ./netflix
 fi
