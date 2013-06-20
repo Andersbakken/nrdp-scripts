@@ -604,3 +604,50 @@ the name of the value of file-name is present."
           (indent-prev-lines (if erase 6 3))
           (forward-line (if erase -5 -2))
           (indent-according-to-mode))))))
+
+;;=====================
+;; compilation parsing
+;;=====================
+(defvar compilation-note-regexp '("\\([A-Za-z_./][A-Za-z0-9_.]*/[A-Za-z0-9_./]*\\)\\(: \\)" 1 nil nil (nil . 2)))
+(defvar compilation-error-warning-regexp '("\\([A-Za-z_./][A-Za-z0-9_.]*/[A-Za-z0-9_./]*\\):\\([0-9]+\\)?:?\\([0-9]+\\)?:? ?\\([Ww]arning: \\)?\\([Nn]ote: \\)?" 1 2 3 (4 . 5)))
+(defvar compilation-gnu '(
+                          ;; The first line matches the program name for
+
+                          ;;     PROGRAM:SOURCE-FILE-NAME:LINENO: MESSAGE
+
+                          ;; format, which is used for non-interactive programs other than
+                          ;; compilers (e.g. the "jade:" entry in compilation.txt).
+
+                          ;; This first line makes things ambiguous with output such as
+                          ;; "foo:344:50:blabla" since the "foo" part can match this first
+                          ;; line (in which case the file name as "344").  To avoid this,
+                          ;; the second line disallows filenames exclusively composed of
+                          ;; digits.
+
+                          ;; Similarly, we get lots of false positives with messages including
+                          ;; times of the form "HH:MM:SS" where MM is taken as a line number, so
+                          ;; the last line tries to rule out message where the info after the
+                          ;; line number starts with "SS".  --Stef
+
+                          ;; The core of the regexp is the one with *?.  It says that a file name
+                          ;; can be composed of any non-newline char, but it also rules out some
+                          ;; valid but unlikely cases, such as a trailing space or a space
+                          ;; followed by a -, or a colon followed by a space.
+
+                          ;; The "in \\|from " exception was added to handle messages from Ruby.
+                          "^\\(?:[[:alpha:]][-[:alnum:].]+: ?\\|[ \t]+\\(?:in \\|from \\)\\)?\
+\\([0-9]*[^0-9\n]\\(?:[^\n :]\\| [^-/\n]\\|:[^ \n]\\)*?\\): ?\
+\\([0-9]+\\)\\(?:[.:]\\([0-9]+\\)\\)?\
+\\(?:-\\([0-9]+\\)?\\(?:\\.\\([0-9]+\\)\\)?\\)?:\
+\\(?:.*ICECC.*\\)?:\
+\\(?: *\\(\\(?:Future\\|Runtime\\)?[Ww]arning\\|W:\\)\\|\
+ *\\([Ii]nfo\\(?:\\>\\|rmationa?l?\\)\\|I:\\|instantiated from\\|[Nn]ote\\)\\|\
+ *[Ee]rror\\|\[0-9]?\\(?:[^0-9\n]\\|$\\)\\|[0-9][0-9][0-9]\\)"
+                          1 (2 . 4) (3 . 5) (6 . 7)))
+
+;; (setq compilation-error-regexp-alist nil)
+
+(setq compilation-error-regexp-alist '(absoft ada aix ant bash borland python-tracebacks-and-caml comma cucumber edg-1 edg-2 epc ftnchek iar ibm irix java jikes-file maven jikes-line gcc-include ruby-Test::Unit lcc makepp mips-1 mips-2 msft omake oracle perl php rxp sparc-pascal-file sparc-pascal-line sparc-pascal-example sun sun-ada watcom 4bsd gcov-file gcov-header gcov-nomark gcov-called-line gcov-never-called perl--Pod::Checker perl--Test perl--Test2 perl--Test::Harness weblint))
+(add-to-list 'compilation-error-regexp-alist compilation-gnu)
+(add-to-list 'compilation-error-regexp-alist compilation-error-warning-regexp)
+(add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
