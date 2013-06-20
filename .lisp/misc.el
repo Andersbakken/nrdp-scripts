@@ -604,4 +604,3 @@ the name of the value of file-name is present."
           (indent-prev-lines (if erase 6 3))
           (forward-line (if erase -5 -2))
           (indent-according-to-mode))))))
-)
