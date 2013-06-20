@@ -645,9 +645,10 @@ the name of the value of file-name is present."
  *[Ee]rror\\|\[0-9]?\\(?:[^0-9\n]\\|$\\)\\|[0-9][0-9][0-9]\\)"
                           1 (2 . 4) (3 . 5) (6 . 7)))
 
-;; (setq compilation-error-regexp-alist nil)
+; (setq compilation-error-regexp-alist nil)
 
-(setq compilation-error-regexp-alist '(absoft ada aix ant bash borland python-tracebacks-and-caml comma cucumber edg-1 edg-2 epc ftnchek iar ibm irix java jikes-file maven jikes-line gcc-include ruby-Test::Unit lcc makepp mips-1 mips-2 msft omake oracle perl php rxp sparc-pascal-file sparc-pascal-line sparc-pascal-example sun sun-ada watcom 4bsd gcov-file gcov-header gcov-nomark gcov-called-line gcov-never-called perl--Pod::Checker perl--Test perl--Test2 perl--Test::Harness weblint))
+(require 'compile)
+(setq compilation-error-regexp-alist (delete 'gnu compilation-error-regexp-alist))
 (add-to-list 'compilation-error-regexp-alist compilation-gnu)
 (add-to-list 'compilation-error-regexp-alist compilation-error-warning-regexp)
 (add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
