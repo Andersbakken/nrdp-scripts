@@ -271,9 +271,11 @@
             (setq command (concat command " " args)))
         (setq lsdev-compile-last-args args)
         (setq lsdev-compile-last-directory directory)
-        (compile command)
-        (if args
-            (puthash directory args lsdev-compile-args-by-dir)))))
+        (let ((default-directory directory))
+          (compile command)
+          (if args
+              (puthash directory args lsdev-compile-args-by-dir)))))
+  )
 
 
 (defun lsdev-recompile-directory()
