@@ -653,3 +653,7 @@ the name of the value of file-name is present."
 (add-to-list 'compilation-error-regexp-alist compilation-gnu)
 (add-to-list 'compilation-error-regexp-alist compilation-error-warning-regexp)
 (add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
+
+(defun compilation-parse-errors-filename (filename)
+  (and (file-exists-p filename) filename))
+(setq compilation-parse-errors-filename-function (function compilation-parse-errors-filename))
