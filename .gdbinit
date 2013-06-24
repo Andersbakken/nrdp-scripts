@@ -67,7 +67,7 @@ source ~/.gdb/init_host_end.gdb
 define hook-delete
   bclear
 end
-define hook-break
+define hookpost-break
   brestore
 end
 define hook-run
