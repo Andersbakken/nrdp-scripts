@@ -1,4 +1,3 @@
-(require 'git)
 (require 'diff-mode)
 (defvar agb-git-blame-mode-hook nil)
 (defvar agb-git-blame-last-temp-buffer nil)
@@ -168,10 +167,25 @@
 (defvar agb-git-blame-show-revision-keymap (make-sparse-keymap))
 (define-key agb-git-blame-show-revision-keymap (kbd "q") 'bury-buffer)
 
+(defun agb-git-root-dir (&optional directory) ;; stolen from git-mode
+  (interactive)
+  (unless directory (setq directory default-directory))
+  (let ((check-dir (cond (directory ;; extrapolate from name
+                          (if (equal (substring directory -1) "/")
+                              directory
+                            (concat directory "/")))
+                         (t default-directory) ;; hmm, use default
+                         )))
+    (while (not (or (string-equal check-dir "/")
+                    (file-exists-p (concat check-dir ".git"))))
+      (setq check-dir (substring check-dir 0 (string-match "[^/]*/?$" check-dir))))
+    (if (not (string-equal check-dir "/")) check-dir nil)))
+
+
 (defun agb-git-blame-show-revision ()
   (interactive)
   (let ((commit (agb-git-blame-current-commit))
-        (gitroot (git-root-dir)))
+        (gitroot (agb-git-root-dir)))
     (if (and commit gitroot)
         (let* ((fn (agb-git-blame-filename))
                (bufname (format "*%s@%s*" fn commit)))
@@ -211,6 +225,6 @@
            (>= (length agb-git-blame-commit-chain) 1))
       (agb-git-blame (car agb-git-blame-commit-chain)))
   )
-  
+
 
 (provide 'agb-git-blame)
