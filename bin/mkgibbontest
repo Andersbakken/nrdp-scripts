@@ -3,6 +3,7 @@ if [ -z "$NF_HTTPD_PREFIX" ]; then
     echo "Need to specific NF_HTTPD_PREFIX [dir:url]!"
     exit 1
 fi
+choose_opts="-a"
 force=0
 stub=0
 editfile=1
@@ -23,6 +24,9 @@ while [ "$#" -gt 0 ]; do
         -e|--edit|-o|--open)
             editfile=1
             ;;
+        -[0-9]*) 
+            choose_opts="$choose_opts $1"
+            ;;
         *)
             if [ -z "$bug" ]; then
                 bug="$1"
@@ -40,7 +44,7 @@ while [ "$#" -gt 0 ]; do
 done
 if [ -z "$bug" ]; then
     TESTS="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-*"
-    bug=`choose.pl -a -x "ls -t $TESTS"`
+    bug=`choose.pl $choose_opts -x "ls -t $TESTS"`
     bug=`basename $bug | sed -e 's,^gibbontest-,,' -e 's,\.js$,,'`
 fi
 if [ -z "$name" ] && echo $url | grep -v "^https*://" >/dev/null 2>&1; then
@@ -101,7 +105,7 @@ EOF
                 urls=
                 urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
                 urls="$urls `jira $JIRA_ARGS --action getComments --issue $bug | grep -o 'https*://[^ ]*'`"
-                url=`choose.pl -u -a $urls`
+                url=`choose.pl $choose_opts -u  $urls`
             fi
             if echo "$url" | grep "/secure/attachment/" >/dev/null 2>&1; then
                 if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
