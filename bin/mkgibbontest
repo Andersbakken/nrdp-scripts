@@ -6,7 +6,7 @@ fi
 choose_opts="-a"
 force=0
 stub=0
-editfile=1
+editfile=0
 bug=
 url=
 name=
@@ -28,6 +28,7 @@ while [ "$#" -gt 0 ]; do
             choose_opts="$choose_opts $1"
             ;;
         *)
+            editfile=1
             if [ -z "$bug" ]; then
                 bug="$1"
             elif [ -z "$url" ]; then
