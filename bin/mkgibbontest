@@ -4,7 +4,7 @@ if [ -z "$NF_HTTPD_PREFIX" ]; then
     exit 1
 fi
 choose_opts="-a"
-force=0
+copy=0
 stub=0
 editfile=0
 bug=
@@ -13,7 +13,7 @@ name=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -f|--force)
-            force=1
+            copy=1
             ;;
         -s|--stub)
             stub=1
@@ -48,7 +48,10 @@ if [ -z "$bug" ]; then
     bug=`choose.pl $choose_opts -x "ls -t $TESTS"`
     bug=`basename $bug | sed -e 's,^gibbontest-,,' -e 's,\.js$,,'`
 fi
-if [ -z "$name" ] && echo $url | grep -v "^https*://" >/dev/null 2>&1; then
+if [ -n "$url" ] && echo $url | grep '^[0-9]*$' >/dev/null 2>&1; then
+    url="/tmp/widget_${url}.js"
+fi
+if [ -z "$name" ] && [ ! -e "$url" ] && echo $url | grep -v "^https*://" >/dev/null 2>&1; then
     name="$url"
     url=""
 fi
@@ -58,7 +61,18 @@ echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
 test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-$name"
 test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
 
-if [ '!' -e "$test_file" ] || [ "$force" = "1" ]; then
+
+if [ -e "$test_file" ] && [ "$copy" = "0" ]; then
+    /bin/echo -n "Replace? "
+    read copy
+    if [ "$copy" = "no" ] || [ "$copy" = "n" ]; then
+        copy=0
+    else
+        copy=1
+    fi
+fi
+
+if [ "$copy" = "1" ]; then
     if [ "$stub" = "1" ]; then
         cat >$test_file <<EOF
 function keyboardHandler(key)
@@ -92,6 +106,8 @@ function main() {
 }
 nrdp.qa.init(main);
 EOF
+    elif [ -e "$url" ]; then
+	cp -f "$url" "$test_file"
     else
         if which jira >/dev/null 2>&1; then
             if [ -z "$url" ]; then
@@ -136,7 +152,7 @@ fi
 if [ -e "$test_file" ]; then
     echo "File: $test_file"
     echo "URL: $test_url"
-    echo -e "$test_url" | yank -c
+    echo -e "$test_url" | yank -c >/dev/null 2>&1
     if [ "$editfile" = "1" ]; then
         if [ -n "$NF_EDITOR" ]; then
             $NF_EDITOR "$test_file"
