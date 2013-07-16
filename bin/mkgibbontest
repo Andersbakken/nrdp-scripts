@@ -4,7 +4,7 @@ if [ -z "$NF_HTTPD_PREFIX" ]; then
     exit 1
 fi
 choose_opts="-a"
-copy=0
+write=
 stub=0
 editfile=0
 bug=
@@ -13,9 +13,10 @@ name=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -f|--force)
-            copy=1
+            write=1
             ;;
         -s|--stub)
+            write=1
             stub=1
             ;;
         -n|--no-edit|--no-open)
@@ -28,7 +29,6 @@ while [ "$#" -gt 0 ]; do
             choose_opts="$choose_opts $1"
             ;;
         *)
-            editfile=1
             if [ -z "$bug" ]; then
                 bug="$1"
             elif [ -z "$url" ]; then
@@ -61,18 +61,22 @@ echo $name | grep '\.js$' >/dev/null 2>&1 || name="${name}.js"
 test_file="`echo $NF_HTTPD_PREFIX | cut -d: -f1`/gibbontest-$name"
 test_url="`echo $NF_HTTPD_PREFIX | cut -d: -f2-`/gibbontest-$name"
 
-
-if [ -e "$test_file" ] && [ "$copy" = "0" ]; then
-    /bin/echo -n "Replace? "
-    read copy
-    if [ "$copy" = "no" ] || [ "$copy" = "n" ]; then
-        copy=0
-    else
-        copy=1
+if [ '!' -e "$test_file" ]; then
+    write=1;
+elif [ -z "$write" ]; then
+    if [ -z "$url" ]; then
+        write=0;
+    elif [ -e "$test_file" ]; then
+        /bin/echo -n "Replace? "
+        read write
+        if [ "$write" = "no" ] || [ "$write" = "n" ]; then
+            exit 0;
+        fi
+        write=1
     fi
 fi
 
-if [ "$copy" = "1" ]; then
+if [ "$write" = "1" ]; then
     if [ "$stub" = "1" ]; then
         cat >$test_file <<EOF
 function keyboardHandler(key)
