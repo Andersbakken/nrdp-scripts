@@ -11,7 +11,9 @@ elif [ -d "/usr/lib/icecc/bin" ]; then
 fi
 
 blockcs() {
-    echo blockcs "$1" | nc "$ICECC_SCHEDULER_HOST" 8766
+    for a in $@; do
+        echo blockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
+    done
 }
 cleancs() {
     CLEAN_FILE="/tmp/cleancs.tmp"
