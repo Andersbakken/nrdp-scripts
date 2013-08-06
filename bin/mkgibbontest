@@ -16,6 +16,7 @@ while [ "$#" -gt 0 ]; do
             write=1
             ;;
         -s|--stub)
+            editfile=1
             write=1
             stub=1
             ;;
