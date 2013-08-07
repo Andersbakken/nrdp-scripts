@@ -462,6 +462,14 @@ the name of the value of file-name is present."
     )
   )
 
+(defun magit-diff-current-section ()
+  (interactive)
+  (let ((file (magit-diff-item-file (magit-current-section))))
+    (when file
+      (setq git-default-directory default-directory)
+      (git-diff-against (concat default-directory file) "HEAD")))
+  )
+
 ;; ================================================================================
 ;; Super keyboard-quit C-g
 ;; ================================================================================
