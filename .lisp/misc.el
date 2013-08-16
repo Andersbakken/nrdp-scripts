@@ -665,3 +665,28 @@ the name of the value of file-name is present."
 (defun compilation-parse-errors-filename (filename)
   (if (or (equal major-mode 'grep-mode) (and filename (file-exists-p filename))) filename))
 (setq compilation-parse-errors-filename-function (function compilation-parse-errors-filename))
+
+;; (define-key global-map [remap goto-line] 'goto-line-with-feedback)
+(defun goto-line-with-feedback ()
+  "Show line numbers temporarily, while prompting for the line number input"
+  (interactive)
+  (let ((had-git-gutter git-gutter-mode))
+    (unwind-protect
+        (progn
+          (linum-mode 1)
+          (if had-git-gutter
+              (git-gutter-mode 0))
+          (let ((res (read-from-minibuffer "Goto line: ")))
+            (cond ((string-match "^,\\([0-9]+\\)$" res)
+                   (goto-char (string-to-int (match-string 1 res))))
+                  ((string-match "^\\([0-9]+\\)%$" res)
+                   (goto-char (/ (* (point-max) (string-to-int (match-string 1 res))) 100)))
+                  ((string-match "^:?\\([0-9]+\\):\\([0-9]+\\):?$" res)
+                   (goto-line (string-to-int (match-string 1 res)))
+                   (forward-char (1- (string-to-int (match-string 1 res)))))
+                  (t (goto-line (string-to-int res))))))
+      (linum-mode -1)
+      (if had-git-gutter
+          (git-gutter-mode 1)))
+    )
+  )
