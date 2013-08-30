@@ -678,7 +678,7 @@ the name of the value of file-name is present."
               (git-gutter-mode 0))
           (let ((res (read-from-minibuffer "Goto line: ")))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
-                   (goto-char (string-to-int (match-string 1 res))))
+                   (goto-char (1+ (string-to-int (match-string 1 res)))))
                   ((string-match "^\\([0-9]+\\)%$" res)
                    (goto-char (/ (* (point-max) (string-to-int (match-string 1 res))) 100)))
                   ((string-match "^:?\\([0-9]+\\):\\([0-9]+\\):?$" res)
