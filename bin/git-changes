@@ -1,23 +1,27 @@
 #!/bin/sh
 
-PRE=eval
-#PRE=echo
-LOG_SWITCHES="--no-merges --pretty=format:'%h %s [%an]'"
+MERGES=0
+GIT_LOG="git log --pretty=format:'%h %s [%aE]'"
 
 while [ "$#" -gt 0 ]; do
    OPT="$1"
    shift
    case $OPT in
-   -m) LOG_SWITCHES="$LOG_SWITCHES --author=smagnuso" ;;
+   -i) MERGES=1 ;;
+   -m) GIT_LOG="$GIT_LOG --author=smagnuso" ;;
    -t)
       tracking_branch=`git tracking`
       if [ "$?" ]; then
          branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
          echo "$branch" | grep "(" --quiet && exit 1
-         LOG_SWITCHES="$LOG_SWITCHES '${tracking_branch}..${branch}'"
+         GIT_LOG="$GIT_LGO '${tracking_branch}..${branch}'"
       fi ;;
-    -1w) LOG_SWITCHES="$LOG_SWITCHES --since='7 days ago'" ;;
-    *) LOG_SWITCHES="$LOG_SWITCHES $OPT";;
+    -1w) GIT_LOG="$GIT_LOG --since='7 days ago'" ;;
+    *) GIT_LOG="$GIT_LOG $OPT";;
     esac
 done
-$PRE git log $LOG_SWITCHES
+if [ "$MERGES" = "0" ]; then
+    eval $GIT_LOG --no-merges | grep -vi Merge-Task
+else
+    eval $GIT_LOG 
+fi
