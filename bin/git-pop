@@ -1,0 +1,8 @@
+#!/bin/bash
+
+count=1
+if [ -n "$1" ]; then
+   count="$1"
+fi
+
+git reset HEAD~$count --hard
