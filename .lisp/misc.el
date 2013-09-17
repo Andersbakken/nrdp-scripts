@@ -333,16 +333,15 @@ the name of the value of file-name is present."
       (keyboard-quit)))
   )
 
-
 (defun find-corresponding-cpp-h ()
   (let ((n (buffer-file-name)) (attempts) (all-attempts)(found nil))
-    (save-excursion
-      (goto-char (point-min))
-      (if (re-search-forward "\\(//\\|/\\*\\) *SWITCH_FILE: *\"" nil t)
-          (progn
-            (setq start (point))
-            (if (search-forward "\"") (progn (backward-char)
-                                             (push (buffer-substring start (point)) all-attempts))))))
+    (goto-char (point-min))
+    (if (re-search-forward "\\(//\\|/\\*\\) *SWITCH_FILE: *\"" nil t)
+        (progn
+          (setq start (point))
+          (when (search-forward "\"")
+            (backward-char)
+            (push (buffer-substring start (point)) all-attempts))))
     (if (string-match "\\.ui.h$" n) (push (replace-match ".ui" t t n ) all-attempts))
     (if (string-match "\\.ui$" n) (push (replace-match ".ui.h" t t n ) all-attempts))
     (if (string-match "_p\\.h$" n) (push (replace-match ".cpp" t t n ) all-attempts))
@@ -393,7 +392,9 @@ the name of the value of file-name is present."
 (defun switch-cpp-h ()
   "Switch to the corresponding .cpp, .C, .cc or .h file."
   (interactive)
-  (let ((found (find-corresponding-cpp-h)))
+  (let (found)
+    (save-excursion
+      (setq found (find-corresponding-cpp-h)))
     (if found
         (find-file found)
       (ff-find-other-file))))
@@ -564,21 +565,31 @@ the name of the value of file-name is present."
           (forward-char))))
   )
 
-(defun find-containers ()
-  (let (containers (contents (buffer-string)))
+(defun find-containers (&optional buffer-name)
+  (unless buffer-name
+    (setq buffer-name (buffer-file-name)))
+  (let (containers contents)
+    ;; (if buffer
+    ;;     (let ((prev (current-buffer)))
+    ;;       (set-buffer buffer)
+    ;;       (setq contents (buffer-string))
+    ;;       (set-buffer prev))
+    ;;   (setq contents (buffer-string)))
     (with-temp-buffer
-      (insert contents)
+      (insert-file-contents-literally buffer-name)
+      ;; (message "buffer %s %d" buffer-name (point-max))
       (goto-char (point-min))
       (while (and (< (point) (point-max))
                   (re-search-forward "<[A-Za-z_]" nil t))
         (unless (string= (buffer-substring-no-properties (point-at-bol) (1- (point))) "#include <")
-          (let (start end namestart name type)
+          (let (start end namestart name type pointer)
             (backward-char 2)
             (setq start (point))
             (find>)
-            (setq end (point))
             (forward-char)
+            (setq end (point))
             (skip-chars-forward " &")
+            (setq pointer (> (skip-chars-forward "* ") 0))
             (setq namestart (point))
             (skip-chars-forward "A-Za-z0-9_")
             (setq name (buffer-substring-no-properties namestart (point)))
@@ -586,8 +597,9 @@ the name of the value of file-name is present."
             (skip-chars-backward " ")
             (skip-chars-backward "A-Za-z0-9:_")
             (setq type (buffer-substring-no-properties (point) end))
+            ;; (message "type: [%s] name: [%s]" type name)
             (unless (or (string-match "^[^<]*\\(ptr\\|pointer\\|Ptr\\|Pointer\\)" type) (string= name ""))
-              (add-to-list 'containers (concat type " " name)))))
+              (add-to-list 'containers (concat type (if pointer " *" " ") name)))))
         (if (< (point-at-eol) (point-max))
             (goto-char (1+ (point-at-eol)))
           (goto-char (point-max)))))
@@ -605,19 +617,29 @@ the name of the value of file-name is present."
       (cond ((stringp prefix) (setq container prefix))
             ((region-active-p) (setq container (buffer-substring-no-properties (region-beginning) (region-end))))
             (t
-             (let ((containers (find-containers)))
-               (unless containers (setq containers (list "std::map<std::string, int> map")))
-               (add-to-list 'containers "")
-               (setq container (ido-completing-read "Container: " containers))
-               (if (string= container "")
-                   (setq container (read-from-minibuffer "Container: "))))))
+             (save-excursion
+               (let ((containers (find-containers))
+                     (corresponding-file (find-corresponding-cpp-h)))
+                 (when corresponding-file
+                   ;; (message "corresponding-file %s" corresponding-file)
+                   (setq containers (append containers (find-containers corresponding-file))))
+                 ;; (with-current-buffer (get-buffer-create corresponding-file)
+                 ;;   (setq containers (append containers (find-containers)))))
+                 (unless containers (setq containers (list "std::map<std::string, int> map")))
+                 (add-to-list 'containers "")
+                 (setq container (ido-completing-read "Container: " containers))
+                 (if (string= container "")
+                     (setq container (read-from-minibuffer "Container: ")))))))
       (when (not (string= container "" ))
         (setq it (read-from-minibuffer "Iterator name (default 'it'): "))
-        (let (name type (space (string-match " [^ ]*$" container)))
+        (let (name type (space (string-match " [^ ]*$" container)) (dot "."))
           (unless space
             (error "Invalid container %s" container))
           (setq type (substring container 0 space))
           (setq name (substring container (1+ space)))
+          (when (= (elt name 0) 42)
+            (setq name (substring name 1))
+            (setq dot "->"))
           (if (string= it "")
               (setq it "it"))
           (when (region-active-p)
@@ -625,10 +647,10 @@ the name of the value of file-name is present."
             (insert "\n")
             (indent-according-to-mode))
           (if erase
-              (insert (format "%s::iterator %s = %s.begin();\nwhile%s(%s != %s.end()) {\nif%s(remove) {\n%s.erase(%s++);\n} else {\n++%s;\n}\n}"
-                              type it name for-loop-space it name for-loop-space name it it))
-            (insert (format "for (%s::const_iterator %s = %s.begin(); %s != %s.end(); ++%s) {\n\n}\n"
-                            type it name it name it)))
+              (insert (format "%s::iterator %s = %s%sbegin();\nwhile%s(%s != %s%send()) {\nif%s(remove) {\n%s%serase(%s++);\n} else {\n++%s;\n}\n}"
+                              type it name dot for-loop-space it name dot for-loop-space name dot it it))
+            (insert (format "for%s(%s::const_iterator %s = %s%sbegin(); %s != %s%send(); ++%s) {\n\n}\n"
+                            for-loop-space type it name dot it name dot it)))
           (indent-prev-lines (if erase 6 3))
           (forward-line (if erase -5 -2))
           (indent-according-to-mode))))))
