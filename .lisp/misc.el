@@ -303,7 +303,7 @@ the name of the value of file-name is present."
                                  function "'' in class ``" class
                                  "'', aborting"))))
            (stringp insertion-string))
-         (condition-case nil (sam-switch-cpp-h)
+         (condition-case nil (switch-cpp-h)
            (error (progn
                     (string-match "\\.h$" file)
                     (find-file (replace-match ".cpp" t t file)))))
@@ -333,9 +333,8 @@ the name of the value of file-name is present."
       (keyboard-quit)))
   )
 
-(defun switch-cpp-h ()
-  "Switch to the corresponding .cpp, .C, .cc or .h file."
-  (interactive)
+
+(defun find-corresponding-cpp-h ()
   (let ((n (buffer-file-name)) (attempts) (all-attempts)(found nil))
     (save-excursion
       (goto-char (point-min))
@@ -388,7 +387,13 @@ the name of the value of file-name is present."
               (call-process (executable-find "global") nil t nil "-Pa" (concat "/" (file-name-nondirectory attempt) "$"))
               (if (eq (count-lines (point-min) (point-max)) 1)
                   (setq found (buffer-substring (point-min) (- (point-max) 1))))))))
+    found))
 
+
+(defun switch-cpp-h ()
+  "Switch to the corresponding .cpp, .C, .cc or .h file."
+  (interactive)
+  (let ((found (find-corresponding-cpp-h)))
     (if found
         (find-file found)
       (ff-find-other-file))))
@@ -546,9 +551,23 @@ the name of the value of file-name is present."
 ;; insert loops
 ;;===================
 
+(defun find> ()
+  (let ((count 1))
+    (forward-char)
+    (while (and (> count 0) (< (point) (point-max)))
+      (let ((char (elt (buffer-string) (1- (point)))))
+        ;; (message "Foobar %c %d %d" char (point) count)
+        (cond ((= char 60) (incf count)) ;; <
+              ((= char 62) (decf count)) ;; >
+              (t)))
+      (if (> count 0)
+          (forward-char))))
+  )
+
 (defun find-containers ()
-  (let (containers)
-    (save-excursion
+  (let (containers (contents (buffer-string)))
+    (with-temp-buffer
+      (insert contents)
       (goto-char (point-min))
       (while (and (< (point) (point-max))
                   (re-search-forward "<[A-Za-z_]" nil t))
@@ -556,8 +575,9 @@ the name of the value of file-name is present."
           (let (start end namestart name type)
             (backward-char 2)
             (setq start (point))
-            (forward-sexp)
+            (find>)
             (setq end (point))
+            (forward-char)
             (skip-chars-forward " &")
             (setq namestart (point))
             (skip-chars-forward "A-Za-z0-9_")
@@ -569,7 +589,7 @@ the name of the value of file-name is present."
             (unless (or (string-match "^[^<]*\\(ptr\\|pointer\\|Ptr\\|Pointer\\)" type) (string= name ""))
               (add-to-list 'containers (concat type " " name)))))
         (if (< (point-at-eol) (point-max))
-            (next-line)
+            (goto-char (1+ (point-at-eol)))
           (goto-char (point-max)))))
     containers)
   )
