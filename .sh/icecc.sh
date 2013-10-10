@@ -13,6 +13,7 @@ fi
 blockcs() {
     for a in $@; do
         echo blockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
+        nslookup "$a"
     done
 }
 cleancs() {
