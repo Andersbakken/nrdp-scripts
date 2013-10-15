@@ -173,8 +173,8 @@ the name of the value of file-name is present."
 ;; Insert prints all over the board
 ;;===================
 (require 'cc-mode)
-(defun litter-printf (&optional begin end)
-  (interactive)
+(defun litter (trash &optional begin end)
+  (interactive "sTrash: ")
   (unless begin
     (setq begin (or (if mark-active (region-beginning))
                     (save-excursion
@@ -204,9 +204,14 @@ the name of the value of file-name is present."
                 (add-to-list 'points (+ (point) 1)))))))
     (while points
       (goto-char (car points))
-      (insert "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")
+      (insert "\n" trash)
       (setq points (cdr points))))
   (c-indent-defun)
+  )
+
+(defun litter-printf (&optional begin end)
+  (interactive)
+  (litter "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")
   )
 
 ;;skeleton thingie
