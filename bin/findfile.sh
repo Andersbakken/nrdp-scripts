@@ -2,7 +2,7 @@
 
 COL=
 LINE=
-FILE="$1"
+FILE="`echo $1 | sed -e 's,^file://,,'`"
 OFFSET=
 
 if echo "$FILE" | grep --quiet ',[0-9]\+$'; then
