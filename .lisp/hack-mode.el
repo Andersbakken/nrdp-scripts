@@ -6,10 +6,12 @@
 (defconst hack-mode-find-file-mode-nth 3)
 (defconst hack-mode-find-log-nth 4)
 
+(defvar hack-mode-printf-format (cons "[%s:%d]" ", __func__, __LINE__"))
+
 ;;default stuff (my preferred hack mode)
 (defun default-find-file-hook ()
   (setq
-   indent-tabs-mode nil 
+   indent-tabs-mode nil
    insert-tab-mode nil
    ))
 (setq hack-mode-default '("Default" nil nil default-find-file-hook))
@@ -17,22 +19,22 @@
 ;;troll stuff
 (defun troll-templatize-file () "Insert a standard Troll template comment into the current buffer."
   (let ((f (expand-file-name "~/.troll.license")))
-    (if (and (not (/= (point-min) (point-max))) (file-exists-p f)) 
+    (if (and (not (/= (point-min) (point-max))) (file-exists-p f))
         (insert-file f) ;;insert the license
       )))
-(defun troll-log-message (msg) "Insert Troll logging message."
+(defun troll-log-message (msg &optional nopercent) "Insert Troll logging message."
   (let ((result))
-    (insert (concat "qWarning(\"[%s:%d]: " msg "\", __func__, __LINE__"))
-    (if (string-match "%" msg) (progn (insert ", ") (setq result (point))))
+    (insert (concat "qWarning(\"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format)))
+    (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))
     (insert ");")
     result))
 (defun troll-c-mode-hook ()
-  (setq 
+  (setq
    compile-command (format "make QTDIR=%s -kC %s/src" (getenv "QTDIR") (getenv "QTDIR"))
    ))
 (defun troll-find-file-hook ()
   (setq
-   indent-tabs-mode nil 
+   indent-tabs-mode nil
    insert-tab-mode nil
    ))
 (setq hack-mode-troll '("Troll" troll-templatize-file troll-c-mode-hook troll-find-file-hook troll-log-message))
@@ -46,7 +48,7 @@
    indent-tabs-mode nil
    insert-tab-mode nil
    ))
-(defun webkit-c-mode-hook () 
+(defun webkit-c-mode-hook ()
   (c-set-offset 'innamespace 0)
   ;; qt keywords and stuff ...
   ;; set up indenting correctly for new qt kewords
@@ -77,23 +79,26 @@
 ;;netflix stuff
 (defun netflix-templatize-file () "Insert a standard Netflix template comment into the current buffer."
   (let ((f (expand-file-name "~/.netflix.license")))
-    (if (and (not (/= (point-min) (point-max))) (file-exists-p f)) 
+    (if (and (not (/= (point-min) (point-max))) (file-exists-p f))
         (insert-file f) ;;insert the license
       )))
-(defun netflix-log-message (msg) "Insert Netflix logging message."
+(defun netflix-log-message (msg nopercent) "Insert Netflix logging message."
   (let ((result))
     (if (or (eq major-mode 'js2-mode) (eq major-mode 'js-mode))
         (progn
           (insert "nrdp.log.error('" msg "'")
           (setq result (point)))
       (progn
-        (insert "netflix::base::Log::error(TRACE_LOG, \"[%s:%d]: " msg "\", __func__, __LINE__")
-        (if (string-match "%" msg) (progn (insert ", ") (setq result (point))))))
+        (insert (if (string-match "\.cpp$" (buffer-file-name))
+                    "Log::error"
+                  "netflix::base::Log::error")
+                "(TRACE_LOG, \"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format))
+        (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))))
     (insert ");")
     result))
 (defun netflix-c-mode-hook () (setq
                                tab-width 4
-                               c-basic-offset 4 
+                               c-basic-offset 4
                                ))
 (defun netflix-find-file-hook ()
   (setq
@@ -104,18 +109,33 @@
 (setq hack-mode-netflix '("Netflix" netflix-templatize-file netflix-c-mode-hook netflix-find-file-hook netflix-log-message))
 
 ;;printf handling
-(defun hack-mode-insert-debug-printf(&optional prefix msg)
+(defun hack-mode-escape-arg (argument)
+  (let ((result "")
+        (start 0)
+        end)
+    (if (or (null (string-match "[^\"]" argument))
+            (< (match-end 0) (length argument)))
+        (while (string-match "[\"]" argument start)
+          (setq end (match-beginning 0)
+                result (concat result (substring argument start end)
+                               "\\" (substring argument end (1+ end)))
+                start (1+ end))))
+    (concat result (substring argument start))))
+
+(defun hack-mode-insert-debug-printf(&optional prefix msg nopercent)
   (interactive "P")
   (unless msg
     (setq msg (read-from-minibuffer "String: ")))
+  (setq msg (hack-mode-escape-arg msg))
   (beginning-of-line)
   (indent-for-tab-command)
   (let ((msg-pos))
     (if (and (not prefix) (nth hack-mode-find-log-nth hack-mode))
-        (setq msg-pos (funcall (nth hack-mode-find-log-nth hack-mode) msg))
+        (setq msg-pos (funcall (nth hack-mode-find-log-nth hack-mode) msg nopercent))
       (progn
-        (insert (concat "printf(\"[%s:%d]: " msg "\\n\", __func__, __LINE__"))
-        (if (string-match "%" msg) (progn (insert ", ") (setq msg-pos (point))))
+        (insert (concat "printf(\"" (car hack-mode-printf-format) ": " msg "\\n\"" (cdr hack-mode-printf-format)))
+        (if (and (not nopercent) (string-match "%" msg))
+            (progn (insert ", ") (setq msg-pos (point))))
         (insert "); fflush(stdout);")))
     (unless (= (point) (point-at-eol)) (insert "\n"))
     (beginning-of-line)
@@ -130,9 +150,9 @@
 (defun hack-mode-insert-debug-code-line(prefix arg)
   (beginning-of-line)
   (indent-for-tab-command)
-  (let((b(point-marker)))
+  (let ((b (point-marker)))
     (end-of-line)
-    (kill-ring-save b(point-marker))
+    (kill-ring-save b (point-marker))
     (next-line 1)
     (beginning-of-line)
     (indent-for-tab-command)
@@ -146,7 +166,7 @@
           (next-line 1)
           (beginning-of-line)
           (indent-for-tab-command)))
-    (hack-mode-insert-debug-printf prefix (current-kill 0))
+    (hack-mode-insert-debug-printf prefix (current-kill 0) t)
     (previous-line 1)
     (beginning-of-line)
     (indent-for-tab-command)
@@ -173,7 +193,7 @@
               (goto-char (point-max))
               (insert "#ifndef " define "\n"
                       "#define " define "\n"
-                      "\n\n\n"
+                      "\n\\n\\n"
                       "#endif /* " define " */\n")))
         (set-buffer-modified-p nil))))
 
@@ -188,7 +208,7 @@
   (interactive)
   (unless mode-name
       (setq mode-name (ido-completing-read "Mode: "
-		   (remove-duplicates (let (result) (dolist (mode hack-modes result) (setq result (append result (list (car (nth 1 mode)))))))))))
+           (remove-duplicates (let (result) (dolist (mode hack-modes result) (setq result (append result (list (car (nth 1 mode)))))))))))
   (if mode-name
       (dolist (mode hack-modes)
         (if (string= (car (nth 1 mode)) mode-name) (setq hack-mode (nth 1 mode))))))
