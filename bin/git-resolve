@@ -12,18 +12,18 @@ editor="$GIT_RESOLVE_EDITOR"
 [ -z "$editor" ] && editor=vim
 
 while [ "$#" -gt 0 ]; do
-   case $1 in
-   -au) STRATEGY=au ;;
-   -ay) STRATEGY=ay ;;
-   -e|-edit) STRATEGY=edit ;;
-   -rebase|--rebase) AFTER=rebase ;;
-   --stat|-stat) STAT=true ;;
-   --no-add|-no-add) ADD=false ;;
-   --no-prompt|-no-prompt) PROMPT=false ;;
-   -dry) TEST=echo ;;
-   *) echo "No such command: $1"; exit 1 ;;
-   esac
-   shift
+    case $1 in
+        -au) STRATEGY=au ;;
+        -ay) STRATEGY=ay ;;
+        -e|-edit) STRATEGY=edit ;;
+        -rebase|--rebase) AFTER=rebase ;;
+        --stat|-stat) STAT=true ;;
+        --no-add|-no-add) ADD=false ;;
+        --no-prompt|-no-prompt) PROMPT=false ;;
+        -dry) TEST=echo ;;
+        *) echo "No such command: $1"; exit 1 ;;
+    esac
+    shift
 done
 GITDIR=`git rev-parse --git-dir`
 if [ -z "$GITDIR" ]; then
@@ -35,108 +35,110 @@ test -z "$AFTER" && test -d "$GITDIR/rebase-apply/" && AFTER=rebase
 
 COUNT=0
 for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`; do
-   merged=false
-   if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
-       merged=false
-   else
-       echo "$file already merged!"
-       merged=true;
-   fi
-   if [ "$STAT" = "true" ]; then
-       BEG=`grep "^<<<<<<< " "$file" | wc -l`
-       MID=`grep "^=======" "$file" | wc -l`
-       END=`grep "^>>>>>>> " "$file" | wc -l`
-       if [ "$BEG" = "$MID" ] && [ "$BEG" = "$END" ]; then
-           echo "${file}: $BEG conflicts"
-       else
-           echo "${file}: Mismatched conflicts! (${BEG}:${MID}:${END})"
-       fi
-       continue
-   fi
-   while [ "$merged" = "false" ]; do
-      if [ "$PROMPT" = "true" ]; then
-          /bin/echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
-          read cmd
-      else
-          echo "$file unmerged!"
-      fi
-      [ -z "$cmd" ] && cmd=$STRATEGY
-      case $cmd in
-      d|diff)
-          tmpupstream=`mktemp -t XXXX`
-          tmpyours=`mktemp -t XXXX`
+    merged=false
+    if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
+        merged=false
+    else
+        echo "$file already merged!"
+        merged=true;
+    fi
+    if [ "$STAT" = "true" ]; then
+        BEG=`grep "^<<<<<<< " "$file" | wc -l`
+        MID=`grep "^=======" "$file" | wc -l`
+        END=`grep "^>>>>>>> " "$file" | wc -l`
+        if [ "$BEG" = "$MID" ] && [ "$BEG" = "$END" ]; then
+            echo "${file}: $BEG conflicts"
+        else
+            echo "${file}: Mismatched conflicts! (${BEG}:${MID}:${END})"
+        fi
+        continue
+    fi
+    while [ "$merged" = "false" ]; do
+        if [ "$PROMPT" = "true" ]; then
+            /bin/echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
+            read cmd
+        else
+            echo "$file unmerged!"
+        fi
+        [ -z "$cmd" ] && cmd=$STRATEGY
+        case $cmd in
+            d|diff)
+                tmpupstream=`mktemp -t XXXX`
+                tmpyours=`mktemp -t XXXX`
 
-          git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-          git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
-          diff -du "$tmpupstream" "$tmpyours"
-          ;;
-      m|e|edit)
-              tmp=`mktemp -t XXXX`
-	      cp $file $tmp
-              edit=yes
-	      while true; do
-                  if [ "$edit" = "yes" ]; then
-                      if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                          tmpupstream=`mktemp -t XXXXupstream`
-                          tmpyours=`mktemp -t XXXXyours`
+                git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+                git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
+                diff -du "$tmpupstream" "$tmpyours"
+                ;;
+            m|e|edit)
+                bak=`mktemp -t XXXX`
+                cp "$file" "$bak"
+                edit=yes
+                while true; do
+                    if [ "$edit" = "yes" ]; then
+                        if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
+                            tmpupstream=`mktemp -t XXXXupstream`
+                            tmpyours=`mktemp -t XXXXyours`
+                            tmp=`mktemp -t XXXXtmp`
 
-                          git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-                          git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
-                          git cat-file blob ":1:$file" >$tmp 2>/dev/null
-                          $editor $tmpupstream $tmp $tmpyours
-                      elif ! $editor $tmp; then
-		          echo "Unable to spawn editor!!"
-		          break;
-                      fi
-                      edit=no
-                  fi
-	          /bin/echo -n "Accept: [d]iff, [y]es, (n)o, (c)ancel: "
-		  read accpt
-		  [ -z "$accpt" ] && accpt=y
-		  case $accpt in
-                  d|diff)
-                      tmpupstream=`mktemp -t XXXX`
+                            git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+                            git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
+                            git cat-file blob ":1:$file" >$tmp 2>/dev/null
+                            meld $tmpupstream $tmp $tmpyours
+                        elif ! $editor $file; then
+                            echo "Unable to spawn editor!!"
+                            break;
+                        fi
+                        edit=no
+                    fi
+                    /bin/echo -n "Accept: [d]iff, [y]es, (n)o, (c)ancel: "
+                    read accpt
+                    [ -z "$accpt" ] && accpt=y
+                    case $accpt in
+                        d|diff)
+                            tmpupstream=`mktemp -t XXXX`
 
-                      git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-                      diff -du "$tmpupstream" "$tmp"
-                      ;;
-		  c|cancel) break ;;
-		  y|yes)
-                      sure=y
-                      if grep "^<<<<<<< " "$tmp" >/dev/null 2>&1 || grep "^=======" "$tmp" >/dev/null 2>&1 || grep "^>>>>>>> " "$tmp" >/dev/null 2>&1; then
-                          echo -n "This leaves in merge markers, are you sure: [y]es, (n)o: "
-                          read sure
-                          [ -z "sure" ] && sure=y
-                      fi
-                      if [ "$sure" = "yes" ] || [ "$sure" = "y" ]; then
-                          merged=true
-                          $TEST mv $tmp $file
-                          break 2
-                      fi
-		      ;;
-                  n|no) edit=yes ;;
-                  *) ;;
-                  esac
-               done ;;
-      au) merged=true;
-          tmp=`mktemp -t XXXX`
-          git cat-file blob ":2:$file" >$tmp 2>/dev/null
-	  $TEST mv $tmp $file
-	  break ;;
-      ay) merged=true;
-          tmp=`mktemp -t XXXX`
-          git cat-file blob ":3:$file" >$tmp 2>/dev/null
-	  $TEST mv $tmp $file
-	  break ;;
-      s|skip) break;;
-      *) echo "Unknown command!" ;;
-      esac
-   done
-   if [ "$merged" = "true" ] && [ "$ADD" = "true" ]; then
-       $TEST git add -f $file
-   else
-       COUNT=$((COUNT+1))
-   fi
+                            git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
+                            diff -du "$tmpupstream" "$file"
+                            ;;
+                        c|cancel)
+                            cat "$bak" > "$file"
+                            break ;;
+                        y|yes)
+                            sure=y
+                            if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
+                                echo -n "This leaves in merge markers, are you sure: [y]es, (n)o: "
+                                read sure
+                                [ -z "sure" ] && sure=y
+                            fi
+                            if [ "$sure" = "yes" ] || [ "$sure" = "y" ]; then
+                                merged=true
+                                break 2
+                            fi
+                            ;;
+                        n|no) edit=yes ;;
+                        *) ;;
+                    esac
+                done ;;
+            au) merged=true;
+                tmp=`mktemp -t XXXX`
+                git cat-file blob ":2:$file" >$tmp 2>/dev/null
+                $TEST mv $tmp $file
+                break ;;
+            ay) merged=true;
+                tmp=`mktemp -t XXXX`
+                git cat-file blob ":3:$file" >$tmp 2>/dev/null
+                $TEST mv $tmp $file
+                break ;;
+            s|skip) break;;
+            *) echo "Unknown command!" ;;
+        esac
+    done
+    if [ "$merged" = "true" ] && [ "$ADD" = "true" ]; then
+        $TEST git add -f $file
+    else
+        COUNT=$((COUNT+1))
+    fi
 done
 if [ "$COUNT" = 0 ]; then
     echo "No files left unresolved"
@@ -144,6 +146,6 @@ if [ "$COUNT" = 0 ]; then
         $TEST git rebase --continue
     fi
 else
-   echo "$COUNT files left unresolved"
+    echo "$COUNT files left unresolved"
 fi
 
