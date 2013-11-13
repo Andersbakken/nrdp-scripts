@@ -639,7 +639,7 @@ the name of the value of file-name is present."
                  (setq container (ido-completing-read "Container: " containers))
                  (if (string= container "")
                      (setq container (read-from-minibuffer "Container: ")))))))
-      (when (not (string= container "" ))
+      (when (not (string= container ""))
         (setq it (read-from-minibuffer "Iterator name (default 'it'): "))
         (let (name type (space (string-match " [^ ]*$" container)) (dot "."))
           (unless space
@@ -655,12 +655,13 @@ the name of the value of file-name is present."
             (goto-char (point-at-eol))
             (insert "\n")
             (indent-according-to-mode))
-          (if erase
-              (insert (format "%s::iterator %s = %s%sbegin();\nwhile%s(%s != %s%send()) {\nif%s(remove) {\n%s%serase(%s++);\n} else {\n++%s;\n}\n}"
-                              type it name dot for-loop-space it name dot for-loop-space name dot it it))
-            (insert (format "for%s(%s::const_iterator %s = %s%sbegin(); %s != %s%send(); ++%s) {\n\n}\n"
-                            for-loop-space type it name dot it name dot it)))
-          (indent-prev-lines (if erase 6 3))
+          (let ((start (point)))
+            (if erase
+                (insert (format "%s::iterator %s = %s%sbegin();\nwhile%s(%s != %s%send()) {\nif%s(remove) {\n%s%serase(%s++);\n} else {\n++%s;\n}\n}"
+                                type it name dot for-loop-space it name dot for-loop-space name dot it it))
+              (insert (format "for%s(%s::const_iterator %s = %s%sbegin(); %s != %s%send(); ++%s) {\n\n}\n"
+                              for-loop-space type it name dot it name dot it)))
+            (indent-region start (point)))
           (forward-line (if erase -5 -2))
           (indent-according-to-mode))))))
 
