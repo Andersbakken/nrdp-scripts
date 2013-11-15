@@ -16,6 +16,14 @@ blockcs() {
         nslookup "$a"
     done
 }
+
+unblockcs() {
+    for a in $@; do
+        echo unblockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
+        nslookup "$a"
+    done
+}
+
 cleancs() {
     CLEAN_FILE="/tmp/cleancs.tmp"
     rm -f "$CLEAN_FILE"
