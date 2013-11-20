@@ -109,7 +109,7 @@ function main() {
     // w.image.url = {url:"http://cdn-1.nflximg.com/images/7516/817516.jpg"};
     // nrdp.gibbon.setTimeout(onTimeout, 0);
 }
-nrdp.qa.init(main);
+nrdp.gibbon.init(main);
 EOF
     elif [ -e "$url" ]; then
 	cp -f "$url" "$test_file"
