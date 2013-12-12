@@ -17,8 +17,13 @@ gs()
       esac
       shift
     done
-    [ -n "$PULL" ] && git cdd $CDD_FLAGS -- $PULL $PULL_FLAGS
-    [ -n "$PUSH" ] && git cdd $CDD_FLAGS -- $PUSH $PUSH_FLAGS
+    if [ "$CDD_FLAGS" = "-r" ] && $(git rev-parse --git-dir &> /dev/null); then
+        [ -n "$PULL" ] && git $PULL $PULL_FLAGS
+        [ -n "$PUSH" ] && git $PUSH $PUSH_FLAGS
+    else
+        [ -n "$PULL" ] && git cdd $CDD_FLAGS -- $PULL $PULL_FLAGS
+        [ -n "$PUSH" ] && git cdd $CDD_FLAGS -- $PUSH $PUSH_FLAGS
+    fi
 }
 
 gss()
