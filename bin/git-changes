@@ -1,7 +1,7 @@
 #!/bin/sh
 
 AUTHOR="$GIT_CHANGES_AUTHOR"
-[ -z "$AUTHOR" ] && AUTHOR=`whois`
+[ -z "$AUTHOR" ] && AUTHOR=`whoami`
 
 MERGES="0"
 OPTS="--pretty=format:'%h %s [%aE]'"
