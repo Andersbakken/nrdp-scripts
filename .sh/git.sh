@@ -17,7 +17,7 @@ gs()
       esac
       shift
     done
-    if [ "$CDD_FLAGS" = "-r" ] && $(git rev-parse --git-dir &> /dev/null); then
+    if [ "$CDD_FLAGS" = "-r" ] && [ "`lsdev.pl -r -l | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
         [ -n "$PULL" ] && git $PULL $PULL_FLAGS
         [ -n "$PUSH" ] && git $PUSH $PUSH_FLAGS
     else
