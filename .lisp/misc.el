@@ -473,9 +473,15 @@ the name of the value of file-name is present."
     )
   )
 
+(defun magit-current-section-file ()
+  (let ((info (magit-section-info (magit-current-section))))
+    (and (and info (file-exists-p info) info))
+    )
+  )
+
 (defun magit-diff-current-section ()
   (interactive)
-  (let ((file (magit-diff-item-file (magit-current-section))))
+  (let ((file (magit-current-section-file)))
     (when file
       (setq git-default-directory default-directory)
       (git-diff-against (concat default-directory file) "HEAD")))
@@ -483,12 +489,11 @@ the name of the value of file-name is present."
 
 (defun magit-log-current-section ()
   (interactive)
-  (unless (ignore-errors (let ((file (magit-diff-item-file (magit-current-section))))
-                           (when file
-                             (setq git-default-directory default-directory)
-                             (magit-file-log (concat default-directory file) "HEAD"))))
-    (magit-key-mode-popup-logging)))
-
+  (let ((file (magit-current-section-file)))
+    (if file
+        (magit-file-log file)
+      (magit-key-mode-popup-logging)))
+  )
 
 ;; ================================================================================
 ;; Super keyboard-quit C-g
