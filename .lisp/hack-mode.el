@@ -89,9 +89,7 @@
           (insert "nrdp.log.error('" msg "'")
           (setq result (point)))
       (progn
-        (insert (if (string-match "\.cpp$" (buffer-file-name))
-                    "Log::error"
-                  "netflix::base::Log::error")
+        (insert "netflix::base::Log::error"
                 "(TRACE_LOG, \"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format))
         (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))))
     (insert ");")
@@ -175,6 +173,8 @@
     (indent-for-tab-command)
     (previous-line 1)
     (if arg (transpose-lines 1))))
+
+(setq litter-printf-function (lambda() (hack-mode-insert-debug-printf nil "")))
 
 (defun hack-mode-insert-debug-code-line-pre(&optional prefix)
   (interactive "P")

@@ -173,6 +173,7 @@ the name of the value of file-name is present."
 ;; Insert prints all over the board
 ;;===================
 (require 'cc-mode)
+(defvar litter-printf-function (lambda() (insert "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")))
 (defun litter (trash &optional begin end)
   (interactive "sTrash: ")
   (unless begin
@@ -204,15 +205,14 @@ the name of the value of file-name is present."
                 (add-to-list 'points (+ (point) 1)))))))
     (while points
       (goto-char (car points))
-      (insert "\n" trash)
+      (if (functionp trash) (funcall trash) (insert trash))
       (setq points (cdr points))))
   (c-indent-defun)
   )
 
 (defun litter-printf (&optional begin end)
   (interactive)
-  (litter "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")
-  )
+  (litter litter-printf-function))
 
 ;;skeleton thingie
 (defun make-member ()
