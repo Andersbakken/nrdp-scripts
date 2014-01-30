@@ -475,9 +475,9 @@ the name of the value of file-name is present."
 
 (defun magit-current-section-file ()
   (let ((info (magit-section-info (magit-current-section))))
-    (if (and info (listp info)) (setq info (nth 1 info)))
-    (and (and info (file-exists-p info) info))
-    )
+    (if (and (listp info) (stringp (nth 1 info)))
+        (setq info (nth 1 info)))
+    (and info (file-exists-p info) info))
   )
 
 (defun magit-diff-current-section ()
