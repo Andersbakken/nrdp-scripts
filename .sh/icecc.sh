@@ -10,10 +10,21 @@ elif [ -d "/usr/lib/icecc/bin" ]; then
     ICECC_DIR="/usr/lib/icecc/bin"
 fi
 
+canblockcs() {
+    HOST=`nslookup $1  | grep 'name = ' | sed 's,.*name = ,,'`
+    echo "$1 -> $HOST"
+    for w in smagnuson pnavarro abakken jhanssen mdxapp2; do
+        if echo "$HOST" | grep -q "$w"; then
+            echo " + WHITELISTED!"
+            return 1
+        fi
+    done
+    return 0
+}
+
 blockcs() {
     for a in $@; do
-        echo blockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
-        nslookup "$a"
+        canblockcs $a && echo blockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
     done
 }
 
@@ -36,7 +47,7 @@ cleancs() {
             echo "$NAME is listening!"
         else
             echo "$NAME is not listening!"
-            echo "blockcs $IP" >>"$CLEAN_FILE"
+            canblockcs $a && echo "blockcs $IP" >>"$CLEAN_FILE"
         fi
     done
     [ -e "$CLEAN_FILE" ] && cat "$CLEAN_FILE" | nc "$ICECC_SCHEDULER_HOST" 8766
