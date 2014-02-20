@@ -757,3 +757,44 @@ the name of the value of file-name is present."
           (git-gutter-mode 1)))
     )
   )
+
+;; ================================================================================
+;; agb-occur
+;; ================================================================================
+
+(defun agb-occur-data ()
+  (save-excursion
+    (goto-char (point-min))
+    (if (looking-at "^[0-9]+ match\\(es\\)\? for \"\\(.*\\)\" in buffer: \\(.*\\)")
+        (cons (buffer-substring-no-properties (match-beginning 2) (match-end 2))
+              (buffer-substring-no-properties (match-beginning 3) (match-end 3)))))
+  )
+
+(defun agb-is-occur-buffer () (string-match (buffer-name) "*Occur*"))
+
+(defun agb-occur-read-from-minibuffer ()
+  (let* ((word (current-word))
+         (pattern
+          (read-from-minibuffer
+           (if (or (not word) (string= "" word))
+               "List lines matching regexp: "
+             (format "List lines matching regexp (default: %s): " word)))))
+    (if (or (not pattern) (string= pattern ""))
+        word
+      pattern)))
+
+(defun agb-occur (&optional dont-reoccur)
+  (interactive "P")
+  (if (and (not dont-reoccur) (agb-is-occur-buffer))
+      (let* ((pattern (agb-occur-read-from-minibuffer))
+             (data (and pattern (agb-occur-data)))
+             (phrase (car data))
+             (buffer (cdr data)))
+        (delete-window)
+        (with-current-buffer buffer
+          (when (and pattern data)
+            (if (string-match "^\\\\(\\(.*\\)\\\\)$" phrase)
+                (occur (concat "\\(" (match-string 1 phrase) "\\|" pattern "\\)"))
+              (occur (concat "\\(" phrase "\\|" pattern "\\)"))))))
+    (call-interactively 'occur))
+  )
