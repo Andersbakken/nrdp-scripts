@@ -37,13 +37,15 @@
   (setq buffer-read-only t)
   )
 
-(defun agb-git-blame(&optional revision)
+(defun agb-git-blame (&optional revision)
   (interactive)
   (let* ((buffer-name (if (buffer-file-name) (buffer-file-name) (agb-git-blame-filename)))
          (buf (get-buffer-create (format "*%s - Blame - %s*" buffer-name (if revision revision "HEAD"))))
          (line (buffer-substring (point-at-bol) (point-at-eol)))
          (norevision (not revision))
          (lineno (line-number-at-pos)))
+    (unless buffer-name
+      (error "Can't blame this file"))
     (unless revision (setq revision "HEAD"))
     (if (and agb-git-blame-reuse-buffers
              agb-git-blame-last-blame-buffer
@@ -127,17 +129,18 @@
                (buffer (get-buffer bufname))
                (visible (and buffer (agb-git-blame-buffer-visible buffer))))
           (if buffer
-              (progn
-                (when otherwindow
-                  (if visible
-                      (if (= otherwindow 1)
-                          (scroll-other-window)
-                        (scroll-other-window-down))
-                    (progn
-                      (if (= 1 (length (window-list)))
-                          (split-window))
-                      (switch-to-buffer-other-window buffer)
-                      (other-window 1)))))
+              (if otherwindow
+                  (progn
+                    (if visible
+                        (if (= otherwindow 1)
+                            (scroll-other-window)
+                          (scroll-other-window-down))
+                      (progn
+                        (if (= 1 (length (window-list)))
+                            (split-window))
+                        (switch-to-buffer-other-window buffer)
+                        (other-window 1))))
+                (switch-to-buffer buffer))
             (progn
               (if (and agb-git-blame-reuse-buffers agb-git-blame-last-temp-buffer)
                   (kill-buffer agb-git-blame-last-temp-buffer))
