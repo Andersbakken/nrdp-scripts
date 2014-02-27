@@ -163,7 +163,7 @@
 (defun lsdev-cd-modeline-function () (lsdev-cd-changedir t) nil)
 
 (defvar lsdev-cd-history nil)
-(defun lsdev-cd-internal(args ignore-builds)
+(defun lsdev-cd-internal (args ignore-builds from-eshell)
   (let ((previous (current-buffer)))
     (push "-l" args)
     (if (or ignore-builds lsdev-cd-ignore-builds) (push "-build" args))
@@ -207,6 +207,7 @@
 (defun lsdev-cd(&optional ignore-builds)
   (interactive)
   (let* ((args nil)
+         (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
          (alternatives (with-temp-buffer
                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
                          (remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
@@ -217,7 +218,7 @@
         (push "-a" args)
         (push "-r" args)
         (push (if (string-match "/$" hd) (substring hd 0 -1) hd) args)))
-    (lsdev-cd-internal args ignore-builds)))
+    (lsdev-cd-internal args ignore-builds from-eshell)))
 
 ;;mode string
 (defvar lsdev-mode t)
