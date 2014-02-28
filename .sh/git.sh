@@ -18,10 +18,16 @@ gs()
       shift
     done
     if [ "$CDD_FLAGS" = "-r" ] && [ "`lsdev.pl -r -l | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
-        [ -n "$PULL" ] && git $PULL $PULL_FLAGS
+        if [ -n "$PULL" ]; then
+            git $PULL $PULL_FLAGS
+            git submodule update
+        fi
         [ -n "$PUSH" ] && git $PUSH $PUSH_FLAGS
     else
-        [ -n "$PULL" ] && git cdd $CDD_FLAGS -- $PULL $PULL_FLAGS
+        if [ -n "$PULL" ]; then
+            git cdd $CDD_FLAGS -- $PULL $PULL_FLAGS
+            git cdd $CDD_FLAGS -- submodule update
+        fi
         [ -n "$PUSH" ] && git cdd $CDD_FLAGS -- $PUSH $PUSH_FLAGS
     fi
 }
