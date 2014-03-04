@@ -13,7 +13,7 @@ fi
 canblockcs() {
     HOST=`nslookup $1  | grep 'name = ' | sed 's,.*name = ,,'`
     echo "$1 -> $HOST"
-    for w in smagnuson pnavarro abakken jhanssen mdxapp2; do
+    for w in smagnuson pnavarro abakken jhanssen mdxapp2 lgud01-nrdp lgud-02; do
         if echo "$HOST" | grep -q "$w"; then
             echo " + WHITELISTED!"
             return 1
@@ -60,7 +60,7 @@ seticecc() {
    fi
    if [ "$1" != "on" ] && [ "$1" != "off" ]; then
         echo "seticecc must be on or off ($1)"
-	return
+    return
    fi
 #   if [ "$1" = "on" ] && [ -z "$ICECC_VERSION" ]; then
 #     NATIVE_ICECC_VERSION="$HOME/.native-icecc.tar.gz"
@@ -84,16 +84,16 @@ seticecc() {
        elif echo $PATH | grep "${ICECC_DIR}:" >/dev/null 2>&1; then
           PATH=`echo $PATH | sed "s,${ICECC_DIR}:,,g"`
        fi
-       PATH="${ICECC_DIR}:$PATH" 
+       PATH="${ICECC_DIR}:$PATH"
 #       which icecc >/dev/null 2>&1 && NUMJOBS=`icecc -numjobs 2>/dev/null | tail -1`
        MAXJOBS="$ICECC_JOBS_MAX"
        [ -z "$MAXJOBS" ] && MAXJOBS=30
        if [ -z "$NUMJOBS" ] || [ "$NUMJOBS" -gt "$MAXJOBS" ]; then
-	   NUMJOBS="$MAXJOBS"
+       NUMJOBS="$MAXJOBS"
        fi
-   else 
+   else
        export ICECC=0
-       export ICECC_DISABLED=1	
+       export ICECC_DISABLED=1
        if echo $PATH | grep $ICECC_DIR >/dev/null 2>&1; then
            PATH=`echo $PATH | sed "s,${ICECC_DIR},${ICECC_DIR}${ICECC_OFF},g"`
        fi
