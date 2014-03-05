@@ -162,6 +162,7 @@
 
 (defun lsdev-cd-modeline-function () (lsdev-cd-changedir t) nil)
 
+(defvar lsdev-mode-custom-bindings nil)
 (defvar lsdev-cd-history nil)
 (defun lsdev-cd-internal (args ignore-builds from-eshell)
   (let ((previous (current-buffer)))
@@ -201,6 +202,8 @@
                (local-set-key (kbd "r") 'lsdev-recompile-at-point)
                (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
                (local-set-key [return] 'lsdev-cd-path-at-point)
+               (if (functionp lsdev-mode-custom-bindings)
+                   (funcall lsdev-mode-custom-bindings))
                (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
                )))))
 
@@ -213,7 +216,8 @@
                          (remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
          (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (remove-duplicates lsdev-cd-history :from-end t :test 'equal))
-    (if (or (string= hd "") (not hd)) (push "-b" args)
+    (if (or (string= hd "") (not hd))
+        (push "-b" args)
       (progn
         (push "-a" args)
         (push "-r" args)
