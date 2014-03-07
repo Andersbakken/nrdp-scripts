@@ -32,6 +32,15 @@ gs()
     fi
 }
 
+gp4_sync()
+{
+   P4CHANGE=`git p4 change HEAD | awk '{print $4}'`
+   echo "Syncing to: $P4CHANGE"
+   for m in $@; do
+       (cd $m; GITCHANGE=`git p4 change $P4CHANGE | awk '{print $4}'`; echo "Sync $m @ $GITCHANGE ($P4CHANGE)"; git checkout "$GITCHANGE")
+   done
+}
+
 gss()
 {
     CDD_FLAGS="-r"

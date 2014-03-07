@@ -5,7 +5,11 @@ GDB_FILE="/tmp/gdb_target_arch.gdb"
 rm -f "$GDB_FILE"
 
 if grep -i 'Evaluate a Python command' "$GDB_INFO" >/dev/null 2>&1; then
-    echo "set \$PYTHON = 1" >> $GDB_FILE;
+    if grep -i 'Undefined command: \"import\"' "$GDB_INFO" >/dev/null 2>&1; then
+        echo "set \$PYTHON = 0" >> $GDB_FILE;
+    else
+        echo "set \$PYTHON = 1" >> $GDB_FILE;
+    fi
 fi
 
 TARGET_DOUBLET=$(grep 'file type' "$GDB_INFO" | sed 's/\.$//g' | cut -d ' ' -f 4 | uniq | tr -d '\n')

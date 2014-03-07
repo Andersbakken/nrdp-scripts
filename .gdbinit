@@ -30,6 +30,7 @@ define setup-detect-target
 
   set $64BITS = 0
 
+  shell echo "import gdb" > /tmp/gdb_has_python.py
   set logging file /tmp/gdb_info_target
   set logging overwrite on
   set logging redirect on
@@ -37,6 +38,7 @@ define setup-detect-target
   set pagination off
   info target
   help all
+  #source /tmp/gdb_has_python.py
   set pagination on
   set logging off
   set logging redirect off
@@ -44,7 +46,7 @@ define setup-detect-target
 
   shell ~/.gdb/detect-target.sh
   source /tmp/gdb_target_arch.gdb
-  shell rm -f /tmp/gdb_info_target /tmp/gdb_target_arch.gdb
+  shell rm -f /tmp/gdb_info_target /tmp/gdb_target_arch.gdb /tmp/gdb_has_python.py
   if ($PYTHON == 1)
      source ~/.gdb/python.gdb
   end

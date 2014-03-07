@@ -37,8 +37,8 @@ blockcs() {
 
 unblockcs() {
     for a in $@; do
-        echo unblockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
         nslookup "$a"
+        echo unblockcs "$a" | nc "$ICECC_SCHEDULER_HOST" 8766
     done
 }
 
