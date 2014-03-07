@@ -1082,7 +1082,7 @@ class P4Submit(Command):
             if settings.has_key("change"):
                 print "Change %s: already committed (%s)" % (commit, settings["change"]);
                 continue
-            elif settings.has_key("ignore"):
+            elif settings.has_key("ignore") and not self.p4Shelve:
                 print "Change %s: ignored" % (commit);
                 continue
 
