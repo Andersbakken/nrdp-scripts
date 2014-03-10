@@ -285,7 +285,7 @@
 (defun netflix-log-time-offset ()
   (interactive)
   (let* ((start (if (region-active-p) (min (region-beginning) (region-end)) (1- (point-at-bol))))
-         (end (if (region-active-p) (max (region-beginning) (region-end)) (point)))
+         (end (if (region-active-p) (1- (max (region-beginning) (region-end))) (point)))
          (starttime (netflix-log-time start))
          (endtime (netflix-log-time end)))
     ;; (message "%f %f %f" starttime endtime (- endtime starttime))
