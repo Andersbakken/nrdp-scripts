@@ -18,6 +18,8 @@
 
 (define-key agb-git-blame-mode-map (kbd "q") (function bury-buffer))
 (define-key agb-git-blame-mode-map (kbd "p") (function agb-git-reblame-for-previous-revision))
+(define-key agb-git-blame-mode-map (kbd "^") (function agb-git-reblame-for-previous-revision))
+(define-key agb-git-blame-mode-map (kbd "~") (function agb-git-reblame-for-previous-revision))
 (define-key agb-git-blame-mode-map (kbd "n") (function agb-git-reblame-pop))
 (define-key agb-git-blame-mode-map (kbd "=") (function agb-git-blame-show-diff))
 (define-key agb-git-blame-mode-map (kbd "+") (function agb-git-blame-show-diff-other-window))
@@ -26,8 +28,10 @@
 (define-key agb-git-blame-mode-map (kbd "s") (function agb-git-blame-toggle-smaller))
 (define-key agb-git-blame-mode-map (kbd "t") (function agb-git-blame-toggle-use-relative-date))
 (define-key agb-git-blame-mode-map (kbd "o") (function agb-git-blame-show-revision))
-(define-key agb-git-blame-mode-map (kbd "RET") (function agb-git-blame-show-revision))
-(define-key agb-git-blame-mode-map (kbd "ENTER") (function agb-git-blame-show-revision))
+(define-key agb-git-blame-mode-map (kbd "f") (function agb-git-blame-show-revision))
+(define-key agb-git-blame-mode-map (kbd "#") (function agb-git-blame-show-revision))
+(define-key agb-git-blame-mode-map (kbd "RET") (function agb-git-blame-show-diff))
+(define-key agb-git-blame-mode-map (kbd "ENTER") (function agb-git-blame-show-diff))
 
 (define-derived-mode agb-git-blame-mode fundamental-mode
   ;; (setq font-lock-defaults '(agb-git-blame-faces))
