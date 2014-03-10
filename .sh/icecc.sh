@@ -45,15 +45,18 @@ unblockcs() {
 cleancs() {
     CLEAN_FILE="/tmp/cleancs.tmp"
     rm -f "$CLEAN_FILE"
-    for a in `echo listcs | nc $ICECC_SCHEDULER_HOST 8766 | grep '^ ' | sed "s,^ *\(.*\) (\(.*\)) .*$,HOST:\1:\2," | grep HOST`; do
+    for a in `echo listcs | nc $ICECC_SCHEDULER_HOST 8766 | grep '^ ' | sed "s,^ *\(.*\) (\(.*\)).* jobs=[0-9]\+/\([0-9]\+\) .*$,HOST:\3:\1:\2:," | grep HOST`; do
         #echo "Trying: $a"
-        NAME=`echo $a | cut -d: -f2`
-        IP=`echo $a | cut -d: -f3`
-        PORT=`echo $a | cut -d: -f4`
-        if nc $IP $PORT -z -w 2 >/dev/null 2>&1; then
-            echo "$NAME is listening!"
+        JOBS=`echo $a | cut -d: -f2`
+        NAME=`echo $a | cut -d: -f3`
+        IP=`echo $a | cut -d: -f4`
+        PORT=`echo $a | cut -d: -f5`
+        if [ "$JOBS" = "0" ]; then
+            echo "$NAME($JOBS) is harmless!"
+        elif nc $IP $PORT -z -w 2 >/dev/null 2>&1; then
+            echo "$NAME($JOBS) is listening!"
         else
-            echo "$NAME is not listening!"
+            echo "$NAME$($JOBS) is not listening!"
             canblockcs $a && echo "blockcs $IP" >>"$CLEAN_FILE"
         fi
     done
