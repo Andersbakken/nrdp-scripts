@@ -265,4 +265,34 @@
 
 (add-to-list 'magic-mode-alist '(netflix-log-is-log . netflix-log-mode))
 
+(defun nfltime (idx) (string-to-int (match-string idx)))
+
+(defun netflix-log-time (&optional point)
+  (save-excursion
+    (if point
+        (goto-char point))
+    (goto-char (point-at-bol))
+    (cond ((looking-at "\\([0-9][0-9][0-9][0-9]\\)-\\([0-9][0-9]\\)-\\([0-9][0-9]\\) \\([0-9][0-9]\\):\\([0-9][0-9]\\):\\([0-9][0-9]\\).\\([0-9][0-9][0-9]\\) ") ;; YYYY-MM-DD hh:mm:ss.zzz
+           (+ (float-time (encode-time (nfltime 6) (nfltime 5) (nfltime 4) (nfltime 3) (nfltime 2) (nfltime 1)))
+              (/ (float (nfltime 7)) 1000)))
+          ((looking-at "\\([0-9][0-9]\\):\\([0-9][0-9]\\):\\([0-9][0-9]\\).\\([0-9][0-9][0-9]\\) ") ;; hh:mm:ss.zzz
+               (+ (float-time (encode-time (nfltime 3) (nfltime 2) (nfltime 1) 1 1 2000))
+                  (/ (float (nfltime 4)) 1000)))
+          (t nil))
+    )
+  )
+
+(defun netflix-log-time-offset ()
+  (interactive)
+  (let* ((start (if (region-active-p) (min (region-beginning) (region-end)) (1- (point-at-bol))))
+         (end (if (region-active-p) (max (region-beginning) (region-end)) (point)))
+         (starttime (netflix-log-time start))
+         (endtime (netflix-log-time end)))
+    ;; (message "%f %f %f" starttime endtime (- endtime starttime))
+    (if (and starttime endtime)
+        (format "%0.3fs " (- endtime starttime))
+      "")
+    )
+  )
+
 (provide 'netflix-log-mode)
