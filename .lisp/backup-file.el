@@ -63,15 +63,15 @@
     (start-process "backup-file"
                    nil
                    "backup-file.sh"
-                   (buffer-file-name) "from Emacs")))
+                   (file-truename (buffer-file-name)) "from Emacs")))
 
 (defun backup-file-log (&optional file)
   (interactive)
-  (unless file (setq file (buffer-file-name)))
+  (unless file (setq file (file-truename (buffer-file-name))))
   (unless (stringp file)
     (error "Backup-file needs a file"))
   (if (bufferp file)
-      (setq file (buffer-file-name file)))
+      (setq file (file-truename (buffer-file-name file))))
   (if (get-buffer backup-file-buffer-name)
       (kill-buffer backup-file-buffer-name))
   (switch-to-buffer (get-buffer-create backup-file-buffer-name))
