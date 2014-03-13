@@ -24,7 +24,7 @@ while [ "$#" -gt 0 ]; do
     -n) EMACSWAIT=no ;;
     -q) TEST=exists ;;
     --daemon|-d) EMACSDAEMON="yes" ;;
-    -nw) unset DISPLAY ;;
+    -nw) unset DISPLAY; EMACSOPTS="$EMACSOPTS -nw"; ;;
     -h|--help|-help) echo "$0: [options] [file]"
         echo "Options:"
         echo "  -c    Must confirm execution"
