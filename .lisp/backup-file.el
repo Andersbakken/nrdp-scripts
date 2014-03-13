@@ -62,7 +62,7 @@
   (when (buffer-file-name)
     (start-process "backup-file"
                    nil
-                   (format "backup-file.sh" (getenv "HOME"))
+                   "backup-file.sh"
                    (buffer-file-name) "from Emacs")))
 
 (defun backup-file-log (&optional file)
@@ -88,7 +88,7 @@
                 (buffer-substring (+ (point-at-bol) 7) (point-at-eol)))
           backup-file-last-data)
     (if (< (point-at-eol) (point-max))
-        (next-line)
+        (forward-line)
       (goto-char (point-max))))
 
   (backup-file-mode)
@@ -140,7 +140,7 @@
     (if pos (goto-char pos))
     (goto-char (point-at-bol))
     (if (looking-at "Revision #\\([0-9]+\\) -- ")
-        (string-to-int (match-string 1)))
+        (string-to-number (match-string 1)))
     )
   )
 
@@ -255,7 +255,7 @@
 (defun backup-file-jump (offset)
   (if (and (string-match "\\*\\(.*\\)#\\([0-9]+\\)\\*" (buffer-name))
            (string= (match-string 1 (buffer-name)) backup-file-last-file))
-      (let ((idx (+ (string-to-int (match-string 2 (buffer-name))) offset)))
+      (let ((idx (+ (string-to-number (match-string 2 (buffer-name))) offset)))
         (if (and (>= idx 0) (< idx (length backup-file-last-data)))
             (backup-file-show-revision idx)))))
 
