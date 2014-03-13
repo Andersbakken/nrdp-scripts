@@ -47,6 +47,13 @@
   (run-hooks 'backup-file-mode-hook)
   )
 
+(defun backup-file-replace-regexp (rx to)
+  (save-excursion
+    (while (re-search-forward rx nil t)
+      (replace-match to nil nil))
+    )
+  )
+
 (defun backup-file-git (&rest arguments)
   (let ((old default-directory))
     (cd "~/.backups")
@@ -116,9 +123,8 @@
       (backward-delete-char 1)
       (goto-char (point-min)))
     (when replace
-      (save-excursion
-        (replace-regexp "^--- a/" "--- /")
-        (replace-regexp "^+++ b/" "+++ /")))
+      (backup-file-replace-regexp "^--- a/" "--- /")
+      (backup-file-replace-regexp "^+++ b/" "+++ /"))
     (cd old)
     )
   (setq buffer-read-only t)
@@ -160,9 +166,8 @@
           (setq backup-file-last-temp-buffer (current-buffer))
           (backup-file-git "show" (car (backup-file-data-nth index)))
           (goto-char (point-min))
-          (save-excursion
-            (replace-regexp "^--- a/" "--- /")
-            (replace-regexp "^+++ b/" "+++ /"))
+          (backup-file-replace-regexp "^--- a/" "--- /")
+          (backup-file-replace-regexp "^+++ b/" "+++ /")
           (diff-mode)
           (setq buffer-read-only t))
       )
