@@ -18,7 +18,7 @@
 (setq backup-file-mode-map (make-sparse-keymap))
 (set-keymap-parent backup-file-mode-map diff-mode-map)
 
-(define-key backup-file-mode-map (kbd "q") (function backup-file-bury))
+(define-key backup-file-mode-map (kbd "q") (function bury-buffer))
 (define-key backup-file-mode-map (kbd "Q") (function backup-file-kill-current-buffer))
 (define-key backup-file-mode-map (kbd "=") (function backup-file-show-diff))
 (define-key backup-file-mode-map (kbd ".") (function backup-file-show-diff-inline-prev))
