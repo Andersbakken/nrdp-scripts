@@ -6,11 +6,10 @@
 (defvar backup-file-showing-inline-diffs nil)
 (defvar backup-file-last-temp-buffer nil)
 (defvar backup-file-mode-hook nil)
-(defcustom backup-file-reuse-temp-buffers
-  t
-  "Whether to reuse temp buffers for backup-file"
-  :group 'rtags
+(defcustom backup-file-reuse-temp-buffers t "Whether to reuse temp buffers for backup-file" :group 'backup-file
   :type 'boolean)
+
+(defcustom backup-file-location (expand-file-name "~/.backups") "Where to store backup repo" :group 'backup-file :type 'string)
 
 ;; (add-hook 'after-save-hook 'backup-file)
 
@@ -64,7 +63,7 @@
 
 (defun backup-file-git (&rest arguments)
   (let ((old default-directory))
-    (cd "~/.backups")
+    (cd (expand-file-name backup-file-location))
     (apply #'call-process "git"
            nil
            (current-buffer)
@@ -126,14 +125,14 @@
   (if (get-buffer backup-file-buffer-name)
       (kill-buffer backup-file-buffer-name))
   (switch-to-buffer (get-buffer-create backup-file-buffer-name))
-  (cd (expand-file-name "~/.backups"))
+  (cd (expand-file-name backup-file-location))
   (let ((proc (start-process "git backup-file"
                              (current-buffer)
                              "git"
                              ;; (concat "--git-dir=" (expand-file-name "~/.backups/.git"))
                              "log"
                              "--pretty=format:%h%ar"
-                             "--" (expand-file-name (concat "~/.backups" file)))))
+                             "--" (expand-file-name (concat backup-file-location file)))))
     (set-process-query-on-exit-flag proc nil)
     ;; (set-process-filter proc (car async))
     (setq backup-file-last-file file)
@@ -146,7 +145,7 @@
   (let ((old default-directory) (i 1) (replace nil)
         (filename (file-name-nondirectory backup-file-last-file))
         (revformat (format "%%0%dd" (length (int-to-string (length backup-file-last-data))))))
-    (cd (expand-file-name "~/.backups"))
+    (cd (expand-file-name backup-file-location))
     (dolist (data backup-file-last-data)
       (insert "Revision #" (format revformat i) " -- " (car data) " -- " filename " -- " (cdr data) "\n")
       (when (cond ((integerp backup-file-showing-inline-diffs) (= backup-file-showing-inline-diffs i))
