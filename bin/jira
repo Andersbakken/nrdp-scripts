@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[ -z "$JIRAHOST" ] && export JIRAHOST="http://jira.netflix.com"
+[ -z "$JIRAHOST" ] && export JIRAHOST="https://jira.netflix.com"
 [ -z "$JIRAUSER" ] && export JIRAUSER=`whoami`
 if [ -x "$JIRACLIPATH/jira.sh" ]; then
     ARGS=
