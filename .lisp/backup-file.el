@@ -129,7 +129,7 @@
   (let ((proc (start-process "git backup-file"
                              (current-buffer)
                              "git"
-                             ;; (concat "--git-dir=" (expand-file-name "~/.backups/.git"))
+                             "--no-pager"
                              "log"
                              "--pretty=format:%h%ar"
                              "--" (expand-file-name (concat backup-file-location file)))))
