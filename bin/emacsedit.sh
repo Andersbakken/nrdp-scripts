@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 EMACS=
 EMACSWAIT=yes
@@ -75,7 +75,7 @@ if [ -n "$FILE" ]; then
         exit 1
     fi
 
-    FILE=`findfile.sh $FILE`
+    FILE=`findfile.sh "$FILE"`
     if [ "CONFIRM" = "yes" ]; then
         echo -n "$FILE"
         read confirm
@@ -93,7 +93,7 @@ if [ -n "$FILE" ]; then
         [ -e "$FILE" ] && exit 0
         exit 1
     elif [ "$MODE" = "eval" ]; then
-        $TEST $EMACS -e "$FILE"
+        $TEST $EMACS -e "\"$FILE\""
     elif [ "$MODE" = "make" ]; then
         $TEST $EMACS -e "(raise-frame)"
         [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
@@ -110,7 +110,7 @@ if [ -n "$FILE" ]; then
         else
             JUMP=0
         fi
-        $TEST eval $EMACS "+${JUMP}" "$FILE"
+        $TEST eval $EMACS "+${JUMP}" "\"$FILE\""
     fi
 elif [ "$TEST" != "exists" ]; then
     $TEST eval $EMACS
