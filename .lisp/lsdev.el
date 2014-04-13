@@ -360,6 +360,28 @@
         )
     )
   )
+
+(defun lsdev-adddev (&optional name path)
+  (interactive)
+  (unless name
+    (setq name (read-from-minibuffer "Name: ")))
+  (unless path
+    (setq path (read-directory-name "Path: ")))
+
+  (if (and name path)
+      (let ((dev-directories (expand-file-name "~/.dev_directories"))
+            (home (expand-file-name "~/")))
+        (save-excursion
+          (if (string= home (substring path 0 (length home)))
+              (setq path (concat "~/" (substring path (length home)))))
+          (set-buffer (find-file-noselect dev-directories))
+          (goto-char (point-max))
+          (unless (= (point-at-bol) (point))
+            (insert "\n"))
+          (insert name "=" path "\n")
+          (basic-save-buffer)
+          (kill-buffer (current-buffer))))))
+
 (provide 'lsdev)
 
 
