@@ -47,9 +47,9 @@ define setup-detect-target
   shell ~/.gdb/detect-target.sh
   source /tmp/gdb_target_arch.gdb
   shell rm -f /tmp/gdb_info_target /tmp/gdb_target_arch.gdb /tmp/gdb_has_python.py
-  if ($PYTHON == 1)
-     source ~/.gdb/python.gdb
-  end
+  #if ($PYTHON == 1)
+  #   source ~/.gdb/python.gdb
+  #end
 end
 document setup-detect-target
 Sets up various globals used throughout the GDB macros to provide
