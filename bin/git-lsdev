@@ -44,7 +44,9 @@ ROOTDIRS=`lsdev.pl $LSDEV_OPTS -tp $LSDEV_DIRS`
 for ROOTDIR in $ROOTDIRS; do
    if [ -d "$ROOTDIR" ]; then
        cd "$ROOTDIR"
-       if git rev-parse >/dev/null 2>&1; then
+       ROOT=$(git rev-parse --show-toplevel) 2>/dev/null
+       if [ -d "$ROOT" ]; then
+           cd "$ROOT"
            if [ "$FIRST" = "yes" ]; then
                FIRST=no
                echo
@@ -75,6 +77,6 @@ for ROOTDIR in $ROOTDIRS; do
 done
 
 if [ -n "$ERROR" ]; then
-    echo "\n\nThere were errors!!!!!"
+    echo -e "\n\nThere were errors."
     exit 1
 fi
