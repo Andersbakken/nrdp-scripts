@@ -1,7 +1,7 @@
 (require 'bs)
-(require 'cl)
 (require 'ido)
 (require 'git)
+(eval-when-compile (require 'cl))
 
 (defgroup lsdev nil
   "Group for lsdev."
@@ -36,18 +36,22 @@
         (with-current-buffer buffer-or-dir (setq dir default-directory))))
     dir))
 
-(defvar _lsdev_name nil)
+(defvar lsdev/_name nil)
 
 (defun lsdev-name (buffer-or-dir &rest match)
   (let ((name nil))
-    (if (bufferp buffer-or-dir) (setq name (with-current-buffer buffer-or-dir _lsdev_name)))
+    (if (bufferp buffer-or-dir)
+        (setq name (with-current-buffer buffer-or-dir lsdev/_name)))
     (unless name
       ;; (message "Calculating lsdev for %s...%s" (if (bufferp buffer-or-dir) (buffer-file-name buffer-or-dir) buffer-or-dir))
       (let ((dir (lsdev-get-dir buffer-or-dir)))
-        (if dir (setq name (nth 0 (car (apply #'lsdev-dirs-internal "-c" dir "-p" match)))))
-        (if (bufferp buffer-or-dir) (with-current-buffer buffer-or-dir
-                                      (set (make-local-variable '_lsdev_name) (if name name t))))))
-       (if (stringp name) name nil)))
+        (if dir
+            (setq name (nth 0 (car (apply #'lsdev-dirs-internal "-c" dir "-p" match)))))
+        (if (bufferp buffer-or-dir)
+            (with-current-buffer buffer-or-dir
+              (set (make-local-variable 'lsdev/_name)
+                   (if name name t))))))
+       (and (stringp name) name)))
 
 (defun lsdev-root-dir (buffer-or-dir &rest match)
   (let ((dir (lsdev-get-dir buffer-or-dir)))
@@ -188,7 +192,7 @@
                            (if first (progn (setq first nil) (insert "\n*Builds*\n")))
                            (insert (current-kill 1))
                            (insert "\n"))
-                       (next-line)))))
+                       (forward-line)))))
                (setq buffer-read-only t)
                (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)
                (local-set-key (kbd "/") 'lsdev-cd-subdir)
@@ -213,9 +217,9 @@
          (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
          (alternatives (with-temp-buffer
                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
-                         (remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
+                         (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
          (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
-    (setq lsdev-cd-history (remove-duplicates lsdev-cd-history :from-end t :test 'equal))
+    (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (if (or (string= hd "") (not hd))
         (push "-b" args)
       (progn
@@ -259,7 +263,7 @@
 (defvar lsdev-compile-last-args (getenv "MAKEFLAGS"))
 (defvar lsdev-compile-args-history nil)
 
-(defun lsdev-compile-directory(directory &optional auto)
+(defun lsdev-compile-directory(&optional directory auto)
   (interactive)
   (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
                                    (auto "t")
@@ -287,13 +291,16 @@
   (interactive)
   (if lsdev-compile-last-directory
       (lsdev-compile-directory lsdev-compile-last-directory)
-    (lsdev-compile-directory nil)))
+    (lsdev-compile-directory)))
 
 (defun lsdev-compile-pop(&optional name)
   (interactive)
   (unless name (setq name "*compilation*"))
   (if (buffer-pop name)
-      (if (and (string= (buffer-name) name) (not (get-buffer-process (current-buffer))) (y-or-n-p "Recompile? ")) (recompile))
+      (if (and (string= (buffer-name) name)
+               (not (get-buffer-process (current-buffer)))
+               (y-or-n-p "Recompile? "))
+          (recompile))
     (lsdev-compile-directory)))
 
 (defun lsdev-shadows ()
@@ -301,29 +308,28 @@
 
 (defun lsdev-compile-shadow(&optional auto)
   (interactive "P")
-  (setq build-dir (expand-file-name default-directory))
-  (setq src-root (lsdev-root-dir build-dir))
-  (setq shadows (lsdev-dirs-build src-root))
-  (if shadows
-      (progn
-        (setq shadow-directory nil)
-        (if (= (length shadows) 1)
-            (setq shadow-directory (nth 1 (car shadows)))
-          (progn
-            (setq shadow (ido-completing-read "Shadow: " shadows))
-            (let ((s shadows))
-              (while (and s (not shadow-directory))
-                (progn
-                  (setq n (car s) s (cdr s))
-                  (if (string-equal (nth 0 n) shadow)
-                      (setq shadow-directory (nth 1 n))))))))
-        ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
-        (setq parent-makefile (or (find-ancestor-file "Makefile" shadow-directory)
-                                  (find-ancestor-file "build.ninja" shadow-directory)))
-        (if parent-makefile (setq shadow-directory (file-name-directory parent-makefile)))
+  (let* ((build-dir (expand-file-name default-directory))
+         (src-root (lsdev-root-dir build-dir))
+         (shadows (lsdev-dirs-build src-root))
+         (shadow-directory))
+    (when shadows
+      (setq shadow-directory nil)
+      (if (= (length shadows) 1)
+          (setq shadow-directory (nth 1 (car shadows)))
+        (let ((shadow (ido-completing-read "Shadow: " shadows))
+              (s shadows))
+          (while (and s (not shadow-directory))
+            (let ((n (car s)))
+              (setq s (cdr s))
+              (if (string-equal (nth 0 n) shadow)
+                  (setq shadow-directory (nth 1 n))))))))
+    ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
+      (let ((parent-makefile (or (find-ancestor-file "Makefile" shadow-directory)
+                                 (find-ancestor-file "build.ninja" shadow-directory))))
+        (if parent-makefile
+            (setq shadow-directory (file-name-directory parent-makefile)))
         (lsdev-compile-directory shadow-directory auto)
-        t)
-    nil))
+        t)))
 
 (defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
   (if (file-exists-p (concat src path))
