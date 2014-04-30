@@ -1,42 +1,54 @@
+(defgroup netflix-log nil "Mode for netflix log files." :group 'tools :prefix "netflix-log")
+
 (defface netflix-log-time-face
   '((t :inherit font-lock-constant-face))
-  "Face used to display timestamp in NRDP log files")
+  "Face used to display timestamp in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-thread-name-face
   '((t :inherit font-lock-doc-face))
-  "Face used to display thread name in NRDP log files")
+  "Face used to display thread name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-thread-id-face
   '((t :inherit font-lock-function-name-face))
-  "Face used to display thread id in NRDP log files")
+  "Face used to display thread id in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-area-name-face
   '((t :inherit font-lock-variable-name-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-trace-face
   '((t :inherit font-lock-preprocessor-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-debug-face
   '((t :inherit font-lock-preprocessor-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-info-face
   '((t :inherit default))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-warn-face
   '((t :inherit font-lock-warning-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-error-face
   '((t :inherit font-lock-warning-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defface netflix-log-fatal-face
   '((t :inherit font-lock-warning-face))
-  "Face used to display trace area name in NRDP log files")
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
 
 (defvar netflix-log-time-regexp
   "\\([0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\} \\)?[0-9]\\{2\\}:[0-9]\\{2\\}:[0-9]\\{2\\}.[0-9]\\{3\\}")
@@ -265,7 +277,7 @@
 
 (add-to-list 'magic-mode-alist '(netflix-log-is-log . netflix-log-mode))
 
-(defun nfltime (idx) (string-to-int (match-string idx)))
+(defun nfltime (idx) (string-to-number (match-string idx)))
 
 (defun netflix-log-time (&optional point)
   (save-excursion
