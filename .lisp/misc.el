@@ -33,16 +33,17 @@ the name of the value of file-name is present."
   (setq result nil)
   (let* ((buffers (buffer-list)))
     (while (and (not result) buffers)
-      (let* ((buffer (car buffers)))
-        (setq file-name (buffer-file-name buffer))
+      (let* ((buffer (car buffers))
+             (file-name (buffer-file-name buffer)))
         (message (concat "Looking at " file-name))
         (if (and file-name (or (not name) (string-match name file-name)))
             (progn
               (setq result file-name)
-              (save-excursion (set-buffer buffer) (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos)))))))
+              (with-current-buffer buffer
+                (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos)))))))
         (message (concat "Done Looking at " file-name))
         )
-        (setq buffers (cdr buffers))))
+      (setq buffers (cdr buffers))))
   result
   )
 
@@ -52,8 +53,8 @@ the name of the value of file-name is present."
   (setq result nil)
   (let* ((buffers (buffer-list)))
     (while (and (not result) buffers)
-      (let* ((buffer (car buffers)))
-        (setq file-name (buffer-file-name buffer))
+      (let* ((buffer (car buffers))
+             (file-name (buffer-file-name buffer)))
         (if (and file-name (or (not name) (string-match name file-name)))
             (setq result (file-name-directory file-name))))
         (setq buffers (cdr buffers))))
@@ -65,26 +66,27 @@ the name of the value of file-name is present."
 (defun rotate-windows (&optional toggle-split)
   "Rotate your windows or split the toggle"
   (interactive "P")
-  (if toggle-split
-      (toggle-window-split)
-    (cond ((not (> (count-windows) 1)) (message "You can't rotate a single window!"))
-          (t
-           (setq i 1)
-           (setq numWindows (count-windows))
-           (while  (< i numWindows)
-             (let* (
-                    (w1 (elt (window-list) i))
-                    (w2 (elt (window-list) (+ (% i numWindows) 1)))
-                    (b1 (window-buffer w1))
-                    (b2 (window-buffer w2))
-                    (s1 (window-start w1))
-                    (s2 (window-start w2))
-                    )
-               (set-window-buffer w1  b2)
-               (set-window-buffer w2 b1)
-               (set-window-start w1 s2)
-               (set-window-start w2 s1)
-               (setq i (1+ i))))))))
+  (let (i numWindows)
+    (if toggle-split
+        (toggle-window-split)
+      (cond ((not (> (count-windows) 1)) (message "You can't rotate a single window!"))
+            (t
+             (setq i 1)
+             (setq numWindows (count-windows))
+             (while  (< i numWindows)
+               (let* (
+                      (w1 (elt (window-list) i))
+                      (w2 (elt (window-list) (+ (% i numWindows) 1)))
+                      (b1 (window-buffer w1))
+                      (b2 (window-buffer w2))
+                      (s1 (window-start w1))
+                      (s2 (window-start w2))
+                      )
+                 (set-window-buffer w1  b2)
+                 (set-window-buffer w2 b1)
+                 (set-window-start w1 s2)
+                 (set-window-start w2 s1)
+                 (setq i (1+ i)))))))))
 
 (defun toggle-window-split (&optional splitter)
   (interactive "P")
@@ -118,8 +120,8 @@ the name of the value of file-name is present."
 (defvar tailf-history nil)
 (defun tailf-mark()
   (interactive) (setq buffer-read-only nil)
-  (end-of-buffer)
-  (insert-string (format-time-string "\n\n============== MARK: %Y-%m-%d %H:%M:%S %Z =====================\n\n"))
+  (goto-char (point-max))
+  (insert (format-time-string "\n\n============== MARK: %Y-%m-%d %H:%M:%S %Z =====================\n\n"))
   (setq buffer-read-only t))
 (defun tailf-clear()
   (interactive) (setq buffer-read-only nil)
@@ -142,25 +144,27 @@ the name of the value of file-name is present."
     (erase-buffer)
     (setq buffer-read-only t)
     (let ((process (start-process "tail -f" buffer "tail" "-100f" file)))
-      (process-kill-without-query process)
+      (set-process-query-on-exit-flag process nil)
       (pop-to-buffer buffer) process)))
 
 ;;====================
 ;; Carriage return bogusness
 ;;====================
+(defun --misc-replace-string-helper (from to)
+  (save-excursion
+    (goto-char (point-min))
+    (while (search-forward from nil t)
+      (replace-match to nil t))))
+
 (defun dos-to-unix ()
   "Replace \r\n with \n"
   (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    ( replace-string "\r\n" "\n" )))
+  (--misc-replace-string-helper "\r\n" "\n"))
 
 (defun unix-to-dos ()
   "Replace \n with \r\n"
   (interactive)
-  (save-excursion
-    (goto-char (point-min))
-    ( replace-string "\n" "\r\n" )))
+  (--misc-replace-string-helper "\n" "\r\n" ))
 
 (defun ediff-cleanup-buffer-b-handler ()
   (if ediff-buffer-B
@@ -339,7 +343,11 @@ the name of the value of file-name is present."
   )
 
 (defun find-corresponding-cpp-h ()
-  (let ((n (buffer-file-name)) (attempts) (all-attempts)(found nil))
+  (let ((n (buffer-file-name))
+        (attempts)
+        (all-attempts)
+        (start)
+        (found))
     (goto-char (point-min))
     (if (re-search-forward "\\(//\\|/\\*\\) *SWITCH_FILE: *\"" nil t)
         (progn
@@ -747,6 +755,10 @@ the name of the value of file-name is present."
 (setq compilation-parse-errors-filename-function (function compilation-parse-errors-filename))
 
 ;; (define-key global-map [remap goto-line] 'goto-line-with-feedback)
+(defun --misc-goto-line-helper (N)
+  (goto-char (point-min))
+  (forward-line (1- N)))
+
 (defun goto-line-with-feedback ()
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive)
@@ -758,13 +770,13 @@ the name of the value of file-name is present."
               (git-gutter-mode 0))
           (let ((res (read-from-minibuffer "Goto line: ")))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
-                   (goto-char (1+ (string-to-int (match-string 1 res)))))
+                   (goto-char (1+ (string-to-number (match-string 1 res)))))
                   ((string-match "^\\([0-9]+\\)%$" res)
-                   (goto-char (/ (* (point-max) (string-to-int (match-string 1 res))) 100)))
+                   (goto-char (/ (* (point-max) (string-to-number (match-string 1 res))) 100)))
                   ((string-match "^:?\\([0-9]+\\):\\([0-9]+\\):?$" res)
-                   (goto-line (string-to-int (match-string 1 res)))
-                   (forward-char (1- (string-to-int (match-string 1 res)))))
-                  (t (goto-line (string-to-int res))))))
+                   (--misc-goto-line-helper (string-to-number (match-string 1 res)))
+                   (forward-char (1- (string-to-number (match-string 1 res)))))
+                  (t (--misc-goto-line-helper (string-to-number res))))))
       (linum-mode -1)
       (if had-git-gutter
           (git-gutter-mode 1)))
