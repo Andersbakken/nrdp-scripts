@@ -81,16 +81,20 @@
       (progn
         (goto-char (- (point-max) 1))
         (if (re-search-backward "^[a-f0-9^]\\{8\\}[^)]*\\( [0-9]+\\)) ")
-            (let ((count (length (match-string 1)))
-                  (column (- (match-beginning 1) (point-at-bol))))
+            (let* ((count (length (match-string 1)))
+                   (column (- (match-beginning 1) (point-at-bol)))
+                   (from (format "^\\(.\\{%d\\}\\).\\{%d\\}\\(.*\\)$" column count))
+                   (to "\\1\\2"))
               (goto-char (point-min))
-              (replace-regexp (format "^\\(.\\{%d\\}\\).\\{%d\\}\\(.*\\)$" column count) "\\1\\2")))
+              (while (re-search-forward from nil t)
+                (replace-match to nil nil))))
         (goto-char (point-min))
         (agb-git-blame-mode)
         (setq buffer-read-only t)
         (switch-to-buffer buf)
-        (if norevision
-            (goto-line lineno))
+        (when norevision
+          (goto-char (point-min))
+          (forward-line (1- lineno)))
         )
       )
     )
@@ -123,7 +127,7 @@
         (match-string 1))))
 
 (defun agb-git-blame-buffer-visible (buffer)
-  (car (member-if #'(lambda (arg) (eq buffer (window-buffer arg))) (window-list))))
+  (car (cl-member-if #'(lambda (arg) (eq buffer (window-buffer arg))) (window-list))))
 
 (defun agb-git-blame-show-diff (&optional otherwindow)
   (interactive "P")
