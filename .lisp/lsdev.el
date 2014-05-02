@@ -338,8 +338,7 @@
       (when (and (> (length out) 0)
                  (not (string-match "^global: " out)))
         (setq out (substring out 0 (- (length out) 1)))
-        (if (file-exists-p out) out nil))))
-  )
+        (and (file-exists-p out) out)))))
 
 (defun lsdev-open-equivalent ()
   (interactive)
@@ -348,20 +347,22 @@
              (current-root (lsdev-root-dir (buffer-file-name)))
              (relative (substring (buffer-file-name) (length current-root)))
              (all (lsdev-dirs-all "src"))
+             (names)
              (alternatives))
         (while all
           (let* ((cur (car all))
                  (name (substring (car cur) 4))
-                 (path (car (cdr cur))))
-            (if (and (not (string= path current-root))
-                     (lsdev-file-path-in-project path relative))
-                (setq alternatives (append (list name) alternatives))))
+                 (path (car (cdr cur)))
+                 (file (and (not (string= path current-root))
+                            (lsdev-file-path-in-project path relative))))
+            (when file
+              (push name names)
+              (push (cons name file) alternatives)))
           (setq all (cdr all)))
         (if alternatives
-            (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) alternatives)))
+            (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
               (if project
-                  (find-file (lsdev-file-path-in-project (lsdev-dir-for-name (concat "src_" project)) relative))))
-
+                  (find-file (cdr (assoc project alternatives)))))
           )
         )
     )
