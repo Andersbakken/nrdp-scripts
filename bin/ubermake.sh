@@ -35,7 +35,7 @@ fi
 if [ -e "${MAKE_DIR}Makefile" ]; then
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
     true #ok, make it is...
-elif [ -e "${MAKE_DIR}SConstruct" ]; then
+elif [ -x "`which scons`" ] && [ -e "${MAKE_DIR}SConstruct" ]; then
     SCONS_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
          case $opt in
