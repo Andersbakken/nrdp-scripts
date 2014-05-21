@@ -1,6 +1,7 @@
 (require 'bs)
 (require 'ido)
 (require 'git)
+(require 'buffer-pop)
 (eval-when-compile (require 'cl))
 
 (defgroup lsdev nil

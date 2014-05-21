@@ -6,7 +6,7 @@
 (defconst hack-mode-find-file-mode-nth 3)
 (defconst hack-mode-find-log-nth 4)
 
-(defvar hack-mode-printf-format (cons "[%s:%d]" ", __func__, __LINE__"))
+(defvar hack-mode-printf-format (cons "[%s:%d]" ", __FILE__, __LINE__"))
 
 ;;default stuff (my preferred hack mode)
 (defun default-find-file-hook ()
