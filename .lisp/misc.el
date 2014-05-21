@@ -2,11 +2,11 @@
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
-              (if (equal (substring root -1) "/")
-                  root
-                (concat root "/")))
-              (t default-directory) ;; hmm, use default
-              )))
+                         (if (equal (substring root -1) "/")
+                             root
+                           (concat root "/")))
+                        (t default-directory) ;; hmm, use default
+                        )))
     (while (not (or (string-equal child "/") (string-equal child root-dir)))
       (setq child (substring child 0 (string-match "[^/]*/?$" child))))
     ;; if we did found a file!
@@ -17,9 +17,9 @@
   "Try to recursively go upwards from this directory and see if a file with
 the name of the value of file-name is present."
   (let ((check-dir (cond (directory ;; extrapolate from name
-              (if (equal (substring directory -1) "/")
-                  directory
-                (concat directory "/")))
+                          (if (equal (substring directory -1) "/")
+                              directory
+                            (concat directory "/")))
                          (t default-directory) ;; hmm, use default
                          )))
     (while (not (or (<= (length check-dir) 0) (string-equal check-dir "/") (file-exists-p (concat check-dir file-name))))
@@ -30,8 +30,8 @@ the name of the value of file-name is present."
 (defalias 'sam-find-ancestor-file 'find-ancestor-file)
 
 (defun what-file (&optional name) ;;I use this function from emacsclient!
-  (setq result nil)
-  (let* ((buffers (buffer-list)))
+  (let* ((buffers (buffer-list))
+         (result))
     (while (and (not result) buffers)
       (let* ((buffer (car buffers))
              (file-name (buffer-file-name buffer)))
@@ -41,25 +41,22 @@ the name of the value of file-name is present."
               (setq result file-name)
               (with-current-buffer buffer
                 (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos)))))))
-        (message (concat "Done Looking at " file-name))
-        )
-      (setq buffers (cdr buffers))))
-  result
-  )
+        (message (concat "Done Looking at " file-name)))
+      (setq buffers (cdr buffers)))
+    result))
 
 (defalias 'sam-what-file 'what-file)
 
 (defun what-directory (&optional name) ;;I use this function from emacsclient!
-  (setq result nil)
-  (let* ((buffers (buffer-list)))
+  (let* ((buffers (buffer-list))
+         (result))
     (while (and (not result) buffers)
       (let* ((buffer (car buffers))
              (file-name (buffer-file-name buffer)))
         (if (and file-name (or (not name) (string-match name file-name)))
             (setq result (file-name-directory file-name))))
-        (setq buffers (cdr buffers))))
-  result
-  )
+      (setq buffers (cdr buffers)))
+    result))
 
 (defalias 'sam-what-directory 'what-directory)
 
@@ -548,7 +545,7 @@ the name of the value of file-name is present."
               (message (substring res 0 (1- (length res))))))
         )
     (message "No strerror in $PATH"))
-    )
+  )
 
 ;;====================
 ;; clean up white spaces hook
@@ -563,16 +560,16 @@ the name of the value of file-name is present."
   (sam-fix-tabs (point-min) (point-max))
   (and (not buffer-read-only)
        (save-excursion
-     (goto-char (point-min))
-     (let ((count 0)
-           (bmp (buffer-modified-p)))
-       (while (re-search-forward "[ \t]+$" nil t)
-         (setq count (1+ count))
-         (replace-match "" t t))
-       (and (> count 0)
-        (progn
-          (set-buffer-modified-p bmp)
-          (message "Cleaned %d lines" count)))))))
+         (goto-char (point-min))
+         (let ((count 0)
+               (bmp (buffer-modified-p)))
+           (while (re-search-forward "[ \t]+$" nil t)
+             (setq count (1+ count))
+             (replace-match "" t t))
+           (and (> count 0)
+                (progn
+                  (set-buffer-modified-p bmp)
+                  (message "Cleaned %d lines" count)))))))
 (defvar sam-auto-clean-whitespace nil)
 (make-variable-buffer-local 'sam-auto-clean-whitespace)
 (defun sam-c-clean-out-spaces-hooked ()
@@ -742,7 +739,7 @@ the name of the value of file-name is present."
  *[Ee]rror\\|\[0-9]?\\(?:[^0-9\n]\\|$\\)\\|[0-9][0-9][0-9]\\)"
                           1 (2 . 4) (3 . 5) (6 . 7)))
 
-; (setq compilation-error-regexp-alist nil)
+                                        ; (setq compilation-error-regexp-alist nil)
 
 (require 'compile)
 (setq compilation-error-regexp-alist (delete 'gnu compilation-error-regexp-alist))
@@ -823,6 +820,21 @@ the name of the value of file-name is present."
               (occur (concat "\\(" phrase "\\|" pattern "\\)"))))))
     (call-interactively 'occur))
   )
+
+(defun insert-namespace (&optional namespace)
+  (interactive "P")
+  (setq namespace (cond ((stringp namespace) namespace)
+                        ((and namespace (listp namespace)) (read-from-minibuffer "Namespace: "))
+                        (t "netflix")))
+  (let ((ins (concat "using namespace " namespace ";")))
+    (save-excursion
+      (goto-char (point-min))
+      (when (not (search-forward ins nil t))
+        (goto-char (point-max))
+        (if (cond ((re-search-backward "^ *using namespace" nil t) (goto-char (point-at-eol)))
+                  ((re-search-backward "^ *# *include" nil t) (open-line-below) t)
+                  (t nil))
+            (insert "\n" ins))))))
 
 ;; ================================================================================
 ;; agb-isearch
