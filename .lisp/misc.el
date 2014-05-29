@@ -845,7 +845,7 @@ the name of the value of file-name is present."
 (defun agb-isearch-yank-word-or-char-from-beginning-of-symbol ()
   "Move to beginning of symbol before yanking word in isearch-mode."
   (interactive)
-  (if (= 0 (length isearch-string))
+  (if (and (= 0 (length isearch-string)) (bounds-of-thing-at-point 'symbol))
       (let ((start (point)))
         (beginning-of-thing 'symbol)
         (isearch-yank-char (- start (point)))))
