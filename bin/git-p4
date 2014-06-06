@@ -183,10 +183,10 @@ def getP4Branches(p4Branches, srcDepotPath, dstDepotPath):
     lostAndFoundBranches = set()
 
     for p4Branch in p4Branches:
-        details = p4Cmd("branch -o %s" % p4Branch)
+        details = p4Cmd("branch -o \"%s\"" % p4Branch)
         if details.has_key("Description"):
             gitOptions = extractSettingsGitLog(details["Description"])
-	else:
+        else:
             continue
         if not "branch" in gitOptions:
             continue
@@ -628,8 +628,8 @@ def p4ChangesForPaths(depotPaths, changeRange):
 
     changes = {}
     for line in output:
-	changeNum = int(line.split(" ")[1])
-	changes[changeNum] = True
+        changeNum = int(line.split(" ")[1])
+        changes[changeNum] = True
 
     changelist = changes.keys()
     changelist.sort()
@@ -764,7 +764,7 @@ class P4Submit(Command):
         self.confirmCommit = True
         self.pull = False
         self.origin = ""
-        self.commit = ""        
+        self.commit = ""
         self.detectRename = True
         self.verbose = False
         self.isWindows = (platform.system() == "Windows")
@@ -1219,7 +1219,7 @@ class P4Changes(Command):
             commit = commits[0]
             commits = commits[1:]
             self.printCommit(commit)
-            
+
         return True
 
 class P4Change(Command):
@@ -1429,10 +1429,10 @@ class P4Sync(Command):
     # - helper for streamP4Files
 
     def streamOneP4File(self, file, contents):
-	if file["type"] == "apple":
-	    print "\nfile %s is a strange apple file that forks. Ignoring" % \
-		file['depotFile']
-	    return
+        if file["type"] == "apple":
+            print "\nfile %s is a strange apple file that forks. Ignoring" % \
+                file['depotFile']
+            return
 
         relPath = url_decode(self.stripRepoPath(file['depotFile'], self.branchPrefixes))
         #if verbose:
@@ -1484,22 +1484,22 @@ class P4Sync(Command):
     # handle another chunk of streaming data
     def streamP4FilesCb(self, marshalled):
 
-	if marshalled.has_key('depotFile') and self.stream_have_file_info:
-	    # start of a new file - output the old one first
-	    self.streamOneP4File(self.stream_file, self.stream_contents)
-	    self.stream_file = {}
-	    self.stream_contents = []
-	    self.stream_have_file_info = False
+        if marshalled.has_key('depotFile') and self.stream_have_file_info:
+            # start of a new file - output the old one first
+            self.streamOneP4File(self.stream_file, self.stream_contents)
+            self.stream_file = {}
+            self.stream_contents = []
+            self.stream_have_file_info = False
 
-	# pick up the new file information... for the
-	# 'data' field we need to append to our array
-	for k in marshalled.keys():
-	    if k == 'data':
-		self.stream_contents.append(marshalled['data'])
-	    else:
-		self.stream_file[k] = marshalled[k]
+        # pick up the new file information... for the
+        # 'data' field we need to append to our array
+        for k in marshalled.keys():
+            if k == 'data':
+                self.stream_contents.append(marshalled['data'])
+            else:
+                self.stream_file[k] = marshalled[k]
 
-	self.stream_have_file_info = True
+        self.stream_have_file_info = True
 
     # Stream directly from "p4 files" into "git fast-import"
     def streamP4Files(self, files):
@@ -1531,17 +1531,17 @@ class P4Sync(Command):
             self.stream_contents = []
             self.stream_have_file_info = False
 
-	    # curry self argument
-	    def streamP4FilesCbSelf(entry):
-		self.streamP4FilesCb(entry)
+            # curry self argument
+            def streamP4FilesCbSelf(entry):
+                self.streamP4FilesCb(entry)
 
             files = ''
             for f in filesToRead:
                 file = self.p4FileName(f['path'], f['rev']);
                 if verbose:
                     sys.stderr.write('Print file: %s\n' % file)
-	        files += "%s\n" % file
-	    p4CmdList("-x - print", files, cb=streamP4FilesCbSelf)
+                files += "%s\n" % file
+            p4CmdList("-x - print", files, cb=streamP4FilesCbSelf)
 
             # do the last chunk
             if self.stream_file.has_key('depotFile'):
@@ -1553,7 +1553,7 @@ class P4Sync(Command):
         if self.p4Shelve:
             parent = lookupFromP4Change(details["shelf"], branch);
             branch = "refs/remotes/p4/shelf";
-	self.branchPrefixes = branchPrefixes
+        self.branchPrefixes = branchPrefixes
 
         if self.verbose:
             print "commit into %s" % branch
@@ -1618,7 +1618,7 @@ class P4Sync(Command):
 
         s = ''
         for (key, val) in self.users.items():
-	    s += "%s\t%s\n" % (key.expandtabs(1), val.expandtabs(1))
+            s += "%s\t%s\n" % (key.expandtabs(1), val.expandtabs(1))
 
         open(self.getUserCacheFilename(), "wb").write(s)
         self.userMapFromPerforceServer = True
@@ -2089,7 +2089,7 @@ class P4Sync(Command):
                 if self.changeRange == "@all":
                     self.changeRange = ""
                 elif self.changeRange == "@head":
-                    self.changeRange = ""                    
+                    self.changeRange = ""
                     revision = "#head"
                 elif ',' not in self.changeRange:
                     revision = self.changeRange
@@ -2110,7 +2110,7 @@ class P4Sync(Command):
 
         self.depotPaths = newPaths
 
-     	self.updatedBranches = set()
+        self.updatedBranches = set()
         self.loadUserMapFromCache()
         self.labels = {}
         if self.importLabels:
@@ -2176,11 +2176,11 @@ class P4Sync(Command):
                if len(self.changes) == 0:
                    if not self.silent:
                        print "No changes to import!"
-     	       else:
+               else:
                    if not self.silent and not self.detectBranches:
                        print "Import destination: %s" % self.branch
                    self.importChanges(self.changes)
-   		   if not self.silent:
+                   if not self.silent:
                        print ""
                        if len(self.updatedBranches) > 0:
                           print "Updated branches: "
@@ -2192,11 +2192,11 @@ class P4Sync(Command):
            if self.detectBranches and self.importBranches:
                for branch in self.knownBranches:
                    name = self.gitBranchName(branch)
-   		   p4Branch = self.refPrefix + name
+                   p4Branch = self.refPrefix + name
                    if not gitBranchExists(p4Branch):
                        print "Creating missing branch %s" % (p4Branch)
                        self.openFastImport()
-  		       self.importNewBranch(branch, "")
+                       self.importNewBranch(branch, "")
                        self.closeFastImport()
 
         for change in self.labels.keys():
@@ -2232,7 +2232,7 @@ class P4Rebase(Command):
         self.sync = False
 
     def run(self, args):
-        if self.sync:        
+        if self.sync:
             sync = P4Sync()
             sync.run([])
 
