@@ -1,4 +1,4 @@
-
+(require 'delsel)
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
@@ -654,7 +654,11 @@ the name of the value of file-name is present."
   (if (integerp prefix)
       (setq erase t))
   (if (and prefix (not (stringp prefix)) (not erase))
-      (insert-for-loop)
+      (indent-for-tab-command)
+    (let ((start (point)))
+      (insert "for (int i=0; i<10; ++i) {\n")
+      (insert "}\n")
+      (indent-region start (point)))
     (let (container it)
       (cond ((stringp prefix) (setq container prefix))
             ((region-active-p) (setq container (buffer-substring-no-properties (region-beginning) (region-end))))
@@ -832,7 +836,7 @@ the name of the value of file-name is present."
       (when (not (search-forward ins nil t))
         (goto-char (point-max))
         (if (cond ((re-search-backward "^ *using namespace" nil t) (goto-char (point-at-eol)))
-                  ((re-search-backward "^ *# *include" nil t) (open-line-below) t)
+                  ((re-search-backward "^ *# *include" nil t) (goto-char (point-at-eol) (insert "\n")))
                   (t nil))
             (insert "\n" ins))))))
 
