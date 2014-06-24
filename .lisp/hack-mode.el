@@ -89,7 +89,7 @@
           (insert "nrdp.log.error('" msg "'")
           (setq result (point)))
       (progn
-        (insert "netflix::Log::error"
+        (insert "Log::error"
                 "(TRACE_LOG, \"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format))
         (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))))
     (insert ");")
