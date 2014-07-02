@@ -52,7 +52,11 @@ elif [ -e "config.status" ]; then
     fi
     if [ "$RECONFIG_CAT" ]; then
         CONFIGURE=
-        cat "config.status"
+	if [ -e "`which source-highlight`" ]; then
+            source-highlight -i config.status -f esc --style-file=esc.style
+	else
+            cat "config.status"
+        fi
     else
         cat "config.status" | yank -c >/dev/null 2>&1
     fi
