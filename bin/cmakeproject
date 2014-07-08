@@ -7,4 +7,6 @@ fi
 
 echo "cmake_minimum_required(VERSION 2.8)" > CMakeLists.txt
 echo "include_directories(\${CMAKE_CURRENT_LIST_DIR})" >> CMakeLists.txt
+echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++0x\")" >> CMakeLists.txt
+echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS}\")" >> CMakeLists.txt
 echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
