@@ -183,6 +183,8 @@ def getP4Branches(p4Branches, srcDepotPath, dstDepotPath):
     lostAndFoundBranches = set()
 
     for p4Branch in p4Branches:
+        if not p4Branch:
+            continue
         details = p4Cmd("branch -o \"%s\"" % p4Branch)
         if details.has_key("Description"):
             gitOptions = extractSettingsGitLog(details["Description"])
