@@ -127,7 +127,7 @@ class SocketThread( threading.Thread ):
 
                 print "Waiting (%s:%d)\n" % (self.host, self.port)
 
-                time.sleep( 5 )
+                time.sleep( 1 )
             
                 continue
             
