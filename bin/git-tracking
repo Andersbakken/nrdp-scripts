@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if [ "$#" = 2 ]; then
     branch="$1"
     shift
@@ -15,7 +15,7 @@ lookupTracking() {
     if [ "$remote" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
         echo $merge | sed -e 's,^refs/remotes/,,'
     else
-        merge="`echo $merge | awk -F/ '{print $NF}'`"
+        merge="`echo $merge | sed -e 's,^refs\/heads\/,,'`"
         echo "$remote/$merge"
     fi
 }
