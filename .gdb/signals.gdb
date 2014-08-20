@@ -6,5 +6,9 @@ define nosigpipe
     nosignal SIGPIPE
 end
 
+define nosigint
+    nosignal SIGINT
+end
+
 nosigpipe
 nosignal SIGTTIN
