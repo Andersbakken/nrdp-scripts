@@ -101,6 +101,7 @@ if [ -n "$FILE" ]; then
     elif [ "$MODE" = "tail" ]; then
         $TEST $EMACS -e "(tailf \"$FILE\")"
     elif [ -n "$OFFSET" ]; then
+        $TEST $EMACS -e "(raise-frame)"
         $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
     else
         JUMP=
@@ -110,6 +111,7 @@ if [ -n "$FILE" ]; then
         else
             JUMP=0
         fi
+        $TEST $EMACS -e "(raise-frame)"
         $TEST eval $EMACS "+${JUMP}" "\"$FILE\""
     fi
 elif [ "$TEST" != "exists" ]; then
