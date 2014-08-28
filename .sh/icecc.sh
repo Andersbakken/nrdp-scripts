@@ -57,7 +57,7 @@ cleancs() {
             echo "$NAME($JOBS) is listening!"
         else
             echo "$NAME$($JOBS) is not listening!"
-            canblockcs $a && echo "blockcs $IP" >>"$CLEAN_FILE"
+            canblockcs $IP && echo "blockcs $IP" >>"$CLEAN_FILE"
         fi
     done
     [ -e "$CLEAN_FILE" ] && cat "$CLEAN_FILE" | nc "$ICECC_SCHEDULER_HOST" 8766
