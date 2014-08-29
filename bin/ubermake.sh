@@ -78,6 +78,7 @@ else
                *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                esac
            done
+           NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed 's,-j\>,-j1000,g'`
            ninja $NINJA_OPTIONS
            exit $?
        fi
