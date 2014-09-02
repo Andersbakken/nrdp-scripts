@@ -42,6 +42,10 @@ unblockcs() {
     done
 }
 
+listblocks() {
+    echo listblocks | nc "$ICECC_SCHEDULER_HOST" 8766
+}
+
 cleancs() {
     CLEAN_FILE="/tmp/cleancs.tmp"
     rm -f "$CLEAN_FILE"
