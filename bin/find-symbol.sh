@@ -22,6 +22,7 @@ while [ -n "$1" ]; do
         -h|--help)
             echo "$0 [--nm=/path/to/nm] [-n /path/to/nm] --symbol=symbol -s symbol dirs..."
             exit 0
+            ;;
         *)
             if [ -z "$dirs" ]; then
                 dirs="$1"
