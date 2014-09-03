@@ -5,12 +5,23 @@ nm=`which nm`
 symbol=
 while [ -n "$1" ]; do
     case "$1" in
-        --nm=*|-n=*)
+        --nm=*)
             nm=`echo $1 | sed -e 's,^[^=]*=,,'`
             ;;
-        --symbol=*|-s=*)
+        -n)
+            shift
+            nm="$1"
+            ;;
+        -s)
+            shift
+            symbol="$1"
+            ;;
+        --symbol=*)
             symbol=`echo $1 | sed -e 's,^[^=]*=,,'`
             ;;
+        -h|--help)
+            echo "$0 [--nm=/path/to/nm] [-n /path/to/nm] --symbol=symbol -s symbol dirs..."
+            exit 0
         *)
             if [ -z "$dirs" ]; then
                 dirs="$1"
