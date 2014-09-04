@@ -218,7 +218,7 @@
          (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
          (alternatives (with-temp-buffer
                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
-                         (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v]+") :test 'equal)))
+                         (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
          (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (if (or (string= hd "") (not hd))
