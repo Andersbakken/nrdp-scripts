@@ -20,7 +20,7 @@ gs()
     if [ "$CDD_FLAGS" = "-r" ] && [ "`lsdev.pl -r -l | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
         if [ -n "$PULL" ]; then
             git $PULL $PULL_FLAGS
-            git submodule update
+            git submodule update --init
         fi
         [ -n "$PUSH" ] && git $PUSH $PUSH_FLAGS
     else
