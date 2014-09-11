@@ -4,8 +4,19 @@ function syncdir
 {
     cd "$1"
     GITDIR=`git rev-parse --git-dir`
+    if [ -z "$GITDIR" ] && which lsdev.pl >/dev/null 2>&1; then
+        SRCDIR=`lsdev.pl -b src -tp -l`
+        if [ -d "$SRCDIR/.git" ]; then
+            GITDIR="$SRCDIR/.git"
+        fi
+    fi
+    if [ -z "$GITDIR" ]; then
+        echo "Not a git tree!"
+        return
+    fi
     ROOTDIR=`cd $GITDIR/.. && pwd`
 
+    cd "$ROOTDIR"
     stashed=
     if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         stashed=1
