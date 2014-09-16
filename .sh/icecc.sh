@@ -13,7 +13,7 @@ fi
 canblockcs() {
     HOST=`nslookup $1  | grep 'name = ' | sed 's,.*name = ,,'`
     echo "$1 -> $HOST"
-    for w in smagnuson pnavarro abakken jhanssen mdxapp2 lgud01-nrdp lgud-02 ; do
+    for w in smagnuson pnavarro abakken jhanssen ppissanetzky mdxapp2 lgud01-nrdp lgud-02; do
         if echo "$HOST" | grep -q "$w"; then
             echo " + WHITELISTED!"
             return 1
