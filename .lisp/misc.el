@@ -868,7 +868,7 @@ the name of the value of file-name is present."
     (error "You have to set mktest-directory to something."))
   (unless name
     (setq name (read-from-minibuffer "Test name: ")))
-  (let* ((dir (expand-file-name (concat (getenv "TEST_DIRECTORY") "/" name "/")))
+  (let* ((dir (expand-file-name (concat mktest-directory "/" name "/")))
          (main.cpp (concat dir "main.cpp"))
          (cmake-arguments (list dir))
          (CMakeLists.txt (concat dir "CMakeLists.txt")))
@@ -915,9 +915,71 @@ the name of the value of file-name is present."
           (setq all (cdr all))))
       ;; (message "foobar %s" (ido-completing-read "Test: " dirs))))
       (setq test (ido-completing-read "Test: " dirs))))
-  (let* ((dir (expand-file-name (concat (getenv "TEST_DIRECTORY") "/" test "/")))
+  (let* ((dir (expand-file-name (concat mktest-directory "/" test "/")))
          (main.cpp (concat dir "main.cpp")))
     (cond ((file-exists-p main.cpp) (find-file main.cpp))
           ((file-exists-p dir) (find-file dir))
           (t (message "No directory")))))
 
+(defvar mkgibbontest-directory (let* ((prefix (getenv "NF_HTTPD_PREFIX"))
+                                      (index (string-match ":" prefix)))
+                                 (and index (substring prefix 0 (1- index)))))
+
+(defvar mkgibbontest-template
+  (concat "function keyboardHandler(key)\n"
+          "{\n"
+          "    if (key.data.type == \"press\" && key.data.text == 'a') {\n"
+          "        nrdp.gibbon.load({ url:\"http://en.wikipedia.org/wiki/Leif_Erikson\",\n"
+          "                           headers: {\"X-Gibbon-Cache-Control\":\"key=foo,refresh,no-memory-cache\"}\n"
+          "                         }, networkResponseHandler);\n"
+          "    }\n"
+          "    // nrdp.log.console(\"Got Key: \" + JSON.stringify(key));\n"
+          "}\n"
+          "function networkResponseHandler(event) {\n"
+          "    nrdp.log.console(\"Got response \" + event.state + \" data: \" + event.size);\n"
+          "}\n"
+          "function onImageLoaded(event) {\n"
+          "    nrdp.log.console(\"Got image loaded \" + JSON.stringify(event));\n"
+          "}\n"
+          "function onTimeout() {\n"
+          "    nrdp.gibbon.load({ url:\"http://en.wikipedia.org/wiki/Leif_Erikson\",\n"
+          "                       headers: {\"X-Gibbon-Cache-Control\":\"key=foo,refresh,no-memory-cache\"}\n"
+          "                     }, networkResponseHandler);\n"
+          "}\n"
+          "\n"
+          "var w;\n"
+          "function main() {\n"
+          "    nrdp.gibbon.addEventListener(\"key\", keyboardHandler);\n"
+          "    // nrdp.gibbon.load({url:\"http://en.wikipedia.org/wiki/Leif_Erikson\", headers: {\"X-Gibbon-Cache-Control:max-age:1000}}, networkResponseHandler);\n"
+          "    nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:\"#00ff00\"});\n"
+          "    // w.image.url = {url:\"http://cdn-1.nflximg.com/images/7516/817516.jpg\"};\n"
+          "    // nrdp.gibbon.setTimeout(onTimeout, 0);\n"
+          "}\n"
+          "nrdp.gibbon.init(main);\n"))
+
+
+(defun mkgibbontest (&optional name)
+  (interactive)
+  (unless mkgibbontest-directory
+    (error "You have to set mkgibbontest-directory to something."))
+  (unless name
+    (setq name (read-from-minibuffer "Gibbon test name: ")))
+  (let ((file (expand-file-name (concat mkgibbontest-directory "/gibbontest-" name ".js"))))
+    (if (file-exists-p file)
+        (progn
+          (message "Test already exists")
+          (find-file file))
+      (find-file file)
+      (insert mkgibbontest-template)
+      (basic-save-buffer))))
+
+(defun cdgibbontest (&optional test)
+  (interactive)
+  (unless mkgibbontest-directory
+    (error "You have to set mkgibbontest-directory to something."))
+  (unless test
+    (let* ((tests (directory-files mkgibbontest-directory nil "gibbontest-"))
+           (test (and tests (ido-completing-read "Gibbon test: " tests)))
+           (abspath (concat mkgibbontest-directory "/" test)))
+      (if (file-exists-p abspath)
+          (find-file abspath)))))
