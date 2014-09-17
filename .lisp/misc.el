@@ -855,3 +855,47 @@ the name of the value of file-name is present."
         (beginning-of-thing 'symbol)
         (isearch-yank-char (- start (point)))))
   (isearch-yank-word-or-char))
+
+;; ================================================================================
+;; mktest
+;; ================================================================================
+
+(defvar mktest-cmake-args nil)
+(defvar mktest-directory (getenv "TEST_DIRECTORY"))
+(defun mktest (&optional name)
+  (interactive)
+  (unless mktest-directory
+    (error "You have to set mktest-directory to something."))
+  (unless name
+    (setq name (read-from-minibuffer "Test name: ")))
+  (let* ((dir (expand-file-name (concat (getenv "TEST_DIRECTORY") "/" name "/")))
+         (main.cpp (concat dir "main.cpp"))
+         (cmake-arguments (list dir))
+         (CMakeLists.txt (concat dir "CMakeLists.txt")))
+    (if (file-exists-p main.cpp)
+        (progn
+          (message "Test already exists")
+          (find-file main.cpp))
+      (mkdir dir t)
+      (with-temp-buffer
+        (insert "cmake_minimum_required(VERSION 2.8)\n"
+                "include_directories(${CMAKE_CURRENT_LIST_DIR})\n"
+                "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++0x\")\n"
+                "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS}\")\n"
+                "add_executable(asasasas main.cpp)\n")
+        (write-region (point-min) (point-max) CMakeLists.txt))
+      (find-file main.cpp)
+      (insert "int main(int argc, char **argv)\n"
+              "{\n"
+              "    \n"
+              "}\n")
+      (basic-save-buffer)
+      (goto-char 35)
+      (apply #'start-process
+             "*mktest-cmake*"
+             nil
+             "cmake"
+             (cond ((null mktest-cmake-args) cmake-arguments)
+                   ((listp mktest-cmake-args) (append cmake-arguments mktest-cmake-args))
+                   (t cmake-arguments))))))
+
