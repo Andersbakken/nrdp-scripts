@@ -899,3 +899,25 @@ the name of the value of file-name is present."
                    ((listp mktest-cmake-args) (append cmake-arguments mktest-cmake-args))
                    (t cmake-arguments))))))
 
+(defun cdtest (&optional test)
+  (interactive)
+  (unless mktest-directory
+    (error "You have to set mktest-directory to something."))
+  (unless test
+    (let ((dirs)
+          (all (directory-files-and-attributes mktest-directory)))
+      (while all
+        (let ((name (caar all)))
+          (unless (or (string= name ".")
+                      (string= name "..")
+                      (not (nth 1 (car all))))
+            (setq dirs (cons name dirs)))
+          (setq all (cdr all))))
+      ;; (message "foobar %s" (ido-completing-read "Test: " dirs))))
+      (setq test (ido-completing-read "Test: " dirs))))
+  (let* ((dir (expand-file-name (concat (getenv "TEST_DIRECTORY") "/" test "/")))
+         (main.cpp (concat dir "main.cpp")))
+    (cond ((file-exists-p main.cpp) (find-file main.cpp))
+          ((file-exists-p dir) (find-file dir))
+          (t (message "No directory")))))
+
