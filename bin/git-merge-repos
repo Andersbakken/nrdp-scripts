@@ -1,0 +1,108 @@
+#!/bin/bash
+
+sources=()
+branches=()
+
+newrepo=
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-h)
+            echo "git merge-repos --repo=/path/to/new/repo --branch=master --branch=14.1 --source=/path/to/repo --source=/tmp/to/repo2"
+            exit 0
+            ;;
+        --repo=*)
+            if [ -n "$newrepo" ]; then
+                echo "Already specified --repo=$newrepo"
+                exit 1
+            fi
+            newrepo=`echo $1 | sed -e 's,^--repo=,,'`
+            ;;
+        --branch=*)
+            branches+=("`echo $1 | sed -e 's,^--branch=,,'`")
+            ;;
+        --source=*)
+            sources+=("`echo $1 | sed -e 's,^--source=,,'`")
+            ;;
+        *)
+            echo "Unknown command line switch $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+# if [ "$count" -eq 0 ]; then
+#     echo "No source repos specified"
+#     exit 1
+# fi
+
+if [ -z "$newrepo" ]; then
+    echo "No --repo specified"
+    exit 1
+fi
+
+if [ -e "$newrepo" ]; then
+    echo "$newrepo already exists..."
+    exit 1
+fi
+
+if [ "${#sources[@]}" -eq 0 ]; then
+    echo "No sources specified"
+    exit 1
+fi
+
+if [ "${#branches[@]}" -eq 0 ]; then
+    echo "No branches specified"
+    exit 1
+fi
+
+# echo "$newrepo"
+# echo "${sources[@]}"
+# echo "${branches[@]}"
+
+
+mkdir -p "$newrepo"
+cd "$newrepo"
+git init
+
+idx=0
+for source in "${sources[@]}"; do
+    sourcename=`basename $source | sed -e 's,\.git,,'`
+    # mkdir "$sourcename"
+    # cd "$sourcename"
+    git clone "$source"
+    cd "$sourcename"
+    git filter-branch --index-filter \
+        'git ls-files -s | sed "s-\t-&code/-" |
+     GIT_INDEX_FILE="$GIT_INDEX_FILE.new" \
+     git update-index --index-info &&
+     mv "$GIT_INDEX_FILE.new" "$GIT_INDEX_FILE"' HEAD
+    # git filter-branch --index-filter
+    cd ..
+    # git remote add $idx "$source"
+    # git fetch $idx
+    # for branch in "${branches[@]}"; do
+    #     git log --pretty="%ct %H" $idx/$branch >> ${branch}.in
+    # done
+    # idx=`expr $idx + 1`
+done
+
+# for branch in "${branches[@]}"; do
+#     sort -n ${branch}.in > $branch
+#     git checkout -b $branch
+#     git commit --allow-empty -m "Initial commit $branch"
+#     cat $branch | awk '{print $2}' | while read commit; do
+#         git cherry-pick --allow-empty "$commit"
+#         while [ -e ".git/CHERRY_PICK_HEAD" ]; do
+#             read -p "Fix conflicts for $commit. Then hit enter." fixed
+#         done
+
+#     done
+# done
+# idx=0
+# while [ $idx -lt $count ]; do
+
+
+# done
+
+
