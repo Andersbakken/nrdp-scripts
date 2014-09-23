@@ -70,39 +70,50 @@ for source in "${sources[@]}"; do
     sourcename=`basename $source | sed -e 's,\.git,,'`
     # mkdir "$sourcename"
     # cd "$sourcename"
-    git clone "$source"
-    cd "$sourcename"
-    git filter-branch --index-filter \
-        'git ls-files -s | sed "s-\t-&code/-" |
-     GIT_INDEX_FILE="$GIT_INDEX_FILE.new" \
-     git update-index --index-info &&
-     mv "$GIT_INDEX_FILE.new" "$GIT_INDEX_FILE"' HEAD
-    # git filter-branch --index-filter
-    cd ..
-    # git remote add $idx "$source"
-    # git fetch $idx
-    # for branch in "${branches[@]}"; do
-    #     git log --pretty="%ct %H" $idx/$branch >> ${branch}.in
-    # done
-    # idx=`expr $idx + 1`
+    git remote add $sourcename $source
+done
+git fetch --all
+
+function moveFile()
+{
+    test -f "$1" && git mv "$1" "$2"
+}
+
+for branch in "${branches[@]}"; do
+    git checkout -b $branch
+    git commit -m "Initial commit $branch" --allow-empty
+    for source in "${sources[@]}"; do
+        sourcename=`basename $source | sed -e 's,\.git,,'`
+        # git merge -m "Merge branch $branch of $source"  $sourcename/$branch
+        git pull --no-edit $sourcename $branch
+        moveFile src/CMakeLists.txt src/${sourcename}.cmake
+        moveFile CMakeLists.txt ${sourcename}.cmake
+        moveFile tests/CMakeLists.txt tests/${sourcename}.cmake
+        moveFile tools/CMakeLists.txt tools/${sourcename}.cmake
+        moveFile cmake/include.h.in cmake/${sourcename}.include.h.in
+        moveFile .gitignore .gitignore.${sourcename}
+        git rm .configure.helper
+        git rm configure
+        moveFile dist_files.txt dist_files.txt.${sourcename}
+        moveFile scripts/dist/dist.sh scripts/dist/dist.${sourcename}.sh
+        moveFile scripts/dist/dist_buildnumber.sh scripts/dist/dist_buildnumber.${sourcename}.sh
+        moveFile scripts/dist/dist_buildnumber.sh scripts/dist/dist_buildnumber.${sourcename}.sh
+        moveFile scripts/dist/dist_copy.sh scripts/dist/dist_copy.${sourcename}.sh
+        git commit -m "Rename common files $sourcename"
+    done
 done
 
-# for branch in "${branches[@]}"; do
-#     sort -n ${branch}.in > $branch
-#     git checkout -b $branch
-#     git commit --allow-empty -m "Initial commit $branch"
-#     cat $branch | awk '{print $2}' | while read commit; do
-#         git cherry-pick --allow-empty "$commit"
-#         while [ -e ".git/CHERRY_PICK_HEAD" ]; do
-#             read -p "Fix conflicts for $commit. Then hit enter." fixed
-#         done
+cp ./scripts/configure/configure .
+git add configure
+./scripts/configure/genconfigure.pl
 
-#     done
-# done
-# idx=0
-# while [ $idx -lt $count ]; do
+echo "cmake_minimum_required(VERSION 2.8)" > CMakeLists.txt
+echo "project(nrdp)" >> CMakeLists.txt
+echo "include(nrdapp.cmake)" >> CMakeLists.txt
+echo "include(nrdlib.cmake)" >> CMakeLists.txt
+echo "include(mdxlib.cmake)" >> CMakeLists.txt
 
 
-# done
+
 
 
