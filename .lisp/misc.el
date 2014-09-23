@@ -923,7 +923,7 @@ the name of the value of file-name is present."
 
 (defvar mkgibbontest-directory (let* ((prefix (getenv "NF_HTTPD_PREFIX"))
                                       (index (string-match ":" prefix)))
-                                 (and index (substring prefix 0 (1- index)))))
+                                 (and index (substring prefix 0 index))))
 
 (defvar mkgibbontest-template
   (concat "function keyboardHandler(key)\n"
