@@ -26,7 +26,7 @@ while [ "$#" -gt 0 ]; do
         -e|--edit|-o|--open)
             editfile=1
             ;;
-        -[0-9]*) 
+        -[0-9]*)
             choose_opts="$choose_opts $1"
             ;;
         *)
@@ -80,6 +80,7 @@ fi
 if [ "$write" = "1" ]; then
     if [ "$stub" = "1" ]; then
         cat >$test_file <<EOF
+/*global nrdp*/
 function keyboardHandler(key)
 {
     if (key.data.type == "press" && key.data.text == 'a') {
@@ -112,7 +113,7 @@ function main() {
 nrdp.gibbon.init(main);
 EOF
     elif [ -e "$url" ]; then
-	cp -f "$url" "$test_file"
+    cp -f "$url" "$test_file"
     else
         if which jira >/dev/null 2>&1; then
             if [ -z "$url" ]; then

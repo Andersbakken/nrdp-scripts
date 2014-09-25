@@ -899,6 +899,18 @@ the name of the value of file-name is present."
                    ((listp mktest-cmake-args) (append cmake-arguments mktest-cmake-args))
                    (t cmake-arguments))))))
 
+;; (defun cdtest-files (dir dirs &optional filter)
+;;   (let ((all directory-files-and-attributes dir nil filter t)
+;;         (ret))
+;;     (while all
+;;       (let ((item (car all)))
+;;         (setq all (cdr all))
+;;         (if (cond ((name= "." (car item)) nil)
+;;                   ((name= ".." (car item)) nil)
+;;                   (dirs (nth 1 item))
+;;                   (t (not (nth 1 item))))
+
+
 (defun cdtest (&optional test)
   (interactive)
   (unless mktest-directory
@@ -926,7 +938,8 @@ the name of the value of file-name is present."
                                  (and index (substring prefix 0 index))))
 
 (defvar mkgibbontest-template
-  (concat "function keyboardHandler(key)\n"
+  (concat "/*global nrdp*/\n"
+          "function keyboardHandler(key)\n"
           "{\n"
           "    if (key.data.type == \"press\" && key.data.text == 'a') {\n"
           "        nrdp.gibbon.load({ url:\"http://en.wikipedia.org/wiki/Leif_Erikson\",\n"
