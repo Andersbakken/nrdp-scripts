@@ -837,7 +837,7 @@ the name of the value of file-name is present."
       (when (not (search-forward ins nil t))
         (goto-char (point-max))
         (if (cond ((re-search-backward "^ *using namespace" nil t) (goto-char (point-at-eol)))
-                  ((re-search-backward "^ *# *include" nil t) (goto-char (point-at-eol) (insert "\n")))
+                  ((re-search-backward "^ *# *include" nil t) (goto-char (point-at-eol)) (insert "\n"))
                   (t nil))
             (insert "\n" ins))))))
 
