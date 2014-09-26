@@ -860,6 +860,24 @@ the name of the value of file-name is present."
 ;; mktest
 ;; ================================================================================
 
+
+(defun misc-compare-files-by-modification-time (l r)
+  (time-less-p (nth 5 l) (nth 5 r)))
+
+(defun misc-directory-files-helper (dir match dirsonly sortbymodicationtime)
+  (let ((all (directory-files-and-attributes dir nil match t))
+        (ret))
+    (if sortbymodicationtime
+        (sort all 'misc-compare-files-by-modification-time))
+    (while all
+      (let ((name (caar all)))
+        (unless (or (string= name ".")
+                    (string= name "..")
+                    (and dirsonly (not (nth 1 (car all)))))
+          (setq ret (cons name ret)))
+        (setq all (cdr all))))
+    ret))
+
 (defvar mktest-cmake-args nil)
 (defvar mktest-directory (getenv "TEST_DIRECTORY"))
 (defun mktest (&optional name)
@@ -899,34 +917,13 @@ the name of the value of file-name is present."
                    ((listp mktest-cmake-args) (append cmake-arguments mktest-cmake-args))
                    (t cmake-arguments))))))
 
-;; (defun cdtest-files (dir dirs &optional filter)
-;;   (let ((all directory-files-and-attributes dir nil filter t)
-;;         (ret))
-;;     (while all
-;;       (let ((item (car all)))
-;;         (setq all (cdr all))
-;;         (if (cond ((name= "." (car item)) nil)
-;;                   ((name= ".." (car item)) nil)
-;;                   (dirs (nth 1 item))
-;;                   (t (not (nth 1 item))))
-
-
 (defun cdtest (&optional test)
   (interactive)
   (unless mktest-directory
     (error "You have to set mktest-directory to something."))
   (unless test
-    (let ((dirs)
-          (all (directory-files-and-attributes mktest-directory)))
-      (while all
-        (let ((name (caar all)))
-          (unless (or (string= name ".")
-                      (string= name "..")
-                      (not (nth 1 (car all))))
-            (setq dirs (cons name dirs)))
-          (setq all (cdr all))))
-      ;; (message "foobar %s" (ido-completing-read "Test: " dirs))))
-      (setq test (ido-completing-read "Test: " dirs))))
+    (let ((dirs (misc-directory-files-helper mktest-directory nil t t)))
+      (setq test (or (ido-completing-read (format "Test (default %s): " (car dirs)) dirs) (car dirs)))))
   (let* ((dir (expand-file-name (concat mktest-directory "/" test "/")))
          (main.cpp (concat dir "main.cpp")))
     (cond ((file-exists-p main.cpp) (find-file main.cpp))
@@ -970,7 +967,6 @@ the name of the value of file-name is present."
           "}\n"
           "nrdp.gibbon.init(main);\n"))
 
-
 (defun mkgibbontest (&optional name)
   (interactive)
   (unless mkgibbontest-directory
@@ -990,9 +986,8 @@ the name of the value of file-name is present."
   (interactive)
   (unless mkgibbontest-directory
     (error "You have to set mkgibbontest-directory to something."))
-  (unless test
-    (let* ((tests (directory-files mkgibbontest-directory nil "gibbontest-"))
-           (test (and tests (ido-completing-read "Gibbon test: " tests)))
-           (abspath (concat mkgibbontest-directory "/" test)))
+    (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
+           (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
+           (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
       (if (file-exists-p abspath)
-          (find-file abspath)))))
+          (find-file abspath))))
