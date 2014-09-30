@@ -934,6 +934,10 @@ the name of the value of file-name is present."
                                       (index (string-match ":" prefix)))
                                  (and index (substring prefix 0 index))))
 
+(defvar mkgibbontest-webprefix (let* ((prefix (getenv "NF_HTTPD_PREFIX"))
+                                      (index (string-match ":" prefix)))
+                                 (and index (substring prefix (1+ index)))))
+
 (defvar mkgibbontest-template
   (concat "/*global nrdp*/\n"
           "function keyboardHandler(key)\n"
@@ -967,6 +971,9 @@ the name of the value of file-name is present."
           "}\n"
           "nrdp.gibbon.init(main);\n"))
 
+(defun mkgibbontest-copy (name)
+  (kill-new (concat mkgibbontest-webprefix "/" name)))
+
 (defun mkgibbontest (&optional name)
   (interactive)
   (unless mkgibbontest-directory
@@ -979,6 +986,7 @@ the name of the value of file-name is present."
           (message "Test already exists")
           (find-file file))
       (find-file file)
+      (mkgibbontest-copy (file-name-nondirectory file))
       (insert mkgibbontest-template)
       (basic-save-buffer))))
 
@@ -989,5 +997,6 @@ the name of the value of file-name is present."
     (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
            (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
            (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
-      (if (file-exists-p abspath)
-          (find-file abspath))))
+      (when (file-exists-p abspath)
+        (mkgibbontest-copy (file-name-nondirectory abspath))
+        (find-file abspath))))
