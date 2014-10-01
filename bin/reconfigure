@@ -4,9 +4,6 @@ while [ "$1" ]; do
         RECONFIG_RM=1
     elif [ "$1" = "-cat" ]; then
         RECONFIG_CAT=1
-    elif [ "$1" = "-find" ]; then
-        RECONFIG_FIND=1
-        RECONFIG_CAT=1
     elif [ "$1" = "-reset" ]; then
         RECONFIG_RESET=1
     elif [ "$1" = "-editor" ] || [ "$1" = "-edit" ]; then
@@ -16,22 +13,19 @@ while [ "$1" ]; do
     fi
     shift
 done
- if [ "$RESET" -a "$EDIT" ] || [ "$RESET" -a "$CAT" ]; then
+if [ "$RESET" -a "$EDIT" ] || [ "$RESET" -a "$CAT" ]; then
     echo "Invalid combination of arguments." >2
     return 1
 fi
- BUILD=
+BUILD=
 if [ -d "$1" ]; then
     BUILD="$1"
     shift
 fi
-if [ "$RECONFIG_FIND" ]; then
-    BUILD=`lsdev.pl build $BUILD -r $@`
-fi
 if [ -z "$BUILD" ] || [ ! -e "$BUILD/config.status" ]; then
     BUILD=`lsdev.pl build $BUILD -r`
 fi
- CONFIGURE=
+CONFIGURE=
 cd "$BUILD"
 echo "Root: $BUILD"
 if [ "$RECONFIG_RESET" ]; then
@@ -52,9 +46,9 @@ elif [ -e "config.status" ]; then
     fi
     if [ "$RECONFIG_CAT" ]; then
         CONFIGURE=
-	if [ -e "`which source-highlight`" ]; then
+        if [ -e "`which source-highlight`" ]; then
             source-highlight -i config.status -f esc --style-file=esc.style
-	else
+        else
             cat "config.status"
         fi
     else

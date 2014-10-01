@@ -20,18 +20,24 @@ findancestor() {
 MAKE_DIR=
 MAKE_OPTIONS=
 UBERTAGS=
+LSDEV_ARGS=
 while [ "$#" -gt 0 ]; do
     case $1 in
-    -C) shift; MAKE_DIR="$1" ;;
-    -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
-    -r|--rtags) UBERTAGS=1 ;;
-    *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
+        -C) shift; MAKE_DIR="$1" ;;
+        -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
+        -r|--rtags) UBERTAGS=1 ;;
+        -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
+         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
     shift
 done
+
 if [ -n "$MAKE_DIR" ] && ! echo $MAKE_DIR | grep --quiet "/$"; then
     MAKE_DIR="${MAKE_DIR}/"
+elif [ -z "$MAKE_DIR" ]; then
+    MAKE_DIR=`lsdev.pl build -tp $LSDEV_ARGS`
 fi
+
 if [ -e "${MAKE_DIR}Makefile" ]; then
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
     true #ok, make it is...
