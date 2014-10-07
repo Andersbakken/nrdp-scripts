@@ -445,11 +445,11 @@ sub generateName {
     my ($name, $source) = @_;
     if($source) {
         my $src_root = findRoot($source);
-        if(isPathSame($src_root->{path}, $source)) {
-            $name = "${src_prefix}${name}";
+        my $src_name = $src_root->{name};
+        $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
+        if(isPathSame($src_root->{source}, $source)) {
+            $name = "${src_prefix}${src_name}";
         } else {
-            my $src_name = $src_root->{name};
-            $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
             $name = "${build_prefix}${name}";
         }
     } else {
