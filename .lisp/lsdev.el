@@ -333,7 +333,7 @@
         t)))
 
 (defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
-  (if (file-exists-p (concat src path))
+  (if (file-exists-p (concat src "/" path))
       (concat src path)
     (let ((out (shell-command-to-string (format "GTAGSROOT=%s global -Poa /%s" src (file-name-nondirectory path)))))
       (when (and (> (length out) 0)
