@@ -448,7 +448,7 @@ sub generateName {
         my $src_name = $src_root->{name};
         $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
         if(isPathSame($src_root->{source}, $source)) {
-            $name = "${src_prefix}${src_name}";
+            $name = "${src_prefix}${name}";
         } else {
             $name = "${build_prefix}${name}";
         }
