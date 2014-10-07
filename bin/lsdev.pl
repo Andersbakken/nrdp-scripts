@@ -433,6 +433,7 @@ sub addRoot {
         $root_key = $src_prefix . "::" . $root_key;
     }
     $root_key .= "::" . $name;
+    #$root{source} = $roots{$root_key}->{source} if(!$source && $roots{$root_key});
     $roots{$root_key} = \%root;
     if($verbose) {
         display "Named Root($root_key) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
@@ -442,13 +443,15 @@ sub addRoot {
 
 sub generateName {
     my ($name, $source) = @_;
-    #$name =~ s,-,_,g;
     if($source) {
         my $src_root = findRoot($source);
-        my $src_name = $src_root->{name};
-        #$src_name =~ s,-,_,g;
-        $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
-        $name = "${build_prefix}${name}";
+        if(isPathSame($src_root->{path}, $source)) {
+            $name = "${src_prefix}${name}";
+        } else {
+            my $src_name = $src_root->{name};
+            $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
+            $name = "${build_prefix}${name}";
+        }
     } else {
         $name = "${src_prefix}${name}";
     }
@@ -691,7 +694,15 @@ foreach(keys(%dev_roots)) {
     my $dev_root_name = $_;
     my $dev_root = $dev_roots{$dev_root_name};
     if($read_devdir_list >= 1) {
-        addRoot($dev_root_name, $dev_root);
+        if(my $src_dir = processBuildDir("$dev_root")) {
+            display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
+            my $src_project_name = findDevRootName($src_dir);
+            addRoot($src_project_name ? "${dev_root_name}" : "src", $src_dir);
+            my $bld_project_name = findDevRootName($dev_root);
+            addRoot($bld_project_name ? "${dev_root_name}" : "build", $dev_root, $src_dir);
+        } else {
+            addRoot($dev_root_name, $dev_root);
+        }
     }
     if(-e "$dev_root/.lsdev_shadows" ) {
         my %shadows = parseRoots("$dev_root/.lsdev_shadows");
