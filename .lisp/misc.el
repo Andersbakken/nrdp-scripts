@@ -974,6 +974,10 @@ the name of the value of file-name is present."
 (defun mkgibbontest-copy (name)
   (kill-new (concat mkgibbontest-webprefix "/" name)))
 
+(defun mkgibbontest-copy-current ()
+  (interactive)
+  (mkgibbontest-copy (file-name-nondirectory (buffer-file-name))))
+
 (defun mkgibbontest (&optional name)
   (interactive)
   (unless mkgibbontest-directory
