@@ -26,6 +26,7 @@ while [ "$#" -gt 0 ]; do
         -C) shift; MAKE_DIR="$1" ;;
         -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
         -r|--rtags) UBERTAGS=1 ;;
+        -v) MAKE_DIR="$PWD" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
          *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
