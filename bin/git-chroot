@@ -80,7 +80,10 @@ for branch in `git branch -r`; do
                 echo Aborted commit "$sha"
                 continue
             fi
-            [ "$cont" ] && [ -z "$first" ] && first="$sha"
+
+            if [ -z "$first" ]; then
+                first="$sha"
+            fi
         fi
 
         # git cherry-pick --continue
