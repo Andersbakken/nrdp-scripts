@@ -1,23 +1,45 @@
 #!/bin/bash
 
-repo="$1"
-subdir="$2"
-cont="$3"
+repo=
+subdir=
+
+while [ -n "$1" ]; do
+    case $1 in
+        --repo=*)
+            repo=`echo $1 | sed -e 's,^.*=,,'`
+            ;;
+        --subdir=*)
+            subdir=`echo $1 | sed -e 's,^.*=,,'`
+            ;;
+        *)
+            echo "Unknown arg $1"
+            exit 1
+            ;;
+        esac
+    shift
+done
+
+if [ -z "$repo" ]; then
+    echo "no --repo=";
+    exit 1
+fi
+if [ -z "$subdir" ]; then
+    echo "no --subdir=";
+    exit 1
+fi
+
 since=
 dirname=`basename $repo | sed -e 's,\.git$,,'`
 
-if [ -z "$cont" ]; then
+if [ -d "$dirname" ]; then
+    cd "$dirname"
+    cont=1
+else
     mkdir -p "$dirname"
     cd "$dirname"
     git init
     git remote add source $repo
     git fetch source
-
-    # git checkout -b empty
-
-    # git commit --allow-empty -m "First commit $dirname"
-else
-    cd "$dirname"
 fi
 
 first=
@@ -50,14 +72,14 @@ for branch in `git branch -r`; do
             done
 
             if [ -n "$needcommit" ]; then
-                git commit --no-edit --allow-empty
-            elif [ "$cont" ]; then
+                git commit --no-edit
+            else
                 if git cherry-pick --abort; then
                     echo Aborted commit "$sha"
                     continue
                 fi
-                [ -z "$first" ] && first="$sha"
             fi
+            [ "$cont" ] && [ -z "$first" ] && first="$sha"
         fi
 
         # git cherry-pick --continue
@@ -70,7 +92,7 @@ for branch in `git branch -r`; do
             git mv -f "$i" "$subdir/$i";
         done
 
-        if ! git commit --amend --no-edit --allow-empty; then
+        if ! git commit --amend --no-edit; then
             echo failed 2
             paktc
         fi

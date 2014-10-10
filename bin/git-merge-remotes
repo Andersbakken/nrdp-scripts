@@ -70,13 +70,9 @@ for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
     firstcommit=
     for commit in `sort -n "$tmpfile" | awk '{print $2}'`; do
         # echo "------------ CHERRY PICKING $commit for $branch"
-        if [ -z "$cont" ]; then
-            if [ -n "$first" ]; then
-                first=
-                git reset --hard $commit
-            elif ! git cherry-pick --allow-empty $commit; then
-                paktc
-            fi
+        if [ -z "$cont" -a -n "$first"; then
+            first=
+            git reset --hard $commit
         else
             git cherry-pick $commit
             if git cherry-pick --abort; then
