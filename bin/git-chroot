@@ -44,15 +44,13 @@ fi
 git fetch --all
 
 first=
-initial=1
 for branch in `git branch -r | grep source`; do
+    initial=1
     if [ "$cont" ]; then
         git checkout `basename $branch`
         since="--since=`git log -n1 --pretty=format:%ct`"
     else
         git checkout -b `basename $branch`
-        first=`git log --pretty=format:%H --reverse $(basename $branch) 2>/dev/null | head -n1`
-        [ -n "$first" ] && git reset "$first" --hard
     fi
     echo "git log $since --pretty=format:%H --reverse $branch"
     for sha in `git log $since --pretty=format:%H --reverse $branch`; do
@@ -64,14 +62,20 @@ for branch in `git branch -r | grep source`; do
         else
             git cherry-pick $sha
             needcommit=
-            for i in `git status | grep added.by | awk '{print $NF}'`; do
+            for i in `git status | grep "added by them" | awk '{print $NF}'`; do
                 needcommit=1
                 git add "$i"
             done
 
-            for i in `git status | grep "deleted[: ]" | awk '{print $NF}'`; do
+            for i in `git status | grep "added by us" | awk '{print $NF}'`; do
                 needcommit=1
                 git rm "$i"
+            done
+
+            for i in `git status | grep "deleted[: ]" | awk '{print $NF}'`; do
+                needcommit=1
+                git rm -f "$i"
+                git rm -f "$subdir/$i"
             done
 
             if [ -n "$needcommit" ]; then
@@ -106,11 +110,12 @@ for branch in `git branch -r | grep source`; do
             first=`git rev-parse HEAD`
         fi
 
-        if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
+        # if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
             # if [ -n "`ls | grep -v mdxlib`" ]; then
-            echo mv failed
-            paktc
-        fi
+            # echo mv failed
+            # find . -type f | grep -v "\.git" | grep -v "./$subdir"
+            # paktc
+        # fi
 
         # git status | grep added.by.us | awk '{print $NF}' | while read i; do git add $i; done; git commit --amend --no-edit; git rebase --continue
 
