@@ -1,0 +1,95 @@
+#!/bin/bash
+
+repo="$1"
+subdir="$2"
+cont="$3"
+since=
+dirname=`basename $repo | sed -e 's,\.git$,,'`
+
+if [ -z "$cont" ]; then
+    mkdir -p "$dirname"
+    cd "$dirname"
+    git init
+    git remote add source $repo
+    git fetch source
+
+    # git checkout -b empty
+
+    # git commit --allow-empty -m "First commit $dirname"
+else
+    cd "$dirname"
+fi
+
+first=
+for branch in `git branch -r`; do
+    if [ "$cont" ]; then
+        git checkout `basename $branch`
+        since="--since=`git log -n1 --pretty=format:%ct`"
+    else
+        git checkout -b `basename $branch` empty
+    fi
+    echo "git log $since --oneline --reverse $branch | awk '{print $1}'"
+    for sha in `git log $since --oneline --reverse $branch | awk '{print $1}'`; do
+        echo about to do $sha
+        # continue
+        git cherry-pick $sha
+        needcommit=
+        for i in `git status | grep added.by | awk '{print $NF}'`; do
+            needcommit=1
+            git add "$i"
+        done
+
+        for i in `git status | grep "deleted[: ]" | awk '{print $NF}'`; do
+            needcommit=1
+            git rm "$i"
+        done
+
+        if [ -n "$needcommit" ]; then
+            git commit --no-edit --allow-empty
+        elif [ "$cont" ]; then
+            if git cherry-pick --abort; then
+                echo Aborted commit "$sha"
+                continue
+            fi
+        fi
+
+        # git cherry-pick --continue
+        # git comit
+
+        # #identify failures
+        # git show | grep +++ | grep -v b/$subdir | sed -e 's,^+++ b/,,' | while read i; do
+        git show | grep -v "b/$subdir" | grep "^diff --git.*b/"  | sed -e 's,^.* b/,,' | while read i; do
+            mkdir -p "$subdir/`dirname $i`";
+            git mv -f "$i" "$subdir/$i";
+        done
+
+        if ! git commit --amend --no-edit --allow-empty; then
+            echo failed 2
+            paktc
+        fi
+
+        if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
+            # if [ -n "`ls | grep -v mdxlib`" ]; then
+            echo mv failed
+            paktc
+        fi
+
+        # git status | grep added.by.us | awk '{print $NF}' | while read i; do git add $i; done; git commit --amend --no-edit; git rebase --continue
+
+        # git commit --amend --no-edit; git rebase --continue
+        while [ -e /tmp/stop ]; do
+            echo "stopped"
+            sleep 5
+        done
+        # paktc
+    done
+    if [ "$cont" ]; then
+        if [ -n "$first" ]; then
+            git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' ${first}~..HEAD
+        fi
+    else
+        git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' HEAD
+    fi
+    git clean -xfd
+done
+

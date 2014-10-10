@@ -1,0 +1,18 @@
+#!/bin/bash
+
+function printCommit()
+{
+    echo $1 `git show $1 | grep "\[git-p4: " | sed -e "s,^.*change = \([0-9]*\).*,\1,"`
+}
+
+if [ -z "$1" ] || [ "$1" = "-" ]; then
+    while read i; do
+        printCommit "$i"
+    done
+else
+    while [ -n "$1" ]; do
+        printCommit "$1"
+        shift
+    done
+fi
+

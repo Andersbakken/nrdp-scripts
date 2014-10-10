@@ -1,0 +1,49 @@
+#!/bin/bash
+
+dir=
+remotes=()
+
+while [ -n "$1" ]; do
+    if [ -z "$dir" ]; then
+        dir="$1"
+        mkdir -p "$dir"
+        cd "$dir"
+        git init
+        git checkout -b empty
+        git commit -m "Initial commit nrdp" --allow-empty
+    else
+        remoteName=`basename $1 | sed -e 's,\.git,,'`
+        remotes+=($remoteName)
+        git remote add $remoteName $1
+    fi
+    shift
+done
+
+git fetch --all
+
+# git branch -r | grep "1/" |
+
+for branch in `git branch -r | sed -e 's,^.*/,,' | grep -v empty | sort -u`; do
+    git clean -xfd
+    git checkout -b tmp
+    git branch -D "$branch"
+    git checkout -b "$branch" empty
+    git branch -D tmp
+    rm -f /tmp/$branch.commits
+    for remote in ${remotes[@]}; do
+        if git branch -r | grep $remote/$branch --quiet; then
+            for commit in `git log $remote/$branch --pretty=format:"%h"`; do
+                echo $( git show $commit | grep "\[git-p4: " | sed -e "s,^.*change = \([0-9]*\).*,\1," ) $commit >> /tmp/$branch.commits
+            done
+            # echo "" >> /tmp/$branch.commits
+        fi
+    done
+    for commit in `sort -n /tmp/$branch.commits | awk '{print $2}'`; do
+        echo "------------ CHERRY PICKING $commit for $branch"
+        if ! git cherry-pick --allow-empty $commit; then
+            paktc
+        fi
+    done
+done
+
+

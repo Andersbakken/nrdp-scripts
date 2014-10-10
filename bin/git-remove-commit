@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Need arg"
+    exit 1
+fi
+
+branch="$2"
+[ -z "$branch" ] && branch=HEAD
+
+commit=
+if [ "$1" = "FIRST" ]; then
+    commit=`git log --pretty=format:%H --reverse $branch | head -n1`
+    # echo "foobar $commit"
+else
+    echo got here
+    commit="$1"
+fi
+
+
+git filter-branch -f --commit-filter "if [ \$GIT_COMMIT = $commit ]; then skip_commit \$@; else git commit-tree \$@; fi" $branch

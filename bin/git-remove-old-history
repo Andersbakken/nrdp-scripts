@@ -1,0 +1,18 @@
+#!/bin/bash
+
+commit="$1"
+
+if [ -z "$1" ]; then
+    commit=$(git log --since "`date --date=\"1 week ago\"`" | grep commit  | tail -n 1 | cut -d' ' -f2)
+fi
+if [ -z "$commit" ]; then
+    exit 1
+fi
+
+git checkout --orphan temp_remove_old_history "$commit"
+git commit -m "Truncated history" --allow-empty
+git rebase --onto temp_remove_old_history "$commit" master
+git branch -D temp_remove_old_history
+# The following 2 commands are optional - they keep your git repo in good shape.
+git prune --progress # delete all the objects w/o references
+git gc --aggressive # aggressively collect garbage; may take a lot of time on large repos

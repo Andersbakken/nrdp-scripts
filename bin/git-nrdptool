@@ -1,0 +1,106 @@
+#!/bin/bash
+
+p4sync=
+push=
+setupsubmodules=
+updatesubmodules=
+filters=()
+merges=()
+while [ -n "$1" ]; do
+    case "$1" in
+        --p4sync)
+            p4sync=1
+            ;;
+        --join=*)
+            join=1
+            ;;
+        --merge=*)
+            merges+=(`echo $1 | sed -e 's,^[^=]*=,,'`)
+            ;;
+        --push=*)
+            push=`echo $1 | sed -e 's,^[^=]*=,,'`
+            ;;
+        --setupsubmodules)
+            setupsubmodules=1
+            ;;
+        --updatesubmodules)
+            updatesubmodules=1
+            ;;
+        --cd=*)
+            cd "`echo $1 | sed -e 's,^[^=]*=,,'`"
+            ;;
+        --filter=*)
+            filters+=(`echo $1 | sed -e 's,^[^=]*=,,'`)
+            ;;
+        *)
+            echo "Unhandled option $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+if [ -z "$p4sync" ] && [ -z "$push" ] && [ -z "$merges" ] && [ -z "$setupsubmodules" ] && [ -z "$updatesubmodules" ] && [ -z "$updatesubmodules" ]; then
+    echo "Nothing to do"
+    exit 0
+fi
+
+#cur="`git branch | grep "\*" | awk '{print $2}'`"
+for i in `git branch | awk '{print $NF}'`; do
+    if [ "${#filters[@]}" -gt 0 ]; then
+        ok=
+        for filter in "${filters[@]}"; do
+            if [ -n "$filter" ] && echo $i | grep --quiet "$filter"; then
+                ok=1
+                break;
+            fi
+        done
+        if [ -z "$ok" ]; then
+            echo "skipping branch $i"
+            continue;
+        fi
+    fi
+    echo "processing branch $i"
+    git checkout "$i" -f
+
+    if [ "$join" ]; then
+        git checkout -b join_$
+    fi
+    if [ "$setupsubmodules" ]; then
+        git submodule add -f ssh://git@stash.corp.netflix.com:7999/nrdp/mdxlib.git ./mdxlib
+        git submodule add -f ssh://git@stash.corp.netflix.com:7999/nrdp/nrdlib.git ./nrdlib
+        git submodule init
+        git submodule update
+        cd mdxlib
+        git checkout "$i" -f
+        cd ../nrdlib
+        git checkout "$i" -f
+        cd ..
+        git commit -a -m "Add submodules"
+    fi
+    if [ "$p4sync" ]; then
+        git p4 sync
+        # git submodule update --init
+    fi
+    if [ "${#merges[@]}" -gt 0 ]; then
+        ok=
+        for merge in "${merges[@]}"; do
+            git fetch $merge
+            git merge $merge/$i --no-edit
+        done
+    fi
+    if [ "$updatesubmodules" ]; then
+        cd nrdlib
+        git fetch --all
+        git reset origin/$i --hard
+        cd ../mdxlib
+        git fetch --all
+        git reset origin/$i --hard
+        cd ..
+        git commit -m "Update submodules" -a
+    fi
+
+    if [ "$push" ]; then
+        git push $push "$i"
+    fi
+done
+#git checkout "$cur"
