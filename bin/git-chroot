@@ -39,12 +39,13 @@ else
     cd "$dirname"
     git init
     git remote add source $repo
-    git fetch source
 fi
+
+git fetch --all
 
 first=
 initial=1
-for branch in `git branch -r`; do
+for branch in `git branch -r | grep source`; do
     if [ "$cont" ]; then
         git checkout `basename $branch`
         since="--since=`git log -n1 --pretty=format:%ct`"
