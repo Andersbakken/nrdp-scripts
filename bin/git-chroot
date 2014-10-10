@@ -80,10 +80,6 @@ for branch in `git branch -r`; do
                 echo Aborted commit "$sha"
                 continue
             fi
-
-            if [ -z "$first" ]; then
-                first="$sha"
-            fi
         fi
 
         # git cherry-pick --continue
@@ -105,8 +101,9 @@ for branch in `git branch -r`; do
             echo "$sha became empty"
             git reset HEAD~1 --hard
             git clean -xfd
+        elif [ -z "$first" ]; then
+            first=`git rev-parse HEAD`
         fi
-
 
         if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
             # if [ -n "`ls | grep -v mdxlib`" ]; then
