@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 dir=
 remotes=()
@@ -13,8 +13,8 @@ while [ -n "$1" ]; do
             if [ -d "$dir" ]; then
                 cont=1
                 cd "$dir"
-                for i in `git remote`; do 
-                    remotes+=($i); 
+                for i in `git remote`; do
+                    remotes+=($i);
                 done
             else
                 mkdir -p "$dir"
@@ -24,7 +24,9 @@ while [ -n "$1" ]; do
             ;;
         --remote=*)
             arg=`echo $1 | sed -e 's,^.*=,,'`
-            echo $arg | grep --quiet "^/" || arg=$wd/$arg
+            if ! echo $1 | grep --quiet "://"; then
+                echo $arg | grep --quiet "^/" || arg=$wd/$arg
+            fi
 #            echo "arg is [$arg]"
             remoteName=`basename $arg | sed -e 's,\.git,,'`
             echo "remoteName is [$remoteName]"
@@ -42,8 +44,8 @@ done
 if [ -z "$dir" ]; then
     cont=1
     dir="$wd"
-    for i in `git remote`; do 
-        remotes+=($i); 
+    for i in `git remote`; do
+        remotes+=($i);
     done
     #echo ${remotes[@]}
 fi
@@ -100,9 +102,9 @@ for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | sort -u`; do
         dopush=1
     fi
     git clean -xfd
-    if [ "$dopush"] && git remote | grep origin --quiet; do
-        git push origin $branch
-    done
+    # if [ "$dopush"] && git remote | grep origin --quiet; do
+    #     git push origin $branch
+    # done
 done
 
 
