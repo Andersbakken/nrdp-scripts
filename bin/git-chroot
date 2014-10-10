@@ -49,7 +49,9 @@ for branch in `git branch -r`; do
         git checkout `basename $branch`
         since="--since=`git log -n1 --pretty=format:%ct`"
     else
-        git checkout -b `basename $branch` empty
+        git checkout -b `basename $branch`
+        first=`git log --pretty=format:%H --reverse $(basename $branch) 2>/dev/null | head -n1`
+        [ -n "$first" ] && git reset "$first" --hard
     fi
     echo "git log $since --pretty=format:%H --reverse $branch"
     for sha in `git log $since --pretty=format:%H --reverse $branch`; do
