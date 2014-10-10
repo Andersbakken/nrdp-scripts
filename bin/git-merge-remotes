@@ -79,7 +79,7 @@ for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
                 # echo Aborted commit "$commit"
                 continue
             fi
-            [ -z "$firstcommit" ] && firstcommit="$commit"
+            [ -z "$firstcommit" ] && firstcommit=`git rev-parse HEAD`
         fi
     done
     if [ "$cont" ]; then
