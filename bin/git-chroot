@@ -92,15 +92,17 @@ for branch in `git branch -r`; do
             git mv -f "$i" "$subdir/$i";
         done
 
-        if ! git commit --amend --no-edit; then
-            if git commit --amend --no-edit --allow-empty; then
-                git reset HEAD~1 --hard
-                git clean -xfd
-            else
-                echo failed 2
-                paktc
-            fi
+        if ! git commit --amend --no-edit --allow-empty; then
+            echo failed 2
+            paktc
         fi
+
+        if [ 0 -eq "`git diff HEAD~ | wc -l`" ]; then
+            echo "$sha became empty"
+            git reset HEAD~1 --hard
+            git clean -xfd
+        fi
+
 
         if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
             # if [ -n "`ls | grep -v mdxlib`" ]; then
