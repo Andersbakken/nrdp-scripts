@@ -21,6 +21,7 @@ else
 fi
 
 first=
+initial=1
 for branch in `git branch -r`; do
     if [ "$cont" ]; then
         git checkout `basename $branch`
@@ -28,28 +29,34 @@ for branch in `git branch -r`; do
     else
         git checkout -b `basename $branch` empty
     fi
-    echo "git log $since --oneline --reverse $branch | awk '{print $1}'"
-    for sha in `git log $since --oneline --reverse $branch | awk '{print $1}'`; do
+    echo "git log $since --pretty=format:%H --reverse $branch"
+    for sha in `git log $since --pretty=format:%H --reverse $branch`; do
         echo about to do $sha
         # continue
-        git cherry-pick $sha
-        needcommit=
-        for i in `git status | grep added.by | awk '{print $NF}'`; do
-            needcommit=1
-            git add "$i"
-        done
+        if [ -n "$initial" -a -z "$cont" ]; then
+            initial=
+            git reset $sha --hard
+        else
+            git cherry-pick $sha
+            needcommit=
+            for i in `git status | grep added.by | awk '{print $NF}'`; do
+                needcommit=1
+                git add "$i"
+            done
 
-        for i in `git status | grep "deleted[: ]" | awk '{print $NF}'`; do
-            needcommit=1
-            git rm "$i"
-        done
+            for i in `git status | grep "deleted[: ]" | awk '{print $NF}'`; do
+                needcommit=1
+                git rm "$i"
+            done
 
-        if [ -n "$needcommit" ]; then
-            git commit --no-edit --allow-empty
-        elif [ "$cont" ]; then
-            if git cherry-pick --abort; then
-                echo Aborted commit "$sha"
-                continue
+            if [ -n "$needcommit" ]; then
+                git commit --no-edit --allow-empty
+            elif [ "$cont" ]; then
+                if git cherry-pick --abort; then
+                    echo Aborted commit "$sha"
+                    continue
+                fi
+                [ -z "$first" ] && first="$sha"
             fi
         fi
 

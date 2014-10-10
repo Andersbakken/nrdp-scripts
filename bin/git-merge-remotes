@@ -2,48 +2,98 @@
 
 dir=
 remotes=()
+cont=
+
+wd=`pwd`
 
 while [ -n "$1" ]; do
-    if [ -z "$dir" ]; then
-        dir="$1"
-        mkdir -p "$dir"
-        cd "$dir"
-        git init
-        git checkout -b empty
-        git commit -m "Initial commit nrdp" --allow-empty
-    else
-        remoteName=`basename $1 | sed -e 's,\.git,,'`
-        remotes+=($remoteName)
-        git remote add $remoteName $1
-    fi
+    case $1 in
+        --dir=*)
+            dir=`echo $1 | sed -e 's,^.*=,,'`
+            if [ -d "$dir" ]; then
+                cont=1
+                cd "$dir"
+            else
+                mkdir -p "$dir"
+                cd "$dir"
+                git init
+            fi
+            ;;
+        --remote=*)
+            arg=`echo $1 | sed -e 's,^.*=,,'`
+            echo $arg | grep --quiet "^/" || arg=$wd/$arg
+#            echo "arg is [$arg]"
+            remoteName=`basename $arg | sed -e 's,\.git,,'`
+            echo "remoteName is [$remoteName]"
+            remotes+=($remoteName)
+            git remote add $remoteName "$arg"
+            ;;
+        *)
+            echo "Unhandled option $1"
+            exit 1
+            ;;
+    esac
     shift
 done
+
+if [ -z "$dir" ]; then
+    cont=1
+    dir="$wd"
+fi
 
 git fetch --all
 
 # git branch -r | grep "1/" |
 
-for branch in `git branch -r | sed -e 's,^.*/,,' | grep -v empty | sort -u`; do
-    git clean -xfd
-    git checkout -b tmp
-    git branch -D "$branch"
-    git checkout -b "$branch" empty
-    git branch -D tmp
-    rm -f /tmp/$branch.commits
+since=
+for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
+    if [ "$cont" ]; then
+        git checkout "$branch" -f
+        since="--since=`git log -n1 --pretty=format:%ct`"
+    else
+        git checkout -b "$branch"
+        first=`git log --pretty=format:%H --reverse $branch 2>/dev/null | head -n1`
+        [ -n "$first" ] && git reset "$first" --hard
+    fi
+    tmpfile=`mktemp /tmp/tmp.XXXXXXXXXX`
+    # echo "tmpfile is $tmpfile"
     for remote in ${remotes[@]}; do
         if git branch -r | grep $remote/$branch --quiet; then
-            for commit in `git log $remote/$branch --pretty=format:"%h"`; do
-                echo $( git show $commit | grep "\[git-p4: " | sed -e "s,^.*change = \([0-9]*\).*,\1," ) $commit >> /tmp/$branch.commits
+            # echo "calling git log $since $remote/$branch --pretty=format:%h"
+            for commit in `git log $since $remote/$branch --pretty=format:"%h"`; do
+                echo $( git show $commit | grep "\[git-p4: " | sed -e "s,^.*change = \([0-9]*\).*,\1," ) $commit >> "$tmpfile"
             done
-            # echo "" >> /tmp/$branch.commits
         fi
     done
-    for commit in `sort -n /tmp/$branch.commits | awk '{print $2}'`; do
-        echo "------------ CHERRY PICKING $commit for $branch"
-        if ! git cherry-pick --allow-empty $commit; then
-            paktc
+    # for commit in `cat $tmpfile`; do echo $commit; done
+    first=1
+    firstcommit=
+    for commit in `sort -n "$tmpfile" | awk '{print $2}'`; do
+        # echo "------------ CHERRY PICKING $commit for $branch"
+        if [ -z "$cont" ]; then
+            if [ -n "$first" ]; then
+                first=
+                git reset --hard $commit
+            elif ! git cherry-pick --allow-empty $commit; then
+                paktc
+            fi
+        else
+            git cherry-pick $commit
+            if git cherry-pick --abort; then
+                # echo Aborted commit "$commit"
+                continue
+            fi
+            [ -z "$firstcommit" ] && firstcommit="$commit"
         fi
     done
+    if [ "$cont" ]; then
+        if [ -n "$firstcommit" ]; then
+            git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' ${firstcommit}~..HEAD
+        fi
+    else
+        git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' HEAD
+    fi
+    git clean -xfd
 done
 
 
