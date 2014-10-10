@@ -93,8 +93,13 @@ for branch in `git branch -r`; do
         done
 
         if ! git commit --amend --no-edit; then
-            echo failed 2
-            paktc
+            if git commit --amend --no-edit --allow-empty; then
+                git reset HEAD~1 --hard
+                git clean -xfd
+            else
+                echo failed 2
+                paktc
+            fi
         fi
 
         if [ -n "`find . -type f | grep -v \"\.git\" | grep -v \"./$subdir\"`" ]; then
@@ -106,10 +111,10 @@ for branch in `git branch -r`; do
         # git status | grep added.by.us | awk '{print $NF}' | while read i; do git add $i; done; git commit --amend --no-edit; git rebase --continue
 
         # git commit --amend --no-edit; git rebase --continue
-        while [ -e /tmp/stop ]; do
-            echo "stopped"
-            sleep 5
-        done
+        # while [ -e /tmp/stop ]; do
+        #     echo "stopped"
+        #     sleep 5
+        # done
         # paktc
     done
     if [ "$cont" ]; then
