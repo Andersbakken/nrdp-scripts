@@ -73,11 +73,10 @@ for branch in `git branch -r`; do
 
             if [ -n "$needcommit" ]; then
                 git commit --no-edit
-            else
-                if git cherry-pick --abort; then
-                    echo Aborted commit "$sha"
-                    continue
-                fi
+            fi
+            if git cherry-pick --abort; then
+                echo Aborted commit "$sha"
+                continue
             fi
             [ "$cont" ] && [ -z "$first" ] && first="$sha"
         fi
