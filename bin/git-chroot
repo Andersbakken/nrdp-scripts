@@ -31,9 +31,9 @@ for branch in `git branch -r`; do
     fi
     echo "git log $since --pretty=format:%H --reverse $branch"
     for sha in `git log $since --pretty=format:%H --reverse $branch`; do
-        echo about to do $sha
+        echo "about to do $sha initial $initial cont $cont"
         # continue
-        if [ -n "$initial" -a -z "$cont" ]; then
+        if [ -n "$initial" ] && [ -z "$cont" ]; then
             initial=
             git reset $sha --hard
         else
