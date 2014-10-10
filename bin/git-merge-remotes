@@ -70,7 +70,7 @@ for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
     firstcommit=
     for commit in `sort -n "$tmpfile" | awk '{print $2}'`; do
         # echo "------------ CHERRY PICKING $commit for $branch"
-        if [ -z "$cont" -a -n "$first"; then
+        if [ -z "$cont" ] && [ -n "$first" ]; then
             first=
             git reset --hard $commit
         else
