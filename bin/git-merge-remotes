@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 dir=
 remotes=()
@@ -13,6 +13,9 @@ while [ -n "$1" ]; do
             if [ -d "$dir" ]; then
                 cont=1
                 cd "$dir"
+                for i in `git remote`; do 
+                    remotes+=($i); 
+                done
             else
                 mkdir -p "$dir"
                 cd "$dir"
@@ -39,6 +42,10 @@ done
 if [ -z "$dir" ]; then
     cont=1
     dir="$wd"
+    for i in `git remote`; do 
+        remotes+=($i); 
+    done
+    #echo ${remotes[@]}
 fi
 
 git fetch --all
@@ -46,7 +53,7 @@ git fetch --all
 # git branch -r | grep "1/" |
 
 since=
-for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
+for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | sort -u`; do
     if [ "$cont" ]; then
         git checkout "$branch" -f
         since="--since=`git log -n1 --pretty=format:%ct`"
@@ -82,14 +89,20 @@ for branch in `git branch -r | sed -e 's,^.*/,,' | sort -u`; do
             [ -z "$firstcommit" ] && firstcommit=`git rev-parse HEAD`
         fi
     done
+    dopush=
     if [ "$cont" ]; then
         if [ -n "$firstcommit" ]; then
             git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' ${firstcommit}~..HEAD
+            dopush=1
         fi
     else
         git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' HEAD
+        dopush=1
     fi
     git clean -xfd
+    if [ "$dopush"] && git remote | grep origin --quiet; do
+        git push origin $branch
+    done
 done
 
 
