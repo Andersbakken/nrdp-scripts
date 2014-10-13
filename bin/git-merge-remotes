@@ -50,6 +50,8 @@ if [ -z "$dir" ]; then
     #echo ${remotes[@]}
 fi
 
+git clean -xfd 
+git reset HEAD --hard
 git fetch --all
 
 # git branch -r | grep "1/" |
@@ -95,16 +97,12 @@ for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | sort -u`; do
     if [ "$cont" ]; then
         if [ -n "$firstcommit" ]; then
             git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' ${firstcommit}~..HEAD
-            dopush=1
         fi
     else
         git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' HEAD
-        dopush=1
     fi
+    git push origin $branch
     git clean -xfd
-    # if [ "$dopush"] && git remote | grep origin --quiet; do
-    #     git push origin $branch
-    # done
 done
 
 

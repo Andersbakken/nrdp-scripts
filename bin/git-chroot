@@ -2,9 +2,13 @@
 
 repo=
 subdir=
+dirname=
 
 while [ -n "$1" ]; do
     case $1 in
+        --dir=*)
+            dirname=`echo $1 | sed -e 's,^.*=,,'`
+            ;;
         --repo=*)
             repo=`echo $1 | sed -e 's,^.*=,,'`
             ;;
@@ -29,7 +33,7 @@ if [ -z "$subdir" ]; then
 fi
 
 since=
-dirname=`basename $repo | sed -e 's,\.git$,,'`
+[ -z "$dirname" ] && dirname=`basename $repo | sed -e 's,\.git$,,'`
 
 if [ -d "$dirname" ]; then
     cd "$dirname"
