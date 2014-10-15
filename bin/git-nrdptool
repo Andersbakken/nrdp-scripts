@@ -49,19 +49,20 @@ for i in `git branch | awk '{print $NF}'`; do
         fi
     fi
     echo "processing branch $i"
-    if ! git diff p4/$i &> /dev/null; then
-        echo "Skipping branch $i"
-        continue
-    else
-        echo "About to do branch $i"
-        continue
-    fi
-    git checkout "$i" -f
-
+    #git show p4/$i | head -n1
+    #git show $i | head -n1
     if [ "$p4sync" ]; then
+        if [ "`git show p4/$i | head -n1`" == "`git show $i | head -n1`" ]; then
+            echo "Skipping branch $i"
+            continue
+        else
+            echo "About to do branch $i"
+        fi
+        git checkout -f $i
         git p4 sync
         # git submodule update --init
     fi
+
 
     if [ "$push" ]; then
         git push $push "$i"

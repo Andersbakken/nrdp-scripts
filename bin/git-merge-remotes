@@ -57,7 +57,7 @@ git fetch --all
 # git branch -r | grep "1/" |
 
 since=
-for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | sort -u`; do
+for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | grep master | sort -u`; do
     if [ "$cont" ]; then
         git checkout "$branch" -f
         since="--since=`git log -n1 --pretty=format:%ct`"
