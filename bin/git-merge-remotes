@@ -50,14 +50,14 @@ if [ -z "$dir" ]; then
     #echo ${remotes[@]}
 fi
 
-git clean -xfd 
+git clean -xfd
 git reset HEAD --hard
 git fetch --all
 
 # git branch -r | grep "1/" |
 
 since=
-for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | grep master | sort -u`; do
+for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | sort -u | sort -r`; do
     if [ "$cont" ]; then
         git checkout "$branch" -f
         since="--since=`git log -n1 --pretty=format:%ct`"
@@ -93,7 +93,6 @@ for branch in `git branch -r | grep -v origin | sed -e 's,^.*/,,' | grep master 
             [ -z "$firstcommit" ] && firstcommit=`git rev-parse HEAD`
         fi
     done
-    dopush=
     if [ "$cont" ]; then
         if [ -n "$firstcommit" ]; then
             git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' ${firstcommit}~..HEAD
