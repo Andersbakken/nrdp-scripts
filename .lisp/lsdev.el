@@ -221,12 +221,9 @@
                          (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_-]+") :test 'equal)))
          (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
-    (if (or (string= hd "") (not hd))
-        (push "-b" args)
-      (progn
-        (push "-a" args)
-        (push "-r" args)
-        (push (if (string-match "/$" hd) (substring hd 0 -1) hd) args)))
+    (push "-a" args)
+    (push "-r" args)
+    (unless (or (string= hd "") (not hd)) (push (if (string-match "/$" hd) (substring hd 0 -1) hd) args))
     (lsdev-cd-internal args ignore-builds from-eshell)))
 
 ;;mode string

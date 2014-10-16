@@ -419,24 +419,41 @@ sub findRootPath {
 
 sub addRoot {
     my ($name, $path, $source) = @_;
+    $path = canonicalize($path);
+    $source = resolveLinks(canonicalize($source)) if($source);
+
+    my $root_location = resolveLinks($path);
+    if($source && isPathSame($path, $source)) {
+        my $source_root = findRoot($path);
+        if($source_root) {
+            $source_root->{source} = $source;
+            if($verbose) {
+                display "AddedBuild(", $source_root->{key}, ") {" . $source . "} ($root_location) [" . mycaller() . "]\n";
+            }
+            return $source_root;
+        }
+    }
+
     my %root;
     %root = %{$path_config{$path}} if($path_config{$path} && exists $path_config{$path});
     $root{name} = $name;
-    $root{path} = canonicalize($path);
-    $root{source} = resolveLinks(canonicalize($source)) if($source);
-    my $root_location = resolveLinks($root{path});
-    my $root_key = $root_location;
-    $root_key =~ s,/,_,g;
-    if($source && !isPathSame($path, $source)) {
-        $root_key = $build_prefix . "::" . $root_key;
-    } else {
-        $root_key = $src_prefix . "::" . $root_key;
+    $root{path} = $path;
+    $root{source} = $source;
+    {
+        my $root_key = $root_location;
+        $root_key =~ s,/,_,g;
+        if($source && !isPathSame($path, $source)) {
+            $root_key = $build_prefix . "::" . $root_key;
+        } else {
+            $root_key = $src_prefix . "::" . $root_key;
+        }
+        $root_key .= "::" . $name;
+        $root{key} = $root_key;
     }
-    $root_key .= "::" . $name;
     #$root{source} = $roots{$root_key}->{source} if(!$source && $roots{$root_key});
-    $roots{$root_key} = \%root;
+    $roots{$root{key}} = \%root;
     if($verbose) {
-        display "Named Root($root_key) [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
+        display "Named Root(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
     }
     return \%root;
 }
@@ -595,6 +612,7 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         display "SRCDIR: $root_dir -> $src_dir\n" if($verbose);
         $default_dir = $src_dir;
         my $src_project_name = findDevRootName($src_dir);
+        $src_project_name = basename($src_dir) unless(defined($src_project_name));
         addRoot($src_project_name ? "${src_project_name}" : "src", $src_dir);
         my $bld_project_name = findDevRootName($root_dir);
         addRoot($bld_project_name ? "${bld_project_name}" : "build", $root_dir, $src_dir);
