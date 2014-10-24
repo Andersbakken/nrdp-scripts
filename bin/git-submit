@@ -1,0 +1,132 @@
+#!/bin/sh
+
+if test "x$EDITOR" = "x$0" ; then
+    # The script was launched as an $EDITOR from git rebase -i.
+    # Modify the pick line to an edit line and just exit.
+    grep "^pick $SHORT_SHA1" "$1" >/tmp/editcommit$$
+    grep -v "^pick $SHORT_SHA1" "$1" >>/tmp/editcommit$$
+    mv /tmp/editcommit$$ "$1"
+    exit 0
+fi
+
+CURRENTBRANCH=`git branch | grep '^\*' | awk '{print $2}' -`
+if test "$CURRENTBRANCH" = "(no" ; then
+    echo "Not on a valid branch - please check out the correct branch"
+    exit 1
+fi
+
+if [ "$1" = "tracking" ]; then
+    if [ -n "$2" ]; then
+       git config --local submit.tracking "$2"
+    else
+       TRACKING=`git config --local submit.tracking`
+       [ -z "$TRACKING" ] && TRACKING=`git tracking`
+       echo "$TRACKING"
+    fi
+elif [ "$1" = "changes" ]; then
+    TRACKING=`git config --local submit.tracking`
+    [ -z "$TRACKING" ] && TRACKING=`git tracking`
+    for change in `git cherry $TRACKING`; do
+	[ "$change" = "+" ] && continue
+        NOTE=`git notes --ref git-submit show $change 2>/dev/null`
+        [ -n "$NOTE" ] && NOTE=" [$NOTE]"
+        echo "$(git log --max-count=1 --pretty=oneline $change)$NOTE"
+    done
+elif [ "$1" = "ignore" ]; then
+    SET=yes
+    while [ "$#" -ge 1 ]; do
+	if [ "$1" = "-rm" ]; then
+            SET=no
+	else
+            CHANGES="$CHANGES $1"
+	fi
+	shift
+    done
+    for change in $CHANGES; do
+        if [ "$SET" = "yes" ]; then
+	    git notes --ref git-submit add -f "$change" -m "IGNORE" >/dev/null 2>&1
+        else
+	    git notes --ref git-submit remove "$change" >/dev/null 2>&1
+        fi
+    done
+else
+    CHANGES=
+    BRANCH=
+    PUSH=yes
+    while [ "$#" -ge 1 ]; do
+	if [ "$1" = "-n" ]; then
+            PUSH=no
+	elif [ "$1" = "--branch" ]; then
+            shift
+            BRANCH="$1"
+	else
+            CHANGES="$CHANGES $1"
+	fi
+	shift
+    done
+
+    if [ -z "$BRANCH" ]; then
+	BRANCH=`git config --local submit.tracking`
+	[ -z "$BRANCH" ] && BRANCH=`git tracking`
+    fi
+    if [ -z "$BRANCH" ]; then
+	echo "No tracking branch!"
+	exit 1
+    fi
+
+    stashed=
+    [ "`git config submit.autostash`" = "true" ] && autostash=1
+    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+	stashed=1
+	git commit -a -m "git-submit"
+    fi
+
+    COMMON_SHA1=
+    OLDEDITOR="$EDITOR"
+    export EDITOR="$0"
+    for change in $CHANGES; do
+	SHA1=`git rev-parse "$change"`
+	if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
+            echo "$SHA1 does not appear to be in the current branch"
+            continue
+        elif [ `git notes --ref git-submit show $SHA1 2>/dev/null` = "IGNORE" ]; then
+            echo "$SHA1 is marked to ignore"
+            continue
+	fi
+
+	echo "Applying $SHA1"
+	SHORT_SHA1=`git rev-parse --short "$SHA1"`
+	BASE_SHA1=`git merge-base $SHA1 "$BRANCH"`
+	if [ -z "$BASE_SHA1" ]; then
+            echo "No common ancestor with $BRANCH"
+            continue
+	elif [ "$BASE_SHA1" = "$SHA1" ]; then
+            echo "$SHA1 already submitted in $BRANCH"
+            continue
+	fi
+	[ -z "$COMMON_SHA1" ] && COMMON_SHA1="$BASE_SHA1"
+
+	export SHORT_SHA1
+	git rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
+	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' $COMMON_SHA1..HEAD >/dev/null 2>&1
+	NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
+	echo "revlist $SHA1 .. $COMMON_SHA1 .. HEAD -> $NEW_SHA1"
+	echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
+	COMMON_SHA1="$NEW_SHA1"
+    done
+
+    if [ -n "$NEW_SHA1" ] && [ "$PUSH" = "yes" ]; then
+	PUSH_ORIGIN="."
+	PUSH_BRANCH="$BRANCH"
+	if echo "$PUSH_BRANCH" | grep -q "/"; then
+	    PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+	    PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2`
+	fi
+	echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
+	git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"
+    fi
+    if [ -n "$stashed" ]; then
+	git reset HEAD~
+    fi
+fi
+exit 0
