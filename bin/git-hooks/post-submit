@@ -1,2 +1,6 @@
 #!/bin/sh
-git jira --no-create --comment -i $1 --p4 $2
+if echo "$2" | grep -q "/"; then
+    ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+    REMOTE=`git remote -v show $ORIGIN | grep '^Push *URL: \(.*\)$"
+    [ "$REMOTE" = "ssh://git@stash.corp.netflix.com:7999/nrdp/nrdp.git" ] && git jira --no-create --comment -i $1
+fi
