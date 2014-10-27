@@ -930,11 +930,14 @@ the name of the value of file-name is present."
           ((file-exists-p dir) (find-file dir))
           (t (message "No directory")))))
 
-(defvar mkgibbontest-directory (let* ((prefix (getenv "NF_HTTPD_PREFIX"))
+(defun getenvempty (variable)
+  (or (getenv variable) ""))
+
+(defvar mkgibbontest-directory (let* ((prefix (getenvempty "NF_HTTPD_PREFIX"))
                                       (index (string-match ":" prefix)))
                                  (and index (substring prefix 0 index))))
 
-(defvar mkgibbontest-webprefix (let* ((prefix (getenv "NF_HTTPD_PREFIX"))
+(defvar mkgibbontest-webprefix (let* ((prefix (getenvempty "NF_HTTPD_PREFIX"))
                                       (index (string-match ":" prefix)))
                                  (and index (substring prefix (1+ index)))))
 
