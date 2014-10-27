@@ -9,6 +9,7 @@ if test "x$EDITOR" = "x$0" ; then
     exit 0
 fi
 
+GITROOT=`git rev-parse --show-toplevel`
 CURRENTBRANCH=`git branch | grep '^\*' | awk '{print $2}' -`
 if test "$CURRENTBRANCH" = "(no" ; then
     echo "Not on a valid branch - please check out the correct branch"
@@ -122,8 +123,11 @@ else
 	    PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
 	    PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2`
 	fi
-	echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
-	git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"
+	if [ ! -x "$GITROOT/.git/hooks/pre-submit" ] || "$GITROOT/.git/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
+	    echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
+	    git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"
+	    [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$NEW_SHA1" "$BRANCH"
+        fi
     fi
     if [ -n "$stashed" ]; then
 	git reset HEAD~
