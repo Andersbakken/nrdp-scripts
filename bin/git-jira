@@ -265,7 +265,7 @@ if [ -n "$JIRA" ]; then
       exec_jira --action getComments --issue "$JIRA" >$JIRA_COMMENTS_FILE
       if [ -n "$P4COMMIT" ] && ! grep $P4COMMIT $JIRA_COMMENTS_FILE -q; then
           exec_jira --action addComment --issue "$JIRA" --comment "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $DESCRIPTION"
-      if ! grep $GITCOMMIT $JIRA_COMMENTS_FILE -q; then
+      elif ! grep $GITCOMMIT $JIRA_COMMENTS_FILE -q; then
           exec_jira --action addComment --issue "$JIRA" --comment "[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
       fi
     fi

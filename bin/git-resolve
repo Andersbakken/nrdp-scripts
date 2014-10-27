@@ -16,11 +16,12 @@ while [ "$#" -gt 0 ]; do
         -au) STRATEGY=au ;;
         -ay) STRATEGY=ay ;;
         -e|-edit) STRATEGY=edit ;;
+        --empty) STRATEGY=empty ;;
         -rebase|--rebase) AFTER=rebase ;;
         --stat|-stat) STAT=true ;;
         --no-add|-no-add) ADD=false ;;
         --no-prompt|-no-prompt) PROMPT=false ;;
-        -dry) TEST=echo ;;
+        --dry|-dry) TEST=echo ;;
         *) echo "No such command: $1"; exit 1 ;;
     esac
     shift
@@ -31,10 +32,33 @@ if [ -z "$GITDIR" ]; then
     exit 1
 fi
 
-test -z "$AFTER" && test -d "$GITDIR/rebase-apply/" && AFTER=rebase
+if [ $STRATEGY = "empty" ]; then
+    if [ '!' -e "$GITDIR/MERGE_HEAD" ]; then
+        echo "Cannot do empty strategy without ongoing merge!"
+        exit 1
+    fi
+    AFTER=merge
+    PROMPT=false
+    STRATEGY=au
+    for file in `git status -s | grep "^M  " | sed "s,^.. *,,g"`; do
+        $TEST git reset "$file"
+        $TEST git checkout "$file"
+    done
+    for file in `git status -s | grep "^A  " | sed "s,^.. *,,g"`; do
+        $TEST git rm -f "$file"
+    done
+fi
+
+if [ -z "$AFTER" ]; then
+    if [ -d "$GITDIR/rebase-apply/" ]; then
+        AFTER=rebase
+    elif [ -e "$GITDIR/MERGE_HEAD" ]; then
+        AFTER=merge
+    fi
+fi
 
 COUNT=0
-for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`; do
+for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(added\|modified\): *,,g"`; do
     merged=false
     if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
         merged=false
@@ -123,12 +147,12 @@ for file in `git status | grep "both modified" | sed "s,.*both modified: *,,g"`;
             au) merged=true;
                 tmp=`mktemp -t XXXX`
                 git cat-file blob ":2:$file" >$tmp 2>/dev/null
-                $TEST mv $tmp $file
+                $TEST cat $tmp >$file
                 break ;;
             ay) merged=true;
                 tmp=`mktemp -t XXXX`
                 git cat-file blob ":3:$file" >$tmp 2>/dev/null
-                $TEST mv $tmp $file
+                $TEST cat $tmp >$file
                 break ;;
             s|skip) break;;
             *) echo "Unknown command!" ;;
@@ -144,6 +168,8 @@ if [ "$COUNT" = 0 ]; then
     echo "No files left unresolved"
     if [ "$AFTER" = "rebase" ]; then
         $TEST git rebase --continue
+    elif [ "$AFTER" = "merge" ]; then
+        $TEST git commit --no-edit
     fi
 else
     echo "$COUNT files left unresolved"
