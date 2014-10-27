@@ -54,12 +54,16 @@ else
     CHANGES=
     BRANCH=
     PUSH=yes
+    AUTOSTASH=
+    [ "`git config submit.autostash`" = "true" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
 	if [ "$1" = "-n" ]; then
             PUSH=no
 	elif [ "$1" = "--branch" ]; then
             shift
             BRANCH="$1"
+	elif [ "$1" = "--autostash" ]; then
+            AUTOSTASH="yes"
 	else
             CHANGES="$CHANGES $1"
 	fi
@@ -76,8 +80,7 @@ else
     fi
 
     stashed=
-    [ "`git config submit.autostash`" = "true" ] && autostash=1
-    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+    if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
 	stashed=1
 	git commit -a -m "git-submit"
     fi
