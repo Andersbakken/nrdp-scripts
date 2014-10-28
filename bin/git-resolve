@@ -4,8 +4,8 @@ TEST=
 AFTER=
 STRATEGY=e
 STAT=false
-ADD=true
 PROMPT=true
+COMMIT_ARGS=
 editor="$GIT_RESOLVE_EDITOR"
 [ -z "$editor" ] && editor=`git config core.editor`
 [ -z "$editor" ] && editor=$EDITOR
@@ -19,9 +19,9 @@ while [ "$#" -gt 0 ]; do
         --empty) STRATEGY=empty ;;
         -rebase|--rebase) AFTER=rebase ;;
         --stat|-stat) STAT=true ;;
-        --no-add|-no-add) ADD=false ;;
         --no-prompt|-no-prompt) PROMPT=false ;;
         --dry|-dry) TEST=echo ;;
+        -m) shift; COMMIT_ARGS="$COMMIT_ARGS -m '$1'" ;;
         *) echo "No such command: $1"; exit 1 ;;
     esac
     shift
@@ -33,13 +33,14 @@ if [ -z "$GITDIR" ]; then
 fi
 
 if [ $STRATEGY = "empty" ]; then
-    if [ '!' -e "$GITDIR/MERGE_HEAD" ]; then
+    if [ '!' -e "$GITDIR/MERGE_MSG" ]; then
         echo "Cannot do empty strategy without ongoing merge!"
         exit 1
     fi
-    AFTER=merge
+    AFTER=commit
     PROMPT=false
     STRATEGY=au
+    COMMIT_ARGS="$COMMIT_ARGS --allow-empty"
     for file in `git status -s | grep "^M  " | sed "s,^.. *,,g"`; do
         $TEST git reset "$file"
         $TEST git checkout "$file"
@@ -52,8 +53,8 @@ fi
 if [ -z "$AFTER" ]; then
     if [ -d "$GITDIR/rebase-apply/" ]; then
         AFTER=rebase
-    elif [ -e "$GITDIR/MERGE_HEAD" ]; then
-        AFTER=merge
+    elif [ -e "$GITDIR/COMMIT_EDITMSG" ]; then
+        AFTER=commit
     fi
 fi
 
@@ -82,7 +83,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
             /bin/echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
             read cmd
         else
-            echo "$file unmerged!"
+            echo "$file unmerged! ($STRATEGY)"
         fi
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
@@ -158,7 +159,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
             *) echo "Unknown command!" ;;
         esac
     done
-    if [ "$merged" = "true" ] && [ "$ADD" = "true" ]; then
+    if [ "$merged" = "true" ]; then
         $TEST git add -f $file
     else
         COUNT=$((COUNT+1))
@@ -168,8 +169,8 @@ if [ "$COUNT" = 0 ]; then
     echo "No files left unresolved"
     if [ "$AFTER" = "rebase" ]; then
         $TEST git rebase --continue
-    elif [ "$AFTER" = "merge" ]; then
-        $TEST git commit --no-edit
+    elif [ "$AFTER" = "commit" ]; then
+        eval $TEST git commit --no-edit $COMMIT_ARGS
     fi
 else
     echo "$COUNT files left unresolved"
