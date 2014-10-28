@@ -44,7 +44,7 @@ done
 if [ -z "$dir" ]; then
     cont=1
     dir="$wd"
-    for i in `git remote`; do
+    for i in `git remote | grep -v origin`; do
         remotes+=($i);
     done
     #echo ${remotes[@]}
