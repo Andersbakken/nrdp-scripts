@@ -833,9 +833,11 @@ if($display_only eq "default") { #display the currently mapped default
     my $index;
     if($display_only eq "list") {
         for(my $i = 0; $i < @choices; ++$i) {
-            my %root = %{findRoot($choices[$i])};
-            $root{path} = addRestDir($root{path}, $rest_dir) if(defined($rest_dir));
-            answer(\%root);
+            my $root = findRoot($choices[$i]);
+            if($root) {
+                $root->{path} = addRestDir($root->{path}, $rest_dir) if(defined($rest_dir));
+                answer($root);
+            }
         }
     } else {
         while(1) {
