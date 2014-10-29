@@ -2,9 +2,9 @@
 gs()
 {
     if [ "`lsdev.pl -r -l | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
-        git sync --autostash
+        git sync -r --autostash
     else
-        git cdd -- sync --autostash
+        git cdd -- sync -r --autostash
     fi
 }
 
