@@ -48,6 +48,9 @@ if [ $STRATEGY = "empty" ]; then
     for file in `git status -s | grep "^A  " | sed "s,^.. *,,g"`; do
         $TEST git rm -f "$file"
     done
+    for file in `git status -s | grep "^DU " | sed "s,^.. *,,g"`; do
+        $TEST git rm "$file"
+    done
 fi
 
 if [ -z "$AFTER" ]; then
@@ -61,12 +64,15 @@ fi
 COUNT=0
 for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(added\|modified\): *,,g"`; do
     merged=false
-    if grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
-        merged=false
-    else
-        echo "$file already merged!"
-        merged=true;
-    fi
+    # if git diff --no-index --numstat /dev/null "$file" | grep '^-' >/dev/null 2>&1; then
+    #     echo "$file is binary!"
+    #     merged=false
+    # elif grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
+    #     merged=false
+    # else
+    #     echo "$file already merged!"
+    #     merged=true
+    # fi
     if [ "$STAT" = "true" ]; then
         BEG=`grep "^<<<<<<< " "$file" | wc -l`
         MID=`grep "^=======" "$file" | wc -l`
