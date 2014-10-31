@@ -16,18 +16,17 @@ if test "$CURRENTBRANCH" = "(no" ; then
     exit 1
 fi
 
+TRACKING=`git config --local submit.tracking`
+[ -z "$TRACKING" ] && TRACKING=`git tracking`
+
 if [ "$1" = "tracking" ]; then
     if [ -n "$2" ]; then
        git config --local submit.tracking "$2"
     else
-       TRACKING=`git config --local submit.tracking`
-       [ -z "$TRACKING" ] && TRACKING=`git tracking`
        echo "$TRACKING"
     fi
 elif [ "$1" = "changes" ]; then
-    TRACKING=`git config --local submit.tracking`
-    [ -z "$TRACKING" ] && TRACKING=`git tracking`
-    for change in `git cherry $TRACKING`; do
+    for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
 	[ "$change" = "+" ] && continue
         NOTE=`git notes --ref git-submit show $change 2>/dev/null`
         [ -n "$NOTE" ] && NOTE=" [$NOTE]"
@@ -64,16 +63,16 @@ else
             BRANCH="$1"
 	elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
+	elif [ "$1" = "-a" ]; then
+            for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
+                CHANGES="$CHANGES `echo $change | awk '{print $1}'`"
+            done
 	else
             CHANGES="$CHANGES $1"
 	fi
 	shift
     done
-
-    if [ -z "$BRANCH" ]; then
-	BRANCH=`git config --local submit.tracking`
-	[ -z "$BRANCH" ] && BRANCH=`git tracking`
-    fi
+    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
     if [ -z "$BRANCH" ]; then
 	echo "No tracking branch!"
 	exit 1
