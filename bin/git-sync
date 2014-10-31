@@ -70,9 +70,13 @@ fi
 
 i=0
 while [ $i -lt $idx ]; do
-    syncdir "${dirs[$i]}"
+    root="${dirs[$i]}"
+    syncdir "$root"
     if [ -n "$recursive" ]; then
-        find -L "${dirs[$1]}" -mindepth 1 -maxdepth 4 -type d -name ".git" | while read i; do syncdir "$i/.."; done
+        find -L "$root" -mindepth 1 -maxdepth 4 -type d -name ".git" | while read i; do
+            sub=`cd $i/.. && pwd`
+            [ "$root" != "$sub" ] && syncdir "$sub"
+        done
     fi
     i=`expr $i + 1`
 done

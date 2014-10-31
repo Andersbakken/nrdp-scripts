@@ -1,10 +1,18 @@
 #sync a tree
 gs()
 {
+    CDD_FLAGS=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+      *) CDD_FLAGS="$CDD_FLAGS $1" ;;
+      esac
+      shift
+    done
+
     if [ "`lsdev.pl -r -l | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
         git sync -r --autostash
     else
-        git cdd -- sync -r --autostash
+        git cdd $CDD_FLAGS -- sync -r --autostash
     fi
 }
 
