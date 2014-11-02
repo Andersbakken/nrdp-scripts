@@ -92,9 +92,12 @@ else
 	if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
-        elif [ `git notes --ref git-submit show $SHA1 2>/dev/null` = "IGNORE" ]; then
-            echo "$SHA1 is marked to ignore"
-            continue
+        else 
+            NOTES=`git notes --ref git-submit show $SHA1 2>/dev/null`
+            if [ "$NOTES" = "IGNORE" ]; then
+                 echo "$SHA1 is marked to ignore"
+                 continue
+            fi
 	fi
 
 	echo "Applying $SHA1"
@@ -113,7 +116,6 @@ else
 	git rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
 	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' $COMMON_SHA1..HEAD >/dev/null 2>&1
 	NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
-	echo "revlist $SHA1 .. $COMMON_SHA1 .. HEAD -> $NEW_SHA1"
 	echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
 	COMMON_SHA1="$NEW_SHA1"
     done
