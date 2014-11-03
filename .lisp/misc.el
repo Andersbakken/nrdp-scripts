@@ -481,6 +481,7 @@ the name of the value of file-name is present."
     (add-to-list 'pulling-actions (list "s" "Sync" 'magit-sync))
     (push 'actions pulling-actions)
     (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)))
+(magit-enable-sync)
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
