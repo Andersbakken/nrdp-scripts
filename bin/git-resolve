@@ -70,12 +70,17 @@ gitCatBase()
     OUTPUT="$3"
     [ -z "$OUTPUT" ] && OUTPUT="$FILE"
     if [ "$BASE" = "upstream" ]; then
-        base="2"
-    else if [ "$BASE" = "yours" ]; then
-        base="3"
-    else
-        echo "WTF!"
-        return 1
+        if [ "$AFTER" = "commit" ]
+            base="3"
+        else
+            base="2"
+        fi
+    elif [ "$BASE" = "yours" ]; then
+        if [ "$AFTER" = "commit" ]
+            base="2"
+        else
+            base="3"
+        fi
     fi
     git cat-file blob ":${BASE}:$FILE" >$OUTPUT 2>/dev/null
     return 1
@@ -114,24 +119,24 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
             d|diff)
-                tmpupstream=`mktemp -t /tmp/XXXXXX.2`
+                tmpupstream=`mktemp /tmp/XXXXXX.2`
                 gitCatBase $file 2 $tmpupstream
-                tmpyours=`mktemp -t /tmp/XXXXXX.3`
+                tmpyours=`mktemp /tmp/XXXXXX.3`
                 gitCatBase $file 3 $tmpyours
                 diff -du "$tmpupstream" "$tmpyours"
                 ;;
             m|e|edit)
-                bak=`mktemp -t XXXX`
+                bak=`mktemp /tmp/XXXXXX.bak`
                 cp "$file" "$bak"
                 edit=yes
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpupstream=`mktemp -t /tmp/XXXXXXX.2`
+                            tmpupstream=`mktemp /tmp/XXXXXXX.2`
                             gitCatBase $file 3 $tmpupstream
-                            tmpyours=`mktemp -t /tmp/XXXXXXX.3`
+                            tmpyours=`mktemp /tmp/XXXXXXX.3`
                             gitCatBase $file 2 $tmpyours
-                            tmp=`mktemp -t /tmp/XXXXXXX.1`
+                            tmp=`mktemp /tmp/XXXXXXX.1`
                             gitCatBase $file 1 $tmp
                             meld $tmpupstream $tmp $tmpyours
                         elif ! $editor $file; then
@@ -145,7 +150,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     [ -z "$accpt" ] && accpt=y
                     case $accpt in
                         d|diff)
-                            tmpupstream=`mktemp -t XXXX`
+                            tmpupstream=`mktemp /tmp/XXXXXX`
 
                             git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
                             diff -du "$tmpupstream" "$file"
@@ -170,12 +175,12 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     esac
                 done ;;
             au) merged=true;
-                tmp=`mktemp -t /tmp/XXXXXX`
+                tmp=`mktemp /tmp/XXXXXX`
                 gitCatBase $file "upstream" $tmp
                 $TEST cat $tmp >$file
                 break ;;
             ay) merged=true;
-                tmp=`mktemp -t XXXX`
+                tmp=`mktemp /tmp/XXXXXX`
                 gitCatBase $file "yours" $tmp
                 $TEST cat $tmp >$file
                 break ;;
