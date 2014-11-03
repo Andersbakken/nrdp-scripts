@@ -56,10 +56,30 @@ fi
 if [ -z "$AFTER" ]; then
     if [ -d "$GITDIR/rebase-apply/" ]; then
         AFTER=rebase
+    elif [ -e "$GITDIR/MERGE_HEAD" ]; then
+        AFTER=merge
     elif [ -e "$GITDIR/COMMIT_EDITMSG" ]; then
         AFTER=commit
     fi
 fi
+
+gitCatBase()
+{
+    FILE="$1"
+    BASE="$2"
+    OUTPUT="$3"
+    [ -z "$OUTPUT" ] && OUTPUT="$FILE"
+    if [ "$BASE" = "upstream" ]; then
+        base="2"
+    else if [ "$BASE" = "yours" ]; then
+        base="3"
+    else
+        echo "WTF!"
+        return 1
+    fi
+    git cat-file blob ":${BASE}:$FILE" >$OUTPUT 2>/dev/null
+    return 1
+}
 
 COUNT=0
 for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(added\|modified\): *,,g"`; do
@@ -94,11 +114,10 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
             d|diff)
-                tmpupstream=`mktemp -t XXXX`
-                tmpyours=`mktemp -t XXXX`
-
-                git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-                git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
+                tmpupstream=`mktemp -t /tmp/XXXXXX.2`
+                gitCatBase $file 2 $tmpupstream
+                tmpyours=`mktemp -t /tmp/XXXXXX.3`
+                gitCatBase $file 3 $tmpyours
                 diff -du "$tmpupstream" "$tmpyours"
                 ;;
             m|e|edit)
@@ -108,13 +127,12 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpupstream=`mktemp -t XXXXupstream`
-                            tmpyours=`mktemp -t XXXXyours`
-                            tmp=`mktemp -t XXXXtmp`
-
-                            git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-                            git cat-file blob ":3:$file" >$tmpyours 2>/dev/null
-                            git cat-file blob ":1:$file" >$tmp 2>/dev/null
+                            tmpupstream=`mktemp -t /tmp/XXXXXXX.2`
+                            gitCatBase $file 3 $tmpupstream
+                            tmpyours=`mktemp -t /tmp/XXXXXXX.3`
+                            gitCatBase $file 2 $tmpyours
+                            tmp=`mktemp -t /tmp/XXXXXXX.1`
+                            gitCatBase $file 1 $tmp
                             meld $tmpupstream $tmp $tmpyours
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
@@ -152,13 +170,13 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     esac
                 done ;;
             au) merged=true;
-                tmp=`mktemp -t XXXX`
-                git cat-file blob ":2:$file" >$tmp 2>/dev/null
+                tmp=`mktemp -t /tmp/XXXXXX`
+                gitCatBase $file "upstream" $tmp
                 $TEST cat $tmp >$file
                 break ;;
             ay) merged=true;
                 tmp=`mktemp -t XXXX`
-                git cat-file blob ":3:$file" >$tmp 2>/dev/null
+                gitCatBase $file "yours" $tmp
                 $TEST cat $tmp >$file
                 break ;;
             s|skip) break;;
@@ -175,7 +193,7 @@ if [ "$COUNT" = 0 ]; then
     echo "No files left unresolved"
     if [ "$AFTER" = "rebase" ]; then
         $TEST git rebase --continue
-    elif [ "$AFTER" = "commit" ]; then
+    elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
         eval $TEST git commit --no-edit $COMMIT_ARGS
     fi
 else
