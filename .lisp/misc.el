@@ -470,6 +470,18 @@ the name of the value of file-name is present."
     )
   )
 
+(defun magit-sync ()
+  "Run git sync."
+  (interactive)
+  (magit-run-git-async "sync"))
+
+(defun magit-enable-sync ()
+  (interactive)
+  (let ((pulling-actions (assoc-default 'actions (assoc-default 'pulling magit-key-mode-groups))))
+    (add-to-list 'pulling-actions (list "s" "Sync" 'magit-sync))
+    (push 'actions pulling-actions)
+    (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)))
+
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
     (while windows
