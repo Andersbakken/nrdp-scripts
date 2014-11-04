@@ -70,13 +70,13 @@ gitCatBase()
     OUTPUT="$3"
     [ -z "$OUTPUT" ] && OUTPUT="$FILE"
     if [ "$BASE" = "upstream" ]; then
-        if [ "$AFTER" = "commit" ]
+        if [ "$AFTER" = "commit" ]; then
             base="3"
         else
             base="2"
         fi
     elif [ "$BASE" = "yours" ]; then
-        if [ "$AFTER" = "commit" ]
+        if [ "$AFTER" = "commit" ]; then
             base="2"
         else
             base="3"
@@ -89,15 +89,15 @@ gitCatBase()
 COUNT=0
 for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(added\|modified\): *,,g"`; do
     merged=false
-    # if git diff --no-index --numstat /dev/null "$file" | grep '^-' >/dev/null 2>&1; then
-    #     echo "$file is binary!"
-    #     merged=false
-    # elif grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
-    #     merged=false
-    # else
-    #     echo "$file already merged!"
-    #     merged=true
-    # fi
+    if false && git diff --no-index --numstat /dev/null "$file" | grep '^-' >/dev/null 2>&1; then
+        echo "$file is binary!"
+        merged=false
+    elif grep "^<<<<<<< " "$file" >/dev/null 2>&1 || grep "^=======" "$file" >/dev/null 2>&1 || grep "^>>>>>>> " "$file" >/dev/null 2>&1; then
+        merged=false
+    else
+        echo "$file already merged!"
+        merged=true
+    fi
     if [ "$STAT" = "true" ]; then
         BEG=`grep "^<<<<<<< " "$file" | wc -l`
         MID=`grep "^=======" "$file" | wc -l`
