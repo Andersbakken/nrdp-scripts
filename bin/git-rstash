@@ -17,12 +17,12 @@ my $mode = "save";
 $mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "save" || $ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "list"));
 
 if($stash_mode eq "git-rstash") {
-    my $commit = 1;
     my $server_port = undef;
     my $source_highlight = 1;
     my $pager = $ENV{"PAGER"};
     my $sha = "DEFAULT";
     my $url = undef;
+    my $max_list = 50;
     while(@ARGV) {
 	if($ARGV[0] eq "-p") {
 	    shift @ARGV;
@@ -30,12 +30,13 @@ if($stash_mode eq "git-rstash") {
 	} elsif($ARGV[0] eq "-c") {
 	    shift @ARGV;
 	    $sha = $ARGV[0];
+	} elsif($ARGV[0] eq "-n") {
+	    shift @ARGV;
+	    $max_list = $ARGV[0];
 	} elsif($ARGV[0] eq "--no-pager") {
 	    $pager = undef;
 	} elsif($ARGV[0] eq "--no-highlight") {
 	    $source_highlight = 0;
-	} elsif($ARGV[0] eq "-n" || $ARGV[0] eq "--no-commit") {
-	    $commit = 0;
 	} else {
 	    $url = $ARGV[0];
 	    $url =~ s,/$,,g;
@@ -73,7 +74,8 @@ if($stash_mode eq "git-rstash") {
 		  my $uri = $r->uri->path;
 		  my $query = parseQuery($r->uri->query);
 
-		  my $raw = $query->{raw};
+		  my $raw = 0;
+		  $raw = $query->{raw} if(exists($query->{raw}));
 
 		  $uri =~ s,/$,,g;
 		  if($uri =~ "^/fetch/(.*)") {
@@ -91,13 +93,15 @@ if($stash_mode eq "git-rstash") {
 		      } else {
 			  $result = `git format-patch $fetch -1 --stdout`;
 		      }
-		      exit 0 if($query->{exit});
+		      exit 0 if($query->{apply});
 		  } else {
+		      my $max = $max_list;
+		      $max = $query->{max} if(exists($query->{max}));
 		      if(!$raw || !length($uri)) {
 			  $result_type = "text/html";
-			  $result = "<html><ul>" . `git log -n 50 --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
+			  $result = "<html><ul>" . `git log -n $max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
 		      } else {
-			  $result = `git log`;
+			  $result = `git log -n $max`;
 		      }
 		  }
 		  $c->send_response(HTTP::Response->new(RC_OK, undef,
@@ -114,12 +118,15 @@ if($stash_mode eq "git-rstash") {
       }
     } else {
 	die "No URL supplied!" unless($url);
+	$url .= ":${server_port}" if($server_port && !($url =~ /:[0-9]$/));
+	$url = "http://$url" unless($url =~ /:\/\//);
+
 	if($mode eq "show") {
 	    $url = "$url/fetch/$sha?raw=1";
 	} elsif($mode eq "apply") {
-	    $url = "$url/fetch/$sha?raw=1&exit=1";
+	    $url = "$url/fetch/$sha?raw=1&apply=1";
 	} elsif($mode eq "list") {
-	    $url = "$url/list?raw=1";
+	    $url = "$url/list?raw=1&max=${max_list}";
 	}
 
 	use LWP::UserAgent;
