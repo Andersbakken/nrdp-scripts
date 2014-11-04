@@ -3,121 +3,116 @@
 use Env;
 use strict;
 
-sub parseQuery {
-    my ($query) = @_;
-
-    my %result;
-    my @pairs = split(/&/, $query);
-    foreach my $pair (@pairs){
-	my ($name, $value) = split (/=/, $pair);
-	$name =~ tr/+/ /;
-	$name =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-	$value =~ tr/+/ /;
-	$value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-	$result{$name} = $value;
-    }
-    return \%result;
+my $stash_mode;
+if($ARGV[0] eq "-m") {
+    shift @ARGV;
+    $stash_mode = $ARGV[0];
+    shift @ARGV;
+} else {
+    $stash_mode = `git config rstash.mode`;
 }
+$stash_mode = "git-rstash" if(!length($stash_mode));
 
-my $mode = "server";
-$mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "server" || $ARGV[0] eq "list"));
-if($mode eq "server") {
-    use HTTP::Daemon;
-    use HTTP::Status;
+my $mode = "save";
+$mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "save" || $ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "list"));
 
-    my $list_max = 30;
-    my $source_highlight = 1;
-    my $default_sha = "HEAD";
+if($stash_mode eq "git-rstash") {
+    my $commit = 1;
     my $server_port = undef;
+    my $source_highlight = 1;
+    my $pager = $ENV{"PAGER"};
+    my $sha = "DEFAULT";
+    my $url = undef;
     while(@ARGV) {
 	if($ARGV[0] eq "-p") {
 	    shift @ARGV;
 	    $server_port = $ARGV[0];
-	} elsif($ARGV[0] eq "--no-highlight") {
-	    $source_highlight = 0;
 	} elsif($ARGV[0] eq "-c") {
 	    shift @ARGV;
-	    $default_sha = $ARGV[0];
-	} elsif($ARGV[0] eq "-n") {
-	    shift @ARGV;
-	    $list_max = $ARGV[0];
+	    $sha = $ARGV[0];
+	} elsif($ARGV[0] eq "--no-pager") {
+	    $pager = undef;
+	} elsif($ARGV[0] eq "--no-highlight") {
+	    $source_highlight = 0;
+	} elsif($ARGV[0] eq "-n" || $ARGV[0] eq "--no-commit") {
+	    $commit = 0;
+	} else {
+	    $url = $ARGV[0];
+	    $url =~ s,/$,,g;
 	}
 	shift @ARGV;
     }
 
-    my $d = HTTP::Daemon->new(LocalPort => $server_port) || die;
-    print "git-rstash: <", $d->url, ">\n";
-    ACCEPT: while(my $c = $d->accept) {
-	while(my $r = $c->get_request) {
-	    if($r->method eq 'GET') {
-		my $result;
-		my $result_type = "text/plain";
-		my $uri = $r->uri->path;
-		my $query = parseQuery($r->uri->query);
+    if($mode eq "save") {
+	sub parseQuery {
+	    my ($query) = @_;
 
-		my $raw = $query->{raw};
-
-		$uri =~ s,/$,,g;
-		if($uri =~ "^/fetch/(.*)") {
-		    my $sha = $1;
-		    $sha = $default_sha if($sha eq "DEFAULT");
-		    if(!$raw && $source_highlight) {
-			$result_type = "text/html";
-			$result = "<html>" . `git format-patch $sha -1 --stdout | source-highlight -s diff -f html` . "</html>";
-		    } else {
-			$result = `git format-patch $sha -1 --stdout`;
-		    }
-		    last ACCEPT if($query->{exit});
-		} else {
-		    if(!$raw || !length($uri)) {
-			$result_type = "text/html";
-			$result = "<html><ul>" . `git log -n $list_max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
-		    } else {
-			$result = `git log`;
-		    }
-		}
-		$c->send_response(HTTP::Response->new(RC_OK, undef,
-		    [
-		     'Content-Type' => $result_type,
-		     'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
-		     'Pragma' => 'no-cache',
-		    ],
-		    $result),
-		);
+	    my %result;
+	    my @pairs = split(/&/, $query);
+	    foreach my $pair (@pairs){
+		my ($name, $value) = split (/=/, $pair);
+		$name =~ tr/+/ /;
+		$name =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+		$value =~ tr/+/ /;
+		$value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+		$result{$name} = $value;
 	    }
+	    return \%result;
 	}
-	$c->close;
-	undef($c);
-    }
-} else {
-    my $server_mode = "rstash";
-    if($ARGV[0] eq "-m") {
-	shift @ARGV;
-	$server_mode = $ARGV[0];
-	shift @ARGV;
-    }
-    if($server_mode eq "rstash") {
-	my $commit = 1;
-	my $source_highlight = 1;
-	my $pager = $ENV{"PAGER"};
-	my $sha = "DEFAULT";
-	my $url = undef;
-	while(@ARGV) {
-	    if($ARGV[0] eq "-c") {
-		shift @ARGV;
-		$sha = $ARGV[0];
-	    } elsif($ARGV[0] eq "--no-pager") {
-		$pager = undef;
-	    } elsif($ARGV[0] eq "--no-highlight") {
-		$source_highlight = 0;
-	    } elsif($ARGV[0] eq "-n" || $ARGV[0] eq "--no-commit") {
-		$commit = 0;
-	    } else {
-		$url = $ARGV[0];
-		$url =~ s,/$,,g;
-	    }
-	    shift @ARGV;
-	}
+
+	use HTTP::Daemon;
+	use HTTP::Status;
+
+	my $d = HTTP::Daemon->new(LocalPort => $server_port) || die;
+	print "git-rstash: <", $d->url, ">\n";
+        ACCEPT: while(my $c = $d->accept) {
+	  while(my $r = $c->get_request) {
+	      if($r->method eq 'GET') {
+		  my $result;
+		  my $result_type = "text/plain";
+		  my $uri = $r->uri->path;
+		  my $query = parseQuery($r->uri->query);
+
+		  my $raw = $query->{raw};
+
+		  $uri =~ s,/$,,g;
+		  if($uri =~ "^/fetch/(.*)") {
+		      my $fetch = $1;
+		      if($fetch eq "DEFAULT") {
+			  if($sha eq "DEFAULT") {
+			      $fetch = "HEAD";
+			  } else {
+			      $fetch = $sha;
+			  }
+		      }
+		      if(!$raw && $source_highlight) {
+			  $result_type = "text/html";
+			  $result = "<html>" . `git format-patch $fetch -1 --stdout | source-highlight -s diff -f html` . "</html>";
+		      } else {
+			  $result = `git format-patch $fetch -1 --stdout`;
+		      }
+		      exit 0 if($query->{exit});
+		  } else {
+		      if(!$raw || !length($uri)) {
+			  $result_type = "text/html";
+			  $result = "<html><ul>" . `git log -n 50 --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
+		      } else {
+			  $result = `git log`;
+		      }
+		  }
+		  $c->send_response(HTTP::Response->new(RC_OK, undef,
+							[
+							 'Content-Type' => $result_type,
+							 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
+							 'Pragma' => 'no-cache',
+							],
+							$result));
+	      }
+	  }
+	  $c->close;
+	  undef($c);
+      }
+    } else {
 	die "No URL supplied!" unless($url);
 	if($mode eq "show") {
 	    $url = "$url/fetch/$sha?raw=1";
@@ -127,8 +122,8 @@ if($mode eq "server") {
 	    $url = "$url/list?raw=1";
 	}
 
-        use LWP::UserAgent;
-        use HTTP::Request::Common qw(GET);
+	use LWP::UserAgent;
+	use HTTP::Request::Common qw(GET);
 
 	my $req = GET($url);
 	my $ua = new LWP::UserAgent;
@@ -149,4 +144,5 @@ if($mode eq "server") {
 	    die "Failed!";
 	}
     }
+} elsif($stash_mode eq "git-remote") {
 }
