@@ -478,7 +478,7 @@ the name of the value of file-name is present."
 (defun magit-enable-sync ()
   (interactive)
   (let ((pulling-actions (assoc-default 'actions (assoc-default 'pulling magit-key-mode-groups))))
-    (add-to-list 'pulling-actions (list "s" "Sync" 'magit-sync))
+    (add-to-list 'pulling-actions (list "S" "Sync" 'magit-sync))
     (push 'actions pulling-actions)
     (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)))
 (magit-enable-sync)
