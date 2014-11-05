@@ -14,37 +14,79 @@ if($ARGV[0] eq "-m") {
 $stash_mode = "git-rstash" if(!length($stash_mode));
 
 my $mode = "save";
-$mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "save" || $ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "list"));
+$mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "save" || $ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "list" || $ARGV[0] eq "drop"));
+
+my $source_highlight = 1;
+my $pager = $ENV{"PAGER"};
+my $default_sha = "DEFAULT";
+for(my $i = 0; $i < $#ARGV+1; ) {
+    my $consume = 0;
+    my $arg = $ARGV[$i];
+    if($ARGV[$i] eq "-c") {
+	$default_sha = $ARGV[$i+1];
+	$consume = 2;
+    } elsif($ARGV[$i] eq "--no-pager") {
+	$pager = undef;
+	$consume = 1;
+    } elsif($ARGV[$i] eq "--no-highlight") {
+	$source_highlight = 0;
+	$consume = 1;
+    }
+    if($consume) {
+	splice @ARGV, $i, $consume;
+    } else {
+	$i++;
+    }
+}
+
+sub getSHA {
+    my ($sha) = @_;
+    if($sha eq "DEFAULT") {
+	$sha = $default_sha;
+	if($sha eq "DEFAULT") {
+	    if(length(`git status -s -uno 2>/dev/null`)) {
+		$sha = `git stash create -m 'git-rstash'`;
+		chomp $sha;
+	    } else {
+		$sha = "HEAD";
+	    }
+	}
+    }
+    return $sha;
+}
 
 if($stash_mode eq "git-rstash") {
-    my $server_port = undef;
-    my $source_highlight = 1;
-    my $pager = $ENV{"PAGER"};
-    my $sha = "DEFAULT";
     my $url = undef;
+    my $send_exit = 1;
     my $max_list = 50;
-    while(@ARGV) {
-	if($ARGV[0] eq "-p") {
-	    shift @ARGV;
-	    $server_port = $ARGV[0];
-	} elsif($ARGV[0] eq "-c") {
-	    shift @ARGV;
-	    $sha = $ARGV[0];
-	} elsif($ARGV[0] eq "-n") {
-	    shift @ARGV;
-	    $max_list = $ARGV[0];
-	} elsif($ARGV[0] eq "--no-pager") {
-	    $pager = undef;
-	} elsif($ARGV[0] eq "--no-highlight") {
-	    $source_highlight = 0;
+    my $server_port = undef;
+    for(my $i = 0; $i < $#ARGV+1; ) {
+	my $consume = 0;
+	my $arg = $ARGV[$i];
+	if($ARGV[$i] eq "-p") {
+	    $server_port = $ARGV[$i+1];
+	    $consume = 2;
+	} elsif($ARGV[$i] eq "-n") {
+	    $max_list = $ARGV[$i+1];
+	    $consume = 2;
+	} elsif($ARGV[$i] eq "--no-exit") {
+	    $send_exit = 0;
+	    $consume = 1;
 	} else {
-	    $url = $ARGV[0];
+	    $url = $ARGV[$i];
 	    $url =~ s,/$,,g;
+	    $consume = 1;
 	}
-	shift @ARGV;
+	if($consume) {
+	    splice @ARGV, $i, $consume;
+	} else {
+	    $i++;
+	}
     }
 
-    if($mode eq "save") {
+    if($mode eq "drop") {
+	die "Drop not supported!";
+    } elsif($mode eq "save") {
 	sub parseQuery {
 	    my ($query) = @_;
 
@@ -79,21 +121,13 @@ if($stash_mode eq "git-rstash") {
 
 		  $uri =~ s,/$,,g;
 		  if($uri =~ "^/fetch/(.*)") {
-		      my $fetch = $1;
-		      if($fetch eq "DEFAULT") {
-			  if($sha eq "DEFAULT") {
-			      $fetch = "HEAD";
-			  } else {
-			      $fetch = $sha;
-			  }
-		      }
+		      my $sha = getSHA($1);
 		      if(!$raw && $source_highlight) {
 			  $result_type = "text/html";
-			  $result = "<html>" . `git format-patch $fetch -1 --stdout | source-highlight -s diff -f html` . "</html>";
+			  $result = "<html>" . `git diff $sha~..$sha | source-highlight -s diff -f html` . "</html>";
 		      } else {
-			  $result = `git format-patch $fetch -1 --stdout`;
+			  $result = `git diff $sha~..$sha`;
 		      }
-		      exit 0 if($query->{apply});
 		  } else {
 		      my $max = $max_list;
 		      $max = $query->{max} if(exists($query->{max}));
@@ -104,6 +138,7 @@ if($stash_mode eq "git-rstash") {
 			  $result = `git log -n $max`;
 		      }
 		  }
+		  last ACCEPT if($query->{exit});
 		  $c->send_response(HTTP::Response->new(RC_OK, undef,
 							[
 							 'Content-Type' => $result_type,
@@ -122,9 +157,10 @@ if($stash_mode eq "git-rstash") {
 	$url = "http://$url" unless($url =~ /:\/\//);
 
 	if($mode eq "show") {
-	    $url = "$url/fetch/$sha?raw=1";
+	    $url = "$url/fetch/$default_sha?raw=1";
 	} elsif($mode eq "apply") {
-	    $url = "$url/fetch/$sha?raw=1&apply=1";
+	    $url = "$url/fetch/$default_sha?raw=1";
+	    $url .= "&exit=1" if($send_exit);
 	} elsif($mode eq "list") {
 	    $url = "$url/list?raw=1&max=${max_list}";
 	}
@@ -138,7 +174,7 @@ if($stash_mode eq "git-rstash") {
 	if($response->code == 200) {
 	    *OUTPUT = *STDOUT;
 	    if($mode eq "apply") {
-		open(OUTPUT, "|git am -3") || die("Cannot git apply!");
+		open(OUTPUT, "|patch -p1") || die("Cannot git apply!");
 	    } else {
 		my $command = "";
 		$command = "| source-highlight -s diff -f esc" if($source_highlight);
@@ -151,5 +187,64 @@ if($stash_mode eq "git-rstash") {
 	    die "Failed!";
 	}
     }
-} elsif($stash_mode eq "git-remote") {
+} elsif($stash_mode eq "git-tag") {
+    my $origin = "origin";
+    for(my $i = 0; $i < $#ARGV+1; ) {
+	my $consume = 0;
+	my $arg = $ARGV[$i];
+	if(0) {
+	} else {
+	    $origin = $ARGV[$i];
+	    $consume = 1;
+	}
+	if($consume) {
+	    splice @ARGV, $i, $consume;
+	} else {
+	    $i++;
+	}
+    }
+
+    my $tag_prefix = "git-rstash-";
+    if($mode eq "save") {
+	my $sha = getSHA("DEFAULT");
+	$sha = `git rev-parse $sha`;
+	chomp $sha;
+	my $tag = "${tag_prefix}${sha}";
+	system("git tag -f $tag $sha >/dev/null 2>&1");
+	system("git push --tags $origin :$tag >/dev/null 2>/dev/null");
+	system("git push --tags $origin $tag >/dev/null 2>&1");
+	print "git-rstash: $tag\n";
+    } else {
+	system("git fetch --tags $origin");
+	my @stashes = split(/\n/, `git tag | grep ${tag_prefix}`);
+	foreach(@stashes) {
+	    my $stash = $_;
+	    if($stash =~ /^$tag_prefix/) {
+		print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+	    }
+	}
+	my $sha = $default_sha;
+	$sha = $stashes[0] if($sha eq "DEFAULT");
+
+	if($mode eq "show") {
+	    system("git show $sha")
+	} elsif($mode eq "drop") {
+	    system("git tag -d $sha >/dev/null 2>&1");
+	    system("git push $origin :$sha >/dev/null 2>&1");
+	    print "Dropped: $sha\n";
+	} elsif($mode eq "apply") {
+	    system("git diff $sha~..$sha | patch -p1");
+	} elsif($mode eq "list") {
+	    *OUTPUT = *STDOUT;
+	    *OUTPUT = *FILTER_OUTPUT if($pager && open(FILTER_OUTPUT, "|$pager"));
+	    foreach(@stashes) {
+		my $stash = $_;
+		if($stash =~ /^$tag_prefix/) {
+		    print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+		}
+	    }
+	    close OUTPUT;
+	}
+    }
 }
+
