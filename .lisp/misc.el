@@ -480,8 +480,18 @@ the name of the value of file-name is present."
   (let ((pulling-actions (assoc-default 'actions (assoc-default 'pulling magit-key-mode-groups))))
     (add-to-list 'pulling-actions (list "S" "Sync" 'magit-sync))
     (push 'actions pulling-actions)
-    (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)))
+    (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)
+    (setq magit-key-mode-keymaps 'nil)))
 (magit-enable-sync)
+
+(defun magit-enable-jira ()
+  (interactive)
+  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
+    (add-to-list 'pushing-actions (list "J" "Jira" 'magit-jira))
+    (push 'actions pushing-actions)
+    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
+    (setq magit-key-mode-keymaps 'nil)))
+(magit-enable-jira)
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
@@ -503,13 +513,23 @@ the name of the value of file-name is present."
     )
   )
 
+(defun magit-current-section-string ()
+  (let* ((section (magit-current-section))
+         (info (and section (magit-section-info (magit-current-section)))))
+    (cond ((and (listp info) (stringp (nth 1 info))) (nth 1 info))
+          ((stringp info) info)
+          (t nil))))
+
 (defun magit-current-section-file ()
-  (let ((info (magit-section-info (magit-current-section))))
-    (cond ((and (listp info) (stringp (nth 1 info))) (setq info (nth 1 info)))
-          ((stringp info) t)
-          (t (setq info nil)))
-    (and info (file-exists-p info) info))
-  )
+  (let ((section (magit-current-section-string)))
+    (and section (file-exists-p section) section)))
+
+(defun magit-current-section-sha ()
+  (let ((string (magit-current-section-string)))
+    (cond ((not string) nil)
+          ((file-exists-p string) nil)
+          ((string-match "[^A-Fa-f0-9]" string) nil)
+          (t string))))
 
 (defun magit-diff-current-section ()
   (interactive)
@@ -526,6 +546,14 @@ the name of the value of file-name is present."
         (magit-file-log file)
       (magit-key-mode-popup-logging)))
   )
+
+(defun magit-jira (&optional commit)
+  (interactive)
+  (unless commit
+    (setq commit (or (magit-current-section-sha))))
+                     ;; (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD"))))
+  (if commit
+      (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
 
 ;; ================================================================================
 ;; Super keyboard-quit C-g
