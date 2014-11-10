@@ -551,9 +551,11 @@ the name of the value of file-name is present."
   (interactive)
   (unless commit
     (setq commit (or (magit-current-section-sha)
-                     (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD"))))
+                     (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
+                       (cond ((string= "" val) "HEAD")
+                             (t val))))))
   (if commit
-      (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
+      (start-process "*git-jira*" nil "git-jira" "--resolve" "--no-interactive" commit)))
 
 ;; ================================================================================
 ;; Super keyboard-quit C-g
