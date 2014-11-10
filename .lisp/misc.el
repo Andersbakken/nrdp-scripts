@@ -550,8 +550,8 @@ the name of the value of file-name is present."
 (defun magit-jira (&optional commit)
   (interactive)
   (unless commit
-    (setq commit (or (magit-current-section-sha))))
-                     ;; (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD"))))
+    (setq commit (or (magit-current-section-sha)
+                     (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD"))))
   (if commit
       (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
 
