@@ -3,6 +3,11 @@
 use Env;
 use strict;
 
+my $root = `git rev-parse --git-dir`;
+chomp($root);
+$root .= "/..";
+chdir($root);
+
 my $stash_mode;
 if($ARGV[0] eq "-m") {
     shift @ARGV;
