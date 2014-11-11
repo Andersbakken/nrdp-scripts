@@ -23,34 +23,34 @@ for(my $i = 0; $i < $#ARGV+1; ) {
     my $consume = 0;
     my $arg = $ARGV[$i];
     if($ARGV[$i] eq "-c") {
-	$default_sha = $ARGV[$i+1];
-	$consume = 2;
+    $default_sha = $ARGV[$i+1];
+    $consume = 2;
     } elsif($ARGV[$i] eq "--no-pager") {
-	$pager = undef;
-	$consume = 1;
+    $pager = undef;
+    $consume = 1;
     } elsif($ARGV[$i] eq "--no-highlight") {
-	$source_highlight = 0;
-	$consume = 1;
+    $source_highlight = 0;
+    $consume = 1;
     }
     if($consume) {
-	splice @ARGV, $i, $consume;
+    splice @ARGV, $i, $consume;
     } else {
-	$i++;
+    $i++;
     }
 }
 
 sub getSHA {
     my ($sha) = @_;
     if($sha eq "DEFAULT") {
-	$sha = $default_sha;
-	if($sha eq "DEFAULT") {
-	    if(length(`git status -s -uno 2>/dev/null`)) {
-		$sha = `git stash create -m 'git-rstash'`;
-		chomp $sha;
-	    } else {
-		$sha = "HEAD";
-	    }
-	}
+    $sha = $default_sha;
+    if($sha eq "DEFAULT") {
+        if(length(`git status -s -uno 2>/dev/null`)) {
+        $sha = `git stash create -m 'git-rstash'`;
+        chomp $sha;
+        } else {
+        $sha = "HEAD";
+        }
+    }
     }
     return $sha;
 }
@@ -61,190 +61,190 @@ if($stash_mode eq "git-rstash") {
     my $max_list = 50;
     my $server_port = undef;
     for(my $i = 0; $i < $#ARGV+1; ) {
-	my $consume = 0;
-	my $arg = $ARGV[$i];
-	if($ARGV[$i] eq "-p") {
-	    $server_port = $ARGV[$i+1];
-	    $consume = 2;
-	} elsif($ARGV[$i] eq "-n") {
-	    $max_list = $ARGV[$i+1];
-	    $consume = 2;
-	} elsif($ARGV[$i] eq "--no-exit") {
-	    $send_exit = 0;
-	    $consume = 1;
-	} else {
-	    $url = $ARGV[$i];
-	    $url =~ s,/$,,g;
-	    $consume = 1;
-	}
-	if($consume) {
-	    splice @ARGV, $i, $consume;
-	} else {
-	    $i++;
-	}
+    my $consume = 0;
+    my $arg = $ARGV[$i];
+    if($ARGV[$i] eq "-p") {
+        $server_port = $ARGV[$i+1];
+        $consume = 2;
+    } elsif($ARGV[$i] eq "-n") {
+        $max_list = $ARGV[$i+1];
+        $consume = 2;
+    } elsif($ARGV[$i] eq "--no-exit") {
+        $send_exit = 0;
+        $consume = 1;
+    } else {
+        $url = $ARGV[$i];
+        $url =~ s,/$,,g;
+        $consume = 1;
+    }
+    if($consume) {
+        splice @ARGV, $i, $consume;
+    } else {
+        $i++;
+    }
     }
 
     if($mode eq "drop") {
-	die "Drop not supported!";
+    die "Drop not supported!";
     } elsif($mode eq "save") {
-	sub parseQuery {
-	    my ($query) = @_;
+    sub parseQuery {
+        my ($query) = @_;
 
-	    my %result;
-	    my @pairs = split(/&/, $query);
-	    foreach my $pair (@pairs){
-		my ($name, $value) = split (/=/, $pair);
-		$name =~ tr/+/ /;
-		$name =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-		$value =~ tr/+/ /;
-		$value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-		$result{$name} = $value;
-	    }
-	    return \%result;
-	}
+        my %result;
+        my @pairs = split(/&/, $query);
+        foreach my $pair (@pairs){
+        my ($name, $value) = split (/=/, $pair);
+        $name =~ tr/+/ /;
+        $name =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $value =~ tr/+/ /;
+        $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
+        $result{$name} = $value;
+        }
+        return \%result;
+    }
 
-	use HTTP::Daemon;
-	use HTTP::Status;
+    use HTTP::Daemon;
+    use HTTP::Status;
 
-	my $d = HTTP::Daemon->new(LocalPort => $server_port) || die;
-	print "git-rstash: <", $d->url, ">\n";
+    my $d = HTTP::Daemon->new(LocalPort => $server_port) || die;
+    print "git-rstash: <", $d->url, ">\n";
         ACCEPT: while(my $c = $d->accept) {
-	  while(my $r = $c->get_request) {
-	      if($r->method eq 'GET') {
-		  my $result;
-		  my $result_type = "text/plain";
-		  my $uri = $r->uri->path;
-		  my $query = parseQuery($r->uri->query);
+      while(my $r = $c->get_request) {
+          if($r->method eq 'GET') {
+          my $result;
+          my $result_type = "text/plain";
+          my $uri = $r->uri->path;
+          my $query = parseQuery($r->uri->query);
 
-		  my $raw = 0;
-		  $raw = $query->{raw} if(exists($query->{raw}));
+          my $raw = 0;
+          $raw = $query->{raw} if(exists($query->{raw}));
 
-		  $uri =~ s,/$,,g;
-		  if($uri =~ "^/fetch/(.*)") {
-		      my $sha = getSHA($1);
-		      if(!$raw && $source_highlight) {
-			  $result_type = "text/html";
-			  $result = "<html>" . `git diff $sha~..$sha | source-highlight -s diff -f html` . "</html>";
-		      } else {
-			  $result = `git diff $sha~..$sha`;
-		      }
-		  } else {
-		      my $max = $max_list;
-		      $max = $query->{max} if(exists($query->{max}));
-		      if(!$raw || !length($uri)) {
-			  $result_type = "text/html";
-			  $result = "<html><ul>" . `git log -n $max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
-		      } else {
-			  $result = `git log -n $max`;
-		      }
-		  }
-		  last ACCEPT if($query->{exit});
-		  $c->send_response(HTTP::Response->new(RC_OK, undef,
-							[
-							 'Content-Type' => $result_type,
-							 'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
-							 'Pragma' => 'no-cache',
-							],
-							$result));
-	      }
-	  }
-	  $c->close;
-	  undef($c);
+          $uri =~ s,/$,,g;
+          if($uri =~ "^/fetch/(.*)") {
+              my $sha = getSHA($1);
+              if(!$raw && $source_highlight) {
+              $result_type = "text/html";
+              $result = "<html>" . `git diff $sha~..$sha | source-highlight -s diff -f html` . "</html>";
+              } else {
+              $result = `git diff $sha~..$sha`;
+              }
+          } else {
+              my $max = $max_list;
+              $max = $query->{max} if(exists($query->{max}));
+              if(!$raw || !length($uri)) {
+              $result_type = "text/html";
+              $result = "<html><ul>" . `git log -n $max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
+              } else {
+              $result = `git log -n $max`;
+              }
+          }
+          $c->send_response(HTTP::Response->new(RC_OK, undef,
+                            [
+                             'Content-Type' => $result_type,
+                             'Cache-Control' => 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0',
+                             'Pragma' => 'no-cache',
+                            ],
+                            $result));
+          last ACCEPT if($query->{exit});
+          }
+      }
+      $c->close;
+      undef($c);
       }
     } else {
-	die "No URL supplied!" unless($url);
-	$url .= ":${server_port}" if($server_port && !($url =~ /:[0-9]$/));
-	$url = "http://$url" unless($url =~ /:\/\//);
+    die "No URL supplied!" unless($url);
+    $url .= ":${server_port}" if($server_port && !($url =~ /:[0-9]$/));
+    $url = "http://$url" unless($url =~ /:\/\//);
 
-	if($mode eq "show") {
-	    $url = "$url/fetch/$default_sha?raw=1";
-	} elsif($mode eq "apply") {
-	    $url = "$url/fetch/$default_sha?raw=1";
-	    $url .= "&exit=1" if($send_exit);
-	} elsif($mode eq "list") {
-	    $url = "$url/list?raw=1&max=${max_list}";
-	}
+    if($mode eq "show") {
+        $url = "$url/fetch/$default_sha?raw=1";
+    } elsif($mode eq "apply") {
+        $url = "$url/fetch/$default_sha?raw=1";
+        $url .= "&exit=1" if($send_exit);
+    } elsif($mode eq "list") {
+        $url = "$url/list?raw=1&max=${max_list}";
+    }
 
-	use LWP::UserAgent;
-	use HTTP::Request::Common qw(GET);
+    use LWP::UserAgent;
+    use HTTP::Request::Common qw(GET);
 
-	my $req = GET($url);
-	my $ua = new LWP::UserAgent;
-	my $response = $ua->request($req);
-	if($response->code == 200) {
-	    *OUTPUT = *STDOUT;
-	    if($mode eq "apply") {
-		open(OUTPUT, "|patch -p1") || die("Cannot git apply!");
-	    } else {
-		my $command = "";
-		$command = "| source-highlight -s diff -f esc" if($source_highlight);
-		$command = "$command | $pager" if($pager);
-		*OUTPUT = *FILTER_OUTPUT if(open(FILTER_OUTPUT, "$command"));
-	    }
-	    print OUTPUT $response->content;
-	    close(OUTPUT);
-	} else {
-	    die "Failed!";
-	}
+    my $req = GET($url);
+    my $ua = new LWP::UserAgent;
+    my $response = $ua->request($req);
+    if($response->code == 200) {
+        *OUTPUT = *STDOUT;
+        if($mode eq "apply") {
+        open(OUTPUT, "|patch -p1") || die("Cannot git apply!");
+        } else {
+        my $command = "";
+        $command = "| source-highlight -s diff -f esc" if($source_highlight);
+        $command = "$command | $pager" if($pager);
+        *OUTPUT = *FILTER_OUTPUT if(open(FILTER_OUTPUT, "$command"));
+        }
+        print OUTPUT $response->content;
+        close(OUTPUT);
+    } else {
+        die "Failed! " . $response->code . "\n" . $response->content;
+    }
     }
 } elsif($stash_mode eq "git-tag") {
     my $origin = "origin";
     for(my $i = 0; $i < $#ARGV+1; ) {
-	my $consume = 0;
-	my $arg = $ARGV[$i];
-	if(0) {
-	} else {
-	    $origin = $ARGV[$i];
-	    $consume = 1;
-	}
-	if($consume) {
-	    splice @ARGV, $i, $consume;
-	} else {
-	    $i++;
-	}
+    my $consume = 0;
+    my $arg = $ARGV[$i];
+    if(0) {
+    } else {
+        $origin = $ARGV[$i];
+        $consume = 1;
+    }
+    if($consume) {
+        splice @ARGV, $i, $consume;
+    } else {
+        $i++;
+    }
     }
 
     my $tag_prefix = "git-rstash-";
     if($mode eq "save") {
-	my $sha = getSHA("DEFAULT");
-	$sha = `git rev-parse $sha`;
-	chomp $sha;
-	my $tag = "${tag_prefix}${sha}";
-	system("git tag -f $tag $sha >/dev/null 2>&1");
-	system("git push --tags $origin :$tag >/dev/null 2>/dev/null");
-	system("git push --tags $origin $tag >/dev/null 2>&1");
-	print "git-rstash: $tag\n";
+    my $sha = getSHA("DEFAULT");
+    $sha = `git rev-parse $sha`;
+    chomp $sha;
+    my $tag = "${tag_prefix}${sha}";
+    system("git tag -f $tag $sha >/dev/null 2>&1");
+    system("git push --tags $origin :$tag >/dev/null 2>/dev/null");
+    system("git push --tags $origin $tag >/dev/null 2>&1");
+    print "git-rstash: $tag\n";
     } else {
-	system("git fetch --tags $origin");
-	my @stashes = split(/\n/, `git tag | grep ${tag_prefix}`);
-	foreach(@stashes) {
-	    my $stash = $_;
-	    if($stash =~ /^$tag_prefix/) {
-		print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
-	    }
-	}
-	my $sha = $default_sha;
-	$sha = $stashes[0] if($sha eq "DEFAULT");
+    system("git fetch --tags $origin");
+    my @stashes = split(/\n/, `git tag | grep ${tag_prefix}`);
+    foreach(@stashes) {
+        my $stash = $_;
+        if($stash =~ /^$tag_prefix/) {
+        print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+        }
+    }
+    my $sha = $default_sha;
+    $sha = $stashes[0] if($sha eq "DEFAULT");
 
-	if($mode eq "show") {
-	    system("git show $sha")
-	} elsif($mode eq "drop") {
-	    system("git tag -d $sha >/dev/null 2>&1");
-	    system("git push $origin :$sha >/dev/null 2>&1");
-	    print "Dropped: $sha\n";
-	} elsif($mode eq "apply") {
-	    system("git diff $sha~..$sha | patch -p1");
-	} elsif($mode eq "list") {
-	    *OUTPUT = *STDOUT;
-	    *OUTPUT = *FILTER_OUTPUT if($pager && open(FILTER_OUTPUT, "|$pager"));
-	    foreach(@stashes) {
-		my $stash = $_;
-		if($stash =~ /^$tag_prefix/) {
-		    print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
-		}
-	    }
-	    close OUTPUT;
-	}
+    if($mode eq "show") {
+        system("git show $sha")
+    } elsif($mode eq "drop") {
+        system("git tag -d $sha >/dev/null 2>&1");
+        system("git push $origin :$sha >/dev/null 2>&1");
+        print "Dropped: $sha\n";
+    } elsif($mode eq "apply") {
+        system("git diff $sha~..$sha | patch -p1");
+    } elsif($mode eq "list") {
+        *OUTPUT = *STDOUT;
+        *OUTPUT = *FILTER_OUTPUT if($pager && open(FILTER_OUTPUT, "|$pager"));
+        foreach(@stashes) {
+        my $stash = $_;
+        if($stash =~ /^$tag_prefix/) {
+            print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+        }
+        }
+        close OUTPUT;
+    }
     }
 }
 
