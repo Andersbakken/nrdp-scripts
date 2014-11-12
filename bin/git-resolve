@@ -199,7 +199,7 @@ if [ "$COUNT" = 0 ]; then
     if [ "$AFTER" = "rebase" ]; then
         $TEST git rebase --continue
     elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
-        eval $TEST git commit --no-edit $COMMIT_ARGS
+        eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     fi
 else
     echo "$COUNT files left unresolved"
