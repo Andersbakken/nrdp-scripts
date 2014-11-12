@@ -37,25 +37,17 @@ if [ $STRATEGY = "empty" ]; then
         echo "Cannot do empty strategy without ongoing merge!"
         exit 1
     fi
-    AFTER=commit
-    PROMPT=false
-    STRATEGY=au
-    COMMIT_ARGS="$COMMIT_ARGS --allow-empty"
-    for file in `git status -s | grep "^M  " | sed "s,^.. *,,g"`; do
-        $TEST git reset "$file"
-        $TEST git checkout "$file"
-    done
-    for file in `git status -s | grep "^A  " | sed "s,^.. *,,g"`; do
-        $TEST git rm -f "$file"
-    done
-    for file in `git status -s | grep "^DU " | sed "s,^.. *,,g"`; do
-        $TEST git rm "$file"
-    done
+    git reset HEAD .
+    git checkout .
+    eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
+    exit 0
 fi
 
 if [ -z "$AFTER" ]; then
     if [ -d "$GITDIR/rebase-apply/" ]; then
         AFTER=rebase
+    elif [ -e "$GITDIR/CHERRY_PICK_HEAD" ]; then
+        AFTER=cherry-pick
     elif [ -e "$GITDIR/MERGE_HEAD" ]; then
         AFTER=merge
     elif [ -e "$GITDIR/COMMIT_EDITMSG" ]; then
@@ -198,6 +190,9 @@ if [ "$COUNT" = 0 ]; then
     echo "No files left unresolved"
     if [ "$AFTER" = "rebase" ]; then
         $TEST git rebase --continue
+    elif [ "$AFTER" = "cherry-pick" ]; then
+        $TEST git cherry-pick --allow-empty --continue
+        eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     fi
