@@ -8,7 +8,7 @@ while [ "$#" -ge 1 ]; do
      if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
          echo "$0: [mode] [file] [count]"
          echo "Modes:"
-         echo "  p4"
+         echo "  submit"
          echo "  stash"
          echo "  tracking"
          echo "  pulled"
@@ -26,15 +26,15 @@ while [ "$#" -ge 1 ]; do
          exit 0
     elif echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
         number=`echo $1 | sed "s,^-,,g"`
-    elif [ "$1" = "-p4submit" ]; then
-         command="p4submit"
-         [ -z "$changes" ] && changes="p4 changes"
+    elif [ "$1" = "-submit" ]; then
+         command="submit"
+         [ -z "$changes" ] && changes="submit changes"
     elif [ -z "$changes" ]; then
         if [ -e "$1" ]; then
             echo "File: $1"
             changes="changes $1"
-        elif [ "$1" = "p4" ]; then
-            changes="p4 changes"
+        elif [ "$1" = "submit" ]; then
+            changes="submit changes"
         elif [ "$1" = "tracking" ]; then
             tracking=`git tracking`
             branch=`git branch | grep '^\*' | sed "s,\* ,,"`
@@ -67,7 +67,7 @@ while [ "$#" -ge 1 ]; do
     fi
     shift
 done
-[ -z "$changes" ] && changes="log --pretty=format:'%h %s [%an]' --no-merges"
+[ -z "$changes" ] && changes="changes"
 
 choose=
 head=0
@@ -82,9 +82,9 @@ while true; do
          choose_args="$choose_args -c $choose"
     fi
     choose_args="$choose_args -+$head -$number -a "
-    change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed "s,:,,g"`
+    change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed -e 's,:,,g' -e 's:\x1B\[[0-9;]*[mK]::g'`
     if [ -n "$change" ]; then
-      if [ "$command" = "p4submit" ]; then
+      if [ "$command" = "submit" ]; then
           while true; do
               /bin/echo -n "Submit $change? "
               read choose
@@ -93,9 +93,9 @@ while true; do
                   git show "$change"
                   done=no
               elif [ "$choose" = "a" ]; then
-                  git p4 submit -a "$change"
+                  git submit -a "$change"
               elif [ "$choose" = "y" ]; then
-                  git p4 submit "$change"
+                  git submit "$change"
               fi
               [ "$done" = "yes" ] && break
           done
@@ -105,6 +105,7 @@ while true; do
           read choose
           [ "$choose" = "y" ] && $exec
       else
+          echo "$change"
           git show "$change"
       fi
       /bin/echo -n "Next? "

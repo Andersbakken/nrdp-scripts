@@ -25,6 +25,8 @@ if [ "$1" = "tracking" ]; then
     else
        echo "$TRACKING"
     fi
+elif [ "$1" = "cs" ]; then
+    git choose-show-change -submit
 elif [ "$1" = "changes" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
 	[ "$change" = "+" ] && continue
@@ -125,7 +127,7 @@ else
 	PUSH_BRANCH="$BRANCH"
 	if echo "$PUSH_BRANCH" | grep -q "/"; then
 	    PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
-	    PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2`
+	    PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
 	fi
 	if [ ! -x "$GITROOT/.git/hooks/pre-submit" ] || "$GITROOT/.git/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
 	    echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"

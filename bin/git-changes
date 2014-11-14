@@ -4,7 +4,6 @@ AUTHOR="$GIT_CHANGES_AUTHOR"
 [ -z "$AUTHOR" ] && AUTHOR=`whoami`
 
 MERGES="0"
-OPTS="--pretty=format:'%h %s [%aE]'"
 
 while [ "$#" -gt 0 ]; do
    OPT="$1"
@@ -23,8 +22,5 @@ while [ "$#" -gt 0 ]; do
     *) OPTS="$OPTS $OPT";;
     esac
 done
-if [ "$MERGES" = "0" ]; then
-    eval git log --no-merges $OPTS | grep -vi Merge-Task
-else
-    eval git log $OPTS
-fi
+[ "$MERGES" = "0" ] && OPTS="$OPTS --no-merges"
+eval git pretty-log $OPTS

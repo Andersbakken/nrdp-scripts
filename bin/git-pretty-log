@@ -1,0 +1,2 @@
+#!/bin/sh
+git log --oneline --pretty=format:'%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset%Creset%C(blue)%d%Creset' --abbrev-commit $@
