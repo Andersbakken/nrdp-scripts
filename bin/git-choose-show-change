@@ -2,13 +2,12 @@
 
 file=
 number=20
-changes=
-command=
+mode="changes"
+mode_args=""
 while [ "$#" -ge 1 ]; do
-     if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
          echo "$0: [mode] [file] [count]"
          echo "Modes:"
-         echo "  submit"
          echo "  stash"
          echo "  tracking"
          echo "  pulled"
@@ -24,55 +23,41 @@ while [ "$#" -ge 1 ]; do
 	     [ -n "$remote" ] && echo "  $remote (remote)"
          done
          exit 0
-    elif echo "$1" | grep "^-*[0-9]*$" >/dev/null 2>&1; then
+    elif echo "$1" | grep -q "^-[0-9]\+$"; then
         number=`echo $1 | sed "s,^-,,g"`
     elif [ "$1" = "-submit" ]; then
-         command="submit"
-         [ -z "$changes" ] && changes="submit changes"
-    elif [ -z "$changes" ]; then
-        if [ -e "$1" ]; then
-            echo "File: $1"
-            changes="changes $1"
-        elif [ "$1" = "submit" ]; then
-            changes="submit changes"
-        elif [ "$1" = "tracking" ]; then
-            tracking=`git tracking`
-            branch=`git branch | grep '^\*' | sed "s,\* ,,"`
-            changes="changes $tracking..$branch"
-        elif [ "$1" = "mine" ]; then
-            changes="mychanges"
-        elif [ "$1" = "stash" ]; then
-            changes="stash list"
-        elif echo "$1" | grep "\.\." >/dev/null 2>&1; then
-            echo "Range: $1"
-            changes="changes $1"
-        elif git branch | grep "^\** *$1\$" >/dev/null 2>&1; then
-            echo "Local Branch: $1"
-            changes="changes $1"
-        elif git branch -r | grep "^\** *$1\$" >/dev/null 2>&1; then
-            echo "Remote Branch: $1"
-            changes="changes $1"
-        elif git remote | grep "^$1\$" >/dev/null 2>&1; then
-            branch=`git branch | grep '^\*' | sed "s,\* ,,"`
-            echo "Remote: $1 ($branch)"
-            changes="changes $1/$branch..$branch"
-        elif [ -n "$1" ]; then
-            changes="$1"
-        fi
-    elif [ -z "$file" ]; then
-        file="$1"
+        command="submit"
+        [ -z "$mode" ] && mode="changes -t"
+    elif [ "$1" = "tracking" ]; then
+        mode="submit -t"
+    elif [ "$1" = "mine" ]; then
+        mode="mychanges"
+    elif [ "$1" = "stash" ]; then
+        mode="stash list"
+    elif [ "$1" = "pulled" ]; then
+        mode="changes @{1}.."
+    elif echo "$1" | grep "\.\." >/dev/null 2>&1; then
+        echo "Range: $1"
+        mode="changes $1"
+    elif git rev-parse "$1" >/dev/null 2>&1; then
+        echo "Branch: $1"
+        mode="changes $1"
+    elif git remote | grep "^$1\$" >/dev/null 2>&1; then
+        branch=`git rev-parse --abbrev-ref HEAD`
+        echo "Remote: $1 ($branch)"
+        mode="changes $1/$branch..$branch"
+    elif [ -n "$1" ]; then
+        mode="$1"
     else
-        echo "Unrecognized option: $1"
-        exit 1
+        mode_args="$mode_args $1"
     fi
     shift
 done
-[ -z "$changes" ] && changes="changes"
 
 choose=
 head=0
 while true; do
-    #echo "git $changes"
+    #echo "git $mode"
     choose_args=
     if [ "$choose" = "n" ]; then
         head=$((head+$number))
@@ -82,7 +67,7 @@ while true; do
          choose_args="$choose_args -c $choose"
     fi
     choose_args="$choose_args -+$head -$number -a "
-    change=`choose.pl $choose_args -x "git $changes $file" | cut -d' ' -f1 | sed -e 's,:,,g' -e 's:\x1B\[[0-9;]*[mK]::g'`
+    change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' -e 's:\x1B\[[0-9;]*[mK]::g'`
     if [ -n "$change" ]; then
       if [ "$command" = "submit" ]; then
           while true; do
