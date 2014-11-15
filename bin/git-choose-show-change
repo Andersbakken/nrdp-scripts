@@ -30,8 +30,8 @@ while [ "$#" -ge 1 ]; do
         [ -z "$mode" ] && mode="changes -t"
     elif [ "$1" = "-t" ] || [ "$1" = "tracking" ]; then
         mode="changes -t"
-    elif [ "$1" = "mine" ]; then
-        mode="mychanges"
+    elif [ "$1" = "-m" ] || [ "$1" = "mine" ]; then
+        mode="changes -m"
     elif [ "$1" = "stash" ]; then
         mode="stash list"
     elif [ "$1" = "pulled" ]; then
