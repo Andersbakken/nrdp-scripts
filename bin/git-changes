@@ -1,6 +1,7 @@
 #!/bin/sh
 
 AUTHOR="$GIT_CHANGES_AUTHOR"
+[ -z "$AUTHOR" ] && AUTHOR=`git config user.email`
 [ -z "$AUTHOR" ] && AUTHOR=`whoami`
 
 OPTS=""
