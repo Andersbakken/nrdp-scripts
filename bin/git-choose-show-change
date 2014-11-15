@@ -29,7 +29,7 @@ while [ "$#" -ge 1 ]; do
         command="submit"
         [ -z "$mode" ] && mode="changes -t"
     elif [ "$1" = "tracking" ]; then
-        mode="submit -t"
+        mode="changes -t"
     elif [ "$1" = "mine" ]; then
         mode="mychanges"
     elif [ "$1" = "stash" ]; then
@@ -39,7 +39,10 @@ while [ "$#" -ge 1 ]; do
     elif echo "$1" | grep "\.\." >/dev/null 2>&1; then
         echo "Range: $1"
         mode="changes $1"
-    elif git rev-parse "$1" >/dev/null 2>&1; then
+    elif [ -e "$1" ]; then
+        echo "File: $1"
+        mode="changes $1"
+    elif git rev-parse --verify "$1" >/dev/null 2>&1; then
         echo "Branch: $1"
         mode="changes $1"
     elif git remote | grep "^$1\$" >/dev/null 2>&1; then

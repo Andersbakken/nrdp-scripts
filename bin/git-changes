@@ -3,8 +3,9 @@
 AUTHOR="$GIT_CHANGES_AUTHOR"
 [ -z "$AUTHOR" ] && AUTHOR=`whoami`
 
+OPTS=""
 MERGES="0"
-
+UNKNOWN_OPTS=""
 while [ "$#" -gt 0 ]; do
    OPT="$1"
    shift
@@ -26,8 +27,9 @@ while [ "$#" -gt 0 ]; do
     -[0-9]*[hH]) OPTS="$OPTS --since='$OPT hours ago'" ;;
     -[0-9]*M) OPTS="$OPTS --since='$OPT minutes ago'" ;;
     -[0-9]*[sS]) OPTS="$OPTS --since='$OPT seconds ago'" ;;
-    *) OPTS="$OPTS $OPT";;
+    *) UNKNOWN_OPTS="$UNKNOWN_OPTS $OPT";;
     esac
 done
 [ "$MERGES" = "0" ] && OPTS="$OPTS --no-merges"
-eval git log --oneline '--pretty="format:%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%cr%Creset%Creset%C(blue)%d%Creset"' --abbrev-commit $OPTS
+
+eval git log --oneline '--pretty="format:%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%cr%Creset%Creset%C(blue)%d%Creset"' --abbrev-commit $OPTS $UNKNOWN_OPTS
