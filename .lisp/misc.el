@@ -558,6 +558,17 @@ the name of the value of file-name is present."
       (start-process "*git-jira*" nil "git-jira" "--resolve" "--no-interactive" commit)))
 
 ;; ================================================================================
+;; git-jira
+;; ================================================================================
+
+(defun git-jira (&optional commit)
+  (interactive)
+  (unless commit
+    (setq commit (magit-read-rev-with-default "Jira commit: ")))
+  (if commit
+      (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
+
+;; ================================================================================
 ;; Super keyboard-quit C-g
 ;; ================================================================================
 
