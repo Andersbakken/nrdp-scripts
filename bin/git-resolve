@@ -175,7 +175,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 done ;;
             au) merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
-                gitCatBase $file base=$(gitBase upstream) $tmp
+                gitCatBase $file $(gitBase upstream) $tmp
                 $TEST cat $tmp >$file
                 break ;;
             ay) merged=true;
