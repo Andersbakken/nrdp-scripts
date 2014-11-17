@@ -3,6 +3,7 @@
 dirs=""
 nm=`which nm`
 symbol=
+filt="c++filt"
 while [ -n "$1" ]; do
     case "$1" in
         --nm=*)
@@ -12,6 +13,9 @@ while [ -n "$1" ]; do
             shift
             nm="$1"
             ;;
+        -f|--no-c++filt)
+            filt=cat
+            ;;
         -s)
             shift
             symbol="$1"
@@ -20,7 +24,7 @@ while [ -n "$1" ]; do
             symbol=`echo $1 | sed -e 's,^[^=]*=,,'`
             ;;
         -h|--help)
-            echo "$0 [--nm=/path/to/nm] [-n /path/to/nm] --symbol=symbol -s symbol dirs..."
+            echo "$0 [--nm=/path/to/nm] [-n /path/to/nm] [-f|--no-c++filt] --symbol=symbol -s symbol dirs..."
             exit 0
             ;;
         *)
@@ -46,9 +50,9 @@ test -z "$dirs" && dirs="."
 # echo $dirs
 find $dirs -name "*.so*" -or -name "*.a" -or -name "*.o" -or -name "*.dylib" | while read file; do
     # echo $file
-    $nm $file >$out 2> $err
+    $nm $file | $filt >$out 2> $err
     if grep "no symbols" $err --quiet; then
-        $nm -D $file >$out 2> $err
+        $nm -D $file | $c++filt >$out 2> $err
     fi
 
     if grep "$symbol" -l $out --quiet; then
