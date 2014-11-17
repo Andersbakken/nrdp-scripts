@@ -139,7 +139,10 @@ if($stash_mode eq "git-rstash") {
                       $max = $query->{max} if(exists($query->{max}));
                       if(!$raw || !length($uri)) {
                           $result_type = "text/html";
-                          $result = "<html><ul>" . `git log -n $max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>"` . "</ul></html>";
+			  $result = "<html>\n";
+			  $result .= "<b><a href=\"/fetch/DEFAULT?raw=0\">DEFAULT</a> [<a href=\"/fetch/DEFAULT?raw=1\">RAW</a>]</b><hr>\n";
+                          $result .= "<ul>\n" . `git log -n $max --pretty="<li><a href="/fetch/%h?raw=0">%h</a> %s (%an) [<a href="/fetch/%h?raw=1">RAW</a>]</li>\n"` . "</ul>\n";
+			  $result .= "</html>";
                       } else {
                           $result = `git log -n $max`;
                       }
