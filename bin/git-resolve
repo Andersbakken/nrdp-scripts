@@ -55,25 +55,32 @@ if [ -z "$AFTER" ]; then
     fi
 fi
 
+gitBase()
+{
+    BASE="$1"
+    if [ "$BASE" = "upstream" ]; then
+        if [ "$AFTER" = "commit" ]; then
+            echo "3"
+        else
+            echo "2"
+        fi
+    elif [ "$BASE" = "yours" ]; then
+        if [ "$AFTER" = "commit" ]; then
+            echo "2"
+        else
+            echo "3"
+        fi
+    else
+        echo "$BASE"
+    fi
+}
+
 gitCatBase()
 {
     FILE="$1"
     BASE="$2"
     OUTPUT="$3"
     [ -z "$OUTPUT" ] && OUTPUT="$FILE"
-    if [ "$BASE" = "upstream" ]; then
-        if [ "$AFTER" = "commit" ]; then
-            base="3"
-        else
-            base="2"
-        fi
-    elif [ "$BASE" = "yours" ]; then
-        if [ "$AFTER" = "commit" ]; then
-            base="2"
-        else
-            base="3"
-        fi
-    fi
     git cat-file blob ":${BASE}:$FILE" >$OUTPUT 2>/dev/null
     return 1
 }
@@ -168,12 +175,12 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 done ;;
             au) merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
-                gitCatBase $file "upstream" $tmp
+                gitCatBase $file base=$(gitBase upstream) $tmp
                 $TEST cat $tmp >$file
                 break ;;
             ay) merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
-                gitCatBase $file "yours" $tmp
+                gitCatBase $file $(gitBase yours) $tmp
                 $TEST cat $tmp >$file
                 break ;;
             s|skip) break;;
