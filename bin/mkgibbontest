@@ -84,24 +84,17 @@ if [ "$write" = "1" ]; then
 function keyboardHandler(key)
 {
     if (key.data.type == "press" && key.data.text == 'a') {
-        nrdp.gibbon.load({ url:"http://en.wikipedia.org/wiki/Leif_Erikson",
-                           headers: {"X-Gibbon-Cache-Control":"key=foo,refresh,no-memory-cache"}
-                         }, networkResponseHandler);
     }
-    // nrdp.log.console("Got Key: " + JSON.stringify(key));
+    nrdp.log.error("Got Key: " + JSON.stringify(key));
 }
 function networkResponseHandler(event) {
-    nrdp.log.console("Got response " + event.state + " data: " + event.size);
+    nrdp.log.error("Got response " + event.state + " data: " + event.size);
 }
 function onImageLoaded(event) {
-    nrdp.log.console("Got image loaded " + JSON.stringify(event));
+    nrdp.log.error("Got image loaded " + JSON.stringify(event));
 }
 function onTimeout() {
-    nrdp.gibbon.load({ url:"http://en.wikipedia.org/wiki/Leif_Erikson",
-                       headers: {"X-Gibbon-Cache-Control":"key=foo,refresh,no-memory-cache"}
-                     }, networkResponseHandler);
 }
-
 var w;
 function main() {
     nrdp.gibbon.addEventListener("key", keyboardHandler);
