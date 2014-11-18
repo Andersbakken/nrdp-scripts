@@ -131,8 +131,9 @@ else
 	fi
 	if [ ! -x "$GITROOT/.git/hooks/pre-submit" ] || "$GITROOT/.git/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
 	    echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
-	    git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"
-	    [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$NEW_SHA1" "$BRANCH"
+	    if git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"; then
+	        [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$NEW_SHA1" "$BRANCH"
+            fi
         fi
     fi
     if [ -n "$stashed" ]; then
