@@ -28,7 +28,12 @@ if [ "$1" = "tracking" ]; then
 elif [ "$1" = "cs" ]; then
     git choose-show-change -submit
 elif [ "$1" = "changes" ]; then
-    git changes "${TRACKING}..HEAD"
+    for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
+	[ "$change" = "+" ] && continue
+        NOTE=`git notes --ref git-submit show $change 2>/dev/null`
+        [ -n "$NOTE" ] && NOTE=" [$NOTE]"
+        echo "$(git changes --max-count=1 $change)$NOTE"
+    done
 elif [ "$1" = "ignore" ]; then
     SET=yes
     while [ "$#" -ge 1 ]; do
