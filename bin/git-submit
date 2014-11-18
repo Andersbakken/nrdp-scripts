@@ -27,7 +27,7 @@ if [ "$1" = "tracking" ]; then
     fi
 elif [ "$1" = "cs" ]; then
     git choose-show-change -submit
-elif [ "$1" = "changes" ]; then
+elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
 	[ "$change" = "+" ] && continue
         NOTE=`git notes --ref git-submit show $change 2>/dev/null`
