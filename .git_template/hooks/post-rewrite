@@ -1,0 +1,4 @@
+#!/bin/sh
+while read old new other; do #keep submit ignore
+   git --ref git-submit notes copy $old $new 2>/dev/null
+done

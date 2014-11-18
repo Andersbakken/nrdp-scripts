@@ -1,0 +1,21 @@
+#!/bin/sh
+EMAIL=`git config --local user.email`
+if [ -z "$EMAIL" ]; then
+    REMOTE=`git remote -v show origin | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
+    if echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/"; then
+        DEFAULT_EMAIL="$(whoami)@netflix.com"
+    else
+        DEFAULT_EMAIL=`git config user.email`
+    fi
+    if [ -n "$DEFAULT_EMAIL" ]; then
+        if false; then
+            /bin/echo -n "Enter email($DEFAULT_EMAIL): "
+            EMAIL=`head -1 -`
+        else
+            echo "Setting email address: $DEFAULT_EMAIL"
+        fi
+        [ -z "$EMAIL" ] && EMAIL="$DEFAULT_EMAIL"
+        git config --local user.email "$EMAIL"
+    fi
+fi
+

@@ -2,5 +2,5 @@
 if echo "$2" | grep -q "/"; then
     ORIGIN=`echo $2 | cut -d/ -f1`
     REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
-    [ "$REMOTE" = "ssh://git@stash.corp.netflix.com:7999/nrdp/nrdp.git" ] && git jira --no-create --comment -i "$1"
+    echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --no-create --comment -i "$1"
 fi
