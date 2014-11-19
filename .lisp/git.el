@@ -1459,7 +1459,7 @@ The FILES list must be sorted."
   (if (not (equal (substring directory -1) "/")) (setq directory (concat directory "/")))
   (setq git-default-directory directory)
   (let* ((coding-system-for-read git-commits-coding-system)
-         (buffer (git-run-command-buffer "*git-log*" "whatchanged" "--no-color" "--pretty" "--" directory)))
+         (buffer (git-run-command-buffer "*git-log*" "log" "--no-color" "--pretty" "--" directory)))
     (with-current-buffer buffer (git-log-mode 'pretty))
     (display-buffer buffer)))
 
@@ -1471,7 +1471,7 @@ The FILES list must be sorted."
          (buffer
           (if current-prefix-arg
               (apply #'git-run-command-buffer "*git-log*" "log" "--no-color" "--stat" "HEAD" "--" (git-get-filenames files))
-              (apply #'git-run-command-buffer "*git-log*" "whatchanged" "--no-color" "--pretty" "HEAD" "--" (git-get-filenames files))
+              (apply #'git-run-command-buffer "*git-log*" "log" "--no-color" "--pretty" "HEAD" "--" (git-get-filenames files))
             )))
     (with-current-buffer buffer (git-log-mode 'pretty))
     (display-buffer buffer)))
