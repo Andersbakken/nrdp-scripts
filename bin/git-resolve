@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 TEST=
 AFTER=
@@ -59,13 +59,13 @@ gitBase()
 {
     BASE="$1"
     if [ "$BASE" = "upstream" ]; then
-        if [ "$AFTER" = "commit" ]; then
+        if [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
             echo "3"
         else
             echo "2"
         fi
     elif [ "$BASE" = "yours" ]; then
-        if [ "$AFTER" = "commit" ]; then
+        if [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
             echo "2"
         else
             echo "3"
