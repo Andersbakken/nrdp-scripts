@@ -78,8 +78,8 @@ else
 	if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
-        elif git ignore check "$SHA1"; then
-            echo "$SHA1 is marked to ignore"
+        elif git ignore check "$SHA1" >/dev/null; then
+            echo "$SHA1 is marked to ignore!"
             continue
 	fi
 
