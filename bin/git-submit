@@ -30,26 +30,9 @@ elif [ "$1" = "cs" ]; then
 elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
 	[ "$change" = "+" ] && continue
-        NOTE=`git notes --ref git-submit show $change 2>/dev/null`
-        [ -n "$NOTE" ] && NOTE=" [$NOTE]"
-        echo "$(git changes --max-count=1 $change)$NOTE"
-    done
-elif [ "$1" = "ignore" ]; then
-    SET=yes
-    while [ "$#" -ge 1 ]; do
-	if [ "$1" = "-rm" ]; then
-            SET=no
-	else
-            CHANGES="$CHANGES $1"
-	fi
-	shift
-    done
-    for change in $CHANGES; do
-        if [ "$SET" = "yes" ]; then
-	    git notes --ref git-submit add -f "$change" -m "IGNORE" >/dev/null 2>&1
-        else
-	    git notes --ref git-submit remove "$change" >/dev/null 2>&1
-        fi
+        NOTES=
+        git ignore check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
+        echo "$(git changes --max-count=1 $change)$NOTES"
     done
 else
     CHANGES=
@@ -83,7 +66,8 @@ else
     stashed=
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
 	stashed=1
-	git commit -a -m "git-submit"
+        ignore_marker=`git ignore marker 2>/dev/null`
+	git commit -a -m "${ignore_marker}git-submit"
     fi
 
     COMMON_SHA1=
@@ -94,12 +78,9 @@ else
 	if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
-        else 
-            NOTES=`git notes --ref git-submit show $SHA1 2>/dev/null`
-            if [ "$NOTES" = "IGNORE" ]; then
-                 echo "$SHA1 is marked to ignore"
-                 continue
-            fi
+        elif git ignore check "$SHA1"; then
+            echo "$SHA1 is marked to ignore"
+            continue
 	fi
 
 	echo "Applying $SHA1"

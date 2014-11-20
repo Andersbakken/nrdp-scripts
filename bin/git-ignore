@@ -1,0 +1,39 @@
+#!/bin/sh
+
+MARKER=`git config ignore.marker`
+[ -z "$MARKER" ] && MARKER="WIP: "
+
+shouldIgnore() {
+     change="$1"
+     commits=`git rev-list -n 1 --grep "^$MARKER" "$change"`
+     for commit in $commits; do
+	echo "Change($commit): IGNORED"
+     done
+     [ -n "$commits" ] && return 0
+     return 1
+}
+
+if [ "$1" = "list" ] || [ "$#" = "0" ]; then
+    TRACKING=
+    [ "$1" = "list" ] && TRACKING="$2"
+    [ -z "$TRACKING" ] && TRACKING=`git tracking`
+    for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
+	[ "$change" = "+" ] && continue
+	shouldIgnore $change >/dev/null && echo "$(git changes --max-count=1 $change)"
+    done
+elif [ "$1" = "marker" ]; then
+    if [ -n "$2" ]; then
+        MARKER="$2"
+	git config ignore.marker "$MARKER"
+    fi
+    echo "$MARKER"
+elif [ "$1" = "check" ]; then
+    shouldIgnore "$2" && exit 0
+    exit 1
+else
+    if shouldIgnore "$1" >/dev/null; then
+	echo "Should unmark: $1"
+    else
+	echo "Should mark: $1"
+    fi
+fi
