@@ -4,10 +4,11 @@ MARKER=`git config ignore.marker`
 [ -z "$MARKER" ] && MARKER="WIP: "
 
 shouldIgnore() {
-     change="$1"
-     commits=`git rev-list -n 1 --grep "^$MARKER" "$change"`
+     local change="$1"
+     echo "$change" | grep -q '\.\.' || change="${change}~1..${change}"
+     commits=`git rev-list --grep "^${MARKER}" "$change"`
      for commit in $commits; do
-	echo "Change($commit): IGNORED"
+	echo "IGNORE: $commit"
      done
      [ -n "$commits" ] && return 0
      return 1
@@ -24,16 +25,52 @@ if [ "$1" = "list" ] || [ "$#" = "0" ]; then
 elif [ "$1" = "marker" ]; then
     if [ -n "$2" ]; then
         MARKER="$2"
-	git config ignore.marker "$MARKER"
+	git config ignore.marker "${MARKER}"
     fi
-    echo "$MARKER"
+    echo "${MARKER}"
 elif [ "$1" = "check" ]; then
     shouldIgnore "$2" && exit 0
     exit 1
 else
-    if shouldIgnore "$1" >/dev/null; then
-	echo "Should unmark: $1"
-    else
-	echo "Should mark: $1"
+    mode="toggle"
+    if [ "$1" = "toggle" ] || [ "$1" = "set" ] || [ "$1" = "unset" ]; then
+	mode="$1"
+	shift
     fi
+    TRACKING=
+    [ -z "$TRACKING" ] && TRACKING=`git tracking`
+
+    changes="$@"
+    [ -z "$changes" ] && changes="HEAD"
+    for change in $changes; do
+	change=`git rev-parse $change`
+	if [ -z "$change" ]; then
+	    echo "UNKNOWN: $change"
+	    continue
+        fi
+	change_mode="$mode"
+	if [ "$mode" = "toggle" ]; then
+	    if shouldIgnore $change >/dev/null; then
+		change_mode="unset"
+	    else
+		change_mode="set"
+            fi
+        elif [ "$mode" = "set" ]; then
+	    shouldIgnore $change >/dev/null && continue
+        elif [ "$mode" = "unset" ]; then
+	    shouldIgnore $change >/dev/null || continue
+	fi
+
+	if [ `git merge-base "$change" "$TRACKING" 2>/dev/null` = "$change" ]; then
+	    echo "PUSHED: $change"
+	    continue
+	fi
+
+	if [ "$change_mode" = "set" ]; then
+	    FILTER="/bin/echo -n '$MARKER'; cat"
+        else
+	    FILTER="cat | sed 's,^${MARKER},,'"
+        fi
+	git filter-branch -f --msg-filter "if [ \"\$GIT_COMMIT\" = '$change' ]; then $FILTER; else cat; fi" "$TRACKING..HEAD"
+    done
 fi
