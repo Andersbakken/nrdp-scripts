@@ -1,5 +1,11 @@
 #!/bin/sh
 
+ROOT=$(git rev-parse --show-toplevel) 2>/dev/null
+if [ -z "$ROOT" ]; then
+   echo "Must be run from git root!"
+   exit 1
+fi
+
 MARKER=`git config ignore.marker`
 [ -z "$MARKER" ] && MARKER="WIP: "
 
@@ -71,6 +77,6 @@ else
         else
 	    FILTER="cat | sed 's,^${MARKER},,'"
         fi
-	git filter-branch -f --msg-filter "if [ \"\$GIT_COMMIT\" = '$change' ]; then $FILTER; else cat; fi" "$TRACKING..HEAD"
+	(cd "$ROOT" && git filter-branch -f --msg-filter "if [ \"\$GIT_COMMIT\" = '$change' ]; then $FILTER; else cat; fi" "$TRACKING..HEAD")
     done
 fi
