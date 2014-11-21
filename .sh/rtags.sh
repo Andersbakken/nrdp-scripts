@@ -1,4 +1,4 @@
 rmake()
 {
-    RTAGS_RMAKE=1 make -B
+    ubermake.sh -r
 }
