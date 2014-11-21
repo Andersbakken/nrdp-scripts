@@ -36,7 +36,12 @@ done
 if [ -n "$MAKE_DIR" ] && ! echo $MAKE_DIR | grep --quiet "/$"; then
     MAKE_DIR="${MAKE_DIR}/"
 elif [ -z "$MAKE_DIR" ]; then
-    MAKE_DIR=`lsdev.pl build -tp $LSDEV_ARGS`
+    NAME=`lsdev.pl -p -ts`
+    if [ -n "$NAME" ]; then
+        MAKE_DIR=`lsdev.pl build -tp $LSDEV_ARGS`
+    else
+        MAKE_DIR="$PWD"
+    fi
 fi
 
 if [ -e "${MAKE_DIR}Makefile" ]; then
