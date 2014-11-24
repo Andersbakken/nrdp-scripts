@@ -193,7 +193,7 @@
               (goto-char (point-max))
               (insert "#ifndef " define "\n"
                       "#define " define "\n"
-                      "\n\\n\\n"
+                      "\n\n\n"
                       "#endif /* " define " */\n")))
         (set-buffer-modified-p nil))))
 
