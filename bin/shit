@@ -71,6 +71,10 @@ while [ -n "$1" ]; do
             echo  "  -a|--append data            Append this to file"
             exit 0
             ;;
+        *)
+            echo "Unknown option $1"
+            exit 1
+            ;;
     esac
     shift
 done
