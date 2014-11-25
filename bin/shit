@@ -1,0 +1,98 @@
+#!/bin/bash
+
+branch=`git symbolic-ref --short HEAD`
+oldbranch="$branch"
+message="shat at `date`"
+contents=
+append=
+while [ -n "$1" ]; do
+    case "$1" in
+        --branch|-b)
+            shift
+            branch="$1"
+            ;;
+        --branch=*)
+            branch=`echo $1 | sed -e 's,^--branch=,,'`
+            ;;
+        -b*)
+            branch=`echo $1 | sed -e 's,^-b,,'`
+            ;;
+
+        -m|--message)
+            shift
+            message="$1"
+            ;;
+        --message=*)
+            message=`echo $1 | sed -e 's,^--message=,,'`
+            ;;
+        -m*)
+            message=`echo $1 | sed -e 's,^-b,,'`
+            ;;
+
+        --file|-f)
+            shift
+            message="$1"
+            ;;
+        -f*)
+            message=`echo $1 | sed -e 's,^-f,,'`
+            ;;
+        --file=*)
+            message=`echo $1 | sed -e 's,^--file=,,'`
+            ;;
+
+        --contents|-c)
+            shift
+            contents="$1"
+            ;;
+        -c*)
+            contents=`echo $1 | sed -e 's,^-c,,'`
+            ;;
+        --contents=*)
+            contents=`echo $1 | sed -e 's,^--contents=,,'`
+            ;;
+
+        --append|-a)
+            shift
+            append="$1"
+            ;;
+        -a*)
+            append=`echo $1 | sed -e 's,^-a,,'`
+            ;;
+        --append=*)
+            append=`echo $1 | sed -e 's,^--append=,,'`
+            ;;
+
+        --help|-h)
+            echo  "shit [...options...]"
+            echo  "  -b|--branch branch          Use this branch"
+            echo  "  -m|--message message        Use this commit message"
+            echo  "  -f|--file file              Use this file"
+            echo  "  -c|--contents data          Set file contents to this"
+            echo  "  -a|--append data            Append this to file"
+            exit 0
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$file" ] && [ -n "$contents" -o -n "$append" ]; then
+    file=shitballs
+fi
+
+if [ "$oldbranch" != "$branch" ]; then
+    if ! git rev-parse "$branch" -- &> /dev/null; then
+        git branch "$branch"
+    fi
+    git checkout "$branch"
+fi
+
+if [ -n "$file" ]; then
+    [ -n "$contents" ] && echo "$contents" > $file
+    [ -n "$append" ] && echo "$append" >> $file
+    git add "$file"
+    git commit -m "$message" "$file"
+else
+    git commit --allow-empty -m "$message"
+fi
+
+[ "$oldbranch" != "$branch" ] && git checkout "$oldbranch"
