@@ -2,7 +2,7 @@
 
 branch=`git symbolic-ref --short HEAD`
 oldbranch="$branch"
-message="shat at `date`"
+message=""
 contents=
 append=
 while [ -n "$1" ]; do
@@ -26,7 +26,7 @@ while [ -n "$1" ]; do
             message=`echo $1 | sed -e 's,^--message=,,'`
             ;;
         -m*)
-            message=`echo $1 | sed -e 's,^-b,,'`
+            message=`echo $1 | sed -e 's,^-m,,'`
             ;;
 
         --file|-f)
@@ -93,10 +93,14 @@ fi
 if [ -n "$file" ]; then
     [ -n "$contents" ] && echo "$contents" > $file
     [ -n "$append" ] && echo "$append" >> $file
+    [ -z "$contents" ] && [ -z "$append" ] && allowempty="--allow-empty"
+    [ -z "$message" ] && message="Shat on $file at $(date)"
+
     touch $file
     git add "$file"
-    git commit -m "$message" "$file"
+    git commit -m "$message" "$file" $allowempty
 else
+    [ -z "$message" ] && message="Took a shit at $(date)"
     git commit --allow-empty -m "$message"
 fi
 
