@@ -31,13 +31,13 @@ while [ -n "$1" ]; do
 
         --file|-f)
             shift
-            message="$1"
+            file="$1"
             ;;
         -f*)
-            message=`echo $1 | sed -e 's,^-f,,'`
+            file=`echo $1 | sed -e 's,^-f,,'`
             ;;
         --file=*)
-            message=`echo $1 | sed -e 's,^--file=,,'`
+            file=`echo $1 | sed -e 's,^--file=,,'`
             ;;
 
         --contents|-c)
@@ -93,6 +93,7 @@ fi
 if [ -n "$file" ]; then
     [ -n "$contents" ] && echo "$contents" > $file
     [ -n "$append" ] && echo "$append" >> $file
+    touch $file
     git add "$file"
     git commit -m "$message" "$file"
 else
