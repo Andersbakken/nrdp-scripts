@@ -60,7 +60,7 @@ cleancs() {
         elif nc $IP $PORT -z -w 2 >/dev/null 2>&1; then
             echo "$NAME($JOBS) is listening!"
         else
-            echo "$NAME$($JOBS) is not listening!"
+            echo "$NAME($JOBS) is not listening!"
             canblockcs $IP && echo "blockcs $IP" >>"$CLEAN_FILE"
         fi
     done
