@@ -26,7 +26,7 @@ if [ "$1" = "tracking" ]; then
        echo "$TRACKING"
     fi
 elif ([ "$1" = "cs" ] || [ "$#" = "0" ]) && which git-choose-show-change >/dev/null 2>&1; then
-    git-choose-show-change -submit
+    git-choose-show-change -command submit submit
 elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
 	[ "$change" = "+" ] && continue

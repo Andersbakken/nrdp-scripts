@@ -24,9 +24,9 @@ while [ "$#" -ge 1 ]; do
          exit 0
     elif echo "$1" | grep -q "^-[0-9]\+$"; then
         number=`echo $1 | sed "s,^-,,g"`
-    elif [ "$1" = "-submit" ]; then
-        command="submit"
-        mode="changes -t"
+    elif [ "$1" = "-command" ]; then
+        shift
+        command="$1"
     elif [ "$1" = "tracking" ] || [ "$1" = "submit" ]; then
         mode="changes -t"
     elif [ "$1" = "mine" ]; then
