@@ -27,7 +27,7 @@ while [ "$#" -ge 1 ]; do
     elif [ "$1" = "-submit" ]; then
         command="submit"
         mode="changes -t"
-    elif [ "$1" = "tracking" ]; then
+    elif [ "$1" = "tracking" ] || [ "$1" = "submit" ]; then
         mode="changes -t"
     elif [ "$1" = "mine" ]; then
         mode="changes -m"
