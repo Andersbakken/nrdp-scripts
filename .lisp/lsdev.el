@@ -14,6 +14,11 @@
   :type 'boolean
   :group 'lsdev)
 
+(defcustom lsdev-open-equivalent-use-find nil
+  "Whether find is used in lsdev-open-equivalent"
+  :type 'boolean
+  :group 'lsdev)
+
 ;;general lsdev utilities
 (defun lsdev-dirs-internal (&rest match)
   (let ((result)
@@ -331,13 +336,23 @@
         (lsdev-compile-directory shadow-directory auto)
         t)))
 
+(defun lsdev-find-git-file (src filename) ; src always ends with /
+  (with-temp-buffer
+    (shell-command (format "git --git-dir=%s/.git ls-tree -r --name-only --full-name HEAD 2>/dev/null | grep \"\\<%s$\" | sed -e 's,^,%s,'" src filename src) t)
+    (and (> (point-max) (point-min))
+         (buffer-substring-no-properties (point-min) (1- (point-max))))))
+
 (defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
-  (if (file-exists-p (concat src "/" path))
-      (concat src "/" path)
-    (with-temp-buffer
-      (call-process "find" nil (cons t nil) nil src "-type" "f" "-name" (file-name-nondirectory path))
-      (and (> (point-max) (point-min))
-           (buffer-substring-no-properties (point-min) (1- (point-max)))))))
+  (unless (string-match "/$" src)
+    (setq src (concat src "/")))
+  (cond ((file-exists-p (concat src path))
+         (concat src path))
+        ((lsdev-find-git-file src (file-name-nondirectory path)))
+        (lsdev-open-equivalent-use-find
+         (call-process "find" nil (cons t nil) nil src "-type" "f" "-name" (file-name-nondirectory path))
+         (and (> (point-max) (point-min))
+              (buffer-substring-no-properties (point-min) (1- (point-max)))))
+        (t nil)))
 
 (defun lsdev-open-equivalent ()
   (interactive)
@@ -345,7 +360,7 @@
     (let* ((default-directory "/")
            (current-root (lsdev-root-dir (buffer-file-name)))
            (relative (substring (buffer-file-name) (length current-root)))
-           (all (lsdev-dirs-all "src"))
+           (all (lsdev-dirs-all "src_"))
            (names)
            (alternatives))
       (while all
