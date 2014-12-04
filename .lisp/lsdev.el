@@ -334,39 +334,44 @@
 (defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
   (if (file-exists-p (concat src "/" path))
       (concat src "/" path)
-    (let ((out (shell-command-to-string (format "GTAGSROOT=%s global -Poa /%s" src (file-name-nondirectory path)))))
-      (when (and (> (length out) 0)
-                 (not (string-match "^global: " out)))
-        (setq out (substring out 0 (- (length out) 1)))
-        (and (file-exists-p out) out)))))
+    (with-temp-buffer
+      (call-process "find" nil (cons t nil) nil src "-type" "f" "-name" (file-name-nondirectory path))
+      (and (> (point-max) (point-min))
+           (buffer-substring-no-properties (point-min) (1- (point-max)))))))
 
 (defun lsdev-open-equivalent ()
   (interactive)
-  (if (buffer-file-name)
-      (let* ((default-directory "/")
-             (current-root (lsdev-root-dir (buffer-file-name)))
-             (relative (substring (buffer-file-name) (length current-root)))
-             (all (lsdev-dirs-all "src"))
-             (names)
-             (alternatives))
-        (while all
-          (let* ((cur (car all))
-                 (name (substring (car cur) 4))
-                 (path (car (cdr cur)))
-                 (file (and (not (string= path current-root))
-                            (lsdev-file-path-in-project path relative))))
-            (when file
-              (push name names)
-              (push (cons name file) alternatives)))
-          (setq all (cdr all)))
-        (if alternatives
-            (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
-              (if project
-                  (find-file (cdr (assoc project alternatives)))))
-          )
-        )
-    )
-  )
+  (when (buffer-file-name)
+    (let* ((default-directory "/")
+           (current-root (lsdev-root-dir (buffer-file-name)))
+           (relative (substring (buffer-file-name) (length current-root)))
+           (all (lsdev-dirs-all "src"))
+           (names)
+           (alternatives))
+      (while all
+        (let* ((cur (car all))
+               (name (substring (car cur) 4))
+               (path (car (cdr cur)))
+               (file (and (not (string= path current-root))
+                          (lsdev-file-path-in-project path relative))))
+          (when file
+            (push name names)
+            (push (cons name file) alternatives)))
+        (setq all (cdr all)))
+      (if alternatives
+          (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
+            (if project
+                (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
+                       (file (car files)))
+                  (if (> (length files) 1)
+                      (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
+                             (src-root-len (1+ (length src-root))))
+                        (setq file (ido-completing-read "File: "
+                                                        (mapcar '(lambda (arg) (substring arg src-root-len)) files)))
+                        (if file
+                            (setq file (concat src-root "/" file)))))
+                  (if file
+                       (find-file file)))))))))
 
 (defun lsdev-adddev (&optional name path)
   (interactive)
