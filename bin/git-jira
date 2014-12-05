@@ -89,6 +89,8 @@ done
 
 [ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
 [ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
+GITCOMMIT=`git rev-parse --short $GITCOMMIT`
+
 [ -z "$P4COMMIT" ] && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
 
 DESCRIPTION=
