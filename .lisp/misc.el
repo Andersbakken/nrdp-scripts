@@ -963,7 +963,7 @@ the name of the value of file-name is present."
                 "include_directories(${CMAKE_CURRENT_LIST_DIR})\n"
                 "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++0x\")\n"
                 "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS}\")\n"
-                "add_executable(asasasas main.cpp)\n")
+                "add_executable(" name " main.cpp)\n")
         (write-region (point-min) (point-max) CMakeLists.txt))
       (find-file main.cpp)
       (insert "int main(int argc, char **argv)\n"
