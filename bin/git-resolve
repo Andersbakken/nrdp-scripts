@@ -58,7 +58,9 @@ fi
 gitBase()
 {
     BASE="$1"
-    if [ "$BASE" = "upstream" ]; then
+    if [ "$BASE" = "base" ]; then
+        echo "1"
+    elif [ "$BASE" = "upstream" ]; then
         if [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
             echo "3"
         else
@@ -118,10 +120,10 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
             d|diff)
-                tmpupstream=`mktemp /tmp/XXXXXX.2`
-                gitCatBase $file 2 $tmpupstream
-                tmpyours=`mktemp /tmp/XXXXXX.3`
-                gitCatBase $file 3 $tmpyours
+                tmpupstream=`mktemp /tmp/XXXXXX.upstream`
+                gitCatBase $file $(gitBase upstream) $tmpupstream
+                tmpyours=`mktemp /tmp/XXXXXX.yours`
+                gitCatBase $file $(gitBase yours) $tmpyours
                 diff -du "$tmpupstream" "$tmpyours"
                 ;;
             m|e|edit)
@@ -131,12 +133,12 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpupstream=`mktemp /tmp/XXXXXXX.2`
-                            gitCatBase $file 3 $tmpupstream
-                            tmpyours=`mktemp /tmp/XXXXXXX.3`
-                            gitCatBase $file 2 $tmpyours
-                            tmp=`mktemp /tmp/XXXXXXX.1`
-                            gitCatBase $file 1 $tmp
+                            tmpupstream=`mktemp /tmp/XXXXXX.upstream`
+                            gitCatBase $file $(gitBase upstream) $tmpupstream
+                            tmpyours=`mktemp /tmp/XXXXXXX.yours`
+                            gitCatBase $file $(gitBase yours) $tmpyours
+                            tmp=`mktemp /tmp/XXXXXXX.base`
+                            gitCatBase $file $(gitBase base) $tmp
                             meld $tmpupstream $tmp $tmpyours
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
