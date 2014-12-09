@@ -931,7 +931,7 @@ the name of the value of file-name is present."
   (let ((all (directory-files-and-attributes dir nil match t))
         (ret))
     (if sortbymodicationtime
-        (sort all 'misc-compare-files-by-modification-time))
+        (setq all (sort all 'misc-compare-files-by-modification-time)))
     (while all
       (let ((name (caar all)))
         (unless (or (string= name ".")
