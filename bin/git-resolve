@@ -137,10 +137,8 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                             gitCatBase $file $(gitBase upstream) $tmpupstream
                             tmpyours=`mktemp /tmp/XXXXXXX.yours`
                             gitCatBase $file $(gitBase yours) $tmpyours
-                            tmp=`mktemp /tmp/XXXXXXX.base`
-                            gitCatBase $file $(gitBase base) $tmp
-                            meld $tmpupstream $tmp $tmpyours
-                            $TEST cat $tmp >$file
+                            meld $tmpupstream $tmpyours
+                            $TEST cat $tmpyours >$file
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
                             break;
