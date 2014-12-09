@@ -140,6 +140,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                             tmp=`mktemp /tmp/XXXXXXX.base`
                             gitCatBase $file $(gitBase base) $tmp
                             meld $tmpupstream $tmp $tmpyours
+                            $TEST cat $tmp >$file
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
                             break;
