@@ -90,13 +90,13 @@ findsym() {
 function findcmake()
 {
     if [ -z "$1" ]; then
-        find "$PWD" -name CMakeLists.txt -or -name '*.cmake'
+        find -L "$PWD" -name CMakeLists.txt -or -name '*.cmake'
     else
         while [ -n "$1" ]; do
             if [ -d "$1" ]; then
-                find "$1" -name CMakeLists.txt -or -name '*.cmake'
+                find -L "$1" -name CMakeLists.txt -or -name '*.cmake'
             else
-                find "$PWD" -name CMakeLists.txt -or -name '*.cmake' | xargs grep -i "$1"
+                find -L "$PWD" -name CMakeLists.txt -or -name '*.cmake' | xargs grep -i "$1"
             fi
             shift
         done
