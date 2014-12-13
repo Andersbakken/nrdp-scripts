@@ -1,5 +1,5 @@
 #!/bin/sh
-if echo "$2" | grep -q "ssh://git@stash.corp.netflix.com:7999/"; then
+if git ignore remote check "$2"; then
     z40=0000000000000000000000000000000000000000
     while read local_ref local_sha remote_ref remote_sha; do
 	[ "$local_sha" = $z40 ] && continue

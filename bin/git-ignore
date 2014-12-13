@@ -34,6 +34,27 @@ elif [ "$1" = "marker" ]; then
 	git config ignore.marker "${MARKER}"
     fi
     echo "${MARKER}"
+elif [ "$1" = "remote" ]; then
+    REMOTES=`git config ignore.remote`
+    if [ "$2" = "add" ]; then
+        git config ignore.remote "$REMOTES $3"
+    elif [ "$2" = "rm" ]; then
+        TMP_REMOTES=
+        for remote in $REMOTES; do
+            [ "$remote" = "$3" ] || TMP_REMOTES="$TMP_REMOTES $remote"
+        done
+        git config ignore.remote "$TMP_REMOTES"
+    elif [ "$2" = "check" ]; then
+        for remote in $REMOTES; do
+            [ "$remote" = "$3" ] && exit 0
+        done
+        exit 1
+    else
+        for remote in $REMOTES; do
+            echo "$remote"
+        done
+    fi
+    exit 0
 elif [ "$1" = "check" ]; then
     shouldIgnore "$2" && exit 0
     exit 1
