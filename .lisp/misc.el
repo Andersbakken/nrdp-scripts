@@ -1044,7 +1044,7 @@ the name of the value of file-name is present."
   (interactive)
   (mkgibbontest-copy (file-name-nondirectory (buffer-file-name))))
 
-(defalias 'mkgibbontest-copy-current 'cdgibbontest-copy-current)
+(defalias 'cdgibbontest-copy-current 'mkgibbontest-copy-current)
 
 (defun mkgibbontest (&optional name)
   (interactive)
