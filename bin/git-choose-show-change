@@ -27,8 +27,13 @@ while [ "$#" -ge 1 ]; do
     elif [ "$1" = "-command" ]; then
         shift
         command="$1"
-    elif [ "$1" = "tracking" ] || [ "$1" = "submit" ]; then
-        mode="changes -t"
+    elif [ "$1" = "tracking" ]; then
+         mode="changes -t"
+    elif [ "$1" = "submit" ]; then
+        local_branch=`git rev-parse --abbrev-ref HEAD`
+        remote_branch=`git submit tracking`
+        echo "Submit: $local_branch->$remote_branch"
+        mode="changes ${remote_branch}..${local_branch}"
     elif [ "$1" = "mine" ]; then
         mode="changes -m"
     elif [ "$1" = "stash" ]; then
@@ -67,7 +72,7 @@ while true; do
          choose_args="$choose_args -c $choose"
     fi
     choose_args="$choose_args -+$head -$number -a "
-    change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' -e 's:\x1B\[[0-9;]*[mK]::g'`
+    change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
     if [ -n "$change" ]; then
       if [ "$command" = "submit" ]; then
           while true; do
