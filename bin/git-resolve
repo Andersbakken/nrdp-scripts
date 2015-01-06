@@ -61,13 +61,13 @@ gitBase()
     if [ "$BASE" = "base" ]; then
         echo "1"
     elif [ "$BASE" = "upstream" ]; then
-        if [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
+        if [ "$AFTER" = "merge" ]; then
             echo "3"
         else
             echo "2"
         fi
     elif [ "$BASE" = "yours" ]; then
-        if [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
+        if [ "$AFTER" = "merge" ]; then
             echo "2"
         else
             echo "3"
