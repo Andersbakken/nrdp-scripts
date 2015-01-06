@@ -195,24 +195,24 @@ if there is already one that displays the same directory."
 character events"
   (interactive "e")
   (cond (git-running-xemacs
-	 (select-window (event-window event))
-	 (git-buffer-commands (event-point event)))
-	(git-running-emacs
-	 (select-window (posn-window (event-end event)))
-	 (git-buffer-commands (posn-point (event-start event))))))
+     (select-window (event-window event))
+     (git-buffer-commands (event-point event)))
+    (git-running-emacs
+     (select-window (posn-window (event-end event)))
+     (git-buffer-commands (posn-point (event-start event))))))
 
 (defun git-buffer-commands (pnt)
   "Function to get a given property and do the appropriate command on it"
   (interactive "d")
   (let ((object (get-char-property pnt 'git-object))
         (type (get-char-property pnt 'git-object-type))
-	(filename (get-char-property pnt 'git-object-filename))
-	)
+    (filename (get-char-property pnt 'git-object-filename))
+    )
     (cond ((and object (equal type 'commit)) (git-show-commit object))
-	  ((and object (equal type 'file)) (git-show-file object filename))
+      ((and object (equal type 'file)) (git-show-file object filename))
           ((and object (equal type 'diff-against)) (git-diff-against filename object))
           (filename (find-file filename))
-	  (t (error "Nothing to do")))))
+      (t (error "Nothing to do")))))
 
 (defun git-make-temp-file (prefix)
   (if git-running-xemacs
@@ -1294,6 +1294,7 @@ The FILES list must be sorted."
             (apply #'git-run-command-buffer buffer "diff" (if -w "-w" "-p") "--" (list (git-fileinfo->name info))))
            ((and (not (git-fileinfo->state info)) (git-fileinfo->staged-state info))
             (apply #'git-run-command-buffer buffer "diff" (if -w "-w" "-p") "--cached" "--" (list (git-fileinfo->name info))))
+           (-w (apply #'git-run-command-buffer buffer "diff" (if -w "-w" "-p") "-M" "HEAD" "--" (list (git-fileinfo->name info))))
            (t (apply #'git-run-command-buffer buffer "diff-index" (if -w "-w" "-p") "-M" "HEAD" "--" (list (git-fileinfo->name info))))))))
   buffer))
 
@@ -1851,14 +1852,14 @@ amended version of it."
       ["Cherry-pick Commit..." git-cherry-pick-commit t]
       ["Revert Commit..." git-revert-commit t]
       ("Merge"
-	["Next Unmerged File" git-next-unmerged-file t]
-	["Prev Unmerged File" git-prev-unmerged-file t]
-	["Interactive Merge File" git-find-file-imerge t]
-	["Diff Against Common Base File" git-diff-file-base t]
-	["Diff Combined" git-diff-file-combined t]
-	["Diff Against Merge Head" git-diff-file-merge-head t]
-	["Diff Against Mine" git-diff-file-mine t]
-	["Diff Against Other" git-diff-file-other t])
+    ["Next Unmerged File" git-next-unmerged-file t]
+    ["Prev Unmerged File" git-prev-unmerged-file t]
+    ["Interactive Merge File" git-find-file-imerge t]
+    ["Diff Against Common Base File" git-diff-file-base t]
+    ["Diff Combined" git-diff-file-combined t]
+    ["Diff Against Merge Head" git-diff-file-merge-head t]
+    ["Diff Against Mine" git-diff-file-mine t]
+    ["Diff Against Other" git-diff-file-other t])
       "--------"
       ["Add File" git-add-file t]
       ["Revert File" git-revert-file t]
@@ -1920,7 +1921,7 @@ Commands:
         (with-current-buffer buffer
           (when (and list-buffers-directory
                      (string-equal fulldir (expand-file-name list-buffers-directory))
-		     (eq major-mode 'git-status-mode))
+             (eq major-mode 'git-status-mode))
             (setq found buffer))))
       (setq list (cdr list)))
     found))
@@ -1939,7 +1940,7 @@ Commands:
         (git-refresh-status)
         (goto-char (point-min))
         ;;(add-hook 'after-save-hook 'git-update-saved-file)
-	)
+    )
     (message "%s is not a git working tree." dir)))
 
 (defun git-update-saved-file ()
