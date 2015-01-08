@@ -484,41 +484,19 @@ the name of the value of file-name is present."
   (interactive)
   (magit-run-git-async "sync"))
 
-(defun magit-enable-sync ()
+(defun magit-add-action (group key name func)
   (interactive)
-  (let ((pulling-actions (assoc-default 'actions (assoc-default 'pulling magit-key-mode-groups))))
-    (add-to-list 'pulling-actions (list "S" "Sync" 'magit-sync))
-    (push 'actions pulling-actions)
-    (setf (second (assoc-default 'pulling magit-key-mode-groups)) pulling-actions)
+  (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
+    (add-to-list 'group-actions (list key name func))
+    (push 'actions group-actions)
+    (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
     (setq magit-key-mode-keymaps 'nil)))
-(magit-enable-sync)
 
-(defun magit-enable-jira ()
-  (interactive)
-  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
-    (add-to-list 'pushing-actions (list "J" "Jira" 'magit-jira))
-    (push 'actions pushing-actions)
-    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
-    (setq magit-key-mode-keymaps 'nil)))
-(magit-enable-jira)
-
-(defun magit-enable-submit ()
-  (interactive)
-  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
-    (add-to-list 'pushing-actions (list "S" "Submit" 'magit-submit))
-    (push 'actions pushing-actions)
-    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
-    (setq magit-key-mode-keymaps 'nil)))
-(magit-enable-submit)
-
-(defun magit-enable-ignore ()
-  (interactive)
-  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
-    (add-to-list 'pushing-actions (list "I" "Ignore" 'magit-ignore))
-    (push 'actions pushing-actions)
-    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
-    (setq magit-key-mode-keymaps 'nil)))
-(magit-enable-ignore)
+(magit-add-action 'pulling "S" "Sync" 'magit-sync)
+(magit-add-action 'pushing "J" "Jira" 'magit-jira)
+(magit-add-action 'pushing "S" "Submit" 'magit-submit)
+(magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
+(magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
@@ -600,9 +578,10 @@ the name of the value of file-name is present."
                  args)))
     (when (> (length args) 0)
       (cond ((listp commands)
-             (while commands
-               (push (car commands) args)
-               (setq commands (cdr commands))))
+             (let ((rev (reverse commands)))
+               (while rev
+                 (push (car rev) args)
+                 (setq rev (cdr rev)))))
             (t
              (push commands args)))
       (apply #'magit-run-git-async args))))
@@ -618,6 +597,10 @@ the name of the value of file-name is present."
 (defun magit-ignore (&optional commit)
   (interactive)
   (magit-run-on-multiple "ignore" commit))
+
+(defun magit-submit-all (&optional commit)
+  (interactive)
+  (magit-run-git-async "submit" "-a"))
 
 ;; ================================================================================
 ;; git-jira
