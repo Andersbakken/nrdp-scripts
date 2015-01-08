@@ -99,7 +99,7 @@ else
             FILTER="cat | sed 's,^${MARKER},,'"
         fi
         stashed=
-        if [ "`git config ignore.autostash`" = "true" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+        if [ "`git config ignore.autostash`" != "false" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
             stashed=1
             git commit -a -m "${MARKER}git-ignore"
         fi

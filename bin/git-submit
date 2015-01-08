@@ -39,7 +39,7 @@ else
     BRANCH=
     PUSH=yes
     AUTOSTASH=
-    [ "`git config submit.autostash`" = "true" ] && AUTOSTASH="yes"
+    [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ]; then
             PUSH=no
