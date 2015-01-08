@@ -21,15 +21,15 @@ TRACKING=`git config --local submit.tracking`
 
 if [ "$1" = "tracking" ]; then
     if [ -n "$2" ]; then
-       git config --local submit.tracking "$2"
+        git config --local submit.tracking "$2"
     else
-       echo "$TRACKING"
+        echo "$TRACKING"
     fi
 elif ([ "$1" = "cs" ] || [ "$#" = "0" ]) && which git-choose-show-change >/dev/null 2>&1; then
     git-choose-show-change -command submit submit
 elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
-	[ "$change" = "+" ] && continue
+        [ "$change" = "+" ] && continue
         NOTES=
         git ignore check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
         echo "$(git changes --max-count=1 $change)$NOTES"
@@ -41,84 +41,84 @@ else
     AUTOSTASH=
     [ "`git config submit.autostash`" = "true" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
-	if [ "$1" = "-n" ]; then
+        if [ "$1" = "-n" ]; then
             PUSH=no
-	elif [ "$1" = "--branch" ]; then
+        elif [ "$1" = "--branch" ]; then
             shift
             BRANCH="$1"
-	elif [ "$1" = "--autostash" ]; then
+        elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
-	elif [ "$1" = "-a" ]; then
+        elif [ "$1" = "-a" ]; then
             for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
                 CHANGES="$CHANGES `echo $change | awk '{print $1}'`"
             done
-	else
+        else
             CHANGES="$CHANGES $1"
-	fi
-	shift
+        fi
+        shift
     done
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
     if [ -z "$BRANCH" ]; then
-	echo "No tracking branch!"
-	exit 1
+        echo "No tracking branch!"
+        exit 1
     fi
 
     stashed=
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
-	stashed=1
+        stashed=1
         ignore_marker=`git ignore marker 2>/dev/null`
-	git commit -a -m "${ignore_marker}git-submit"
+        git commit -a -m "${ignore_marker}git-submit"
     fi
 
     COMMON_SHA1=
     OLDEDITOR="$EDITOR"
     export EDITOR="$0"
     for change in $CHANGES; do
-	SHA1=`git rev-parse "$change"`
-	if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
+        SHA1=`git rev-parse "$change"`
+        if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
         elif git ignore check "$SHA1" >/dev/null; then
             echo "$SHA1 is marked to ignore!"
             continue
-	fi
+        fi
 
-	echo "Applying $SHA1"
-	SHORT_SHA1=`git rev-parse --short "$SHA1"`
-	BASE_SHA1=`git merge-base $SHA1 "$BRANCH"`
-	if [ -z "$BASE_SHA1" ]; then
+        echo "Applying $SHA1"
+        SHORT_SHA1=`git rev-parse --short "$SHA1"`
+        BASE_SHA1=`git merge-base $SHA1 "$BRANCH"`
+        if [ -z "$BASE_SHA1" ]; then
             echo "No common ancestor with $BRANCH"
             continue
-	elif [ "$BASE_SHA1" = "$SHA1" ]; then
+        elif [ "$BASE_SHA1" = "$SHA1" ]; then
             echo "$SHA1 already submitted in $BRANCH"
             continue
-	fi
-	[ -z "$COMMON_SHA1" ] && COMMON_SHA1="$BASE_SHA1"
+        fi
+        [ -z "$COMMON_SHA1" ] && COMMON_SHA1="$BASE_SHA1"
 
-	export SHORT_SHA1
-	git rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
-	git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' $COMMON_SHA1..HEAD >/dev/null 2>&1
-	NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
-	echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
-	COMMON_SHA1="$NEW_SHA1"
+        export SHORT_SHA1
+        git rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
+        git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' $COMMON_SHA1..HEAD >/dev/null 2>&1
+        NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
+        echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
+        COMMON_SHA1="$NEW_SHA1"
     done
 
     if [ -n "$NEW_SHA1" ] && [ "$PUSH" = "yes" ]; then
-	PUSH_ORIGIN="."
-	PUSH_BRANCH="$BRANCH"
-	if echo "$PUSH_BRANCH" | grep -q "/"; then
-	    PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
-	    PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
-	fi
-	if [ ! -x "$GITROOT/.git/hooks/pre-submit" ] || "$GITROOT/.git/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
-	    echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
-	    if git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"; then
-	        [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$NEW_SHA1" "$BRANCH"
+        PUSH_ORIGIN="."
+        PUSH_BRANCH="$BRANCH"
+        if echo "$PUSH_BRANCH" | grep -q "/"; then
+            PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+            PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
+        fi
+        if [ ! -x "$GITROOT/.git/hooks/pre-submit" ] || "$GITROOT/.git/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
+            echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
+            if git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"; then
+                [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$NEW_SHA1" "$BRANCH"
             fi
         fi
     fi
     if [ -n "$stashed" ]; then
-	git reset HEAD~
+        git reset HEAD~
     fi
 fi
 exit 0
