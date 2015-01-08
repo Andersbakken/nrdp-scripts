@@ -71,7 +71,7 @@ else
     fi
 
     COMMON_SHA1=
-    OLDEDITOR="$EDITOR"
+    export GIT_EDITOR="$0"
     export EDITOR="$0"
     for change in $CHANGES; do
         SHA1=`git rev-parse "$change"`
@@ -96,7 +96,7 @@ else
         [ -z "$COMMON_SHA1" ] && COMMON_SHA1="$BASE_SHA1"
 
         export SHORT_SHA1
-        git rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
+        git -c "core.editor=$0" rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
         git filter-branch -f --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' $COMMON_SHA1..HEAD >/dev/null 2>&1
         NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
         echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
