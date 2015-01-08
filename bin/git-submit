@@ -67,7 +67,7 @@ else
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         stashed=1
         ignore_marker=`git ignore marker 2>/dev/null`
-        git commit -a -m "${ignore_marker}git-submit"
+        git commit -a -m "${ignore_marker}git-submit" --allow-empty
     fi
 
     COMMON_SHA1=

@@ -21,7 +21,7 @@ function syncdir
     if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         stashed=1
         ignore_marker=`git ignore marker 2>/dev/null`
-        git commit -a -m "${ignore_marker}git-sync"
+        git commit -a -m "${ignore_marker}git-sync" --allow-empty
     fi
     if [ -d "$GITDIR/refs/remotes/p4" ]; then
         git p4 sync
