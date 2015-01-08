@@ -98,6 +98,14 @@ else
         else
             FILTER="cat | sed 's,^${MARKER},,'"
         fi
+        stashed=
+        if [ "`git config ignore.autostash`" = "true" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+            stashed=1
+            git commit -a -m "${MARKER}git-ignore"
+        fi
         (cd "$ROOT" && git filter-branch -f --msg-filter "if [ \"\$GIT_COMMIT\" = '$change' ]; then $FILTER; else cat; fi" "$TRACKING..HEAD")
+        if [ -n "$stashed" ]; then
+            git reset HEAD~
+        fi
     done
 fi
