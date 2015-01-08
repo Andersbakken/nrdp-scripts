@@ -21,13 +21,13 @@ while [ "$#" -gt 0 ]; do
          echo "$branch" | grep "(" --quiet && exit 1
          OPTS="$OPTS '${tracking_branch}..${branch}'"
       fi ;;
-    -[0-9]*d) OPTS="$OPTS --since='$OPT days ago'" ;;
-    -[0-9]*w) OPTS="$OPTS --since='$OPT weeks ago'" ;;
-    -[0-9]*m) OPTS="$OPTS --since='$OPT months ago'" ;;
-    -[0-9]*y) OPTS="$OPTS --since='$OPT years ago'" ;;
-    -[0-9]*[hH]) OPTS="$OPTS --since='$OPT hours ago'" ;;
-    -[0-9]*M) OPTS="$OPTS --since='$OPT minutes ago'" ;;
-    -[0-9]*[sS]) OPTS="$OPTS --since='$OPT seconds ago'" ;;
+    -[0-9]*[Dd]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` days ago'" ;;
+    -[0-9]*[Ww]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` weeks ago'" ;;
+    -[0-9]*m) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` months ago'" ;;
+    -[0-9]*[Yy]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` years ago'" ;;
+    -[0-9]*[hH]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` hours ago'" ;;
+    -[0-9]*M) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` minutes ago'" ;;
+    -[0-9]*[sS]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` seconds ago'" ;;
     *) UNKNOWN_OPTS="$UNKNOWN_OPTS $OPT";;
     esac
 done
