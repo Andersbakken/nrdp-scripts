@@ -511,6 +511,15 @@ the name of the value of file-name is present."
     (setq magit-key-mode-keymaps 'nil)))
 (magit-enable-submit)
 
+(defun magit-enable-ignore ()
+  (interactive)
+  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
+    (add-to-list 'pushing-actions (list "I" "Ignore" 'magit-ignore))
+    (push 'actions pushing-actions)
+    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
+    (setq magit-key-mode-keymaps 'nil)))
+(magit-enable-ignore)
+
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
     (while windows
@@ -565,18 +574,7 @@ the name of the value of file-name is present."
       (magit-key-mode-popup-logging)))
   )
 
-(defun magit-jira (&optional commit)
-  (interactive)
-  (unless commit
-    (setq commit (or (magit-current-section-sha)
-                     (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
-                       (cond ((string= "" val) "HEAD")
-                             (t val))))))
-  (if commit
-      (magit-run-git-async "jira" "--resolve" "--no-interactive" commit)))
-
-(defun magit-submit (&optional commit)
-  (interactive)
+(defun magit-run-on-multiple (commands &optional commit)
   (let (args)
     (cond (commit (push commit args))
           (mark-active
@@ -601,8 +599,25 @@ the name of the value of file-name is present."
                          (t val)))
                  args)))
     (when (> (length args) 0)
-      (push "submit" args)
+      (cond ((listp commands)
+             (while commands
+               (push (car commands) args)
+               (setq commands (cdr commands))))
+            (t
+             (push commands args)))
       (apply #'magit-run-git-async args))))
+
+(defun magit-jira (&optional commit)
+  (interactive)
+  (magit-run-on-multiple (list "jira" "--resolve" "--no-interactive") commit))
+
+(defun magit-submit (&optional commit)
+  (interactive)
+  (magit-run-on-multiple "submit" commit))
+
+(defun magit-ignore (&optional commit)
+  (interactive)
+  (magit-run-on-multiple "ignore" commit))
 
 ;; ================================================================================
 ;; git-jira
