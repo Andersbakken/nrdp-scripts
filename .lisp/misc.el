@@ -502,6 +502,15 @@ the name of the value of file-name is present."
     (setq magit-key-mode-keymaps 'nil)))
 (magit-enable-jira)
 
+(defun magit-enable-submit ()
+  (interactive)
+  (let ((pushing-actions (assoc-default 'actions (assoc-default 'pushing magit-key-mode-groups))))
+    (add-to-list 'pushing-actions (list "S" "Submit" 'magit-submit))
+    (push 'actions pushing-actions)
+    (setf (second (assoc-default 'pushing magit-key-mode-groups)) pushing-actions)
+    (setq magit-key-mode-keymaps 'nil)))
+(magit-enable-submit)
+
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
     (while windows
@@ -564,7 +573,36 @@ the name of the value of file-name is present."
                        (cond ((string= "" val) "HEAD")
                              (t val))))))
   (if commit
-      (start-process "*git-jira*" nil "git-jira" "--resolve" "--no-interactive" commit)))
+      (magit-run-git-async "jira" "--resolve" "--no-interactive" commit)))
+
+(defun magit-submit (&optional commit)
+  (interactive)
+  (let (args)
+    (cond (commit (push commit args))
+          (mark-active
+           (let ((lines (split-string (buffer-substring-no-properties
+                                       (save-excursion
+                                         (goto-char (min (region-beginning) (region-end)))
+                                         (point-at-bol))
+                                       (save-excursion
+                                         (goto-char (1- (max (region-beginning) (region-end))))
+                                         (point-at-eol))) "\n")))
+             (while lines
+               (let ((line (car lines)))
+                 (if (string-match "^[A-Fa-f0-9]+" line)
+                     (progn
+                       (push (match-string 0 line) args)
+                       (setq lines (cdr lines)))
+                   (setq lines nil args nil))))))
+          ((magit-current-section-sha) (push (magit-current-section-sha) args))
+          (t
+           (push (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
+                   (cond ((string= "" val) "HEAD")
+                         (t val)))
+                 args)))
+    (when (> (length args) 0)
+      (push "submit" args)
+      (apply #'magit-run-git-async args))))
 
 ;; ================================================================================
 ;; git-jira
