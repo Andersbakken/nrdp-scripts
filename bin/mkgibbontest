@@ -97,6 +97,7 @@ function onTimeout() {
 }
 var w;
 function main() {
+    nrdp.setServerTime(parseInt(new Date().valueOf() / 1000));
     nrdp.gibbon.addEventListener("key", keyboardHandler);
     // nrdp.gibbon.load({url:"http://en.wikipedia.org/wiki/Leif_Erikson", headers: {"X-Gibbon-Cache-Control:max-age:1000}}, networkResponseHandler);
     nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:"#00ff00"});
