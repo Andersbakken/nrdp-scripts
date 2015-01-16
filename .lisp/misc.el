@@ -1113,6 +1113,24 @@ the name of the value of file-name is present."
 
 ;;
 
+(defun include-file (&optional file)
+  (unless (> (length file) 0)
+    (setq file (read-from-minibuffer "Include file: ")))
+  (when (> (length file) 0)
+    (unless (string-match "^[<\"]" file)
+      (setq file (concat "<" file ">")))
+    (save-excursion
+      (goto-char (point-min))
+      (if (re-search-forward (concat "^# *include *" (regexp-quote file)) nil t)
+          (message "%s is already included" file)
+        (goto-char (point-max))
+        (if (re-search-backward "^# *include\\>" nil t)
+            (end-of-line)
+          (goto-char (point-min)))
+        (setq pos (1+ (point)))
+        (insert "\n#include " file "\n")
+        (message "Added #include %s" file)))))
+
 ;;===================
 ;; Prelude stuff
 ;;===================
