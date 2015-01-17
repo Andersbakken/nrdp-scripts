@@ -13,8 +13,8 @@ editor="$GIT_RESOLVE_EDITOR"
 
 while [ "$#" -gt 0 ]; do
     case $1 in
-        -au) STRATEGY=au ;;
-        -ay) STRATEGY=ay ;;
+        -ai) STRATEGY=ai ;;
+        -ac) STRATEGY=ac ;;
         -e|-edit) STRATEGY=edit ;;
         --empty) STRATEGY=empty ;;
         -rebase|--rebase) AFTER=rebase ;;
@@ -55,22 +55,39 @@ if [ -z "$AFTER" ]; then
     fi
 fi
 
+function page()
+{
+    local pager="$GIT_PAGER"
+    [ -z "$pager" ] && pager=`git config core.pager`
+    [ -z "$pager" ] && pager="$PAGER"
+    [ -z "$pager" ] && pager=less
+
+    local file="$1"
+    if [ -x "`which source-highlight`" ]; then
+        tmp=`mktemp /tmp/tmpXXXXXX`
+        if source-highlight -f esc -i "$file" -o "$tmp" 2>/dev/null; then
+            file="$tmp"
+        fi
+    fi
+    $pager "$file"
+}
+
 gitBase()
 {
     BASE="$1"
     if [ "$BASE" = "base" ]; then
         echo "1"
-    elif [ "$BASE" = "upstream" ]; then
-        if [ "$AFTER" = "merge" ]; then
-            echo "3"
-        else
+    elif [ "$BASE" = "incoming" ]; then
+        if [ "$AFTER" = "rebase" ]; then
             echo "2"
+        else
+            echo "3"
         fi
-    elif [ "$BASE" = "yours" ]; then
-        if [ "$AFTER" = "merge" ]; then
-            echo "2"
-        else
+    elif [ "$BASE" = "current" ]; then
+        if [ "$AFTER" = "rebase" ]; then
             echo "3"
+        else
+            echo "2"
         fi
     else
         echo "$BASE"
@@ -112,7 +129,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
     fi
     while [ "$merged" = "false" ]; do
         if [ "$PROMPT" = "true" ]; then
-            /bin/echo -n "$file unmerged: (d)iff, accept upstream(au), [e]dit, [m]eld, accept yours(ay), (s)kip: "
+            /bin/echo -n "$file unmerged: [d]iff, accept [i]ncoming, [e]dit, [m]eld, accept [c]urrent, [s]kip, show current[sc], show incoming [si]: "
             read cmd
         else
             echo "$file unmerged! ($STRATEGY)"
@@ -120,11 +137,13 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
             d|diff)
-                tmpupstream=`mktemp /tmp/XXXXXX.upstream`
-                gitCatBase $file $(gitBase upstream) $tmpupstream
-                tmpyours=`mktemp /tmp/XXXXXX.yours`
-                gitCatBase $file $(gitBase yours) $tmpyours
-                diff -du "$tmpupstream" "$tmpyours"
+                tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                gitCatBase "$file" $(gitBase incoming) "$tmpincoming"
+                tmpcurrent=`mktemp /tmp/XXXXXX.current`
+                gitCatBase "$file" $(gitBase current) "$tmpcurrent"
+                tmpdiff=`mktemp /tmp/XXXXXX.diff`
+                diff -du "$tmpincoming" "$tmpcurrent" > "$tmpdiff"
+                page "$tmpdiff"
                 ;;
             m|e|edit)
                 bak=`mktemp /tmp/XXXXXX.bak`
@@ -133,14 +152,14 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpupstream=`mktemp /tmp/XXXXXX.upstream`
-                            gitCatBase $file $(gitBase upstream) $tmpupstream
-                            tmpyours=`mktemp /tmp/XXXXXXX.yours`
-                            gitCatBase $file $(gitBase yours) $tmpyours
+                            tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                            gitCatBase $file $(gitBase incoming) $tmpincoming
+                            tmpcurrent=`mktemp /tmp/XXXXXXX.current`
+                            gitCatBase $file $(gitBase current) $tmpcurrent
                             tmp=`mktemp /tmp/XXXXXXX.base`
                             gitCatBase $file $(gitBase base) $tmp
-                            meld $tmpupstream $tmpyours $tmp
-                            $TEST cat $tmpyours >$file
+                            meld $tmpincoming $tmpcurrent $tmp
+                            $TEST cat $tmpcurrent >$file
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
                             break;
@@ -152,10 +171,11 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     [ -z "$accpt" ] && accpt=y
                     case $accpt in
                         d|diff)
-                            tmpupstream=`mktemp /tmp/XXXXXX`
-
-                            git cat-file blob ":2:$file" >$tmpupstream 2>/dev/null
-                            diff -du "$tmpupstream" "$file"
+                            tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                            git cat-file blob ":2:$file" >$tmpincoming 2>/dev/nul
+                            tmpdiff=`mktemp /tmp/XXXXXX.diff`
+                            diff -du "$tmpincoming" "$file" > "$tmpdiff"
+                            page "$tmpdiff"
                             ;;
                         c|cancel)
                             cat "$bak" > "$file"
@@ -176,14 +196,26 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                         *) ;;
                     esac
                 done ;;
-            au) merged=true;
+            ai|i)
+                merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
-                gitCatBase $file $(gitBase upstream) $tmp
+                gitCatBase $file $(gitBase incoming) $tmp
                 $TEST cat $tmp >$file
                 break ;;
-            ay) merged=true;
+            si)
+                tmp=`mktemp /tmp/XXXXXX$(basename $file)`
+                gitCatBase $file $(gitBase incoming) $tmp
+                $TEST page "$tmp"
+                ;;
+            sc)
+                tmp=`mktemp /tmp/XXXXXX$(basename $file)`
+                gitCatBase $file $(gitBase current) $tmp
+                $TEST page "$tmp"
+                ;;
+            ac|c)
+                merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
-                gitCatBase $file $(gitBase yours) $tmp
+                gitCatBase $file $(gitBase current) $tmp
                 $TEST cat $tmp >$file
                 break ;;
             s|skip) break;;
