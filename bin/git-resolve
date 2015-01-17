@@ -196,7 +196,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                         *) ;;
                     esac
                 done ;;
-            ai|i)
+            au|ai|i)
                 merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
                 gitCatBase $file $(gitBase incoming) $tmp
@@ -212,7 +212,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 gitCatBase $file $(gitBase current) $tmp
                 $TEST page "$tmp"
                 ;;
-            ac|c)
+            ay|ac|c)
                 merged=true;
                 tmp=`mktemp /tmp/XXXXXX`
                 gitCatBase $file $(gitBase current) $tmp
