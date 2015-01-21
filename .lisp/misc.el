@@ -484,7 +484,7 @@ the name of the value of file-name is present."
   (interactive)
   (magit-run-git-async "sync"))
 
-(defun magit-add-action (group key name func)
+(defun misc-magit-add-action (group key name func)
   (interactive)
   (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
     (add-to-list 'group-actions (list key name func))
@@ -492,11 +492,11 @@ the name of the value of file-name is present."
     (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
     (setq magit-key-mode-keymaps 'nil)))
 
-(magit-add-action 'pulling "S" "Sync" 'magit-sync)
-(magit-add-action 'pushing "J" "Jira" 'magit-jira)
-(magit-add-action 'pushing "S" "Submit" 'magit-submit)
-(magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
-(magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
+(misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
+(misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
+(misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
+(misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
+(misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
