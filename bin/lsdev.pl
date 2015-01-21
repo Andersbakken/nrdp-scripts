@@ -816,10 +816,28 @@ if($display_only eq "default") { #display the currently mapped default
     $rest_dir = getRestDir($root_dir) if(!defined($rest_dir) && $detect_rest && $root_dir);
     {
         my %seen;
+        my %default;
         my @uniq_choices;
         for(my $i = 0; $i < @choices; ++$i) {
             my $root = findRoot($choices[$i]);
             my $root_name = generateRootName($root);
+            $default{source} = $root->{source} unless(exists($default{source}));
+
+            if($read_devdir_list != 2 && !$display_only && isPathSame($default{source}, $root->{source})) {
+                $default{source} = $root->{source};
+                if(getPathConfig($root->{path}, "default")) {
+                    if($default{path}) {
+                        display "Default: too many!" if($verbose);
+                        $default{source} = "";
+                        $default{path} = 0;
+                    } else {
+                        $default{path} = $root->{path};
+                    }
+                }
+            } else {
+                $default{source} = "";
+                $default{path} = 0;
+            }
             if($seen{$root_name}) {
                 display "Filtered: $root_name\n" if($verbose);
             } else {
@@ -827,7 +845,11 @@ if($display_only eq "default") { #display the currently mapped default
                 $seen{$root_name} = 1;
             }
         }
-        @choices = @uniq_choices;
+        if($default{path}) {
+            @choices = ($default{path});
+        } else {
+            @choices = @uniq_choices;
+        }
     }
 
     my $index;
