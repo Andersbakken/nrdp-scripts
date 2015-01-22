@@ -213,7 +213,7 @@ if($stash_mode eq "git-rstash") {
         }
     }
     if(!length($origin)) {
-        $origin = `git config rstash.mode`;
+        $origin = `git config rstash.origin`;
         chomp($origin);
         $origin = "origin" if(!length($origin));
     }
