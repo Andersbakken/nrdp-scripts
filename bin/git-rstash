@@ -197,7 +197,7 @@ if($stash_mode eq "git-rstash") {
         }
     }
 } elsif($stash_mode eq "git-tag") {
-    my $origin = "origin";
+    my $origin;
     for(my $i = 0; $i < $#ARGV+1; ) {
         my $consume = 0;
         my $arg = $ARGV[$i];
@@ -211,6 +211,11 @@ if($stash_mode eq "git-rstash") {
         } else {
             $i++;
         }
+    }
+    if(!length($origin)) {
+        $origin = `git config rstash.mode`;
+        chomp($origin);
+        $origin = "origin" if(!length($origin));
     }
 
     my $tag_prefix = "git-rstash-";
