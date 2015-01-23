@@ -1,5 +1,6 @@
 #!/bin/bash
 
+git rev-parse --show-toplevel &> /dev/null || git init
 branch=`git symbolic-ref --short HEAD`
 oldbranch="$branch"
 message=""
@@ -93,12 +94,12 @@ fi
 if [ -n "$file" ]; then
     [ -n "$contents" ] && echo "$contents" > $file
     [ -n "$append" ] && echo "$append" >> $file
-    [ -z "$contents" ] && [ -z "$append" ] && allowempty="--allow-empty"
+    [ -z "$contents" ] && [ -z "$append" ]
     [ -z "$message" ] && message="Shat on $file at $(date)"
 
     touch $file
     git add "$file"
-    git commit -m "$message" "$file" $allowempty
+    git commit --allow-empty -m "$message" "$file"
 else
     [ -z "$message" ] && message="Took a shit at $(date)"
     git commit --allow-empty -m "$message"

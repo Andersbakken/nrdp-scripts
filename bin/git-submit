@@ -27,7 +27,7 @@ if [ "$1" = "tracking" ]; then
     fi
 elif [ "$1" = "cs" ]; then
     if ! git sync --check "$TRACKING" >/dev/null 2>&1; then
-        echo "Make sure you sync first! [$ORIGIN]"
+        echo "Make sure you sync first! [$ORIGIN]" >&2
         exit 1
     fi
     which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
@@ -66,7 +66,7 @@ else
     done
 
     if ! git sync --check "$ORIGIN" >/dev/null 2>&1; then
-        echo "Make sure you sync first! [$ORIGIN]"
+        echo "Make sure you sync first! [$ORIGIN]" >&2
         exit 1
     fi
 
