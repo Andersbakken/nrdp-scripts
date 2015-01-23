@@ -1,4 +1,8 @@
 #!/bin/sh
+#if ! git sync --check "$1" >/dev/null 2>&1; then
+#    echo "Must sync first!"
+#    exit 1
+#fi
 if git ignore remote check "$2"; then
     z40=0000000000000000000000000000000000000000
     while read local_ref local_sha remote_ref remote_sha; do

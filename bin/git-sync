@@ -3,6 +3,8 @@
 function syncdir
 {
     cd "$1"
+    local rc=0
+
     GITDIR=`git rev-parse --git-dir`
     if [ -z "$GITDIR" ] && which lsdev.pl >/dev/null 2>&1; then
         SRCDIR=`lsdev.pl -b src -tp -l`
@@ -23,7 +25,14 @@ function syncdir
         ignore_marker=`git ignore marker 2>/dev/null`
         git commit -a -m "${ignore_marker}git-sync" --allow-empty
     fi
-    if [ -d "$GITDIR/refs/remotes/p4" ]; then
+    if [ -n "$check" ]; then
+        if git merge-base --is-ancestor $(git ls-remote `echo "$check" | sed 's/\// /g'` | cut -f1) $(git rev-parse HEAD) >/dev/null 2>&1; then
+            echo "$ROOTDIR: up to date [$check]"
+        else
+            echo "$ROOTDIR: not up to date [$check]"
+            rc=1
+        fi
+    elif [ -d "$GITDIR/refs/remotes/p4" ]; then
         git p4 sync
     elif git config -l | grep "^svn-remote" --quiet; then
         git svn update
@@ -36,14 +45,24 @@ function syncdir
     if [ -n "$stashed" ]; then
         git reset HEAD~
     fi
+    return $rc
 }
 
 idx=0
+check=
+autostash=0
 if [ "`git config sync.autostash`" != "false" ]; then
     autostash=1
 fi
 while [ -n "$1" ]; do
     case "$1" in
+        -c|--check)
+            #$(git rev-parse --abbrev-ref @{u} | sed 's/\// /g')
+            shift
+            check="$1"
+            [ -z "$check" ] && check=$(git rev-parse --abbrev-ref @{u})
+            echo "$check" | grep -vq '/' && check="$check/`git name-rev HEAD | cut -d' ' -f2`"
+            ;;
         -r|--recursive)
             recursive=1
             ;;
@@ -70,14 +89,18 @@ if [ $idx -eq 0 ]; then
 fi
 
 i=0
+rc=0
 while [ $i -lt $idx ]; do
     root="${dirs[$i]}"
-    syncdir "$root"
+    syncdir "$root" || rc=1
     if [ -n "$recursive" ]; then
         find -L "$root" -mindepth 1 -maxdepth 4 -type d -name ".git" | while read i; do
             sub=`cd $i/.. && pwd`
-            [ "$root" != "$sub" ] && syncdir "$sub"
+            if [ "$root" != "$sub" ]; then
+                syncdir "$sub" || rc=1
+            fi
         done
     fi
     i=`expr $i + 1`
 done
+exit $rc

@@ -25,9 +25,13 @@ if [ "$1" = "tracking" ]; then
     else
         echo "$TRACKING"
     fi
-elif ([ "$1" = "cs" ] || [ "$#" = "0" ]); then
+elif [ "$1" = "cs" ]; then
+    if ! git sync --check "$TRACKING" >/dev/null 2>&1; then
+        echo "Make sure you sync first! [$ORIGIN]"
+        exit 1
+    fi
     which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
-elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
+elif [ "$1" = "changes" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
         [ "$change" = "+" ] && continue
         NOTES=
@@ -35,10 +39,11 @@ elif [ "$1" = "changes" ] || [ "$#" = "0" ]; then
         echo "$(git changes --max-count=1 $change)$NOTES"
     done
 else
-    CHANGES=
     BRANCH=
+    CHANGES=
     PUSH=yes
     AUTOSTASH=
+    ORIGIN="$TRACKING"
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ]; then
@@ -49,15 +54,28 @@ else
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "-a" ]; then
-            for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
+            for change in `git cherry $ORIGIN | grep '^+ ' | sed 's,^+,,g'`; do
                 CHANGES="$CHANGES `echo $change | awk '{print $1}'`"
             done
-        else
+        elif `git rev-parse "$1" >/dev/null 2>&1`; then #it looks like a change
             CHANGES="$CHANGES $1"
+        else
+            ORIGIN="$1"
         fi
         shift
     done
-    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
+
+    if ! git sync --check "$ORIGIN" >/dev/null 2>&1; then
+        echo "Make sure you sync first! [$ORIGIN]"
+        exit 1
+    fi
+
+    if [ -z "$CHANGES" ]; then
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
+        exit 0
+    fi
+
+    [ -z "$BRANCH" ] && BRANCH="$ORIGIN"
     if [ -z "$BRANCH" ]; then
         echo "No tracking branch!"
         exit 1
