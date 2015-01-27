@@ -50,8 +50,10 @@ if [ -z "$AFTER" ]; then
         AFTER=cherry-pick
     elif [ -e "$GITDIR/MERGE_HEAD" ]; then
         AFTER=merge
-    elif [ -e "$GITDIR/COMMIT_EDITMSG" ]; then
+    elif [ -s "$GITDIR/COMMIT_EDITMSG" ]; then
         AFTER=commit
+    elif [ -e "$GITDIR/COMMIT_EDITMSG" ]; then
+        AFTER=stash
     fi
 fi
 
@@ -237,6 +239,8 @@ if [ "$COUNT" = 0 ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
+    else [ "$AFTER" = "stash" ]; then
+        # nothing
     fi
 else
     echo "$COUNT files left unresolved"
