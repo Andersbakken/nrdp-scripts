@@ -26,11 +26,18 @@ function syncdir
         git commit -a -m "${ignore_marker}git-sync" --allow-empty
     fi
     if [ -n "$check" ]; then
-        if git merge-base --is-ancestor $(git ls-remote `echo "$check" | sed 's/\// /g'` | cut -f1) $(git rev-parse HEAD) >/dev/null 2>&1; then
-            echo "$ROOTDIR: up to date [$check]"
-        else
+        local_sha=`git rev-parse HEAD`
+        for remote_sha in $(git ls-remote `echo "$check" | sed 's/\// /g'` | cut -f1); do
+            #echo "Trying: $remote_sha :: $local_sha"
+            if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" >/dev/null 2>&1; then
+                rc=1
+                break
+            fi
+        done
+        if [ "$rc" = "1" ]; then
             echo "$ROOTDIR: not up to date [$check]"
-            rc=1
+        else
+            echo "$ROOTDIR: up to date [$check]"
         fi
     elif [ -d "$GITDIR/refs/remotes/p4" ]; then
         git p4 sync
@@ -57,7 +64,6 @@ fi
 while [ -n "$1" ]; do
     case "$1" in
         -c|--check)
-            #$(git rev-parse --abbrev-ref @{u} | sed 's/\// /g')
             shift
             check="$1"
             [ -z "$check" ] && check=$(git rev-parse --abbrev-ref @{u})
