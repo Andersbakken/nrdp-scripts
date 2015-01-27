@@ -240,7 +240,7 @@ if [ "$COUNT" = 0 ]; then
     elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     else [ "$AFTER" = "stash" ]; then
-        # nothing
+        eval $TEST git reset HEAD
     fi
 else
     echo "$COUNT files left unresolved"
