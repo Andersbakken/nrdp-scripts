@@ -239,7 +239,7 @@ if [ "$COUNT" = 0 ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
     elif [ "$AFTER" = "commit" ] || [ "$AFTER" = "merge" ]; then
         eval $TEST git commit --allow-empty --no-edit $COMMIT_ARGS
-    else [ "$AFTER" = "stash" ]; then
+    elif [ "$AFTER" = "stash" ]; then
         eval $TEST git reset HEAD
     fi
 else
