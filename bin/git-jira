@@ -24,8 +24,8 @@ REWORD=maybe
 TAG=no
 
 if ! which jira >/dev/null 2>&1; then
-   echo "Cannot find jira commandline!"
-   exit 2
+    echo "Cannot find jira commandline!"
+    exit 2
 fi
 
 exec_jira() {
@@ -41,50 +41,50 @@ exec_jira() {
 }
 
 usage() {
-  echo "Usage: $1 [args] [git-commit]"
-  echo
-  echo "Args:"
-  echo " --create            : Create a bug for a change"
-  echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
-  echo " --interactive, -i   : Ask before commenting/resolving"
-  echo " --tag, -c <tag>     : Mark JIRA ticket with tag"
-  echo " --resolve, -r       : Resolve JIRA ticket as well as commenting"
-  echo " --jira, -j <ticket> : Use <ticket> instead of calculated from commit message"
-  echo " --p4 <p4-commit>    : Use <p4-commit> instead of calculating from commit message"
-  echo
-  echo "If no [git-commit] is provided then the last commit from $(whoami) will be used instead"
-  exit 3
+    echo "Usage: $1 [args] [git-commit]"
+    echo
+    echo "Args:"
+    echo " --create            : Create a bug for a change"
+    echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
+    echo " --interactive, -i   : Ask before commenting/resolving"
+    echo " --tag, -c <tag>     : Mark JIRA ticket with tag"
+    echo " --resolve, -r       : Resolve JIRA ticket as well as commenting"
+    echo " --jira, -j <ticket> : Use <ticket> instead of calculated from commit message"
+    echo " --p4 <p4-commit>    : Use <p4-commit> instead of calculating from commit message"
+    echo
+    echo "If no [git-commit] is provided then the last commit from $(whoami) will be used instead"
+    exit 3
 }
 
 while [ "$#" -gt 0 ]; do
-   OPT="$1"
-   case $OPT in
-   --test|-test) TEST="echo" ;;
-   --no-create|-no-create) CREATE=no; REWORD=no ;;
-   --create|-create) CREATE=yes; REWORD=yes ;;
-   --no-move|-no-move|--no-reword|-no-reword) REWORD=no ;;
-   --move|-move|--reword|-reword) REWORD=yes ;;
-   --no-comment|-no-comment) COMMENT=no ;;
-   --comment|-c|-comment) COMMENT=yes ;;
-   --no-interactive) INTERACTIVE=no ;;
-   --interactive|-i) INTERACTIVE=yes ;;
-   --no-resolve|-no-resolve) RESOLVE=no; COMMENT=no ;;
-   --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
-   --tag|-t) shift; TAGS="$TAGS $1"; TAG=yes ;;
-   --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
-   --jira|-j) shift; JIRA="$1" ;;
-   --p4|-p4) shift; P4COMMIT="$1" ;;
-   --help|-help|-h) usage $0 ;;
-   *)
-      if [ -z "$GITCOMMIT" ]; then
-          GITCOMMIT="$1"
-      elif [ -z "$P4COMMIT" ]; then
-          P4COMMIT="$1"
-      else
-          usage $0
-      fi ;;
-   esac
-   shift
+    OPT="$1"
+    case $OPT in
+        --test|-test) TEST="echo" ;;
+        --no-create|-no-create) CREATE=no; REWORD=no ;;
+        --create|-create) CREATE=yes; REWORD=yes ;;
+        --no-move|-no-move|--no-reword|-no-reword) REWORD=no ;;
+        --move|-move|--reword|-reword) REWORD=yes ;;
+        --no-comment|-no-comment) COMMENT=no ;;
+        --comment|-c|-comment) COMMENT=yes ;;
+        --no-interactive) INTERACTIVE=no ;;
+        --interactive|-i) INTERACTIVE=yes ;;
+        --no-resolve|-no-resolve) RESOLVE=no; COMMENT=no ;;
+        --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
+        --tag|-t) shift; TAGS="$TAGS $1"; TAG=yes ;;
+        --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
+        --jira|-j) shift; JIRA="$1" ;;
+        --p4|-p4) shift; P4COMMIT="$1" ;;
+        --help|-help|-h) usage $0 ;;
+        *)
+            if [ -z "$GITCOMMIT" ]; then
+                GITCOMMIT="$1"
+            elif [ -z "$P4COMMIT" ]; then
+                P4COMMIT="$1"
+            else
+                usage $0
+            fi ;;
+    esac
+    shift
 done
 
 [ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
@@ -129,54 +129,54 @@ if [ "$CREATE" = "maybe" ]; then
 fi
 
 if [ "$CREATE" = "yes" ]; then
-  #project
-  PROJECT=""
-  if [ -n "$JIRA" ]; then
-      PROJECT=`echo $JIRA | cut -d'-' -f1`
-  else #find the most likely :)
-      PROJECT=`git log --pretty=format':%s' -100 | sed -e 's,^\[\([^-]*\)-[0-9]*\].*$,\1,' -e 's,^\([^-]*\)-[0-9]*:.*$,\1,' -e 's,^.* .*$,EMPTY,' | sort | uniq -c | sort -r | grep -v EMPTY | head -1 | awk '{print $2}'`
-  fi
-  echo "=================================================="
-  echo "Default Project: $PROJECT"
-  echo -n "Project: "
-  read JIRA_PROJECT
-  [ -z "$JIRA_PROJECT" ] && JIRA_PROJECT="$PROJECT"
-  if [ -z "$JIRA_PROJECT" ]; then
-      echo "Must supply a PROJECT!"
-      exit 1
-  fi
-  #summary
-  echo "=================================================="
-  echo "Default Summary: $DESCRIPTION"
-  echo -n "Summary: "
-  read JIRA_SUMMARY
-  [ -z "$JIRA_SUMMARY" ] && JIRA_SUMMARY="$DESCRIPTION"
-  #description
-  echo "=================================================="
-  echo -n "Description: "
-  read JIRA_DESCRIPTION
-  #version
-  echo "=================================================="
-  echo -n "Versions: "
-  exec_jira --action getVersionList --project NRDAPP --outputFormat 2 | awk -F, '{print $2 $4}' | grep '\"No\"$' | sed "s,^\"\([^\"]*\)\".*$,\1,"
-  echo -n "Version: "
-  read JIRA_VERSION
+    #project
+    PROJECT=""
+    if [ -n "$JIRA" ]; then
+        PROJECT=`echo $JIRA | cut -d'-' -f1`
+    else #find the most likely :)
+        PROJECT=`git log --pretty=format':%s' -100 | sed -e 's,^\[\([^-]*\)-[0-9]*\].*$,\1,' -e 's,^\([^-]*\)-[0-9]*:.*$,\1,' -e 's,^.* .*$,EMPTY,' | sort | uniq -c | sort -r | grep -v EMPTY | head -1 | awk '{print $2}'`
+    fi
+    echo "=================================================="
+    echo "Default Project: $PROJECT"
+    echo -n "Project: "
+    read JIRA_PROJECT
+    [ -z "$JIRA_PROJECT" ] && JIRA_PROJECT="$PROJECT"
+    if [ -z "$JIRA_PROJECT" ]; then
+        echo "Must supply a PROJECT!"
+        exit 1
+    fi
+    #summary
+    echo "=================================================="
+    echo "Default Summary: $DESCRIPTION"
+    echo -n "Summary: "
+    read JIRA_SUMMARY
+    [ -z "$JIRA_SUMMARY" ] && JIRA_SUMMARY="$DESCRIPTION"
+    #description
+    echo "=================================================="
+    echo -n "Description: "
+    read JIRA_DESCRIPTION
+    #version
+    echo "=================================================="
+    echo -n "Versions: "
+    exec_jira --action getVersionList --project NRDAPP --outputFormat 2 | awk -F, '{print $2 $4}' | grep '\"No\"$' | sed "s,^\"\([^\"]*\)\".*$,\1,"
+    echo -n "Version: "
+    read JIRA_VERSION
 
-  JIRA=
-  if [ -n "$TEST" ]; then
-      exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION"
-  else
-      CREATED_JIRA_FILE=`mktemp -t gitjiraXXXX`
-      exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION" --fixVersions "$JIRA_VERSION" >$CREATED_JIRA_FILE
-      JIRA_CREATED=`tail -1 $CREATED_JIRA_FILE`
-      if echo "$JIRA_CREATED" | grep 'created with id' >/dev/null 2>&1; then
-          JIRA=`echo $JIRA_CREATED | sed "s,^Issue \(.*\) created with id.*$,\1,"`
-      fi
-  fi
-  git notes --ref git-jira add -f -m "$JIRA" "$GITCOMMIT"
-  echo "Created JIRA: $JIRA"
+    JIRA=
+    if [ -n "$TEST" ]; then
+        exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION"
+    else
+        CREATED_JIRA_FILE=`mktemp -t gitjiraXXXX`
+        exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION" --fixVersions "$JIRA_VERSION" >$CREATED_JIRA_FILE
+        JIRA_CREATED=`tail -1 $CREATED_JIRA_FILE`
+        if echo "$JIRA_CREATED" | grep 'created with id' >/dev/null 2>&1; then
+            JIRA=`echo $JIRA_CREATED | sed "s,^Issue \(.*\) created with id.*$,\1,"`
+        fi
+    fi
+    git notes --ref git-jira add -f -m "$JIRA" "$GITCOMMIT"
+    echo "Created JIRA: $JIRA"
 else
-  REWORD=no
+    REWORD=no
 fi
 
 if [ "$REWORD" = "maybe" ]; then
@@ -191,92 +191,92 @@ if [ "$REWORD" = "maybe" ]; then
 fi
 
 if [ "$REWORD" = "yes" ] && [ -n "$P4COMMIT" ]; then
-  echo "Cannot reword as this commit has been pushed into P4!"
+    echo "Cannot reword as this commit has been pushed into P4!"
 elif [ "$REWORD" = "yes" ]; then
-  DESCRIPTION_FILE=`mktemp -t gitjiraXXXX`
-  if [ -z "$JIRA" ] || echo "$DESCRIPTION" | grep "$JIRA" >/dev/null 2>&1; then
-      DESCRIPTION_FILE=
-  elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-      echo "$DESCRIPTION" | sed "s,^\[\([^ ]\+-[0-9]\+\)\],[$JIRA],g" >"$DESCRIPTION_FILE"
-  elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-      echo "$DESCRIPTION" | sed "s,^\([^ ]\+-[0-9]\+\): ,$JIRA: ,g" >"$DESCRIPTION_FILE"
-  else
-      echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
-  fi
-  if [ -n "$DESCRIPTION_FILE" ]; then
-      [ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
-      (git stash
+    DESCRIPTION_FILE=`mktemp -t gitjiraXXXX`
+    if [ -z "$JIRA" ] || echo "$DESCRIPTION" | grep "$JIRA" >/dev/null 2>&1; then
+        DESCRIPTION_FILE=
+    elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
+        echo "$DESCRIPTION" | sed "s,^\[\([^ ]\+-[0-9]\+\)\],[$JIRA],g" >"$DESCRIPTION_FILE"
+    elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
+        echo "$DESCRIPTION" | sed "s,^\([^ ]\+-[0-9]\+\): ,$JIRA: ,g" >"$DESCRIPTION_FILE"
+    else
+        echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
+    fi
+    if [ -n "$DESCRIPTION_FILE" ]; then
+        [ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
+        (git stash
 
-      OLDEDITOR="$EDITOR"
-      export EDITOR="$0"
-      export SHORT_SHA1=`git rev-parse --short "$GITCOMMIT"`
-      if ! $TEST git rebase --preserve-merges -i "${GITCOMMIT}^"; then
-          echo "Unable to rebase for reword!"
-          return 1
-      fi
-      export EDITOR="$OLDEDITOR"
+            OLDEDITOR="$EDITOR"
+            export EDITOR="$0"
+            export SHORT_SHA1=`git rev-parse --short "$GITCOMMIT"`
+            if ! $TEST git rebase --preserve-merges -i "${GITCOMMIT}^"; then
+                echo "Unable to rebase for reword!"
+                return 1
+            fi
+            export EDITOR="$OLDEDITOR"
 
-      DESCRIPTION=`cat "$DESCRIPTION_FILE"`
-      $TEST git commit --amend -F "$DESCRIPTION_FILE"
-      $TEST git rebase --continue
-      git stash apply) >/dev/null 2>&1
-  fi
+            DESCRIPTION=`cat "$DESCRIPTION_FILE"`
+            $TEST git commit --amend -F "$DESCRIPTION_FILE"
+            $TEST git rebase --continue
+            git stash apply) >/dev/null 2>&1
+    fi
 fi
 
 if [ -n "$JIRA" ]; then
-  if [ "$INTERACTIVE" = "yes" ]; then
-      if [ "$COMMENT" = "maybe" ]; then
-          COMMENT=no
-          echo -n "Comment JIRA? "
-          read input
-          if [ "$input" = "r" ]; then
-              COMMENT=yes
-              [ "$RESOLVE" = "maybe" ] && RESOLVE=yes
-          elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-              COMMENT=yes
-          fi
-      fi
-      if [ "$RESOLVE" = "maybe" ]; then
-          RESOLVE=no
-          echo -n "Resolve JIRA? "
-          read input
-          if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-              RESOLVE=yes
-          elif [ "$input" = "n" ] || [ "$input" = "no" ]; then
-              RESOLVE=no
-          else
-              RESOLVE=yes
-              DESCRIPTION="$input"
-          fi
-      fi
-      if [ "$TAG" = "maybe" ]; then
-          TAG=no
-          echo -n "Tags? "
-          read input
-          if [ -n "$input" ]; then
-              TAGS="$TAGS $input"
-              TAG=yes
-          fi
-      fi
-  fi
-  if [ "$COMMENT" = "yes" ]; then
-    if [ -n "$MESSAGE" ]; then
-      exec_jira --action addComment --issue "$JIRA" --comment "$MESSAGE"
-    else
-      JIRA_COMMENTS_FILE=`mktemp -t gitjiraXXXX`
-      exec_jira --action getComments --issue "$JIRA" >$JIRA_COMMENTS_FILE
-      if [ -n "$P4COMMIT" ] && ! grep $P4COMMIT $JIRA_COMMENTS_FILE -q; then
-          exec_jira --action addComment --issue "$JIRA" --comment "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $DESCRIPTION"
-      elif ! grep $GITCOMMIT $JIRA_COMMENTS_FILE -q; then
-          exec_jira --action addComment --issue "$JIRA" --comment "[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
-      fi
+    if [ "$INTERACTIVE" = "yes" ]; then
+        if [ "$COMMENT" = "maybe" ]; then
+            COMMENT=no
+            echo -n "Comment JIRA? "
+            read input
+            if [ "$input" = "r" ]; then
+                COMMENT=yes
+                [ "$RESOLVE" = "maybe" ] && RESOLVE=yes
+            elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+                COMMENT=yes
+            fi
+        fi
+        if [ "$RESOLVE" = "maybe" ]; then
+            RESOLVE=no
+            echo -n "Resolve JIRA? "
+            read input
+            if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+                RESOLVE=yes
+            elif [ "$input" = "n" ] || [ "$input" = "no" ]; then
+                RESOLVE=no
+            else
+                RESOLVE=yes
+                DESCRIPTION="$input"
+            fi
+        fi
+        if [ "$TAG" = "maybe" ]; then
+            TAG=no
+            echo -n "Tags? "
+            read input
+            if [ -n "$input" ]; then
+                TAGS="$TAGS $input"
+                TAG=yes
+            fi
+        fi
     fi
-  fi
-  if [ "$RESOLVE" = "yes" ]; then
-    exec_jira --action progressIssue --issue "$JIRA" --step "Resolve Issue" --resolution "Fixed"
-  fi
-  if [ "$TAG" = "yes" ]; then
-    exec_jira --action addLabels --issue "$JIRA" --labels "$TAGS"
-  fi
+    if [ "$COMMENT" = "yes" ]; then
+        if [ -n "$MESSAGE" ]; then
+            exec_jira --action addComment --issue "$JIRA" --comment "$MESSAGE"
+        else
+            JIRA_COMMENTS_FILE=`mktemp -t gitjiraXXXX`
+            exec_jira --action getComments --issue "$JIRA" >$JIRA_COMMENTS_FILE
+            if [ -n "$P4COMMIT" ] && ! grep $P4COMMIT $JIRA_COMMENTS_FILE -q; then
+                exec_jira --action addComment --issue "$JIRA" --comment "[Changelist: $P4COMMIT|http://perforce.netflix.com/$P4COMMIT?ac=10] $DESCRIPTION"
+            elif ! grep $GITCOMMIT $JIRA_COMMENTS_FILE -q; then
+                exec_jira --action addComment --issue "$JIRA" --comment "[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
+            fi
+        fi
+    fi
+    if [ "$RESOLVE" = "yes" ]; then
+        exec_jira --action progressIssue --issue "$JIRA" --step "Resolve Issue" --resolution "Fixed"
+    fi
+    if [ "$TAG" = "yes" ]; then
+        exec_jira --action addLabels --issue "$JIRA" --labels "$TAGS"
+    fi
 fi
 exit 0
