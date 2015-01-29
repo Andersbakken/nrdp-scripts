@@ -57,10 +57,10 @@ else
             for change in `git cherry $ORIGIN | grep '^+ ' | sed 's,^+,,g'`; do
                 CHANGES="$CHANGES `echo $change | awk '{print $1}'`"
             done
-        elif `git rev-parse "$1" >/dev/null 2>&1`; then #it looks like a change
-            CHANGES="$CHANGES $1"
-        else
+        elif echo "$1" | grep -q / || '!' git rev-parse "$1" >/dev/null 2>&1; then
             ORIGIN="$1"
+        else
+            CHANGES="$CHANGES $1"
         fi
         shift
     done
@@ -71,7 +71,7 @@ else
     fi
 
     if [ -z "$CHANGES" ]; then
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command "submit $ORIGIN" "$ORIGIN..HEAD"
         exit 0
     fi
 
