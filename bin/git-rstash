@@ -243,22 +243,22 @@ if($stash_mode eq "git-rstash") {
         if($mode eq "show") {
             system("git show $sha")
         } elsif($mode eq "drop") {
-            system("git tag -d $sha >/dev/null 2>&1");
             system("git push $origin :$sha >/dev/null 2>&1");
+            system("git tag -d $sha >/dev/null 2>&1");
             print "Dropped: $sha\n";
-    } elsif($mode eq "apply") {
-        system("git diff $sha~..$sha | patch -p1");
-    } elsif($mode eq "list") {
-        *OUTPUT = *STDOUT;
-        *OUTPUT = *FILTER_OUTPUT if($pager && open(FILTER_OUTPUT, "|$pager"));
-        foreach(@stashes) {
-            my $stash = $_;
-            if($stash =~ /^$tag_prefix/) {
-                print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+        } elsif($mode eq "apply") {
+            system("git diff $sha~..$sha | patch -p1");
+        } elsif($mode eq "list") {
+            *OUTPUT = *STDOUT;
+            *OUTPUT = *FILTER_OUTPUT if($pager && open(FILTER_OUTPUT, "|$pager"));
+            foreach(@stashes) {
+                my $stash = $_;
+                if($stash =~ /^$tag_prefix/) {
+                    print OUTPUT `git show -s --pretty="$stash: %s (%an) [%cd]"`;
+                }
             }
+            close OUTPUT;
         }
-        close OUTPUT;
-    }
     }
 }
 
