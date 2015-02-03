@@ -4,3 +4,9 @@
 [submodule ".tmux/tmux-yank"]
 	path = .tmux/tmux-yank
 	url = https://github.com/tmux-plugins/tmux-yank.git
+[submodule ".tmux/tmux-copycat"]
+	path = .tmux/tmux-copycat
+	url = https://github.com/tmux-plugins/tmux-copycat.git
+[submodule ".tmux/tmux-open"]
+	path = .tmux/tmux-open
+	url = https://github.com/tmux-plugins/tmux-open.git
