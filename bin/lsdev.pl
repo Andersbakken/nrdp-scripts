@@ -823,7 +823,7 @@ if($display_only eq "default") { #display the currently mapped default
             my $root_name = generateRootName($root);
             $default{source} = $root->{source} unless(exists($default{source}));
 
-            if($read_devdir_list != 2 && !$display_only && isPathSame($default{source}, $root->{source})) {
+            if($read_devdir_list != 2 && isPathSame($default{source}, $root->{source})) {
                 $default{source} = $root->{source};
                 if(getPathConfig($root->{path}, "default")) {
                     if($default{path}) {

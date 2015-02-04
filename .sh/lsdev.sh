@@ -221,10 +221,10 @@ complete-cddev ()
     done
     local realdir
     if [ "${#nondirs[@]}" -ge 0 -a -z "$cur" ]; then
-        tmp=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
+        tmp=`lsdev -tp -l ${nondirs[@]} 2>/dev/null`
         [ `echo "$tmp" | wc -w` == 1 ] && realdir="$tmp"
     elif echo "$cur" | grep --quiet "/"; then
-        realdir=`lsdev -tp -a -l ${nondirs[@]} 2>/dev/null`
+        realdir=`lsdev -tp -l ${nondirs[@]} 2>/dev/null`
         [ `echo "$realdir" | wc -w` != 1 ] && return
     fi
 
@@ -235,7 +235,7 @@ complete-cddev ()
         fi
     else
         COMPREPLY=()
-        local words=`for a in $(lsdev -tn -a -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.-][^A-Za-z0-9.-]*, ,g'); do echo $a; done | sort -u | xargs`
+        local words=`for a in $(lsdev -tn -l ${nondirs[@]} 2>&1 | sed -e 's,[^A-Za-z0-9.-][^A-Za-z0-9.-]*, ,g'); do echo $a; done | sort -u | xargs`
         idx=0
         while [ "$idx" -lt "${#nondirs[@]}" ]; do
             words=`echo $words | sed "s,\<${nondirs[${idx}]}\>,,g"`
