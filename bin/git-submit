@@ -1,11 +1,32 @@
-#!/bin/sh
+#!/bin/bash
 
+echo "$EDITOR" "$0" > /tmp/faen
 if test "x$EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
     # Modify the pick line to an edit line and just exit.
-    grep "^pick $SHORT_SHA1" "$1" >/tmp/editcommit$$
-    grep -v "^pick $SHORT_SHA1" "$1" >>/tmp/editcommit$$
-    mv /tmp/editcommit$$ "$1"
+    cat $1 > /tmp/fask
+    rm -f /tmp/preeditcommit$$
+    touch /tmp/preeditcommit$$
+    rm -f /tmp/posteditcommit$$
+    touch /tmp/posteditcommit$$
+    grep "^pick " "$1" | while read line; do
+        found=
+        for change in $CHANGES; do
+            if echo $line | grep --quiet "^pick $change"; then
+                echo $line >> /tmp/preeditcommit$$
+                # >&2 echo "$change"
+                found=1
+                break
+            fi
+        done
+        if [ -z "$found" ]; then
+            echo $line >> /tmp/posteditcommit$$
+            echo "---git-submit skipped line--"
+        fi
+    done
+    cat /tmp/preeditcommit$$ /tmp/posteditcommit$$ > "$1"
+    cat "$1" > /tmp/foobar
+    # rm -f /tmp/preeditcommit$$ /tmp/posteditcommit$$
     exit 0
 fi
 
@@ -40,7 +61,7 @@ elif [ "$1" = "changes" ]; then
     done
 else
     BRANCH=
-    CHANGES=
+    IN_CHANGES=
     PUSH=yes
     AUTOSTASH=
     ORIGIN="$TRACKING"
@@ -55,12 +76,12 @@ else
             AUTOSTASH="yes"
         elif [ "$1" = "-a" ]; then
             for change in `git cherry $ORIGIN | grep '^+ ' | sed 's,^+,,g'`; do
-                CHANGES="$CHANGES `echo $change | awk '{print $1}'`"
+                IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
         elif echo "$1" | grep -q / || '!' git rev-parse "$1" >/dev/null 2>&1; then
             ORIGIN="$1"
         else
-            CHANGES="$CHANGES $1"
+            IN_CHANGES="$IN_CHANGES $1"
         fi
         shift
     done
@@ -70,7 +91,7 @@ else
         exit 1
     fi
 
-    if [ -z "$CHANGES" ]; then
+    if [ -z "$IN_CHANGES" ]; then
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command "submit $ORIGIN" "$ORIGIN..HEAD"
         exit 0
     fi
@@ -88,11 +109,12 @@ else
         git commit -a -m "${ignore_marker}git-submit" --allow-empty
     fi
 
-    COMMON_SHA1=
+    COMMON_SHA1=`git merge-base HEAD $BRANCH`
     export GIT_EDITOR="$0"
     export EDITOR="$0"
-    for change in $CHANGES; do
-        SHA1=`git rev-parse "$change"`
+    CHANGES=""
+    for change in $IN_CHANGES; do
+        SHA1=`git rev-parse --short "$change"`
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
@@ -100,25 +122,14 @@ else
             echo "$SHA1 is marked to ignore!"
             continue
         fi
-
-        echo "Applying $SHA1"
-        SHORT_SHA1=`git rev-parse --short "$SHA1"`
-        BASE_SHA1=`git merge-base $SHA1 "$BRANCH"`
-        if [ -z "$BASE_SHA1" ]; then
-            echo "No common ancestor with $BRANCH"
-            continue
-        elif [ "$BASE_SHA1" = "$SHA1" ]; then
-            echo "$SHA1 already submitted in $BRANCH"
-            continue
-        fi
-        [ -z "$COMMON_SHA1" ] && COMMON_SHA1="$BASE_SHA1"
-
-        export SHORT_SHA1
-        git -c "core.editor=$0" rebase -i "${COMMON_SHA1}" >/dev/null || exit 1
-        NEW_SHA1=`git rev-list --reverse --ancestry-path $COMMON_SHA1..HEAD | head -1`
-        echo "Change: $NEW_SHA1 ($COMMON_SHA1)"
-        COMMON_SHA1="$NEW_SHA1"
+        CHANGES="$CHANGES $SHA1"
     done
+
+    export CHANGES
+    export GIT_SEQUENCE_EDITOR="$0"
+    SKIPPED=`git rebase -i "${COMMON_SHA1}" | grep "skipped line" | wc -l` || exit 1
+    NEW_SHA1=`git rev-parse HEAD~$SKIPPED`
+    echo "Change: $NEW_SHA1"
 
     if [ -n "$NEW_SHA1" ] && [ "$PUSH" = "yes" ]; then
         PUSH_ORIGIN="."

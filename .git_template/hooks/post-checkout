@@ -1,0 +1,32 @@
+#!/bin/bash
+
+resolvelink ()
+{
+    local file="$1"
+    local max=10
+    while [ -L "$file" -a "$max" -gt 0 ]; do
+        file=`readlink "$file"`
+        max=`expr $max - 1`
+    done
+    echo $file
+}
+
+root=$(resolvelink "$0")
+root=`dirname "$root"`
+root=`cd "$root/.." && pwd`
+
+syncdir()
+{
+    find "$1/" -type f -or -type l | while read i; do
+        target=`echo $i | sed -e "s,$1,$2,"`
+        mkdir -p `dirname "$target"`
+        ln -sf "$i" "$target"
+    done
+}
+
+git_template=`git config init.templatedir`
+git_template=`eval "echo $git_template"`
+syncdir "$root" "$git_template"
+
+gitroot=`git rev-parse --git-dir 2>/dev/null`
+[ -n "$gitroot" ] && syncdir "$git_template" "$gitroot"
