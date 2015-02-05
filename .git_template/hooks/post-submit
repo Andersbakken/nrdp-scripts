@@ -2,5 +2,7 @@
 if echo "$2" | grep -q "/"; then
     ORIGIN=`echo $2 | cut -d/ -f1`
     REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
-    echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --no-create --comment -i "$1"
+    for sha in `git log --pretty="%h" "$1..$2"`; do
+        echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --no-create --comment -i "$sha"
+    done
 fi
