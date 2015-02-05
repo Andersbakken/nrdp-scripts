@@ -1,7 +1,6 @@
 #!/bin/bash
 
-echo "$EDITOR" "$0" > /tmp/faen
-if test "x$EDITOR" = "x$0" ; then
+if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
     # Modify the pick line to an edit line and just exit.
     cat $1 > /tmp/fask
@@ -110,8 +109,6 @@ else
     fi
 
     COMMON_SHA1=`git merge-base HEAD $BRANCH`
-    export GIT_EDITOR="$0"
-    export EDITOR="$0"
     CHANGES=""
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
