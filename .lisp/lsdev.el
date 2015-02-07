@@ -57,7 +57,7 @@
             (with-current-buffer buffer-or-dir
               (set (make-local-variable 'lsdev/_name)
                    (if name name t))))))
-       (and (stringp name) name)))
+    (and (stringp name) name)))
 
 (defun lsdev-root-dir (buffer-or-dir &rest match)
   (let ((dir (lsdev-get-dir buffer-or-dir)))
@@ -226,7 +226,7 @@
                             (with-temp-buffer
                               (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
                               (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_]+") :test 'equal))))
-         (hd (ido-completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
+         (hd (completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
     (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (push "-a" args)
     (push "-r" args)
@@ -321,7 +321,7 @@
       (setq shadow-directory nil)
       (if (= (length shadows) 1)
           (setq shadow-directory (nth 1 (car shadows)))
-        (let ((shadow (ido-completing-read "Shadow: " shadows))
+        (let ((shadow (completing-read "Shadow: " shadows))
               (s shadows))
           (while (and s (not shadow-directory))
             (let ((n (car s)))
@@ -329,12 +329,12 @@
               (if (string-equal (nth 0 n) shadow)
                   (setq shadow-directory (nth 1 n))))))))
     ;;        (message (format "%s %s %s" build-dir src-root shadow-directory))
-      (let ((parent-makefile (or (find-ancestor-file "Makefile" shadow-directory)
-                                 (find-ancestor-file "build.ninja" shadow-directory))))
-        (if parent-makefile
-            (setq shadow-directory (file-name-directory parent-makefile)))
-        (lsdev-compile-directory shadow-directory auto)
-        t)))
+    (let ((parent-makefile (or (find-ancestor-file "Makefile" shadow-directory)
+                               (find-ancestor-file "build.ninja" shadow-directory))))
+      (if parent-makefile
+          (setq shadow-directory (file-name-directory parent-makefile)))
+      (lsdev-compile-directory shadow-directory auto)
+      t)))
 
 (defun lsdev-find-git-file (src filename) ; src always ends with /
   (with-temp-buffer
@@ -374,19 +374,19 @@
             (push (cons name file) alternatives)))
         (setq all (cdr all)))
       (if alternatives
-          (let ((project (ido-completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
+          (let ((project (completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
             (if project
                 (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
                        (file (car files)))
                   (if (> (length files) 1)
                       (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
                              (src-root-len (1+ (length src-root))))
-                        (setq file (ido-completing-read "File: "
-                                                        (mapcar #'(lambda (arg) (substring arg src-root-len)) files)))
+                        (setq file (completing-read "File: "
+                                                    (mapcar #'(lambda (arg) (substring arg src-root-len)) files)))
                         (if file
                             (setq file (concat src-root "/" file)))))
                   (if file
-                       (find-file file)))))))))
+                      (find-file file)))))))))
 
 (defun lsdev-adddev (&optional name path)
   (interactive)
