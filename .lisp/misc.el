@@ -1114,6 +1114,7 @@ the name of the value of file-name is present."
 ;;
 
 (defun include-file (&optional file)
+  (interactive)
   (unless (> (length file) 0)
     (setq file (read-from-minibuffer "Include file: ")))
   (when (> (length file) 0)
@@ -1128,7 +1129,7 @@ the name of the value of file-name is present."
             (end-of-line)
           (goto-char (point-min)))
         (setq pos (1+ (point)))
-        (insert "\n#include " file "\n")
+        (insert "\n#include " file)
         (message "Added #include %s" file)))))
 
 ;;===================
