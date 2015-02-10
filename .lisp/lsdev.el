@@ -1,5 +1,6 @@
 (require 'bs)
 (require 'ido)
+(require 'magit)
 (require 'git)
 (require 'buffer-pop)
 (eval-when-compile (require 'cl))
@@ -16,6 +17,11 @@
 
 (defcustom lsdev-open-equivalent-use-find nil
   "Whether find is used in lsdev-open-equivalent"
+  :type 'boolean
+  :group 'lsdev)
+
+(defcustom lsdev-cd-magit-status nil
+  "Whether lsdev-cd should jump into magit-status for exact matches"
   :type 'boolean
   :group 'lsdev)
 
@@ -137,12 +143,12 @@
     (if dir
         (lsdev-compile-directory dir (if recompile 1 t)))))
 
-(defun lsdev-git-status-at-point ()
+(defun lsdev-magit-status-at-point ()
   (interactive)
   (let ((root (git-root-dir)))
     (if root
-        (git-status root)
-      (call-interactively 'git-status))))
+        (magit-status root)
+      (call-interactively 'magit-status))))
 
 (defun lsdev-git-diff-all-at-point (&optional -w)
   (interactive "P")
@@ -174,50 +180,71 @@
 
 (defvar lsdev-mode-custom-bindings nil)
 (defvar lsdev-cd-history nil)
-(defun lsdev-cd-internal (args ignore-builds from-eshell)
+(defun lsdev-cd-internal (args ignore-builds from-eshell magit-status)
+  (or magit-status (setq magit-status lsdev-cd-magit-status))
   (let ((previous (current-buffer)))
     (push "-l" args)
-    (if (or ignore-builds lsdev-cd-ignore-builds) (push "-build" args))
-    (if (get-buffer "*lsdev-complete*") (kill-buffer "*lsdev-complete*"))
+    (if (or ignore-builds lsdev-cd-ignore-builds)
+        (push "-build" args))
+    (if (get-buffer "*lsdev-complete*")
+        (kill-buffer "*lsdev-complete*"))
     (switch-to-buffer (get-buffer-create "*lsdev-complete*"))
     (setq buffer-read-only nil)
     (goto-char (point-min))
     (erase-buffer)
     (apply #'call-process (executable-find "lsdev.pl") nil (list t nil) nil args)
     (goto-char (point-min))
-    (cond ((= (point-min) (point-max)) (lsdev-cd-bury-buffer) (switch-to-buffer previous))
-          (t (progn
-               (save-excursion
-                 (let ((first t) (lines (count-lines (point-min) (point-max))))
-                   (goto-char (point-min))
-                   (while (and (<(count-lines (point-min) (point)) lines) (not (looking-at "\*Builds\*")))
-                     (if (looking-at "^build_")
-                         (save-excursion
-                           (kill-line)(kill-line)
-                           (goto-char (point-max))
-                           (if first (progn (setq first nil) (insert "\n*Builds*\n")))
-                           (insert (current-kill 1))
-                           (insert "\n"))
-                       (forward-line)))))
-               (setq buffer-read-only t)
-               (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)
-               (local-set-key (kbd "/") 'lsdev-cd-subdir)
-               (local-set-key (kbd "g") 'lsdev-cd-changedir)
-               (local-set-key (kbd "s") 'lsdev-git-status-at-point)
-               (local-set-key (kbd "d") 'lsdev-git-diff-all-at-point)
-               (local-set-key (kbd "=") 'lsdev-git-diff-all-at-point)
-               (local-set-key (kbd "D") 'git-diff-all)
-               (local-set-key (kbd "c") 'lsdev-compile-at-point)
-               (local-set-key (kbd "b") 'lsdev-compile-at-point)
-               (local-set-key (kbd "r") 'lsdev-recompile-at-point)
-               (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
-               (local-set-key [return] 'lsdev-cd-path-at-point)
-               (if (functionp lsdev-mode-custom-bindings)
-                   (funcall lsdev-mode-custom-bindings))
-               (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function)))
-               )))))
+    (if (= (point-min) (point-max))
+        (progn
+          (lsdev-cd-bury-buffer)
+          (switch-to-buffer previous))
+      (save-excursion
+        (let ((single-source)
+              (firstbuild t)
+              (lines (count-lines (point-min) (point-max))))
+          (goto-char (point-min))
+          (while (and (< (count-lines (point-min) (point)) lines)
+                      (not (looking-at "\*Builds\*")))
+            (if (looking-at "^build_")
+                (save-excursion
+                  (kill-line)
+                  (kill-line)
+                  (goto-char (point-max))
+                  (when firstbuild
+                    (setq firstbuild nil)
+                    (insert "\n*Builds*\n"))
+                  (insert (current-kill 1) "\n"))
+              (progn
+                (when (> (point-at-eol) (point-at-bol))
+                  (cond ((not single-source)
+                         (let* ((line (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+                                (match (and (string-match "\\[\\([^]]*\\)\\]" line) (match-string 1 line))))
+                           (setq single-source (or match ""))))
+                        ((stringp single-source)
+                         (setq single-source 0))
+                        (t)))
+                (forward-line))))
+          (if (and magit-status (stringp single-source) (> (length single-source) 0) (git-root-dir single-source))
+              (magit-status single-source)
+            (progn
+              (setq buffer-read-only t)
+              (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)
+              (local-set-key (kbd "/") 'lsdev-cd-subdir)
+              (local-set-key (kbd "g") 'lsdev-cd-changedir)
+              (local-set-key (kbd "s") 'lsdev-magit-status-at-point)
+              (local-set-key (kbd "d") 'lsdev-git-diff-all-at-point)
+              (local-set-key (kbd "=") 'lsdev-git-diff-all-at-point)
+              (local-set-key (kbd "D") 'git-diff-all)
+              (local-set-key (kbd "c") 'lsdev-compile-at-point)
+              (local-set-key (kbd "b") 'lsdev-compile-at-point)
+              (local-set-key (kbd "r") 'lsdev-recompile-at-point)
+              (local-set-key (kbd "RET") 'lsdev-cd-path-at-point)
+              (local-set-key [return] 'lsdev-cd-path-at-point)
+              (if (functionp lsdev-mode-custom-bindings)
+                  (funcall lsdev-mode-custom-bindings))
+              (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function))))))))))
 
-(defun lsdev-cd(&optional ignore-builds)
+(defun lsdev-cd(&optional ignore-builds magit-status)
   (interactive)
   (let* ((args nil)
          (exec (executable-find "lsdev.pl"))
@@ -231,7 +258,7 @@
     (push "-a" args)
     (push "-r" args)
     (unless (or (string= hd "") (not hd)) (push (if (string-match "/$" hd) (substring hd 0 -1) hd) args))
-    (lsdev-cd-internal args ignore-builds from-eshell)))
+    (lsdev-cd-internal args ignore-builds from-eshell magit-status)))
 
 ;;mode string
 (defvar lsdev-mode t)
