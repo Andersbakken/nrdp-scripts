@@ -494,6 +494,7 @@ the name of the value of file-name is present."
 
 (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
 (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
+(misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
 (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
 (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
@@ -586,9 +587,15 @@ the name of the value of file-name is present."
              (push commands args)))
       (apply #'magit-run-git-async args))))
 
-(defun magit-jira (&optional commit)
+(defun magit-jira (&optional commit noresolve)
   (interactive)
-  (magit-run-on-multiple (list "jira" "--resolve" "--no-interactive") commit))
+  (magit-run-on-multiple (if noresolve
+                             (list "jira" "--no-interactive")
+                           (list "jira" "--resolve" "--no-interactive")) commit))
+
+(defun magit-jira-no-resolve (&optional commit)
+  (interactive)
+  (magit-jira commit t))
 
 (defun magit-submit (&optional commit)
   (interactive)
