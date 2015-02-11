@@ -1,11 +1,35 @@
 #!/bin/sh
 
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    echo "cmakeproject [--lib] [--staticlib] [--app (default)"
+    echo "cmakeproject [--lib] [--staticlib] [--app (default)] [--force]"
     exit 0
 fi
 
-if [ -f "CMakeLists.txt" ]; then
+mode=app
+force=
+while [ -n "$1" ]; do
+    case $1 in
+        --force|-f)
+            force=1
+            ;;
+        --lib|-l)
+            mode=lib
+            ;;
+        --staticlib|-s)
+            mode=staticlib
+            ;;
+        --app|--application|-a)
+            mode=app
+            ;;
+        *)
+            echo "unknown arg $1"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+if [ -f "CMakeLists.txt" ] && [ -z "$force" ]; then
     echo "There's already a CMakeLists.txt here"
     exit 1
 fi
@@ -14,21 +38,15 @@ echo "cmake_minimum_required(VERSION 2.8)" > CMakeLists.txt
 echo "include_directories(\${CMAKE_CURRENT_LIST_DIR})" >> CMakeLists.txt
 echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++0x\")" >> CMakeLists.txt
 echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS}\")" >> CMakeLists.txt
-mode="$1"
-test -z "$mode" && mode="--app"
 
 case "$mode" in
-    --app)
+    app)
         echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
         ;;
-    --lib)
+    lib)
         echo "add_library(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
         ;;
-    --staticlib)
+    staticlib)
         echo "add_library(`basename $PWD` STATIC `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
-        ;;
-    *)
-        echo "Invalid mode $mode"
-        exit 1
         ;;
 esac
