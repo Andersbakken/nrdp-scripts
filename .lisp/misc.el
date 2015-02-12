@@ -585,13 +585,14 @@ the name of the value of file-name is present."
                  (setq rev (cdr rev)))))
             (t
              (push commands args)))
+      ;; (message "running: [%s]" (combine-and-quote-strings args))
       (apply #'magit-run-git-async args))))
 
 (defun magit-jira (&optional commit noresolve)
   (interactive)
   (magit-run-on-multiple (if noresolve
-                             (list "jira" "--no-interactive")
-                           (list "jira" "--resolve" "--no-interactive")) commit))
+                             (list "jira" "--no-interactive" "--comment")
+                           (list "jira" "--resolve" "--no-interactive" "--comment")) commit))
 
 (defun magit-jira-no-resolve (&optional commit)
   (interactive)
