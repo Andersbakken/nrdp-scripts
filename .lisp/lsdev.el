@@ -401,7 +401,7 @@
             (push (cons name file) alternatives)))
         (setq all (cdr all)))
       (if alternatives
-          (let ((project (completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names)))
+          (let ((project (completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names nil nil (and (= (length names) 1) (car names)))))
             (if project
                 (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
                        (file (car files)))
