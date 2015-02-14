@@ -448,14 +448,6 @@ the name of the value of file-name is present."
 ;; Magit stuff
 ;;===================
 
-(define-key magit-status-mode-map (kbd "-") 'magit-ediff)
-(define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
-(define-key magit-status-mode-map (kbd "_") 'magit-diff-smaller-hunks)
-(define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
-(define-key magit-status-mode-map (kbd "l") 'magit-log-current-section)
-(define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace)
-(define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
-
 (defun magit-show-revision-at-current-line()
   (interactive)
   (let ((file)
@@ -483,6 +475,16 @@ the name of the value of file-name is present."
   "Run git sync."
   (interactive)
   (magit-run-git-async "sync"))
+
+(define-key magit-status-mode-map (kbd "-") 'magit-ediff)
+(define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
+(define-key magit-status-mode-map (kbd "_") 'magit-diff-smaller-hunks)
+(define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
+(define-key magit-status-mode-map (kbd "l") 'magit-log-current-section)
+(define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace)
+(if (fboundp 'magit-show-file-revision)
+    (define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
+  (define-key magit-log-mode-map (kbd "#") (function magit-show-revision-at-current-line)))
 
 (defun misc-magit-add-action (group key name func)
   (interactive)
