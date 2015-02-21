@@ -401,19 +401,22 @@
             (push (cons name file) alternatives)))
         (setq all (cdr all)))
       (if alternatives
-          (let ((project (completing-read (format "Open %s: " (file-name-nondirectory (buffer-file-name))) names nil nil (and (= (length names) 1) (car names)))))
-            (if project
-                (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
-                       (file (car files)))
-                  (if (> (length files) 1)
-                      (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
-                             (src-root-len (1+ (length src-root))))
-                        (setq file (completing-read "File: "
-                                                    (mapcar #'(lambda (arg) (substring arg src-root-len)) files)))
-                        (if file
-                            (setq file (concat src-root "/" file)))))
-                  (if file
-                      (find-file file)))))))))
+          (let* ((default (car names))
+                 (project (completing-read
+                           (format "Open %s (default %s): " (file-name-nondirectory (buffer-file-name)) default)
+                           names nil nil (and (= (length names) 1) (car names)) nil default)))
+            (when project
+              (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
+                     (file (car files)))
+                (if (> (length files) 1)
+                    (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
+                           (src-root-len (1+ (length src-root))))
+                      (setq file (completing-read "File: "
+                                                  (mapcar #'(lambda (arg) (substring arg src-root-len)) files)))
+                      (if file
+                          (setq file (concat src-root "/" file)))))
+                (if file
+                    (find-file file)))))))))
 
 (defun lsdev-adddev (&optional name path)
   (interactive)
