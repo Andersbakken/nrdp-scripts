@@ -41,10 +41,10 @@ echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS}\")" >> CMakeLists.txt
 
 case "$mode" in
     app)
-        echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
+        echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -iname "*.c" -or -iname "*.cc" -or -iname "*.cxx" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
         ;;
     lib)
-        echo "add_library(`basename $PWD` `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
+        echo "add_library(`basename $PWD` `find . -name "*.cpp" -or -iname "*.c" -or -iname "*.cc" -or -iname "*.cxx" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
         ;;
     staticlib)
         echo "add_library(`basename $PWD` STATIC `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
