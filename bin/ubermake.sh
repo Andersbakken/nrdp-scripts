@@ -77,9 +77,7 @@ else
        if [ -e "$NINJA" ]; then
            cd `dirname $NINJA`
            if [ -n "$UBERTAGS" ]; then
-               ninja -t commands | while read i; do
-                   rc --compile $i
-               done
+               ninja -t commands | rc --compile
                exit 0
            fi
            NINJA_OPTIONS=
