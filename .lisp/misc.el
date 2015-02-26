@@ -612,6 +612,11 @@ the name of the value of file-name is present."
   (interactive)
   (magit-run-git-async "submit" "-a"))
 
+(defun magit-ediff-buffers (a b)
+  (setq magit-ediff-buffers (list b a))
+  (setq magit-ediff-windows (current-window-configuration))
+  (ediff-buffers b a '(magit-ediff-add-cleanup)))
+
 ;; ================================================================================
 ;; git-jira
 ;; ================================================================================
