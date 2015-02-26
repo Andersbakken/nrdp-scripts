@@ -1196,3 +1196,14 @@ there's a region, all lines that region covers will be duplicated."
         (insert region)
         (setq end (point))))
     (goto-char (+ (point-at-bol) column))))
+
+(defun shit (&optional args)
+  (interactive)
+  (if (executable-find "shit")
+      (with-temp-buffer
+        (apply #'call-process "shit" nil t t (cond ((null args) (split-string-and-unquote (read-from-minibuffer "Shit: ")))
+                                                   ((stringp args) (split-string-and-unquote args))
+                                                   ((listp args) args)
+                                                   (t nil)))
+        (message (buffer-string)))))
+
