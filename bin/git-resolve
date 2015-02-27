@@ -98,9 +98,10 @@ gitBase()
 
 gitCatBase()
 {
-    FILE="$1"
-    BASE="$2"
-    OUTPUT="$3"
+    local FILE="$1"
+    echo $FILE | grep -q "^/" || FILE="./$FILE"
+    local BASE="$2"
+    local OUTPUT="$3"
     [ -z "$OUTPUT" ] && OUTPUT="$FILE"
     git cat-file blob ":${BASE}:$FILE" >$OUTPUT 2>/dev/null
     return 1
@@ -174,7 +175,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     case $accpt in
                         d|diff)
                             tmpincoming=`mktemp /tmp/XXXXXX.incoming`
-                            git cat-file blob ":2:$file" >$tmpincoming 2>/dev/nul
+                            gitCatBase "$file" 2 "$tmpincoming"
                             tmpdiff=`mktemp /tmp/XXXXXX.diff`
                             diff -du "$tmpincoming" "$file" > "$tmpdiff"
                             page "$tmpdiff"
