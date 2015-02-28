@@ -513,13 +513,11 @@ the name of the value of file-name is present."
 
 (defun magit-refresh-status-buffer()
   (let ((topdir (magit-get-top-dir default-directory)))
-    (if topdir
-        (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
-          (if (and buf (buffer-is-visible buf))
-              (with-current-buffer buf
-                (magit-refresh)))))
-    )
-  )
+    (when topdir
+      (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
+        (when (and buf (buffer-is-visible buf))
+          (with-current-buffer buf
+            (magit-refresh)))))))
 
 (defun magit-current-section-string ()
   (let* ((section (magit-current-section))
@@ -1118,12 +1116,12 @@ the name of the value of file-name is present."
   (interactive)
   (unless mkgibbontest-directory
     (error "You have to set mkgibbontest-directory to something."))
-    (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
-           (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
-           (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
-      (when (file-exists-p abspath)
-        (mkgibbontest-copy (file-name-nondirectory abspath))
-        (find-file abspath))))
+  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
+         (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
+         (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
+    (when (file-exists-p abspath)
+      (mkgibbontest-copy (file-name-nondirectory abspath))
+      (find-file abspath))))
 
 
 ;;
@@ -1204,11 +1202,12 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun shit (&optional args)
   (interactive)
-  (if (executable-find "shit")
-      (with-temp-buffer
-        (apply #'call-process "shit" nil t t (cond ((null args) (split-string-and-unquote (read-from-minibuffer "Shit: ")))
-                                                   ((stringp args) (split-string-and-unquote args))
-                                                   ((listp args) args)
-                                                   (t nil)))
-        (message (buffer-string)))))
+  (when (executable-find "shit")
+    (with-temp-buffer
+      (apply #'call-process "shit" nil t t (cond ((null args) (split-string-and-unquote (read-from-minibuffer "Shit: ")))
+                                                 ((stringp args) (split-string-and-unquote args))
+                                                 ((listp args) args)
+                                                 (t nil)))
+      (magit-refresh-status-buffer)
+      (message (buffer-string)))))
 
