@@ -730,7 +730,7 @@ the name of the value of file-name is present."
       (insert-file-contents-literally buffer-name)
       (let ((corresponding-file (find-corresponding-cpp-h buffer-name)))
         (when corresponding-file
-          (insert-file-contents-literally (buffer-file-name corresponding-file))))
+          (insert-file-contents-literally corresponding-file)))
       ;; (message "string:\n%s" (buffer-substring-no-properties (point-min) (point-max)))
 
       ;; (message "buffer %s %d" buffer-name (point-max))
