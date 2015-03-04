@@ -776,8 +776,14 @@ the name of the value of file-name is present."
         (goto-char (point-min))
         ;; (message "Searching for: [%s]" (concat (car typedefs) " *[&*]? *\\([A-Za-z0-9_]+\\)"))
         (while (and (< (point) (point-max))
-                    (re-search-forward (concat "[A-Za-z0-9_:]*" (car typedefs) " *[&*]? *[A-Za-z0-9_]+") nil t))
-          (add-to-list 'containers (match-string 0))
+                    (re-search-forward (concat "[A-Za-z0-9_:]*" (car typedefs) " *\\(&\\)?\\*? *[A-Za-z0-9_]+") nil t))
+          (if (match-string 1)
+              (add-to-list 'containers
+                           (concat
+                            (buffer-substring-no-properties (match-beginning 0) (match-beginning 1))
+                            (buffer-substring-no-properties (match-end 1) (match-end 0))))
+            (add-to-list 'containers (match-string 0)))
+          ;; (message "match: [%s]" (match-string 1))
           (goto-char (point-at-eol)))
         (setq typedefs (cdr typedefs))))
     containers))
