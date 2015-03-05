@@ -1233,3 +1233,12 @@ there's a region, all lines that region covers will be duplicated."
       (magit-refresh-status-buffer)
       (message (buffer-string)))))
 
+
+(defun nslookup (&optional ip)
+  (interactive)
+  (when (and (not ip) (region-active-p))
+    (let ((sel (buffer-substring-no-properties (region-beginning) (region-end))))
+      (if (string-match "[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?" sel)
+          (setq ip sel))))
+
+  (message "%s" (shell-command-to-string (concat "nslookup " (or ip (read-from-minibuffer "nslookup: "))))))
