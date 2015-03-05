@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "cmakeproject [--lib] [--staticlib] [--app (default)] [--force]"
@@ -39,14 +39,16 @@ echo "include_directories(\${CMAKE_CURRENT_LIST_DIR})" >> CMakeLists.txt
 echo "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++0x\")" >> CMakeLists.txt
 echo "set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS}\")" >> CMakeLists.txt
 
+FIND="find . -name '*.cpp' -or -iname '*.c' -or -iname '*.cc' -or -iname '*.cxx' -or -iname '*.m' -or -name '*.mm' | grep -v '/CMakeFiles/' | sed -e 's,^\./,,' | xargs"
+
 case "$mode" in
     app)
-        echo "add_executable(`basename $PWD` `find . -name "*.cpp" -or -iname "*.c" -or -iname "*.cc" -or -iname "*.cxx" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
+        echo "add_executable(`basename $PWD` `eval "$FIND"`)" >> CMakeLists.txt
         ;;
     lib)
-        echo "add_library(`basename $PWD` `find . -name "*.cpp" -or -iname "*.c" -or -iname "*.cc" -or -iname "*.cxx" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
+        echo "add_library(`basename $PWD` `eval "$FIND"`)" >> CMakeLists.txt
         ;;
     staticlib)
-        echo "add_library(`basename $PWD` STATIC `find . -name "*.cpp" -or -name "*.c" | grep -v "/CMakeFiles/" | sed -e 's,^\./,,' | xargs`)" >> CMakeLists.txt
+        echo "add_library(`basename $PWD` STATIC `eval "$FIND"`)" >> CMakeLists.txt
         ;;
 esac
