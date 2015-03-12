@@ -8,10 +8,12 @@ OPTS=""
 MERGES="0"
 BRANCHES="0"
 UNKNOWN_OPTS=""
+SUBCOMMAND="log"
 while [ "$#" -gt 0 ]; do
    OPT="$1"
    shift
    case $OPT in
+   -r) SUBCOMMAND="reflog" ;;
    -i) MERGES="1" ;;
    -b) BRANCHES="1" ;;
    --no-merges) MERGES="0" ;;
@@ -35,10 +37,10 @@ while [ "$#" -gt 0 ]; do
     esac
 done
 [ "$MERGES" = "0" ] && OPTS="$OPTS --no-merges"
-OPTS="--oneline '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset' --abbrev-commit $OPTS $UNKNOWN_OPTS"
+OPTS="--oneline '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs' --abbrev-commit $OPTS $UNKNOWN_OPTS"
 
 if [ "$BRANCHES" = "1" ]; then
-    eval git log $OPTS | while read line; do
+    eval git $SUBCOMMAND $OPTS | while read line; do
         change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
         branches=`git branch -l --contains $change | awk '{print $NF}'`
         [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
@@ -46,6 +48,6 @@ if [ "$BRANCHES" = "1" ]; then
         echo $line
     done
 else
-    eval git log $OPTS
+    eval git $SUBCOMMAND $OPTS
 fi
 

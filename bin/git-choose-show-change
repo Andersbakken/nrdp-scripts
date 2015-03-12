@@ -27,6 +27,8 @@ while [ "$#" -ge 1 ]; do
     elif [ "$1" = "-command" ]; then
         shift
         command="$1"
+    elif [ "$1" = "reflog" ]; then
+         mode="changes -r"
     elif [ "$1" = "tracking" ]; then
          mode="changes -t"
     elif [ "$1" = "submit" ]; then
