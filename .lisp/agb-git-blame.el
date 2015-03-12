@@ -121,7 +121,7 @@
 (defun agb-git-blame-current-commit()
   (save-excursion
     (beginning-of-line)
-    (if (looking-at "\\([0-9a-f]\\{8\\}\\)[ )]")
+    (if (looking-at "\\([0-9a-f]\\{8,12\\}\\)[ )]")
         (match-string 1))))
 
 (defun agb-git-blame-current-file()
