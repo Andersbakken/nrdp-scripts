@@ -37,7 +37,7 @@ while [ "$#" -ge 1 ]; do
         echo "Submit: $local_branch->$remote_branch"
         mode="changes ${remote_branch}..${local_branch}"
     elif [ "$1" = "mine" ]; then
-        mode="changes -m"
+        mode="changes -s"
     elif [ "$1" = "stash" ]; then
         mode="stash list"
     elif [ "$1" = "pulled" ]; then

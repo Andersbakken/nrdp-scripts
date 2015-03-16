@@ -15,12 +15,12 @@ while [ "$#" -gt 0 ]; do
     shift
     case $OPT in
         -r) SUBCOMMAND="reflog" ;;
-        -i) MERGES="1" ;;
+        -a) MERGES="1" ;;
         -b) BRANCHES="1" ;;
         -) COUNT_MERGES="1" ;;
         --no-merges) MERGES="0" ;;
-        -M|--merges) COUNT_MERGES="1" ;;
-        -m) OPTS="$OPTS --author=$AUTHOR" ;;
+        -m|--merges) COUNT_MERGES="1" ;;
+        -s) OPTS="$OPTS --author=$AUTHOR" ;; #self changes
         -t)
             tracking_branch=`git tracking 2>/dev/null`
             if [ "$?" ]; then
