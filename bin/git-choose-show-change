@@ -6,31 +6,31 @@ mode="changes"
 mode_args=""
 while [ "$#" -ge 1 ]; do
     if [ "$1" = "help" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-         echo "$0: [mode] [file] [count]"
-         echo "Modes:"
-         echo "  stash"
-         echo "  tracking"
-         echo "  pulled"
-         echo "  mine"
-         for branch in `git branch | sed "s,^\* *,,"`; do
-	     [ -n "$branch" ] && echo "  $branch (lbranch)"
-         done
-         for branch in `git branch -r | grep -ve '->' | sed "s,^\* *,,"`; do
-	     [ -n "$branch" ] && echo "  $branch (rbranch)"
-         done
-         for remote in `git remote`; do
-	     [ -n "$remote" ] && echo "  $remote (remote)"
-         done
-         exit 0
+        echo "$0: [mode] [file] [count]"
+        echo "Modes:"
+        echo "  stash"
+        echo "  tracking"
+        echo "  pulled"
+        echo "  mine"
+        for branch in `git branch | sed "s,^\* *,,"`; do
+            [ -n "$branch" ] && echo "  $branch (lbranch)"
+        done
+        for branch in `git branch -r | grep -ve '->' | sed "s,^\* *,,"`; do
+            [ -n "$branch" ] && echo "  $branch (rbranch)"
+        done
+        for remote in `git remote`; do
+            [ -n "$remote" ] && echo "  $remote (remote)"
+        done
+        exit 0
     elif echo "$1" | grep -q "^-[0-9]\+$"; then
         number=`echo $1 | sed "s,^-,,g"`
     elif [ "$1" = "-command" ]; then
         shift
         command="$1"
     elif [ "$1" = "reflog" ]; then
-         mode="changes -r"
+        mode="changes -r"
     elif [ "$1" = "tracking" ]; then
-         mode="changes -t"
+        mode="changes -t"
     elif [ "$1" = "submit" ]; then
         local_branch=`git rev-parse --abbrev-ref HEAD`
         remote_branch=`git submit tracking`
@@ -77,39 +77,39 @@ while true; do
     elif [ "$choose" = "p" ]; then
         head=$((head-$number))
     elif [ -n "$choose" ] && echo "$choose" | grep '[0-9]'; then
-         choose_args="$choose_args -c $choose"
+        choose_args="$choose_args -c $choose"
     fi
     choose_args="$choose_args -+$head -$number -a "
     change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
     if [ -n "$change" ]; then
-      if [ "$command" = "submit" ]; then
-          while true; do
-              do_submit=y
-              /bin/echo -n "Submit $change? "
-              read do_submit
-              if [ "$do_submit" = "d" ]; then
-                  git show "$change"
-              elif [ "$do_submit" = "a" ]; then
-                  git submit -a "$change"
-                  break
-              elif [ "$do_submit" = "y" ]; then
-                  git submit "$change"
-                  break
-              fi
-          done
-      elif [ -n "$command" ]; then
-          do_exec=y
-          exec="git $command $change"
-          #/bin/echo -n "Run '$exec'? "
-          #read do_exec
-          [ "$do_exec" = "y" ] && $exec
-      else
-          echo "$change"
-          git show "$change"
-      fi
-      /bin/echo -n "Next? "
-      read choose
+        if [ "$command" = "submit" ]; then
+            while true; do
+                do_submit=y
+                /bin/echo -n "Submit $change? "
+                read do_submit
+                if [ "$do_submit" = "d" ]; then
+                    git show "$change"
+                elif [ "$do_submit" = "a" ]; then
+                    git submit -a "$change"
+                    break
+                elif [ "$do_submit" = "y" ]; then
+                    git submit "$change"
+                    break
+                fi
+            done
+        elif [ -n "$command" ]; then
+            do_exec=y
+            exec="git $command $change"
+            #/bin/echo -n "Run '$exec'? "
+            #read do_exec
+            [ "$do_exec" = "y" ] && $exec
+        else
+            echo "$change"
+            git show "$change"
+        fi
+        /bin/echo -n "Next? "
+        read choose
     else
-      break;
+        break;
     fi
 done
