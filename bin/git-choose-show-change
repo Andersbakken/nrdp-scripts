@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 file=
 number=20
@@ -51,12 +51,14 @@ while [ "$#" -ge 1 ]; do
     elif [ -e "$1" ]; then
         echo "File: $1"
         mode="changes $1"
-    elif git show "$1" | grep "^Merge:" >/dev/null 2>&1; then
-        echo "Merge: $1"
-        mode="merge-changes $1"
     elif git rev-parse --verify "$1" >/dev/null 2>&1; then
-        echo "Branch: $1"
-        mode="changes $1"
+        if git show "$1" | grep "^Merge:" >/dev/null 2>&1; then
+            echo "Merge: $1"
+            mode="merge-changes $1"
+        else
+            echo "Branch: $1"
+            mode="changes $1"
+        fi
     elif git remote | grep "^$1\$" >/dev/null 2>&1; then
         branch=`git rev-parse --abbrev-ref HEAD`
         echo "Remote: $1 ($branch)"
