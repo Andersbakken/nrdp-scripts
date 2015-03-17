@@ -51,7 +51,7 @@ if [ "$COUNT_MERGES" = "1" ]; then
         merged=`git log --stat "$change^..$change" | grep ^commit | wc -l;`
         [ -n "$merged" ] && line="$line ($merged)";
         echo $line
-    done
+    done | less
 elif [ "$BRANCHES" = "1" ]; then
     eval git $SUBCOMMAND $OPTS | while read line; do
         change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
@@ -59,7 +59,7 @@ elif [ "$BRANCHES" = "1" ]; then
         [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
         [ -n "$branches" ] && line="$line ($branches)";
         echo $line
-    done
+    done | less
 else
     eval git $SUBCOMMAND $OPTS
 fi
