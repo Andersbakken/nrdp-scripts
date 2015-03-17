@@ -1242,3 +1242,5 @@ there's a region, all lines that region covers will be duplicated."
           (setq ip sel))))
 
   (message "%s" (shell-command-to-string (concat "nslookup " (or ip (read-from-minibuffer "nslookup: "))))))
+
+(provide 'nrdp-misc)
