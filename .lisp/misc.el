@@ -36,11 +36,10 @@ the name of the value of file-name is present."
       (let* ((buffer (car buffers))
              (file-name (buffer-file-name buffer)))
         (message (concat "Looking at " file-name))
-        (if (and file-name (or (not name) (string-match name file-name)))
-            (progn
-              (setq result file-name)
-              (with-current-buffer buffer
-                (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos)))))))
+        (when (and file-name (or (not name) (string-match name file-name)))
+          (setq result file-name)
+          (with-current-buffer buffer
+            (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos))))))
         (message (concat "Done Looking at " file-name)))
       (setq buffers (cdr buffers)))
     result))
@@ -339,8 +338,8 @@ the name of the value of file-name is present."
       (keyboard-quit)))
   )
 
-(defun find-corresponding-cpp-h ()
-  (let ((n (buffer-file-name))
+(defun find-corresponding-cpp-h (&optional filename)
+  (let ((n (or filename (buffer-file-name)))
         (attempts)
         (all-attempts)
         (start)
@@ -513,13 +512,11 @@ the name of the value of file-name is present."
 
 (defun magit-refresh-status-buffer()
   (let ((topdir (magit-get-top-dir default-directory)))
-    (if topdir
-        (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
-          (if (and buf (buffer-is-visible buf))
-              (with-current-buffer buf
-                (magit-refresh)))))
-    )
-  )
+    (when topdir
+      (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
+        (when (and buf (buffer-is-visible buf))
+          (with-current-buffer buf
+            (magit-refresh)))))))
 
 (defun magit-current-section-string ()
   (let* ((section (magit-current-section))
@@ -722,7 +719,7 @@ the name of the value of file-name is present."
 (defun find-containers (&optional buffer-name)
   (unless buffer-name
     (setq buffer-name (buffer-file-name)))
-  (let (containers contents)
+  (let (containers typedefs)
     ;; (if buffer
     ;;     (let ((prev (current-buffer)))
     ;;       (set-buffer buffer)
@@ -731,36 +728,65 @@ the name of the value of file-name is present."
     ;;   (setq contents (buffer-string)))
     (with-temp-buffer
       (insert-file-contents-literally buffer-name)
+      (let ((corresponding-file (find-corresponding-cpp-h buffer-name)))
+        (when corresponding-file
+          (insert-file-contents-literally corresponding-file)))
+      ;; (message "string:\n%s" (buffer-substring-no-properties (point-min) (point-max)))
+
       ;; (message "buffer %s %d" buffer-name (point-max))
       (goto-char (point-min))
       (while (and (< (point) (point-max))
                   (re-search-forward "<[A-Za-z_]" nil t))
-        (unless (string= (buffer-substring-no-properties (point-at-bol) (1- (point))) "#include <")
-          (let (start end namestart name type pointer)
-            (backward-char 2)
-            (setq start (point))
-            (if (find>)
-                (progn
-                  (forward-char)
-                  (setq end (point))
-                  (skip-chars-forward " &")
-                  (setq pointer (> (skip-chars-forward "* ") 0))
-                  (setq namestart (point))
-                  (skip-chars-forward "A-Za-z0-9_")
-                  (setq name (buffer-substring-no-properties namestart (point)))
-                  (goto-char start)
-                  (skip-chars-backward " ")
-                  (skip-chars-backward "A-Za-z0-9:_")
-                  (setq type (buffer-substring-no-properties (point) end))
-                  ;; (message "type: [%s] name: [%s]" type name)
-                  (unless (or (string-match "^[^<]*\\(ptr\\|pointer\\|Ptr\\|Pointer\\)" type) (string= name ""))
+        (let ((before (buffer-substring-no-properties (point-at-bol) (1- (point)))))
+          ;; (message "got before [%s]" before)
+          (when (not (string-match "^#include *<" before))
+            (let (start end namestart name type pointer)
+                ;; ((string-match "^ *typedef +" before)
+                ;;  (let ((start (- (point) 2)) end)
+                ;;    (when (find>)
+                ;;      (setq end (1+ (point)))
+                ;;      (goto-char start)
+                ;;      (skip-chars-backward "A-Za-z0-9:_")
+                ;;      (message "GOT SHIT [%s]" (buffer-substring-no-properties (point) end)))))
+                ;; (t
+              (backward-char 2)
+              (setq start (point))
+              (when (find>)
+                (forward-char)
+                (setq end (point))
+                (skip-chars-forward " &")
+                (setq pointer (> (skip-chars-forward "* ") 0))
+                (setq namestart (point))
+                (skip-chars-forward "A-Za-z0-9_")
+                (setq name (buffer-substring-no-properties namestart (point)))
+                (goto-char start)
+                (skip-chars-backward " ")
+                (skip-chars-backward "A-Za-z0-9:_")
+                (setq type (buffer-substring-no-properties (point) end))
+                ;; (message "type: [%s] name: [%s]" type name)
+                (unless (or (string-match "^[^<]*\\(ptr\\|pointer\\|Ptr\\|Pointer\\)" type) (string= name ""))
+                  (if (string-match "^ *typedef +" before)
+                      (add-to-list 'typedefs name)
                     (add-to-list 'containers (concat type (if pointer " *" " ") name))))
-              (goto-char start))))
+                (goto-char start)))))
         (if (< (point-at-eol) (point-max))
             (goto-char (1+ (point-at-eol)))
-          (goto-char (point-max)))))
-    containers)
-  )
+          (goto-char (point-max))))
+      (while typedefs
+        (goto-char (point-min))
+        ;; (message "Searching for: [%s]" (concat (car typedefs) " *[&*]? *\\([A-Za-z0-9_]+\\)"))
+        (while (and (< (point) (point-max))
+                    (re-search-forward (concat "[A-Za-z0-9_:]*" (car typedefs) " *\\(&\\)?\\*? *[A-Za-z0-9_]+") nil t))
+          (if (match-string 1)
+              (add-to-list 'containers
+                           (concat
+                            (buffer-substring-no-properties (match-beginning 0) (match-beginning 1))
+                            (buffer-substring-no-properties (match-end 1) (match-end 0))))
+            (add-to-list 'containers (match-string 0)))
+          ;; (message "match: [%s]" (match-string 1))
+          (goto-char (point-at-eol)))
+        (setq typedefs (cdr typedefs))))
+    containers))
 
 (defvar for-loop-space " ")
 (defun insert-loop (&optional prefix erase)
@@ -779,14 +805,8 @@ the name of the value of file-name is present."
             ((region-active-p) (setq container (buffer-substring-no-properties (region-beginning) (region-end))))
             (t
              (save-excursion
-               (let ((containers (find-containers))
-                     (corresponding-file (find-corresponding-cpp-h)))
-                 (when corresponding-file
-                   ;; (message "corresponding-file %s" corresponding-file)
-                   (setq containers (append containers (find-containers corresponding-file))))
-                 ;; (with-current-buffer (get-buffer-create corresponding-file)
-                 ;;   (setq containers (append containers (find-containers)))))
-                 (unless containers (setq containers (list "std::map<std::string, int> map")))
+               (let ((containers (or (find-containers)
+                                     (list "std::map<std::string, int> map"))))
                  (add-to-list 'containers "")
                  (setq container (ido-completing-read "Container: " containers))
                  (if (string= container "")
@@ -1118,12 +1138,12 @@ the name of the value of file-name is present."
   (interactive)
   (unless mkgibbontest-directory
     (error "You have to set mkgibbontest-directory to something."))
-    (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
-           (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
-           (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
-      (when (file-exists-p abspath)
-        (mkgibbontest-copy (file-name-nondirectory abspath))
-        (find-file abspath))))
+  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
+         (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
+         (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
+    (when (file-exists-p abspath)
+      (mkgibbontest-copy (file-name-nondirectory abspath))
+      (find-file abspath))))
 
 
 ;;
@@ -1204,11 +1224,23 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun shit (&optional args)
   (interactive)
-  (if (executable-find "shit")
-      (with-temp-buffer
-        (apply #'call-process "shit" nil t t (cond ((null args) (split-string-and-unquote (read-from-minibuffer "Shit: ")))
-                                                   ((stringp args) (split-string-and-unquote args))
-                                                   ((listp args) args)
-                                                   (t nil)))
-        (message (buffer-string)))))
+  (when (executable-find "shit")
+    (with-temp-buffer
+      (apply #'call-process "shit" nil t t (cond ((null args) (split-string-and-unquote (read-from-minibuffer "Shit: ")))
+                                                 ((stringp args) (split-string-and-unquote args))
+                                                 ((listp args) args)
+                                                 (t nil)))
+      (magit-refresh-status-buffer)
+      (message (buffer-string)))))
 
+
+(defun nslookup (&optional ip)
+  (interactive)
+  (when (and (not ip) (region-active-p))
+    (let ((sel (buffer-substring-no-properties (region-beginning) (region-end))))
+      (if (string-match "[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?\.[0-9][0-9]?[0-9]?" sel)
+          (setq ip sel))))
+
+  (message "%s" (shell-command-to-string (concat "nslookup " (or ip (read-from-minibuffer "nslookup: "))))))
+
+(provide 'nrdp-misc)

@@ -27,6 +27,8 @@ while [ "$#" -ge 1 ]; do
     elif [ "$1" = "-command" ]; then
         shift
         command="$1"
+    elif [ "$1" = "reflog" ]; then
+         mode="changes -r"
     elif [ "$1" = "tracking" ]; then
          mode="changes -t"
     elif [ "$1" = "submit" ]; then
@@ -35,7 +37,10 @@ while [ "$#" -ge 1 ]; do
         echo "Submit: $local_branch->$remote_branch"
         mode="changes ${remote_branch}..${local_branch}"
     elif [ "$1" = "mine" ]; then
+        mode="changes -s"
+    elif [ "$1" = "merges" ]; then
         mode="changes -m"
+        command="merge-changes"
     elif [ "$1" = "stash" ]; then
         mode="stash list"
     elif [ "$1" = "pulled" ]; then
@@ -46,6 +51,9 @@ while [ "$#" -ge 1 ]; do
     elif [ -e "$1" ]; then
         echo "File: $1"
         mode="changes $1"
+    elif git show "$1" | grep "^Merge:" >/dev/null 2>&1; then
+        echo "Merge: $1"
+        mode="merge-changes $1"
     elif git rev-parse --verify "$1" >/dev/null 2>&1; then
         echo "Branch: $1"
         mode="changes $1"
@@ -76,24 +84,25 @@ while true; do
     if [ -n "$change" ]; then
       if [ "$command" = "submit" ]; then
           while true; do
+              do_submit=y
               /bin/echo -n "Submit $change? "
-              read choose
-              done=yes
-              if [ "$choose" = "d" ]; then
+              read do_submit
+              if [ "$do_submit" = "d" ]; then
                   git show "$change"
-                  done=no
-              elif [ "$choose" = "a" ]; then
+              elif [ "$do_submit" = "a" ]; then
                   git submit -a "$change"
-              elif [ "$choose" = "y" ]; then
+                  break
+              elif [ "$do_submit" = "y" ]; then
                   git submit "$change"
+                  break
               fi
-              [ "$done" = "yes" ] && break
           done
       elif [ -n "$command" ]; then
+          do_exec=y
           exec="git $command $change"
-          /bin/echo -n "Run '$exec'? "
-          read choose
-          [ "$choose" = "y" ] && $exec
+          #/bin/echo -n "Run '$exec'? "
+          #read do_exec
+          [ "$do_exec" = "y" ] && $exec
       else
           echo "$change"
           git show "$change"

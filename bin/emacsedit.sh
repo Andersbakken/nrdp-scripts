@@ -32,7 +32,7 @@ while [ "$#" -gt 0 ]; do
         echo "  -e    Treat file as elisp and evaluate it"
         exit 0
         ;;
-    +*) LINE=`echo $1 | sed 's,^+,,'` ;;
+    +*) LINE=$(expr `echo $1 | sed 's,^+,,'` - 5)  ;;
     -*) EMACSOPTS="$EMACSOPTS $1" ;;
     *)  FILE="$1" ;;
     esac
