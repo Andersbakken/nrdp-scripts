@@ -88,7 +88,7 @@ else
                     *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                 esac
             done
-            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed 's,-j\>,-j1000,g'`
+            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
             ninja $NINJA_OPTIONS
             exit $?
         fi
