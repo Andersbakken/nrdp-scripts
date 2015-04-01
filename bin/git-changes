@@ -24,9 +24,8 @@ while [ "$#" -gt 0 ]; do
         -t)
             tracking_branch=`git tracking 2>/dev/null`
             if [ "$?" ]; then
-                branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
-                echo "$branch" | grep "(" --quiet && exit 1
-                OPTS="$OPTS '${tracking_branch}..${branch}'"
+                local_branch=`git rev-parse --abbrev-ref HEAD`
+                OPTS="$OPTS '${tracking_branch}..${local_branch}'"
             fi ;;
         -[0-9]*[Dd]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` days ago'" ;;
         -[0-9]*[Ww]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` weeks ago'" ;;
@@ -44,23 +43,26 @@ if [ "$COUNT_MERGES" = "1" ]; then
 elif [ "$MERGES" = "0" ]; then
     OPTS="$OPTS --no-merges"
 fi
-OPTS="--oneline '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs' --abbrev-commit $OPTS $UNKNOWN_OPTS"
-if [ "$COUNT_MERGES" = "1" ]; then
-    eval git $SUBCOMMAND $OPTS | while read line; do
-        change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
-        merged=`git log --stat "$change^..$change" | grep ^commit | wc -l;`
-        [ -n "$merged" ] && line="$line ($merged)";
-        echo $line
-    done | less
-elif [ "$BRANCHES" = "1" ]; then
-    eval git $SUBCOMMAND $OPTS | while read line; do
-        change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
-        branches=`git branch -l --contains $change | awk '{print $NF}'`
-        [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
-        [ -n "$branches" ] && line="$line ($branches)";
-        echo $line
-    done | less
+OPTS="$OPTS $UNKNOWN_OPTS"
+PRETTY_OPTS="--oneline '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs' --abbrev-commit"
+
+if false; then
+    eval git $SUBCOMMAND $PRETTY_OPTS $OPTS
 else
-    eval git $SUBCOMMAND $OPTS
+    CHANGES=`eval git $SUBCOMMAND --pretty='%h' $OPTS`
+    for change in $CHANGES; do
+        line=`eval git show --no-patch ${PRETTY_OPTS} ${change}`
+        if [ "$COUNT_MERGES" = "1" ]; then
+            merged=`git log --stat "$change^..$change" | grep ^commit | wc -l;`
+            [ -n "$merged" ] && line="$line ($merged)";
+        fi
+        if [ "$BRANCHES" = "1" ]; then
+            branches=`git branch -l --contains $change | awk '{print $NF}'`
+            [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
+            [ -n "$branches" ] && line="$line ($branches)";
+        fi
+        git ignore check "$change" >/dev/null && line="$line (IGNORED)"
+        echo $line
+    done | less
 fi
 

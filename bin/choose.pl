@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 
+my $exe;
 my @options;
+my %option_names;
 my $choose;
 my $argv0 = $ARGV[0];
 my $show_help = 0;
@@ -30,43 +32,54 @@ sub choose_show {
     return $counter;
 }
 
-sub filter_options {
-    my @result = @options;
-    if(@matches) {
-        my @match_options;
-        for(@result) {
-            my $match = 0;
-            my $option = $_;
-            my $name = $option->{"name"};
-            my $result = $option->{"result"};
-            for(@matches) {
-                #print STDERR "name $result $_\n";
-                if ( $name =~ /$_/i ) {
-                    ++$match;
-                } elsif ( $result =~ /$_/i ) {
-                    ++$match;
-                }
-            }
-            #print STDERR "$match $#matches $name\n";
-            push( @match_options, $option ) if($match == $#matches+1);
+sub filter_option {
+    my ($option) = @_;
+    for(@matches) {
+        if ( $option->{"name"} =~ /$_/i ) {
+            ++$match;
+        } elsif ( $option->{"result"} =~ /$_/i ) {
+            ++$match;
         }
-        @result = @match_options;
     }
-    return @result;
 }
 
-sub unique_options {
+sub filter_options {
+    my ($filter) = @_;
+    push(@matches, $filter);
     my %seen = ();
-    my @result;
+    my @match_options;
     for(@options) {
         my $option = $_;
-        my $name = $option->{"name"};
-        if (!$seen{$name}) {
-            $seen{$name} = 1;
-            push @result, $option;
+        next if($unique && $option_names{$option->{"name"}});
+        push(@match_options, $option) if(!filter_option($option));
+        $option_names{$name} = 1;
+    }
+    @options = @match_options;
+}
+
+sub get_option {
+    my ($n) = @_;
+    if($exe && !defined($option[$n])) {
+        while(!defined($options[$n])) {
+            if(my $line = <$exe>) {
+                my $option;
+                {
+                    chomp($line);
+                    my %o;
+                    $o{"name"} = $line;
+                    $o{"result"} = $line;
+                    $option = \%o;
+                }
+                next if($unique && $option_names{$option->{"name"}});
+                push(@options, $option) if(!filter_option($option));
+                $option_names{$name} = 1;
+            } else {
+                close($exe);
+                last;
+            }
         }
     }
-    return @result;
+    return $options[$n];
 }
 
 while(@ARGV) {
@@ -96,19 +109,11 @@ while(@ARGV) {
     } elsif( $option eq "-h"  || $option eq "--help" || $option eq "-help" ) {
         $show_help = 1;
     } elsif( $option eq "-x" ) {
-        my $exe = shift @ARGV;
-        my $kid = open( EXE, "$exe |");
+        my $cmdline = shift @ARGV;
+        my $kid = open( EXE, "$cmdline |");
 	$kid || die "Failure";
 	(kill 0, $kid) || die "Failure";
-        while(my $line = <EXE>) {
-            chomp($line);
-            my %o;
-            $o{"name"} = $line;
-            $o{"result"} = $line;
-            push(@options, \%o);
-        }
-        close( EXE );
-	$? && die "Failure";
+        $exe = EXE;
     } elsif( $option =~ /^-\+([0-9]+)$/) {
         $options_from = "$1"
     } elsif( $option =~ /^-([0-9]+)$/) {
@@ -119,11 +124,11 @@ while(@ARGV) {
         $read_option = 0;
     }
 }
+get_option($options_from+$options_count); #prime the options
 if(!$show_help && $#options < 0) {
     print STDERR "Nothing to choose!\n";
     exit 1;
 }
-@options = unique_options() if ($unique);
 if($show_help) {
     print STDERR "$argv0 [options] [choices]\n";
     print STDERR "\n";
@@ -143,39 +148,35 @@ if($show_help) {
 my $result;
 if($read_option) {
     if(defined($choose)) {
-        $result = $options[$choose-1]->{"result"};
+        $result = get_option($choose-1)->{"result"};
     } elsif($#options >= 0) {
         $| = 1;
         while(!$result) {
-            my @choices = filter_options(@options);
-            if($#choices < 1 && !$must_ask) {
-                $result = $choices[0]->{"result"};
+            if($#options < 1 && !$must_ask) {
+                $result = get_option($options)->{"result"};
             } else {
-                my $counter = choose_show( @choices );
+                my $counter = choose_show(@options);
                 print STDERR "[1..", $counter-1, "]";
                 print STDERR "($read_prompt)" if(defined($read_prompt));
                 print STDERR "> ";
                 my $input = <STDIN>;
                 chomp $input;
                 if( $input =~ /^([1-9]+[0-9]*)$/ ) {
-                    $result = $choices[$options_from+$1-1]->{"result"}
+                    $result = get_option($options_from+$1-1)->{"result"}
                 } elsif( $input eq "n" && $options_count ) {
                     $options_from += $options_count;
+                    get_option($options_from+$options_count); #prime the options
                 } elsif( $input eq "p" && $options_count ) {
                     $options_from -= $options_count;
                 } else {
-                    push(@matches, $input);
+                    filter_options($input);
                 }
             }
         }
     }
 } else {
-    if(defined($choose)) {
-        @options = ( $options[$choose-1] );
-    }
-    if($#options < 1 && !$must_ask) {
-        $result = $options[0]->{"result"};
-    }
+    @options = (get_option($choose-1)) if(defined($choose));
+    $result = get_option(0)->{"result"} if($#options < 1 && !$must_ask);
     choose_show( @options );
 }
 if($result) {

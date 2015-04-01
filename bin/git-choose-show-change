@@ -29,13 +29,8 @@ while [ "$#" -ge 1 ]; do
         command="$1"
     elif [ "$1" = "reflog" ]; then
         mode="changes -r"
-    elif [ "$1" = "tracking" ]; then
+    elif [ "$1" = "tracking" ] || [ "$1" = "submit" ]; then
         mode="changes -t"
-    elif [ "$1" = "submit" ]; then
-        local_branch=`git rev-parse --abbrev-ref HEAD`
-        remote_branch=`git submit tracking`
-        echo "Submit: $local_branch->$remote_branch"
-        mode="changes ${remote_branch}..${local_branch}"
     elif [ "$1" = "mine" ]; then
         mode="changes -s"
     elif [ "$1" = "merges" ]; then
