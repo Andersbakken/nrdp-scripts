@@ -5,15 +5,15 @@ findancestor() {
     dir="$2"
     [ -z "$dir" ] && dir="$PWD"
     (cd $dir && while true; do
-        if [ -e "$file" ]; then
-            echo "$PWD/$file"
-            return 1
-        elif [ "$PWD" = "/" ]; then
-            break
-        else
-            cd ..
-        fi
-    done)
+                    if [ -e "$file" ]; then
+                        echo "$PWD/$file"
+                        return 1
+                    elif [ "$PWD" = "/" ]; then
+                        break
+                    else
+                        cd ..
+                    fi
+                done)
     return 0
 }
 
@@ -28,7 +28,7 @@ while [ "$#" -gt 0 ]; do
         -r|--rtags) UBERTAGS=1 ;;
         -v) MAKE_DIR="$PWD" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
-         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
+        *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
     shift
 done
@@ -50,49 +50,49 @@ if [ -e "${MAKE_DIR}Makefile" ]; then
 elif [ -x "`which scons`" ] && [ -e "${MAKE_DIR}SConstruct" ]; then
     SCONS_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-         case $opt in
-         clean|distclean) SCONS_OPTIONS="$SCONS_OPTIONS -c" ;;
-         *) SCONS_OPTIONS="$SCONS_OPTIONS $opt" ;;
-         esac
+        case $opt in
+            clean|distclean) SCONS_OPTIONS="$SCONS_OPTIONS -c" ;;
+            *) SCONS_OPTIONS="$SCONS_OPTIONS $opt" ;;
+        esac
     done
     (cd $MAKE_DIR && scons $SCONS_OPTIONS)
     return
 elif [ -e "${MAKE_DIR}Sakefile.js" ]; then
     SAKE_OPTIONS=
     for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-         case $opt in
-         -j[0-9]*) ;;
-         help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
-         distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
-         *) SAKE_OPTIONS="$SAKE_OPTIONS $opt" ;;
-         esac
+        case $opt in
+            -j[0-9]*) ;;
+            help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
+            distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
+            *) SAKE_OPTIONS="$SAKE_OPTIONS $opt" ;;
+        esac
     done
     (cd $MAKE_DIR && sake $SAKE_OPTIONS)
     return
 else
-   if which ninja >/dev/null 2>&1; then
-       NINJA_DIR=$MAKE_DIR
-       [ -z "$NINJA_DIR" ] && NINJA_DIR=.
-       NINJA=`findancestor build.ninja $NINJA_DIR`
-       if [ -e "$NINJA" ]; then
-           cd `dirname $NINJA`
-           if [ -n "$UBERTAGS" ]; then
-               ninja -t commands | rc --compile
-               exit 0
-           fi
-           NINJA_OPTIONS=
-           [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
-           for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-               case $opt in
-               clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
-               *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
-               esac
-           done
-           NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed 's,-j\>,-j1000,g'`
-           ninja $NINJA_OPTIONS
-           exit $?
-       fi
-   fi
+    if which ninja >/dev/null 2>&1; then
+        NINJA_DIR=$MAKE_DIR
+        [ -z "$NINJA_DIR" ] && NINJA_DIR=.
+        NINJA=`findancestor build.ninja $NINJA_DIR`
+        if [ -e "$NINJA" ]; then
+            cd `dirname $NINJA`
+            if [ -n "$UBERTAGS" ]; then
+                ninja -t commands | rc --compile
+                exit 0
+            fi
+            NINJA_OPTIONS=
+            [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
+            for opt in $MAKEFLAGS $MAKE_OPTIONS; do
+                case $opt in
+                    clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
+                    *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
+                esac
+            done
+            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
+            ninja $NINJA_OPTIONS
+            exit $?
+        fi
+    fi
 fi
 [ -z "$MAKE_DIR" ] && MAKE_DIR=`dirname "\`findancestor Makefile .\`"`
 [ -z "$MAKE_DIR" ] && MAKE_DIR=.

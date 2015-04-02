@@ -616,6 +616,15 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         addRoot($src_project_name ? "${src_project_name}" : "src", $src_dir);
         my $bld_project_name = findDevRootName($root_dir);
         addRoot($bld_project_name ? "${bld_project_name}" : "build", $root_dir, $src_dir);
+    } else {
+        my $project_name = getProjectName($root_dir);
+        unless(defined($project_name)) {
+            $project_name = findDevRootName($root_dir);
+            $project_name = basename($root_dir) unless(defined($project_name));
+            $project_name .= $detect_suffix;
+        }
+        display "Source Detect: $root_dir [$project_name]\n" if($verbose);
+        addRoot($project_name, $root_dir);
     }
 }
 

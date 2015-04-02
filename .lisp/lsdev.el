@@ -225,7 +225,9 @@
                         (t)))
                 (forward-line))))
           (if (and magit-status (stringp single-source) (> (length single-source) 0) (git-root-dir single-source))
-              (magit-status single-source)
+              (progn
+                (magit-status single-source)
+                (kill-buffer "*lsdev-complete*"))
             (progn
               (setq buffer-read-only t)
               (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)

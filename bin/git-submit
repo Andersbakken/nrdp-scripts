@@ -124,7 +124,7 @@ else
 
     export CHANGES
     export GIT_SEQUENCE_EDITOR="$0"
-    SKIPPED=`git rebase -i "${COMMON_SHA1}" | grep "skipped line" | wc -l` || exit 1
+    SKIPPED=`git rebase -i "${COMMON_SHA1}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
     NEW_SHA1=`git rev-parse HEAD~$SKIPPED`
     echo "Change: $NEW_SHA1"
 
