@@ -3,19 +3,5 @@
 #    echo "Must sync first!"
 #    exit 1
 #fi
-if git ignore remote check "$2"; then
-    z40=0000000000000000000000000000000000000000
-    while read local_ref local_sha remote_ref remote_sha; do
-	[ "$local_sha" = $z40 ] && continue
-	if [ "$remote_sha" = $z40 ]; then # New branch, examine all commits
-	    range="$local_sha"
-	else # Update to existing branch, examine new commits
-	    range="${remote_sha}..${local_sha}"
-	fi
-	if git ignore check "$range"; then
-	    echo "Ignored commit found in $local_ref. Aborted."
-	    exit 1
-	fi
-    done
-fi
-exit 0
+git ignore remote push "$2" && exit 0
+exit 1

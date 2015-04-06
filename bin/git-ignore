@@ -49,6 +49,29 @@ elif [ "$1" = "remote" ]; then
             [ "$remote" = "$3" ] && exit 0
         done
         exit 1
+    elif [ "$2" = "push" ]; then
+        CHECK=0
+        for remote in $REMOTES; do
+            if [ "$remote" = "$3" ]; then
+                CHECK="1"
+                break
+            fi
+        done
+        if [ "$CHECK" = "1" ]; then
+            z40=0000000000000000000000000000000000000000
+            while read local_ref local_sha remote_ref remote_sha; do
+	        [ "$local_sha" = $z40 ] && continue
+	        if [ "$remote_sha" = $z40 ]; then # New branch, examine all commits
+	            range="$local_sha"
+	        else # Update to existing branch, examine new commits
+	            range="${remote_sha}..${local_sha}"
+	        fi
+	        if git ignore check "$range"; then
+	            echo "Ignored commit found in $local_ref. Aborted."
+	            exit 1
+	        fi
+            done
+        fi
     else
         for remote in $REMOTES; do
             echo "$remote"
