@@ -140,26 +140,26 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
         [ -z "$cmd" ] && cmd=$STRATEGY
         case $cmd in
             d|diff)
-                tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                tmpincoming=`mktemp /tmp/incoming.XXXXXX`
                 gitCatBase "$file" $(gitBase incoming) "$tmpincoming"
-                tmpcurrent=`mktemp /tmp/XXXXXX.current`
+                tmpcurrent=`mktemp /tmp/current.XXXXXX`
                 gitCatBase "$file" $(gitBase current) "$tmpcurrent"
-                tmpdiff=`mktemp /tmp/XXXXXX.diff`
+                tmpdiff=`mktemp /tmp/diff.XXXXXX`
                 diff -du "$tmpincoming" "$tmpcurrent" > "$tmpdiff"
                 page "$tmpdiff"
                 ;;
             m|e|edit)
-                bak=`mktemp /tmp/XXXXXX.bak`
+                bak=`mktemp /tmp/bak.XXXXXX`
                 cp "$file" "$bak"
                 edit=yes
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                            tmpincoming=`mktemp /tmp/incoming.XXXXXX`
                             gitCatBase $file $(gitBase incoming) $tmpincoming
-                            tmpcurrent=`mktemp /tmp/XXXXXXX.current`
+                            tmpcurrent=`mktemp /tmp/current.XXXXXXX`
                             gitCatBase $file $(gitBase current) $tmpcurrent
-                            tmp=`mktemp /tmp/XXXXXXX.base`
+                            tmp=`mktemp /tmp/base.XXXXXXX`
                             gitCatBase $file $(gitBase base) $tmp
                             meld $tmpincoming $tmpcurrent $tmp
                             $TEST cat $tmpcurrent >$file
@@ -174,9 +174,9 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                     [ -z "$accpt" ] && accpt=y
                     case $accpt in
                         d|diff)
-                            tmpincoming=`mktemp /tmp/XXXXXX.incoming`
+                            tmpincoming=`mktemp /tmp/incoming.XXXXXX`
                             gitCatBase "$file" 2 "$tmpincoming"
-                            tmpdiff=`mktemp /tmp/XXXXXX.diff`
+                            tmpdiff=`mktemp /tmp/diff.XXXXXX`
                             diff -du "$tmpincoming" "$file" > "$tmpdiff"
                             page "$tmpdiff"
                             ;;
@@ -206,12 +206,12 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 $TEST cat $tmp >$file
                 break ;;
             si)
-                tmp=`mktemp /tmp/XXXXXX$(basename $file)`
+                tmp=`mktemp /tmp/$(basename $file).XXXXXX`
                 gitCatBase $file $(gitBase incoming) $tmp
                 $TEST page "$tmp"
                 ;;
             sc)
-                tmp=`mktemp /tmp/XXXXXX$(basename $file)`
+                tmp=`mktemp /tmp/$(basename $file).XXXXXX`
                 gitCatBase $file $(gitBase current) $tmp
                 $TEST page "$tmp"
                 ;;
