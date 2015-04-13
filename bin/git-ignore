@@ -82,10 +82,11 @@ elif [ "$1" = "check" ]; then
     shouldIgnore "$2" && exit 0
     exit 1
 else
-    mode="toggle"
     if [ "$1" = "toggle" ] || [ "$1" = "set" ] || [ "$1" = "unset" ]; then
         mode="$1"
         shift
+    else
+        mode="toggle"
     fi
     TRACKING=
     [ -z "$TRACKING" ] && TRACKING=`git tracking`
