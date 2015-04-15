@@ -48,6 +48,10 @@ for i in $(git branch $BRANCHSWITCH | sed -e 's,^..,,' | cut -f1 -d' '); do
         else
             FILE=$GITDIR/refs/heads/$i
         fi
-        echo "$(stat -c %Y $FILE) $i"
+        if [ -e "$FILE" ]; then
+            echo "$(stat -c %Y $FILE) $i"
+        else
+            echo "0 $i"
+        fi
     fi
 done | sort -n $SORTSWITCH | awk "{print $FIELDS}"
