@@ -1,0 +1,53 @@
+#!/bin/bash
+
+MODE=touched
+BRANCHSWITCH=
+SORTSWITCH=-r
+FIELDS='$2'
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-h)
+            echo "gbr [-c|--sort-by-commit-date] [-t|--sort-by-branch-touch-date (default)] [--help|-h] [-R|--reverse] [-d|--display-date]"
+            exit 0
+            ;;
+        -c|--sort-by-commit-date)
+            MODE=commit
+            ;;
+        -t|--sort-by-branch-touch-date)
+            MODE=touched
+            ;;
+        -r|--remote|-a|--all)
+            BRANCHSWITCH="$1"
+            ;;
+        -R|--reverse)
+            SORTSWITCH=
+            ;;
+        -d|--display-date)
+            FIELDS='$2,$1'
+            ;;
+        *)
+            >&2 echo "Unknown option: $1"
+            >&1 echo "gbr [-c|--sort-by-commit-date] [-t|--sort-by-branch-touch-date (default)] [--help|-h] [-R|--reverse] [-d|--display-date]"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+GITDIR=$(git rev-parse --git-dir)
+[ -z "$GITDIR" ] && exit 2
+for i in $(git branch $BRANCHSWITCH | sed -e 's,^..,,' | cut -f1 -d' '); do
+    if [ MODE = "touched" ]; then
+        git show -s --pretty="%ct $i" "$i"
+    else
+        FILE=
+        if echo "$i" | grep --quiet "^remotes/"; then
+            FILE=$GITDIR/refs/$i
+        elif echo "$i" | grep --quiet "/"; then
+            FILE=$GITDIR/refs/remotes/$i
+        else
+            FILE=$GITDIR/refs/heads/$i
+        fi
+        echo "$(stat -c %Y $FILE) $i"
+    fi
+done | sort -n $SORTSWITCH | awk "{print $FIELDS}"
