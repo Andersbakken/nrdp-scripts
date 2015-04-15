@@ -1167,7 +1167,6 @@ the name of the value of file-name is present."
             (setq head "")
             (setq tail "\n")
             (goto-char (point-min)))
-          (setq pos (1+ (point)))
           (insert head "#include " file tail))
         (message "Added #include %s" file)))))
 
