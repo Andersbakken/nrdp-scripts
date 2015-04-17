@@ -5,15 +5,15 @@ findancestor() {
     dir="$2"
     [ -z "$dir" ] && dir="$PWD"
     (cd $dir && while true; do
-                    if [ -e "$file" ]; then
-                        echo "$PWD/$file"
-                        return 1
-                    elif [ "$PWD" = "/" ]; then
-                        break
-                    else
-                        cd ..
-                    fi
-                done)
+            if [ -e "$file" ]; then
+                echo "$PWD/$file"
+                return 1
+            elif [ "$PWD" = "/" ]; then
+                break
+            else
+                cd ..
+            fi
+        done)
     return 0
 }
 
@@ -26,24 +26,27 @@ while [ "$#" -gt 0 ]; do
         -C) shift; MAKE_DIR="$1" ;;
         -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
         -r|--rtags) UBERTAGS=1 ;;
-        -v) MAKE_DIR="$PWD" ;; #disable lsdev
+        -v) MAKE_DIR="${PWD}/" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
     shift
 done
 
-if [ -n "$MAKE_DIR" ] && ! echo $MAKE_DIR | grep --quiet "/$"; then
-    MAKE_DIR="${MAKE_DIR}/"
-elif [ -z "$MAKE_DIR" ]; then
-    NAME=`lsdev.pl -p -ts`
-    if [ -n "$NAME" ]; then
-        MAKE_DIR=`lsdev.pl build -tp $LSDEV_ARGS`
+if [ -z "$MAKE_DIR" ]; then
+    if [ -e "Makefile" ] || [ -e "build.ninja" ] || [ -e "Sakefile.js" ] || [ -e "SConstruct" ]; then
+        MAKE_DIR="${PWD}/"
     else
-        MAKE_DIR="$PWD"
+        NAME=`lsdev.pl -p -ts`
+        if [ -n "$NAME" ]; then
+            MAKE_DIR=`lsdev.pl build -tp $LSDEV_ARGS`
+        else
+            MAKE_DIR="${PWD}/"
+        fi
     fi
 fi
 
+echo $MAKE_DIR | grep --quiet "/$" || MAKE_DIR="${MAKE_DIR}/"
 if [ -e "${MAKE_DIR}Makefile" ]; then
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
     true #ok, make it is...
