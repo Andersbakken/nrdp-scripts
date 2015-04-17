@@ -1242,4 +1242,26 @@ there's a region, all lines that region covers will be duplicated."
 
   (message "%s" (shell-command-to-string (concat "nslookup " (or ip (read-from-minibuffer "nslookup: "))))))
 
+(defun all-executables (&optional paths)
+  (let ((all))
+    (mapc (function (lambda (path)
+                      ;; (message path)
+                      (when (file-directory-p path)
+                        (mapc
+                         (function (lambda (file)
+                                     (when (and (not (file-directory-p file))
+                                                (file-executable-p file))
+                                       (push file all))))
+                         (directory-files path t nil t)))))
+          (or paths exec-path))
+    all))
+
+(defun which-open()
+  (interactive)
+  (let ((file (completing-read "File: " (all-executables))))
+    (if (and file (file-exists-p file))
+        (find-file file)
+      (if (and file (length file))
+          (message "Can't find %s" file)))))
+
 (provide 'nrdp-misc)
