@@ -527,10 +527,22 @@ the name of the value of file-name is present."
     (when (and file sha)
       (agb-git-blame sha file))))
 
+(defun magit-choose-branch-push ()
+  (interactive)
+  (let* ((input (ido-completing-read "Branch: "
+                                      (with-temp-buffer
+                                        (call-process "git" nil t nil "branch" "-r")
+                                        (split-string (buffer-string)))))
+         (remote (substring input 0 (string-match "/" input)))
+         (branch (substring input (1+ (string-match "/" input)))))
+    (when (and branch remote input)
+      (magit-run-git-async "push" remote (concat "HEAD:" branch) magit-custom-options))))
+
 (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
 (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
 (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
+(misc-magit-add-action 'pushing "C" "Choose branch" 'magit-choose-branch-push)
 (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
 (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
 (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)
