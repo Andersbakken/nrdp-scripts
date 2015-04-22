@@ -481,7 +481,7 @@ the name of the value of file-name is present."
   (save-excursion
     (goto-char (point-min))
     (if (looking-at "Commits for file \\(.*\\) in [^ ]+$")
-        (match-string 1)
+        (buffer-substring-no-properties (match-beginning 1) (match-end 1))
       (error "Not in approriate magit-log buffer it seems")
       nil)))
 
@@ -508,6 +508,7 @@ the name of the value of file-name is present."
 (if (fboundp 'magit-show-file-revision)
     (define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
   (define-key magit-log-mode-map (kbd "#") (function magit-show-revision-at-current-line)))
+(define-key magit-log-mode-map (kbd "@") (function magit-blame-for-current-revision))
 
 (defun misc-magit-add-action (group key name func)
   (interactive)
@@ -525,7 +526,7 @@ the name of the value of file-name is present."
                (skip-chars-forward "[A-Fa-f0-9]")
                (buffer-substring-no-properties (point-at-bol) (point)))))
     (when (and file sha)
-      (agb-git-blame sha file))))
+      (agb-git-blame sha (file-name-nondirectory file)))))
 
 (defun magit-choose-push ()
   (interactive)
