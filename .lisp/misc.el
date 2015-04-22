@@ -517,12 +517,23 @@ the name of the value of file-name is present."
     (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
     (setq magit-key-mode-keymaps 'nil)))
 
+(defun magit-blame-for-current-revision ()
+  (interactive)
+  (let ((file (magit-log-mode-current-file))
+        (sha (save-excursion
+               (goto-char (point-at-bol))
+               (skip-chars-forward "[A-Fa-f0-9]")
+               (buffer-substring-no-properties (point-at-bol) (point)))))
+    (when (and file sha)
+      (agb-git-blame sha file))))
+
 (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
 (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
 (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
 (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
 (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
+(misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
