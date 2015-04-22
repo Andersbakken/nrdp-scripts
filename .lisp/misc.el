@@ -529,13 +529,27 @@ the name of the value of file-name is present."
 
 (defun magit-choose-branch-push ()
   (interactive)
-  (let* ((input (ido-completing-read "Branch: "
-                                      (with-temp-buffer
-                                        (call-process "git" nil t nil "branch" "-r")
-                                        (split-string (buffer-string)))))
-         (remote (substring input 0 (string-match "/" input)))
-         (branch (substring input (1+ (string-match "/" input)))))
-    (when (and branch remote input)
+  (let* ((remote
+          (with-temp-buffer
+            (call-process "git" nil t nil "remote")
+            (let ((remotes (split-string (buffer-string))))
+              (if (= (length remotes) 1)
+                  (car remotes)
+                (ido-completing-read "Remote: " remotes)))))
+         (branch
+          (with-temp-buffer
+           (call-process "git" nil t nil "branch" "-r")
+           (goto-char (point-min))
+           (let ((match (concat "^ *" remote "/\\(.*\\)$"))
+                 (branches))
+             (while (not (eobp))
+               (when (looking-at match)
+                 (push (match-string 1) branches))
+               (forward-line 1))
+             (if branches
+                 (ido-completing-read "Branch: " branches)
+               (read-from-minibuffer "Branch: "))))))
+    (when (and branch remote)
       (magit-run-git-async "push" remote (concat "HEAD:" branch) magit-custom-options))))
 
 (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
