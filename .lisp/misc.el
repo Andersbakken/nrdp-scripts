@@ -996,7 +996,7 @@ the name of the value of file-name is present."
 
 
 (defun misc-compare-files-by-modification-time (l r)
-  (time-less-p (nth 5 l) (nth 5 r)))
+  (time-less-p (nth 6 l) (nth 6 r)))
 
 (defun misc-directory-files-helper (dir match dirsonly sortbymodicationtime)
   (let ((all (directory-files-and-attributes dir nil match t))
