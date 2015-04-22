@@ -447,15 +447,16 @@ the name of the value of file-name is present."
 ;; Magit stuff
 ;;===================
 
-(defun magit-show-revision-at-current-line()
-  (interactive)
-  (let ((file)
-        (sha (buffer-substring-no-properties (point-at-bol) (+ (point-at-bol) 7))))
-    (save-excursion
-      (goto-char (point-min))
-      (if (looking-at "Commits for file \\(.*\\) in [^ ]+$")
-          (setq file (match-string 1))
-        (error "Not in approriate magit-log buffer it seems")))
+(defun git-gitify-path (file)
+  (if (string-match "^/" file)
+      (let ((root (magit-get-top-dir (file-name-directory file))))
+        (if (string-match (concat "^" root) file)
+            (setq file (substring file (length root))))))
+  file)
+
+(defun git-show-revision (file sha)
+  (let ((line (and (string= file (buffer-file-name)) (count-lines 1 (point)))))
+    (setq file (git-gitify-path file))
     (let ((buffer (get-buffer-create (format "%s - %s" file sha))))
       (switch-to-buffer buffer)
       (setq buffer-read-only nil)
@@ -465,10 +466,33 @@ the name of the value of file-name is present."
       (set-auto-mode)
       (setq buffer-file-name nil)
       (goto-char (point-min))
+      (if line
+          (forward-line line))
       (font-lock-fontify-buffer)
-      (setq buffer-read-only t))
-    )
-  )
+      (setq buffer-read-only t))))
+
+(defun git-show-head (&optional file)
+  (interactive)
+  (unless (or file (buffer-file-name))
+    (error "Not a real file"))
+  (git-show-revision (or file (buffer-file-name)) "HEAD"))
+
+(defun magit-log-mode-current-file ()
+  (save-excursion
+    (goto-char (point-min))
+    (if (looking-at "Commits for file \\(.*\\) in [^ ]+$")
+        (match-string 1)
+      (error "Not in approriate magit-log buffer it seems")
+      nil)))
+
+(defun magit-show-revision-at-current-line()
+  (interactive)
+  (let ((file (magit-log-mode-current-file))
+        (sha (save-excursion
+               (goto-char (point-at-bol))
+               (skip-chars-forward "[A-Fa-f0-9]")
+               (buffer-substring-no-properties (point-at-bol) (point)))))
+    (git-show-revision file sha)))
 
 (defun magit-sync ()
   "Run git sync."
