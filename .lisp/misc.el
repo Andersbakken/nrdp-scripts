@@ -527,7 +527,7 @@ the name of the value of file-name is present."
     (when (and file sha)
       (agb-git-blame sha file))))
 
-(defun magit-choose-branch-push ()
+(defun magit-choose-push ()
   (interactive)
   (let* ((remote
           (with-temp-buffer
@@ -556,7 +556,7 @@ the name of the value of file-name is present."
 (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
 (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
-(misc-magit-add-action 'pushing "C" "Choose branch" 'magit-choose-branch-push)
+(misc-magit-add-action 'pushing "C" "Choose" 'magit-choose-push)
 (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
 (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
 (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)
