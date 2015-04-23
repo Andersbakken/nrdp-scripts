@@ -149,8 +149,7 @@
 
 (defun agb-git-blame-filename ()
   (if (string-match "\\*\\(.*\\) - Blame - [A-Za-z0-9~]*\\*" (buffer-name))
-      (match-string 1 (buffer-name)))
-  )
+      (match-string 1 (buffer-name))))
 
 (defun agb-git-blame-current-commit()
   (save-excursion
@@ -202,8 +201,7 @@
               (call-process "git" nil (current-buffer) nil "show" commit)
               (goto-char (point-min))
               (diff-mode)
-              (setq buffer-read-only t))))))
-  )
+              (setq buffer-read-only t)))))))
 
 (defun agb-git-blame-show-diff-other-window()
   (interactive)
@@ -223,8 +221,7 @@
                           (if (equal (substring directory -1) "/")
                               directory
                             (concat directory "/")))
-                         (t default-directory) ;; hmm, use default
-                         )))
+                         (t default-directory))))
     (while (not (or (string-equal check-dir "/")
                     (file-exists-p (concat check-dir ".git"))))
       (setq check-dir (substring check-dir 0 (string-match "[^/]*/?$" check-dir))))
@@ -254,26 +251,21 @@
           (setq buffer-file-name nil)
           (goto-char (point-min))
           (font-lock-fontify-buffer)
-          (setq buffer-read-only t))
-      )
-    )
-  )
+          (setq buffer-read-only t)))))
 
 (defun agb-git-blame-toggle-smaller ()
   (interactive)
   (setq agb-git-blame-showing-smaller (not agb-git-blame-showing-smaller))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain)))
-  )
+      (agb-git-blame (car agb-git-blame-commit-chain))))
 
 (defun agb-git-blame-toggle-use-relative-date ()
   (interactive)
   (setq agb-git-blame-use-relative-date (not agb-git-blame-use-relative-date))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain)))
-  )
+      (agb-git-blame (car agb-git-blame-commit-chain))))
 
 
 (provide 'agb-git-blame)
