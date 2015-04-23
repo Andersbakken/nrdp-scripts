@@ -38,8 +38,36 @@
   (setq mode-name "agb-git-blame")
   (use-local-map agb-git-blame-mode-map)
   (run-hooks 'agb-git-blame-mode-hook)
-  (setq buffer-read-only t)
-  )
+  (setq buffer-read-only t))
+
+(defun agb-git-blame-post-command-hook ()
+  (when (eq major-mode 'agb-git-blame-mode)
+    (let ((wlist (window-list))
+          (cur (get-buffer-window (current-buffer)))
+          (blame-commit (agb-git-blame-current-commit))
+          (commit-length)
+          (blame-file (agb-git-blame-current-file)))
+      (while wlist
+        (let ((buf (window-buffer (car wlist))))
+          (when (and (string= (buffer-name buf) "*magit-log*")
+                     (with-current-buffer buf
+                       (save-excursion
+                         (goto-char (point-min))
+                         (when (and (looking-at "Commits for file \\(.*\\) in [^ ]+$")
+                                    (string= blame-file
+                                             (file-truename (buffer-substring-no-properties (match-beginning 1) (match-end 1)))))
+                           (forward-line 1)
+                           (skip-chars-forward "[A-Fa-f0-9]")
+                           (setq commit-length (- (point) (point-at-bol)))))))
+            (select-window (get-buffer-window buf))
+            (goto-char (point-min))
+            (when (re-search-forward (concat "^" (substring blame-commit 0 commit-length) " ") nil t)
+              (goto-char (point-at-bol)))
+            (select-window cur)
+            (setq wlist nil)))
+        (setq wlist (cdr wlist))))))
+
+(add-hook 'post-command-hook (function agb-git-blame-post-command-hook))
 
 (defun agb-git-blame (&optional revision file)
   (interactive)
