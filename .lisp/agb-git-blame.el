@@ -17,7 +17,8 @@
 (setq agb-git-blame-mode-map (make-sparse-keymap))
 
 (define-key agb-git-blame-mode-map (kbd "q") (function bury-buffer))
-(define-key agb-git-blame-mode-map (kbd "p") (function agb-git-reblame-for-previous-revision))
+(define-key agb-git-blame-mode-map (kbd "r") (function agb-git-reblame-for-revision))
+(define-key agb-git-blame-mode-map (kbd "p") (function agb-git-reblame-for-previous-revision-~))
 (define-key agb-git-blame-mode-map (kbd "^") (function agb-git-reblame-for-previous-revision-^))
 (define-key agb-git-blame-mode-map (kbd "~") (function agb-git-reblame-for-previous-revision-~))
 (define-key agb-git-blame-mode-map (kbd "n") (function agb-git-reblame-pop))
@@ -125,19 +126,19 @@
           (if (> (count-lines (point-min) (point-max)) lineno)
               (forward-line (1- lineno)))))))
 
-(defun agb-git-reblame-for-previous-revision (&optional prefix)
+(defun agb-git-reblame-for-revision (&optional suffix)
   (interactive)
   (let ((commit (agb-git-blame-current-commit)))
     (when commit
-      (agb-git-blame (concat commit (if prefix "^" "~") (agb-git-blame-current-file))))))
+      (agb-git-blame (concat commit suffix) (agb-git-blame-current-file)))))
 
 (defun agb-git-reblame-for-previous-revision-~ ()
   (interactive)
-  (agb-git-reblame-for-previous-revision nil))
+  (agb-git-reblame-for-revision "~"))
 
 (defun agb-git-reblame-for-previous-revision-^ ()
   (interactive)
-  (agb-git-reblame-for-previous-revision t))
+  (agb-git-reblame-for-revision "^"))
 
 (defun agb-git-reblame-pop ()
   (interactive)
