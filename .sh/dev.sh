@@ -112,6 +112,7 @@ block-icecream() {
 complete-netflix ()
 {
     app=${COMP_WORDS[0]}
+    test -x "$app" || return;
     modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
     if [ ! -e "/tmp/netflix-completions-helper" ] || [ "$modified" != "`head -n 1 /tmp/netflix-completions-helper`" ]; then
         echo $modified > /tmp/netflix-completions-helper
