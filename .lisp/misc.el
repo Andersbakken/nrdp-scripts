@@ -447,6 +447,14 @@ the name of the value of file-name is present."
 ;; Magit stuff
 ;;===================
 
+(defun magit-cherry-pick (&optional commit)
+  (interactive)
+  (unless commit
+    (setq commit (read-from-minibuffer "Commit: ")))
+  (if (> (length commit) 0)
+      (magit-cherry-pick-commit commit)
+    (error "Nothing to cherry-pick")))
+
 (defun git-gitify-path (file)
   (if (string-match "^/" file)
       (let ((root (magit-get-top-dir (file-name-directory file))))
