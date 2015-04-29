@@ -449,11 +449,29 @@ the name of the value of file-name is present."
 
 (defun magit-cherry-pick (&optional commit)
   (interactive)
-  (unless commit
-    (setq commit (read-from-minibuffer "Commit: ")))
-  (if (> (length commit) 0)
-      (magit-cherry-pick-commit commit)
-    (error "Nothing to cherry-pick")))
+  (let ((branches))
+    (with-temp-buffer
+      (when (eq 0 (call-process "git" nil t nil "branch"))
+        (goto-char (point-min))
+        (while (not (eobp))
+          ;; (message (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+          (skip-chars-forward " *")
+          (push (buffer-substring-no-properties (point) (point-at-eol)) branches)
+          (forward-line 1))))
+    (with-temp-buffer
+      (when (eq 0 (call-process "git" nil t nil "branch" "-r"))
+        (goto-char (point-min))
+        (while (not (eobp))
+          ;; (message (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+          (skip-chars-forward " ")
+          (push (buffer-substring-no-properties (point) (point-at-eol)) branches)
+          (forward-line 1))))
+    ;; (message (combine-and-quote-strings branches))
+    (unless commit
+      (setq commit (ido-completing-read "Commit: " branches)))
+    (if (> (length commit) 0)
+        (magit-cherry-pick-commit commit)
+      (error "Nothing to cherry-pick"))))
 
 (defun git-gitify-path (file)
   (if (string-match "^/" file)
