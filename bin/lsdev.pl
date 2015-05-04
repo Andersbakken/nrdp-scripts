@@ -481,15 +481,6 @@ sub generateRootName {
     return generateName($root->{name}, $root->{source});
 }
 
-sub generateRootSourceName {
-    my ($root) = @_;
-    if($root->{source}) {
-        my $src_root = findRoot($root->{source});
-        return $src_root->{name};
-    }
-    return $root->{name};
-}
-
 sub isPathSame {
     my ($path1, $path2, $resolve) = @_;
     $resolve = 1 unless(defined($resolve));
@@ -568,17 +559,14 @@ sub isRootRelated {
     return $result;
 }
 
-sub filterMatches_internal {
-    my ($exact, @match_roots) = @_;
-    # my $exact = shift @_;
-    # my @match_roots = @_;
+sub filterMatches {
+    my @match_roots = @_;
 
     my @result;
     foreach(@match_roots) {
         my $root = findRoot($_);
         next if($root->{ignore} || !$root->{path});
         if($#matches != -1) {
-            my $matchesexact = $exact;
             foreach(@matches) {
                 my $match = $_;
                 my $inverse = 0;
@@ -586,44 +574,33 @@ sub filterMatches_internal {
                     $match = $1;
                     $inverse = 1;
                 }
-                my $ismatched = 0;
+                my $matches = 0;
                 if($match eq "src" || $match eq "source") {
-                    $ismatched = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
+                    $matches = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
                 } elsif($match eq "build") {
-                    $ismatched = defined($root->{source});
+                    $matches = defined($root->{source});
                 } elsif($match =~ /^path:(.*)/) {
-                    $ismatched = ($root->{path} =~ /$1/i);
-                } elsif($matchesexact) {
-                    $ismatched = (generateRootSourceName($root) =~ /^$match$/i);
+                    $matches = ($root->{path} =~ /$1/i);
                 } else {
-                    $ismatched = (generateRootName($root) =~ /$match/i);
+                    $matches = (generateRootName($root) =~ /$match/i);
                 }
-                $ismatched = !$ismatched if($inverse);
-                display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $ismatched\n" if($verbose);
-                unless($ismatched) {
+                $matches = !$matches if($inverse);
+                #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matches\n" if($verbose);
+                unless($matches) {
                     $root = undef;
                     last;
                 }
-                $matchesexact = 0;
             }
         } elsif($read_devdir_list != 2 && $read_devdir_list != -1 && isPathSame($root->{path}, $root_dir)) { #if there are no arguments filter out pwd
             next;
         }
         if(defined($root)) {
             display "AddChoice: [" . $root->{name} . "::" . $root->{path} . "::" . generateRootName($root) . "]\n" if($verbose);
-            push @result, $root->{path};
+            push @result, $root->{path} if(defined($root));
         }
     }
+    @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
     return @result;
-}
-
-sub filterMatches {
-    my @match_roots = @_;
-    my @results;
-    @results = filterMatches_internal(1, @match_roots) unless($read_devdir_list == 2);
-    @results = filterMatches_internal(0, @match_roots) unless($#results != -1);
-    @results = sort { (stat($a))[9] < (stat($b))[9] } @results;
-    return @results;
 }
 
 #figure out where I am in a shadow build and my relevent source dir
@@ -789,7 +766,7 @@ if($display_only eq "default") { #display the currently mapped default
     if(my $root = findRoot($default_dir, 1)) {
         answer($root);
     }
-} elsif($display_only eq "current") { #display just the name of the directory request
+}elsif($display_only eq "current") { #display just the name of the directory request
     my $current;
     if($#matches == -1) {
         $current = $cwd;
