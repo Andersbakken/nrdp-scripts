@@ -86,6 +86,28 @@
           (cd olddir))
       retval)))
 
+
+(defun lsdev-open-build-file (&optional file srcdir)
+  (interactive)
+  (unless file
+    (setq file (read-from-minibuffer "File: ")))
+  (unless srcdir
+    (setq srcdir default-directory))
+  (let ((root (lsdev-root-dir srcdir)))
+    (if (file-exists-p (concat root "/" file))
+        (find-file (concat root "/" file))
+      (let* ((dirs (lsdev-dirs-build srcdir "-r"))
+             (dir (if (= (length dirs) 1)
+                      (car dirs)
+                    (assoc (completing-read "Build: " dirs) dirs)))
+             (path (cadr dir)))
+        (when (file-exists-p (concat path "/" file))
+          (find-file (concat path "/" file)))))))
+
+(defun config.status (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "config.status" srcdir))
+
 (defun lsdev-dir-for-name(name)
   (let ((ret nil) (hds (lsdev-dirs-all)))
     (while (and hds (not ret))

@@ -1063,6 +1063,24 @@ the name of the value of file-name is present."
                   (t nil))
             (insert "\n" ins))))))
 
+(defun NetflixBridge.js (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "src/platform/gibbon/data/resources/js/NetflixBridge.js" srcdir))
+
+(defun PartnerBridge.js (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "src/platform/gibbon/data/resources/js/PartnerBridge.js" srcdir))
+
+(defun netflix.log (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "src/platform/gibbon/data/netflix.log" srcdir))
+
+(defun netflix-conf (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file (concat "src/platform/gibbon/data/etc/conf/"
+                                 (completing-read "File: " (list "1080.xml" "common.xml" "config.xml" "gibbon.xml" "graphics.xml" "input.xml" "oem.xml" "rs-client.xml" "rs-server.xml" "stress.xml" "test.xml")))
+                         srcdir))
+
 ;; ================================================================================
 ;; agb-isearch
 ;; ================================================================================
