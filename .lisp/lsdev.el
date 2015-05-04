@@ -299,9 +299,9 @@
 
 (defun lsdev-compile-directory(&optional directory auto)
   (interactive)
-  (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
-                                   (auto "t")
-                                   (t "nil")))
+  ;; (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
+  ;;                                  (auto "t")
+  ;;                                  (t "nil")))
   (unless (and directory auto)
     (setq directory (read-directory-name "Directory: " directory directory)))
   (if (> (length directory) 0)
