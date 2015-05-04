@@ -79,9 +79,9 @@
       (if (and dir (file-directory-p dir))
           (cd dir)
         (setq olddir nil))
-      (setq retval (apply #'lsdev-dirs-internal "-l" "-b" match))
+      (setq retval (apply #'lsdev-dirs-internal "build" "-l" "-b" match))
       (unless (= (length retval) 1)
-        (setq retval (apply #'lsdev-dirs-internal "-l" match)))
+        (setq retval (apply #'lsdev-dirs-internal "build" "-l" match)))
       (if olddir
           (cd olddir))
       retval)))
