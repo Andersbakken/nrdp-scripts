@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 count_tilde() {
     r=`perl -e 'my @a=split /[~^]/, $ARGV[0], -1; my $c=-0; foreach (@a) { $c += ($_ =~ /[0-9]+/)  ? $_ : 1; } print "$c\n"' "$1"`
@@ -7,22 +7,54 @@ count_tilde() {
 }
 
 TEST=
-GIT_SHOW=file
-if [ "$1" = "-q" ]; then
-    GIT_SHOW=no
+MODE=file
+BAK=
+FILES=()
+while [ -n "$1" ]; do
+    case $1 in
+        -q|--quiet)
+            MODE=no
+            ;;
+        -b|--blame)
+            MODE=blame
+            ;;
+        -c|--commit)
+            MODE=commit
+            ;;
+        -i|--inplace)
+            MODE=inplace
+            ;;
+        -i=*)
+            MODE=inplace
+            BAK=`echo $1 | sed -e 's,^-i=,,'`
+            ;;
+        -i*)
+            MODE=inplace
+            BAK=`echo $1 | sed -e 's,^-i,,'`
+            ;;
+        --inplace=*)
+            MODE=inplace
+            BAK=`echo $1 | sed -e 's,^--inplace=,,'`
+            ;;
+        --dry-run|-N)
+            TEST=1
+            ;;
+        --help|-h)
+            echo "$0 [options] files..."
+            echo "  -q|--quiet                Don't actually echo out the contents"
+            echo "  -b|--blame                Blame file"
+            echo "  -c|--commit               Print the whole commit, not just the file"
+            echo "  -i(.bak)|--inplace(=.bak) Update file to selected commitish"
+            echo "  -b|--blame                Blame file"
+        *)
+            FILES+=("$1")
+            ;;
+    esac
     shift
-elif [ "$1" = "-b" ]; then
-    GIT_SHOW=blame
-    shift
-elif [ "$1" = "-c" ]; then
-    GIT_SHOW=commit
-    shift
-fi
+done
 
-while [ "$#" -gt 0 ]; do
+for FILE in "${FILES[@]}"; do
     COMMITISH=
-    FILE="$1"
-    shift
 
     SUBDIR="$(git rev-parse --show-prefix)"
     if echo "$FILE" | grep '@.*' >/dev/null 2>&1; then
@@ -47,11 +79,14 @@ while [ "$#" -gt 0 ]; do
     fi
     [ -z "$COMMITISH" ] && COMMITISH="HEAD"
     echo "Print: $FILE @ $COMMITISH" >&2
-    if [ "$GIT_SHOW" = "file" ]; then
+    if [ "$MODE" = "file" ]; then
         $TEST git show "${COMMITISH}:${SUBDIR}${FILE}"
-    elif [ "$GIT_SHOW" = "blame" ]; then
+    elif [ "$MODE" = "inplace" ]; then
+        [ -n "$BAK" ] && /bin/cp "$FILE" "${FILE}${BAK}"
+        $TEST git show "${COMMITISH}:${SUBDIR}${FILE}" > "$FILE"
+    elif [ "$MODE" = "blame" ]; then
         $TEST git blame "${COMMITISH}" -- "${FILE}"
-    elif [ "$GIT_SHOW" = "commit" ]; then
+    elif [ "$MODE" = "commit" ]; then
         $TEST git show "${COMMITISH}"
     fi
 done
