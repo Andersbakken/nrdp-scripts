@@ -86,23 +86,38 @@
           (cd olddir))
       retval)))
 
+(defun lsdev-is-build-dir (&optional dir)
+  (let* ((root (lsdev-root-dir (or dir default-directory)))
+         (builddirs (and root (lsdev-dirs-build root))))
+    (and (= (length builddirs) 1)
+         (string= (cadar builddirs) root))))
 
-(defun lsdev-open-build-file (&optional file srcdir)
-  (interactive)
+(defun lsdev-find-build-file (&optional file srcdir create)
   (unless file
     (setq file (read-from-minibuffer "File: ")))
   (unless srcdir
     (setq srcdir default-directory))
   (let ((root (lsdev-root-dir srcdir)))
-    (if (file-exists-p (concat root "/" file))
-        (find-file (concat root "/" file))
-      (let* ((dirs (lsdev-dirs-build srcdir "-r"))
-             (dir (if (= (length dirs) 1)
-                      (car dirs)
-                    (assoc (completing-read "Build: " dirs) dirs)))
-             (path (cadr dir)))
-        (when (file-exists-p (concat path "/" file))
-          (find-file (concat path "/" file)))))))
+    (when root
+      (if (file-exists-p (concat root "/" file))
+          (find-file (concat root "/" file))
+        (let* ((dirs (lsdev-dirs-build srcdir "-r"))
+               (dir (if (= (length dirs) 1)
+                        (car dirs)
+                      (assoc (completing-read "Build: " dirs) dirs)))
+               (path (cadr dir)))
+          (and (or create (file-exists-p (concat path "/" file)))
+               (concat path "/" file)))))))
+
+(defun lsdev-open-build-file (&optional file srcdir create)
+  (interactive)
+  (let ((path (lsdev-find-build-file file srcdir create)))
+    (when path
+      (find-file path)))))
+
+(defun lsdev-open-config (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file ".lsdev_config" srcdir t))
 
 (defun config.status (&optional srcdir)
   (interactive)
@@ -464,6 +479,3 @@
           (kill-buffer (current-buffer))))))
 
 (provide 'lsdev)
-
-
-
