@@ -37,7 +37,11 @@ elif [ "$1" = "marker" ]; then
 elif [ "$1" = "remote" ]; then
     REMOTES=`git config ignore.remote`
     if [ "$2" = "add" ]; then
-        git config ignore.remote "$REMOTES $3"
+        if [ -z "$REMOTES" ]; then
+            git config ignore.remote "$3"
+        else
+            git config ignore.remote "$REMOTES $3"
+        fi
     elif [ "$2" = "rm" ]; then
         TMP_REMOTES=
         for remote in $REMOTES; do
