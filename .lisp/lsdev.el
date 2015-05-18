@@ -113,7 +113,7 @@
   (interactive)
   (let ((path (lsdev-find-build-file file srcdir create)))
     (when path
-      (find-file path)))))
+      (find-file path))))
 
 (defun lsdev-open-config (&optional srcdir)
   (interactive)
