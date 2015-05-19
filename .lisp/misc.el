@@ -525,6 +525,31 @@ the name of the value of file-name is present."
   (interactive)
   (magit-run-git-async "sync"))
 
+(defun magit-toggle-whitespace ()
+  (interactive)
+  (if (member "-w" magit-diff-options)
+      (magit-dont-ignore-whitespace)
+    (magit-ignore-whitespace)))
+
+(defun magit-ignore-whitespace ()
+  (interactive)
+  (add-to-list 'magit-diff-options "-w")
+  (magit-refresh))
+
+(defun magit-dont-ignore-whitespace ()
+  (interactive)
+  (setq magit-diff-options (remove "-w" magit-diff-options))
+  (magit-refresh))
+
+;; Prevent *magit-process* from stealing focus when it pops up.
+(defadvice pop-to-buffer (around return-focus activate)
+  (let ((prev (selected-window)))
+    ad-do-it
+    (when (and prev
+               (not (eq prev (selected-window)))
+               (string= (buffer-name) magit-process-buffer-name))
+      (select-window prev))))
+
 (define-key magit-status-mode-map (kbd "-") 'magit-ediff)
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-smaller-hunks)
@@ -535,6 +560,49 @@ the name of the value of file-name is present."
     (define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
   (define-key magit-log-mode-map (kbd "#") (function magit-show-revision-at-current-line)))
 (define-key magit-log-mode-map (kbd "@") (function magit-blame-for-current-revision))
+
+(defvar-local magit-hidden-stash-overlay nil)
+(defcustom magit-fullscreen-status nil "Whether magit status always becomes fullscreen" :type 'boolean :group 'magit)
+(defcustom magit-max-stashes 0 "How many stashes to display" :type 'number :group 'magit)
+
+(defun magit-limit-stashes-hook ()
+  (when (> magit-max-stashes 0)
+    (save-excursion
+      (goto-char (point-min))
+      (when (search-forward-regexp "^Stashes:$" nil t)
+        (let ((stashes-end (match-end 0)))
+          (when (search-forward-regexp (format "^%d: " magit-max-stashes) nil t)
+            (let ((start (point-at-bol))
+                  (buffer-read-only nil)
+                  (end (or (search-forward-regexp "^$" nil t)
+                           (point-max))))
+              (setq-local magit-hidden-stash-overlay (make-overlay start end))
+              (overlay-put magit-hidden-stash-overlay 'invisible t)
+              (goto-char stashes-end)
+              (insert-button " (click to show all)" 'action (lambda (x)
+                                                              (delete-overlay magit-hidden-stash-overlay)
+                                                              (goto-char (point-min))
+                                                              (let ((buffer-read-only nil))
+                                                                (when (search-forward-regexp " (click to show all)" nil t)
+                                                                  (delete-region (match-beginning 0) (match-end 0)))))))))))))
+
+(add-hook 'magit-refresh-status-hook 'magit-limit-stashes-hook)
+
+(defadvice magit-status (around magit-fullscreen activate)
+  (when magit-fullscreen-status
+      (window-configuration-to-register :magit-fullscreen))
+    ad-do-it
+    (when magit-fullscreen-status
+      (delete-other-windows)))
+
+(defun magit-quit-session ()
+  "Restores the previous window configuration and kills the magit buffer"
+  (interactive)
+  (bury-buffer)
+  (jump-to-register :magit-fullscreen))
+
+(when magit-fullscreen-status
+  (define-key magit-status-mode-map (kbd "q") 'magit-quit-session))
 
 (defun misc-magit-add-action (group key name func)
   (interactive)
@@ -598,13 +666,19 @@ the name of the value of file-name is present."
     ret)
   )
 
-(defun magit-refresh-status-buffer()
+(defun magit-find-current-status-buffer ()
   (let ((topdir (magit-get-top-dir default-directory)))
     (when topdir
-      (let ((buf (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*"))))
-        (when (and buf (buffer-is-visible buf))
-          (with-current-buffer buf
-            (magit-refresh)))))))
+      (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*")))))
+
+(defun magit-refresh-status-buffer()
+  (interactive)
+  (let ((buf (magit-find-current-status-buffer)))
+    (when (and buf (buffer-is-visible buf))
+      (with-current-buffer buf
+        (magit-refresh)))))
+
+(add-hook 'after-save-hook 'magit-refresh-status-buffer)
 
 (defun magit-current-section-string ()
   (let* ((section (magit-current-section))
@@ -769,8 +843,7 @@ the name of the value of file-name is present."
                 (progn
                   (set-buffer-modified-p bmp)
                   (message "Cleaned %d lines" count)))))))
-(defvar sam-auto-clean-whitespace nil)
-(make-variable-buffer-local 'sam-auto-clean-whitespace)
+(defvar-local sam-auto-clean-whitespace nil)
 (defun sam-c-clean-out-spaces-hooked ()
   "Cleanup spaces, only in c mode"
   (interactive)
