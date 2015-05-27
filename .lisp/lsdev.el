@@ -503,7 +503,7 @@
           (t name))))
 
 (defun lsdev-limit-to-project (&optional unlimit)
-  (interactive)
+  (interactive "P")
   (lsdev-restore-limited-buffers)
   (when (not unlimit)
     (let ((all-buffers (buffer-list))
