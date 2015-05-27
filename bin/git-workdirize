@@ -2,29 +2,63 @@
 
 function usage ()
 {
-    echo "git workdirize (--help) URL (name)"
+    echo "git workdirize (--help) URL (-n name|-nname|-n=name|--name name|--name=name) (-b branch|-bbranch|-b=branch|--branch branch|--branch=branch)"
 }
-URL="$1"
+URL=""
+NAME=""
+BRANCHES=""
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --name|-n)
+            shift
+            NAME="$1"
+            ;;
+        --name=*|-n=*)
+            NAME=`echo $1 | sed -e 's,^[^=]*=,,'`
+            ;;
+        -n*)
+            NAME=`echo $1 | sed -e 's,-n,,'`
+            ;;
+        --branch|-b)
+            shift
+            BRANCHES="$BRANCHES $1"
+            ;;
+        --branch=*|-b=*)
+            BRANCHES="$BRANCHES `echo $1 | sed -e 's,^[^=]*=,,'`"
+            ;;
+        -b*)
+            BRANCHES="$BRANCHES `echo $1 | sed -e 's,-b,,'`"
+            ;;
+        *)
+            if [ -z "$URL" ]; then
+                URL="$1"
+            else
+                usage
+                echo "Invalid option $1"
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
+
 if [ -z "$URL" ]; then
     usage
     exit 1
-elif [ "$URL" = "--help" ] || [ "$URL" = "-h" ]; then
-    usage
-    exit 0
 fi
 
-NAME="$2"
-
-if [ -z "$NAME" ]; then
-    NAME=`basename "$URL"`
-fi
-
+[ -z "$NAME" ] && NAME=`basename "$URL"`
 git clone "$URL" "${NAME}.tmp"
 mv "${NAME}.tmp/.git" "${NAME}"
 rm -rf "${NAME}.tmp"
 sed -i ""  '/bare *= *false/d' "${NAME}/config"
 cd "${NAME}"
-for branch in `git branch -r | grep -v "origin/HEAD" | awk -F/ '{print $2}'`; do
+[ -z "$BRANCHES" ] && BRANCHES=`git branch -r | grep -v "origin/HEAD" | awk -F/ '{print $2}'`
+for branch in $BRANCHES; do
     git branch "$branch" "origin/$branch"
     git new-workdir `pwd` "../$branch" "$branch"
 done
