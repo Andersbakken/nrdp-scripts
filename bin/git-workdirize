@@ -1,0 +1,30 @@
+#!/bin/bash
+
+function usage ()
+{
+    echo "git workdirize (--help) URL (name)"
+}
+URL="$1"
+if [ -z "$URL" ]; then
+    usage
+    exit 1
+elif [ "$URL" = "--help" ] || [ "$URL" = "-h" ]; then
+    usage
+    exit 0
+fi
+
+NAME="$2"
+
+if [ -z "$NAME" ]; then
+    NAME=`basename "$URL"`
+fi
+
+git clone "$URL" "${NAME}.tmp"
+mv "${NAME}.tmp/.git" "${NAME}"
+rm -rf "${NAME}.tmp"
+sed -i ""  '/bare *= *false/d' "${NAME}/config"
+cd "${NAME}"
+for branch in `git branch -r | grep -v "origin/HEAD" | awk -F/ '{print $2}'`; do
+    git branch "$branch" "origin/$branch"
+    git new-workdir `pwd` "../$branch" "$branch"
+done
