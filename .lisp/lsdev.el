@@ -478,4 +478,77 @@
           (basic-save-buffer)
           (kill-buffer (current-buffer))))))
 
+(defun lsdev-limited-buffers-file ()
+  (locate-user-emacs-file "lsdev-limited-buffers"))
+
+(defun lsdev-restore-limited-buffers ()
+  (interactive)
+  (let ((file (lsdev-limited-buffers-file)))
+    (when (file-exists-p file)
+      (let ((buffer (find-file-noselect file)))
+        (with-current-buffer buffer
+          (save-excursion
+            (goto-char (point-min))
+            (while (not (eobp))
+              (find-file-noselect (buffer-substring-no-properties (point) (point-at-eol)))
+              (forward-line 1))
+            (erase-buffer)
+            (basic-save-buffer)))
+        (kill-buffer buffer)))))
+
+(defun lsdev-pretty-name (buffer)
+  (let ((name (lsdev-name buffer)))
+    (cond ((string-prefix-p "src_" name) (substring name 4))
+          ((string-prefix-p "build_" name) (substring name 6))
+          (t name))))
+
+(defun lsdev-limit-to-project (&optional unlimit)
+  (interactive)
+  (lsdev-restore-limited-buffers)
+  (when (not unlimit)
+    (let ((all-buffers (buffer-list))
+          (current (lsdev-pretty-name (current-buffer)))
+          (old-current (current-buffer))
+          (buffers (make-hash-table :test 'equal)))
+      (while all-buffers
+        (let ((name (and (buffer-file-name (car all-buffers)) (lsdev-pretty-name (car all-buffers)))))
+          (when name
+            (setq name (cond ((string-prefix-p "src_" name) (substring name 4))
+                             ((string-prefix-p "build_" name) (substring name 6))
+                             (t name)))
+            (let ((cur (gethash name buffers)))
+              (if cur
+                  (add-to-list 'cur (car all-buffers))
+                (setq cur (list (car all-buffers))))
+              (puthash name cur buffers))))
+        (setq all-buffers (cdr all-buffers)))
+      (let ((project (completing-read (if current (format "Project (default %s): " current) "Project: ") buffers)))
+        (unless (> (length project) 0)
+          (setq project current))
+        (let ((buffer (find-file-noselect (lsdev-limited-buffers-file)))
+              (set-current-buffer nil))
+          (maphash (lambda (key value)
+                     ;; (message "%s" (cond ((null value) "null")
+                     ;;                     ((stringp value) "string")
+                     ;;                     ((listp value) "list")
+                     ;;                     (t "other")))
+                     (unless (string= key project)
+                       (with-current-buffer buffer
+                         (goto-char (point-max))
+                         (while value
+                           (insert (buffer-file-name (car value)) "\n")
+                           ;; (message "shit [%s] [%s] [%s]" key project (buffer-file-name (car value)))
+                           (when (eq (car value) old-current)
+                             (setq set-current-buffer t))
+                           (kill-buffer (car value))
+                           ;; (kill-buffer-ask (car value))
+                           (setq value (cdr value)))
+                         (basic-save-buffer))))
+                   buffers)
+          (when set-current-buffer
+            (switch-to-buffer (car (gethash project buffers))))
+          (kill-buffer buffer))))))
+
+      ;; (message "Got project [%s]" project))))
+
 (provide 'lsdev)
