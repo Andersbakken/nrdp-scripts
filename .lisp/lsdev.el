@@ -498,7 +498,8 @@
 
 (defun lsdev-pretty-name (buffer)
   (let ((name (lsdev-name buffer)))
-    (cond ((string-prefix-p "src_" name) (substring name 4))
+    (cond ((null name) nil)
+          ((string-prefix-p "src_" name) (substring name 4))
           ((string-prefix-p "build_" name) (substring name 6))
           (t name))))
 
@@ -513,9 +514,6 @@
       (while all-buffers
         (let ((name (and (buffer-file-name (car all-buffers)) (lsdev-pretty-name (car all-buffers)))))
           (when name
-            (setq name (cond ((string-prefix-p "src_" name) (substring name 4))
-                             ((string-prefix-p "build_" name) (substring name 6))
-                             (t name)))
             (let ((cur (gethash name buffers)))
               (if cur
                   (add-to-list 'cur (car all-buffers))
