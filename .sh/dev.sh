@@ -5,6 +5,13 @@ emake()
     "emacsedit.sh" -m -n "${1}"
 }
 
+#reconfigure wrapper
+reconfigure()
+{
+    `which reconfigure` "$@"
+    cd "$PWD"
+}
+
 #make wrapper
 make()
 {
