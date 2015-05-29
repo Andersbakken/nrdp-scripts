@@ -414,6 +414,12 @@
   (setq magit-ediff-windows (current-window-configuration))
   (ediff-buffers b a '(magit-ediff-add-cleanup)))
 
+(defun magit-ediff-file ()
+  (interactive)
+  (let ((a (current-buffer))
+        (b (progn (git-show-head (buffer-file-name)) (current-buffer))))
+    (magit-ediff-buffers b a)))
+
 ;; ================================================================================
 ;; git-jira
 ;; ================================================================================
