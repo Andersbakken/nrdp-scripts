@@ -216,117 +216,140 @@ the name of the value of file-name is present."
   (interactive)
   (litter litter-printf-function))
 
+(defun make-member-find-nested-classes ()
+  (save-excursion
+    (let ((classes) start)
+      (goto-char (point-at-eol))
+      (setq start (point))
+      (while (and (re-search-backward "^\\([ \t]*\\)\\(class\\|struct\\)\\>[ \t]+\\([^:{]*\\)" nil t))
+        (goto-char (match-beginning 1))
+        (let ((match-start (match-beginning 3))
+              (match-end (match-end 3)))
+        (save-excursion
+          (when (search-forward "{" nil t)
+            (forward-char -1)
+            (forward-sexp)
+            (when (>= (point) start)
+              (let* ((words (split-string (buffer-substring-no-properties match-start match-end) "[ \t\n]" t))
+                     (len (1- (length words))))
+                (while (>= len 0)
+                  (unless (string= (nth len words) "final")
+                    (add-to-list 'classes (nth len words))
+                    (setq len -1))
+                  (decf len))))))))
+      classes)))
+
+(defun make-member-strip-default-arguments (string)
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (while (search-forward "\"" nil t)
+      (forward-char -1)
+      (let ((start (point)))
+        (forward-sexp)
+        (delete-region start (point))))
+    (goto-char (point-min))
+    (while (search-forward "=" nil t)
+      (forward-char -1)
+      (skip-chars-backward "[\t ]")
+      (let ((start (point)))
+        (delete-region start (or (and (search-forward "," nil t) (1- (point)))
+                                 (point-max)))))
+    (buffer-string)))
+
+(defun make-member-fixup-return-value (string)
+  (let* ((words
+          (with-temp-buffer
+            (insert string)
+            (--misc-replace-string-helper "*" " * ")
+            (--misc-replace-string-helper "&" " & ")
+            (split-string (buffer-string))))
+         (ret)
+         (seenvar)
+         (len (1- (length words))))
+    ;; (message "[%s]" (combine-and-quote-strings words "|"))
+    (while (>= len 0)
+      (let ((word (nth len words)))
+        (if (not seenvar)
+            (unless (or (string= word "*")
+                        (string= word "&")
+                        (string= word "const"))
+              (setq seenvar t))
+          (unless (cond ((string= word "const"))
+                        ((string= word "*"))
+                        ((string= word "&"))
+                        ((string= word "unsigned"))
+                        ((string= word "long")))
+            (while (>= len 0)
+              (decf len)
+              (pop words)))))
+      (decf len))
+    (setq ret (replace-regexp-in-string "\\([\\*&]\\) +" "\\1" (combine-and-quote-strings words)))
+    (cond ((string-suffix-p "&" ret) ret)
+          ((string-suffix-p "*" ret) ret)
+          ((> (length ret) 0) (concat ret " "))
+          (t nil))))
+
+(defun make-member-create-function-definition ()
+  (let ((classes (make-member-find-nested-classes)))
+    (when classes
+      (save-excursion
+        (goto-char (point-at-bol))
+        (let ((returnstart)
+              (returnend)
+              (paramsstart)
+              (functionnamestart)
+              (functionnameend)
+              (params)
+              (const))
+          (skip-chars-forward "[\t ]")
+          (setq returnstart (point))
+          (when (search-forward "(" (point-at-eol) t)
+            (forward-char -1)
+            (setq paramsstart (point))
+            (skip-chars-backward "[\t ]")
+            (setq functionnameend (point))
+            (skip-chars-backward "[A-Za-z0-9_~]")
+            (setq functionnamestart (point))
+            (skip-chars-backward "[\t ]")
+            (setq returnend (point))
+            (goto-char paramsstart)
+            (forward-sexp)
+            (setq params (make-member-strip-default-arguments (buffer-substring-no-properties paramsstart (point))))
+            (skip-chars-forward "[\t ]")
+            (concat (make-member-fixup-return-value (buffer-substring-no-properties returnstart returnend))
+                    (combine-and-quote-strings classes "::")
+                    "::"
+                    (buffer-substring-no-properties functionnamestart functionnameend)
+                    params
+                    (if (looking-at "\\<const\\>") " const")
+                    "\n{}")))))))
+
 ;;skeleton thingie
 (defun make-member ()
   "make a skeleton member function in the .cpp file"
   (interactive)
-  (let ((class nil)
-        (function nil)
-        (file (buffer-file-name))
-        (insertion-string nil)
-        (start nil))
-    (save-excursion
-      (and (re-search-backward "^[ \t]*class[ \t\n]" nil t)
-           (progn
-             (forward-word 1)
-             (while (looking-at "[ \t]*DLLEXPORT")
-               (forward-word 1))
-             (while (looking-at "[ \t]*Q_[a-zA-Z0-9]*_EXPORT")
-               (forward-word 3))
-             (while (looking-at "[ \t\n]")
-               (forward-char 1))
-             (setq start (point))
-             (while (looking-at "[A-Za-z0-9_]")
-               (forward-char 1))
-             (setq class (buffer-substring start (point))))))
-    (progn
-      (and (looking-at "$")
-           (progn
-             (search-backward ")" nil t)
-             (forward-char)
-             (backward-sexp)))
-      (and (stringp class)
-           (re-search-backward "^[ \t]")
-           (progn
-             (while (looking-at "[ \t]")
-               (forward-char 1))
-             (setq start (point))
-             (and (search-forward "(" nil t)
-                  (progn
-                    (forward-char -1)
-                    (forward-sexp)))
-             (and (looking-at "[ \t]+const")
-                  (forward-word 1))
-             (and (looking-at ";")
-                  (setq function (buffer-substring start (point))))
-             (re-search-forward "(" nil t))))
-    (and (stringp function)
-         (progn
-           (and (string-match "[ \t]*\\<virtual\\>[ \t]*" function)
-                (setq function (replace-match " " t t function)))
-           (and (string-match "^\\(virtual\\>\\)?[ \t]*" function)
-                (setq function (replace-match "" t t function)))
-           (while (string-match "  +" function)
-             (setq function (replace-match " " t t function)))
-           (while (string-match "\t+" function)
-             (setq function (replace-match " " t t function)))
-           (while (string-match " ?=[^,)]+" function)
-             (setq function (replace-match " " t t function)))
-           (while (string-match " +," function)
-             (setq function (replace-match "," t t function)))))
-    (and (stringp function)
-         (stringp class)
-         (stringp file)
-         (progn
-           (cond ((string-match (concat "^ *" class "[ \\t]*(") function)
-                  (progn
-                    (setq insertion-string
-                          (concat
-                           "\n"
-                           (replace-match
-                            (concat class "::" class "(")
-                            t t function)
-                           "\n{\n    \n}\n"))))
-                 ((string-match (concat "^ *~" class "[ \\t]*(") function)
-                  (progn
-                    (setq insertion-string
-                          (concat
-                           "\n"
-                           (replace-match
-                            (concat class "::~" class "(")
-                            t t function)
-                           "\n{\n    \n}\n"))))
-                 ((string-match " *\\([a-z0-9_]+\\)[ \\t]*(" function)
-                  (progn
-                    (setq insertion-string
-                          (concat
-                           "\n"
-                           (replace-match
-                            (concat " " class "::" "\\1(")
-                            t nil function)
-                           "\n{\n    \n}\n"))))
-                 (t
-                  (error (concat "Can't parse declaration ``"
-                                 function "'' in class ``" class
-                                 "'', aborting"))))
-           (stringp insertion-string))
-         (condition-case nil (switch-cpp-h)
-           (error (progn
-                    (string-match "\\.h$" file)
-                    (find-file (replace-match ".cpp" t t file)))))
-         (progn
-           (goto-char (point-max))
-           (insert insertion-string)
-           (forward-char -3)
-           (save-excursion
-             (and (string-match ".*/" file)
-                  (setq file (replace-match "" t nil file)))
-             (or (re-search-backward
-                  (concat "^#include *\"" file "\"$") nil t)
-                 (progn
-                   (goto-char (point-min))
-                   (re-search-forward "^$" nil t)
-                   (insert "\n#include \"" file "\"\n"))))))))
+  (let* ((insertion-string (make-member-create-function-definition))
+         (include)
+         (file (buffer-file-name)))
+    (when (and insertion-string file)
+      (c-end-of-statement)
+      (and (re-search-forward "[A-Za-z0-9_]+[\t ]*(" nil t)
+           (c-end-of-statement))
+      (when (not (switch-cpp-h))
+        (string-match "\\.h$" file)
+        (find-file (replace-match ".cpp" t t file))
+        (when (= (point-min) (point-max))
+          (and (string-match ".*/" file)
+               (setq file (replace-match "" t nil file)))
+          (setq include t)))
+      (goto-char (point-max))
+      (insert "\n" insertion-string)
+      (when include
+        (goto-char (point-min))
+        (insert "#include \"" file "\"\n")))))
+
+
 (defalias 'agulbra-make-member 'make-member)
 
 (defun keyboard-quit-kill-minibuffer ()
@@ -342,7 +365,7 @@ the name of the value of file-name is present."
 
 (defun find-corresponding-cpp-h (&optional fileorbuffer)
   (save-excursion
-    (let ((name (file-name-nondirectory (cond ((bufferp fileorbuffer) (buffer-file-name (fileorbuffer)))
+    (let ((name (file-name-nondirectory (cond ((bufferp fileorbuffer) (buffer-file-name fileorbuffer))
                                               ((stringp fileorbuffer) fileorbuffer)
                                               (t (buffer-file-name)))))
           (candidates))
@@ -408,7 +431,7 @@ the name of the value of file-name is present."
       (when (string-match ".cxx$" name)
         (add-to-list 'candidates (replace-match ".hxx" t t name)))
       (when (string-match "\\.mm$" name)
-        (add (replace-match ".h" t t name) candidates))
+        (add-to-list (replace-match ".h" t t name) candidates))
       (when (string-match "\\.m$" name)
         (add-to-list 'candidates (replace-match ".h" t t name)))
 
@@ -422,7 +445,7 @@ the name of the value of file-name is present."
 
       (or (dolist (candidate candidates)
             (when (file-readable-p candidate)
-              (message "Found in simple search: %s" candidate)
+              ;; (message "Found in simple search: %s" candidate)
               (return candidate)))
           (and (gtags-get-rootpath)
                (dolist (candidate candidates)
@@ -443,9 +466,8 @@ the name of the value of file-name is present."
   "Switch to the corresponding .cpp, .C, .cc or .h file."
   (interactive)
   (let ((found (find-corresponding-cpp-h)))
-    (if found
-        (find-file found)
-      (ff-find-other-file))))
+    (when found
+      (find-file found))))
 
 (defun point-is-at-eol (pos) (save-excursion (goto-char pos) (= pos (point-at-eol))))
 (defun point-is-at-bol (pos) (save-excursion (goto-char pos) (= pos (point-at-bol))))
