@@ -442,7 +442,6 @@ the name of the value of file-name is present."
           (setq comment-end ""))))
   )
 
-
 ;;===================
 ;; Magit stuff
 ;;===================
@@ -479,6 +478,23 @@ the name of the value of file-name is present."
         (if (string-match (concat "^" root) file)
             (setq file (substring file (length root))))))
   file)
+
+(defun git-grep-prompt ()
+  (let* ((default (current-word))
+         (prompt (if default
+                     (concat "Search for: (default " default ") ")
+                   "Search for: "))
+         (search (read-from-minibuffer prompt nil nil nil nil default)))
+    (if (> (length search) 0)
+        search
+      (or default ""))))
+
+(defun git-grep (search)
+  "git-grep the entire current repo"
+  (interactive (list (git-grep-prompt)))
+  (grep-find (concat "git --no-pager grep -I -n "
+                     (shell-quote-argument search)
+                     " -- " (git-root-dir) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
 
 (defun git-show-revision (file sha)
   (let ((line (and (string= file (buffer-file-name)) (count-lines 1 (point)))))
