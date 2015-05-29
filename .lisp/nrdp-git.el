@@ -322,7 +322,7 @@
 
 (defun magit-current-section-string ()
   (let* ((section (magit-current-section))
-         (info (and section (magit-section-info (magit-current-section)))))
+         (info (and section (magit-section-info section))))
     (cond ((and (listp info) (stringp (nth 1 info))) (nth 1 info))
           ((stringp info) info)
           (t nil))))
