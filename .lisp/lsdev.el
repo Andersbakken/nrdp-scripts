@@ -1,7 +1,7 @@
 (require 'bs)
 (require 'ido)
 (require 'magit)
-(require 'git)
+(require 'nrdp-git)
 (require 'buffer-pop)
 (eval-when-compile (require 'cl))
 
@@ -182,14 +182,14 @@
 
 (defun lsdev-magit-status-at-point ()
   (interactive)
-  (let ((root (git-root-dir)))
+  (let ((root (magit-get-top-dir)))
     (if root
         (magit-status root)
       (call-interactively 'magit-status))))
 
-(defun lsdev-git-diff-all-at-point (&optional -w)
-  (interactive "P")
-  (if (git-diff-all -w)
+(defun lsdev-git-diff-all-at-point ()
+  (interactive)
+  (if (call-interactively 'git-diff-repo)
       (delete-other-windows)))
 
 (defun lsdev-recompile-at-point ()
@@ -261,7 +261,10 @@
                          (setq single-source 0))
                         (t)))
                 (forward-line))))
-          (if (and magit-status (stringp single-source) (> (length single-source) 0) (git-root-dir single-source))
+          (if (and magit-status
+                   (stringp single-source)
+                   (> (length single-source) 0)
+                   (magit-get-top-dir single-source))
               (progn
                 (magit-status single-source)
                 (kill-buffer "*lsdev-complete*"))
@@ -273,7 +276,7 @@
               (local-set-key (kbd "s") 'lsdev-magit-status-at-point)
               (local-set-key (kbd "d") 'lsdev-git-diff-all-at-point)
               (local-set-key (kbd "=") 'lsdev-git-diff-all-at-point)
-              (local-set-key (kbd "D") 'git-diff-all)
+              (local-set-key (kbd "D") 'git-diff-repo)
               (local-set-key (kbd "c") 'lsdev-compile-at-point)
               (local-set-key (kbd "b") 'lsdev-compile-at-point)
               (local-set-key (kbd "r") 'lsdev-recompile-at-point)
@@ -283,7 +286,7 @@
                   (funcall lsdev-mode-custom-bindings))
               (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function))))))))))
 
-(defun lsdev-cd(&optional ignore-builds magit-status)
+(defun lsdev-cd (&optional ignore-builds magit-status)
   (interactive)
   (let* ((args nil)
          (exec (executable-find "lsdev.pl"))
