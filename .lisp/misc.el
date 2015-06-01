@@ -148,10 +148,10 @@ the name of the value of file-name is present."
 ;;====================
 ;; Carriage return bogusness
 ;;====================
-(defun --misc-replace-string-helper (from to)
+(defun --misc-replace-string-helper (from to &optional start end)
   (save-excursion
-    (goto-char (point-min))
-    (while (search-forward from nil t)
+    (goto-char (or start (point-min)))
+    (while (search-forward from end t)
       (replace-match to nil t))))
 
 (defun dos-to-unix ()

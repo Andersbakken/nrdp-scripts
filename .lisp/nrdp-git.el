@@ -110,14 +110,16 @@
     (setq buffer-read-only nil)
     (erase-buffer)
     (setq default-directory dir)
-    (insert "$ git diff " (combine-and-quote-strings args) "\n")
-    (if (= (apply #'call-process "git" nil t t "diff" args) 0)
+    (if (and (= (apply #'call-process "git" nil t t "diff" args) 0)
+             (not (= (point-min) (point-max))))
         (progn
           (goto-char (point-min))
+          (insert "$ git diff " (combine-and-quote-strings args) "\n")
           (search-forward-regexp "^@@ ")
           (goto-char (point-at-bol))
           (setq buffer-read-only t)
           (diff-mode))
+      (message "No differences")
       (kill-buffer (current-buffer))
       nil)))
 
