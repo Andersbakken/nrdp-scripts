@@ -149,10 +149,22 @@ the name of the value of file-name is present."
 ;; Carriage return bogusness
 ;;====================
 (defun --misc-replace-string-helper (from to &optional start end)
-  (save-excursion
-    (goto-char (or start (point-min)))
-    (while (search-forward from end t)
-      (replace-match to nil t))))
+  (let ((count 0))
+    (save-excursion
+      (goto-char (or start (point-min)))
+      (while (search-forward from end t)
+        (incf count)
+        (replace-match (or to "") nil t)))
+    (and (> count 0) count)))
+
+(defun --misc-replace-regexp-helper (from to &optional start end)
+  (let ((count 0))
+    (save-excursion
+      (goto-char (or start (point-min)))
+      (while (re-search-forward from end t)
+        (incf count)
+        (replace-match (or to "") nil t)))
+    (and (> count 0) count)))
 
 (defun dos-to-unix ()
   "Replace \r\n with \n"
@@ -218,7 +230,7 @@ the name of the value of file-name is present."
 
 (defun make-member-find-nested-classes ()
   (save-excursion
-    (let ((classes) start)
+    (let (classes start)
       (goto-char (point-at-eol))
       (setq start (point))
       (while (and (re-search-backward "^\\([ \t]*\\)\\(class\\|struct\\)\\>[ \t]+\\([^:{]*\\)" nil t))
@@ -266,10 +278,20 @@ attention to case differences."
          (eq t (compare-strings suffix nil nil
                                 string start-pos nil ignore-case)))))
 
+(defun misc-string-prefix-p (str1 str2 &optional ignore-case)
+  "Return non-nil if STR1 is a prefix of STR2.
+If IGNORE-CASE is non-nil, the comparison is done without paying attention
+to case differences."
+  (eq t (compare-strings str1 nil nil
+                         str2 0 (length str1) ignore-case)))
+
 (defun make-member-fixup-return-value (string)
-  (let* ((words
+  (let* ((inline)
+         (words
           (with-temp-buffer
             (insert string)
+            (setq inline (--misc-replace-regexp-helper "\\<inline\\>" nil))
+            (--misc-replace-regexp-helper "\\<inline\\>" nil)
             (--misc-replace-string-helper "*" " * ")
             (--misc-replace-string-helper "&" " & ")
             (split-string (buffer-string))))
@@ -294,10 +316,10 @@ attention to case differences."
               (pop words)))))
       (decf len))
     (setq ret (replace-regexp-in-string "\\([\\*&]\\) +" "\\1" (combine-and-quote-strings words)))
-    (cond ((misc-string-suffix-p "&" ret) ret)
-          ((misc-string-suffix-p "*" ret) ret)
-          ((> (length ret) 0) (concat ret " "))
-          (t nil))))
+    (cons (cond ((misc-string-suffix-p "&" ret) ret)
+                ((misc-string-suffix-p "*" ret) ret)
+                ((> (length ret) 0) (concat ret " "))
+                (t nil)) inline)))
 
 (defun make-member-create-function-definition ()
   (let ((classes (make-member-find-nested-classes)))
@@ -306,6 +328,7 @@ attention to case differences."
         (goto-char (point-at-bol))
         (let ((returnstart)
               (returnend)
+              (return)
               (paramsstart)
               (functionnamestart)
               (functionnameend)
@@ -326,33 +349,40 @@ attention to case differences."
             (forward-sexp)
             (setq params (make-member-strip-default-arguments (buffer-substring-no-properties paramsstart (point))))
             (skip-chars-forward "[\t ]")
-            (concat (make-member-fixup-return-value (buffer-substring-no-properties returnstart returnend))
+            (setq return (make-member-fixup-return-value (buffer-substring-no-properties returnstart returnend)))
+            (concat (if (cdr return) "inline ")
+                    (car return)
                     (combine-and-quote-strings classes "::")
                     "::"
                     (buffer-substring-no-properties functionnamestart functionnameend)
                     params
                     (if (looking-at "\\<const\\>") " const")
-                    "\n{}")))))))
+                    "\n{\n}\n\n")))))))
 
 ;;skeleton thingie
 (defun make-member ()
   "make a skeleton member function in the .cpp file"
   (interactive)
   (let* ((insertion-string (make-member-create-function-definition))
+         (inline (and insertion-string (misc-string-prefix-p "inline" insertion-string)))
          (include)
          (file (buffer-file-name)))
     (when (and insertion-string file)
       (c-end-of-statement)
       (and (re-search-forward "[A-Za-z0-9_]+[\t ]*(" nil t)
            (c-end-of-statement))
-      (when (not (switch-cpp-h))
-        (string-match "\\.h$" file)
-        (find-file (replace-match ".cpp" t t file))
-        (when (= (point-min) (point-max))
-          (and (string-match ".*/" file)
-               (setq file (replace-match "" t nil file)))
-          (setq include t)))
-      (goto-char (point-max))
+      (if inline
+          (progn
+            (goto-char (point-max))
+            (re-search-backward "^#endif" (- (point-max) 200) t))
+        (when (not (switch-cpp-h))
+          (string-match "\\.h$" file)
+          (find-file (replace-match ".cpp" t t file))
+          (when (= (point-min) (point-max))
+            (and (string-match ".*/" file)
+                 (setq file (replace-match "" t nil file)))
+            (setq include t)))
+        (goto-char (point-max)))
       (insert "\n" insertion-string)
       (when include
         (goto-char (point-min))
