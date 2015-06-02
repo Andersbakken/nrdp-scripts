@@ -85,9 +85,10 @@
       (setq buffer-read-only t))))
 
 (defvar git-diff-reuse-diff-buffer nil)
-(defun git-diff (&optional -w target split-window)
+(defun git-diff (&optional -w target split-window restorefocus)
   (interactive "P")
   (let* ((dir default-directory)
+         (old (and restorefocus (get-buffer-window)))
          (args (list "HEAD" "--" (cond ((null target)
                                         (if (buffer-file-name)
                                             (buffer-file-name)
@@ -118,7 +119,9 @@
           (search-forward-regexp "^@@ ")
           (goto-char (point-at-bol))
           (setq buffer-read-only t)
-          (diff-mode))
+          (diff-mode)
+          (when old
+            (select-window old)))
       (message "No differences")
       (kill-buffer (current-buffer))
       nil)))
@@ -344,7 +347,7 @@
   (interactive "P")
   (let ((file (magit-current-section-file)))
     (when file
-      (git-diff -w file t))))
+      (git-diff -w file t t))))
 
 (defun magit-log-current-section ()
   (interactive)
