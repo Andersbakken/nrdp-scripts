@@ -85,29 +85,29 @@
       (setq buffer-read-only t))))
 
 (defvar git-diff-reuse-diff-buffer nil)
-(defun git-diff (&optional -w target split-window restorefocus)
+(defun git-diff (&optional -w target no-split-window norestorefocus against)
   (interactive "P")
   (let* ((dir default-directory)
-         (old (and restorefocus (get-buffer-window)))
-         (args (list "HEAD" "--" (cond ((null target)
-                                        (if (buffer-file-name)
-                                            (buffer-file-name)
-                                          (error "git-diff: Not a file buffer")))
-                                       ((bufferp target)
-                                        (if (buffer-file-name target)
-                                            (buffer-file-name target)
-                                          (error "git-diff: Not a file buffer")))
-                                       ((stringp target) target)
-                                       (target (magit-get-top-dir))
-                                       (t (error "git-diff: What to do here?")))))
+         (old (and (not norestorefocus) (get-buffer-window)))
+         (args (list (or against "HEAD") "--" (cond ((null target)
+                                                     (if (buffer-file-name)
+                                                         (buffer-file-name)
+                                                       (error "git-diff: Not a file buffer")))
+                                                    ((bufferp target)
+                                                     (if (buffer-file-name target)
+                                                         (buffer-file-name target)
+                                                       (error "git-diff: Not a file buffer")))
+                                                    ((stringp target) target)
+                                                    (target (magit-get-top-dir))
+                                                    (t (error "git-diff: What to do here?")))))
          (buffer (get-buffer-create (if (or git-diff-reuse-diff-buffer (not args))
                                         "*git-diff*"
                                       (concat "*git-diff: " (car args) "*")))))
     (when -w
       (push "-w" args))
-    (if split-window
-        (switch-to-buffer-other-window buffer)
-      (switch-to-buffer buffer))
+    (if no-split-window
+        (switch-to-buffer buffer)
+      (switch-to-buffer-other-window buffer))
     (setq buffer-read-only nil)
     (erase-buffer)
     (setq default-directory dir)
@@ -128,11 +128,11 @@
 
 (defun git-diff-other (&optional -w target)
   (interactive "P")
-  (git-diff -w target t))
+  (git-diff -w target))
 
 (defun git-diff-repo (&optional -w)
   (interactive "P")
-  (git-diff -w t))
+  (git-diff -w))
 
 (defun git-diff-directory (&optional -w)
   (interactive "P")
@@ -347,7 +347,7 @@
   (interactive "P")
   (let ((file (magit-current-section-file)))
     (when file
-      (git-diff -w file t t))))
+      (git-diff -w file))))
 
 (defun magit-log-current-section ()
   (interactive)
