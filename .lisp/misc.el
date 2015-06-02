@@ -257,6 +257,15 @@ the name of the value of file-name is present."
                                  (point-max)))))
     (buffer-string)))
 
+(defun misc-string-suffix-p (suffix string  &optional ignore-case)
+  "Return non-nil if SUFFIX is a suffix of STRING.
+If IGNORE-CASE is non-nil, the comparison is done without paying
+attention to case differences."
+  (let ((start-pos (- (length string) (length suffix))))
+    (and (>= start-pos 0)
+         (eq t (compare-strings suffix nil nil
+                                string start-pos nil ignore-case)))))
+
 (defun make-member-fixup-return-value (string)
   (let* ((words
           (with-temp-buffer
@@ -285,8 +294,8 @@ the name of the value of file-name is present."
               (pop words)))))
       (decf len))
     (setq ret (replace-regexp-in-string "\\([\\*&]\\) +" "\\1" (combine-and-quote-strings words)))
-    (cond ((string-suffix-p "&" ret) ret)
-          ((string-suffix-p "*" ret) ret)
+    (cond ((misc-string-suffix-p "&" ret) ret)
+          ((misc-string-suffix-p "*" ret) ret)
           ((> (length ret) 0) (concat ret " "))
           (t nil))))
 
