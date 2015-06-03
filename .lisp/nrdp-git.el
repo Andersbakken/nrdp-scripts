@@ -52,7 +52,11 @@
                      (shell-quote-argument search)
                      " -- " (magit-get-top-dir) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
 
-(defun git-config-value (conf) (shell-command-to-string (concat "git config " conf)))
+(defun git-config-value (conf)
+  (let ((ret (shell-command-to-string (concat "git config " conf))))
+    (if (and ret (string-match "\n$" ret))
+        (substring ret 0 (1- (length ret)))
+      ret)))
 
 (defun git-revert (&optional buffer)
   (interactive)
