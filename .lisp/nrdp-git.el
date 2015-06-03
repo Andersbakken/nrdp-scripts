@@ -148,6 +148,15 @@
     (error "Not a real file"))
   (git-show-revision (or file (buffer-file-name)) "HEAD"))
 
+(defun git-show-tracking (&optional file)
+  (interactive)
+  (unless (or file (buffer-file-name))
+    (error "Not a real file"))
+  (let ((tracking (magit-get-remote/branch)))
+    (if tracking
+        (git-show-revision (or file (buffer-file-name)) tracking)
+      (message "No tracking branch for branch"))))
+
 (defun magit-log-mode-current-file ()
   (save-excursion
     (goto-char (point-min))
