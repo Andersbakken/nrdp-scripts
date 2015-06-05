@@ -1,0 +1,2 @@
+command source ~/.lldb/gdb.lldb
+command source ~/.lldb/emacs.lldb
