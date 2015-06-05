@@ -1,2 +1,4 @@
 command source ~/.lldb/gdb.lldb
 command script import ~/.lldb/emacs.py
+command script import ~/.lldb/misc.py
+
