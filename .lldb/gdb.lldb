@@ -7,7 +7,7 @@ settings set thread-format Thread ${thread.index} (tid ${thread.id}{ "${thread.n
 
 # br file:line
 # br functino
-command regex br -h 'br cmd' 's/^(.*):([0-9]+)$/break set --file %1 --line %2/'  's/(.*)/break set --name %1/'
+command regex br -h 'br cmd' 's/^(.*):([0-9]+)$/break set --file %1 --line %2/' 's/^"(.*):([0-9]+)"$/break set --file %1 --line %2/'  's/'(.*)'/break set --name %1/' 's/(.*)/break set --name %1/'
 
 # t ...
 # t <number>

@@ -1,1 +1,0 @@
-command regex ebr -h 'foo' 's/(.*)/platform shell emacsedit.sh -n -e "(sam-what-file)" >/tmp/foo.gdb'
