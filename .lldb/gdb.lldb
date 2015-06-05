@@ -1,0 +1,85 @@
+# gdb-compatible commands for lldb
+
+# backtrace formatting
+settings set frame-format #${frame.index}  ${frame.pc}{ ${function.name-with-args}{${function.pc-offset}}}{ at ${line.file.basename}:${line.number}}\n
+
+settings set thread-format Thread ${thread.index} (tid ${thread.id}{ "${thread.name}"}{, queue "${thread.queue}"}){: ${frame.pc}{ ${function.name-with-args}{${function.pc-offset}}}{ at ${line.file.basename}:${line.number}}}\n{    Stopped by ${thread.stop-reason}\n}{    Return value ${thread.return-value}}
+
+# br file:line
+# br functino
+command regex br -h 'br cmd' 's/^(.*):([0-9]+)$/break set --file %1 --line %2/'  's/(.*)/break set --name %1/'
+
+# t ...
+# t <number>
+# t a a bt
+# t apply all backtrace
+command regex t -h 't a a bt' 's/^(a|ap|app|appl|apply)[[:space:]]+(a|al|all)[[:space:]]+(bt|ba|bac|back|backt|backtr|backtra|backtrac|backtrace)[[:space:]]*$/thread backtrace all/'  's/^([0-9]+)[[:space:]]*$/thread select %1/'  's/(.*)/thread %1/'
+
+# attach <pid>
+# attach <name>
+# attach -waitfor <name>
+command unalias attach
+command regex attach -h 'Attach to a process.' -s 'attach [-waitfor] <pid|name>'   's/^$/process attach/'  's/^([0-9]+)[[:space:]]*$/process attach --pid %1/'  's/^([^[:space:]]+)[[:space:]]*$/process attach --name %1/'   's/^(-w|--waitfor|-waitfor)[[:space:]]+([^[:space:]]+)[[:space:]]*$/process attach --waitfor --name %2/'
+
+# detach
+command alias detach process detach
+
+# d
+# delete
+command alias d breakpoint delete
+command alias delete breakpoint delete
+
+# dis
+# disable
+command alias dis breakpoint disable
+command alias disable breakpoint disable
+
+# en
+# enable
+command alias en breakpoint enable
+command alias enable breakpoint enable
+
+# ignore <breakpoint> <count>
+command alias ignore breakpoint modify -i %2 %1
+
+# u
+# until
+command alias u thread until
+command alias until thread until
+
+# setenv VAR=value
+command regex setenv -h 'Set or list process environment variables.' -s 'setenv VAR=value' 's/^(.+)$/settings set target.env-vars %1/' 's/^$/settings show target.env-vars/' 
+
+# unsetenv VAR
+command regex unsetenv -h 'Unset process environment variables.' -s 'unsetenv VAR=value' 's/^(.+)$/settings remove target.env-vars %1/' 's/^$/settings show target.env-vars/' 
+
+# shell
+command alias shell platform shell
+
+# info args
+# info args <regex>
+# info breakpoints
+# info breakpoints <numbers>
+# info display
+# info display
+# info float
+# info handle
+# info handle <signals>
+# info locals
+# info locals <regex>
+# info pid
+# info registers
+# info registers <names>
+# info sharedlibrary
+# info sharedlibrary <addr>
+# info signals
+# info signals <signals>
+# info stack
+# info stack <count>
+# info threads
+# info variables
+# info variables <regex>
+# info vector
+# info watchpoints
+# info watchpoints <numbers>
+command regex -h 'gdb-style \`info\` command.' -s 'info breakpoints; info display; info float; info handle; info locals; info pid; info registers; info sharedlibrary; info signals; info stack; info threads; info variables; info vector; info watchpoints'  info    's/^(s|st|sta|stac|stack)[[:space:]]*$/thread backtrace/'    's/^(s|st|sta|stac|stack)[[:space:]]+([0-9]+)[[:space:]]*$/thread backtrace -c %2/'     's/^(sh|sha|shar|share|shared|sharedl|sharedli|sharedlib|sharedlibr|sharedlibra|sharedlibrar|sharedlibrary)[[:space:]]*$/image list/'     's/^(sh|sha|shar|share|shared|sharedl|sharedli|sharedlib|sharedlibr|sharedlibra|sharedlibrar|sharedlibrary)[[:space:]]+([^[:space:]]+)[[:space:]]*$/image list --address \`%2\`/'     's/^(r|re|reg|regi|regis|regist|registe|register|registers)[[:space:]]*$/register read/'     's/^(r|re|reg|regi|regis|regist|registe|register|registers)[[:space:]]+(.*)$/register read %2/'     's/^pid[[:space:]]*$/process status/'     's/^(b|br|bre|brea|break|breakp|breakpo|breakpoi|breakpoin|breakpoint|breakpoints|wat|watc|watch|watchp|watchpo|watchpoi|watchpoin|watchpoint|watchpoints)[[:space:]]*$/breakpoint list/'     's/^(b|br|bre|brea|break|breakp|breakpo|breakpoi|breakpoin|breakpoint|breakpoints|wat|watc|watch|watchp|watchpo|watchpoi|watchpoin|watchpoint|watchpoints)[[:space:]]+(.*)$/breakpoint list %2/'     's/^(fl|flo|floa|float|ve|vec|vect|vecto|vector)[[:space:]]*$/register read -s 1/'     's/^(si|sig|sign|signa|signal|signals|h|ha|han|hand|handl|handle)[[:space:]]*$/process handle/'     's/^(si|sig|sign|signa|signal|signals|h|ha|han|hand|handl|handle)[[:space:]]+(.*)$/process handle %2/'     's/^(lo|loc|loca|local|locals)[[:space:]]*$/frame variable --no-args/'     's/^(lo|loc|loca|local|locals)[[:space:]]+(.*)$/frame variable --no-args --regex %2/'     's/^(ar|arg|args)[[:space:]]*$/frame variable --no-locals/'     's/^(ar|arg|args)[[:space:]]+(.*)$/frame variable --no-locals --regex %2/'     's/^(va|var|vari|varia|variab|variabl|variable|variables)[[:space:]]*$/frame variable --show-globals --no-args --no-locals/'     's/^(va|var|vari|varia|variab|variabl|variable|variables)[[:space:]]+(.*)$/frame variable --show-globals --no-args --no-locals --regex %2/'     's/^threads[[:space:]]*$/thread list/'    's/^(di|dis|disp|displ|displa|display)[[:space:]]*$/target stop-hook list expr/'
