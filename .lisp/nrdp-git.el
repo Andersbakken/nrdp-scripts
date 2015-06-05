@@ -115,7 +115,7 @@
     (setq buffer-read-only nil)
     (erase-buffer)
     (setq default-directory dir)
-    (if (and (= (apply #'call-process "git" nil t t "diff" args) 0)
+    (if (and (= (apply #'call-process "git" nil t nil "diff" args) 0)
              (not (= (point-min) (point-max))))
         (progn
           (goto-char (point-min))
