@@ -93,6 +93,7 @@
   (interactive "P")
   (let* ((dir default-directory)
          (old (and (not norestorefocus) (get-buffer-window)))
+         (numwindows (length (window-list)))
          (args (list (or against "HEAD") "--" (cond ((null target)
                                                      (if (buffer-file-name)
                                                          (buffer-file-name)
@@ -128,6 +129,8 @@
             (select-window old)))
       (message "No differences")
       (kill-buffer (current-buffer))
+      (when (= numwindows 1)
+        (delete-window))
       nil)))
 
 (defun git-diff-other (&optional -w target)
