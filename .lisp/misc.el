@@ -238,7 +238,8 @@ the name of the value of file-name is present."
         (let ((match-start (match-beginning 3))
               (match-end (match-end 3)))
         (save-excursion
-          (when (search-forward "{" nil t)
+          (when (and (re-search-forward "[{;]" nil t)
+                     (string= (match-string 0) "{"))
             (forward-char -1)
             (forward-sexp)
             (when (>= (point) start)
