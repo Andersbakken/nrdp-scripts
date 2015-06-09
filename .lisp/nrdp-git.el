@@ -123,8 +123,8 @@
           (insert "$ git diff " (combine-and-quote-strings args) "\n")
           (search-forward-regexp "^@@ ")
           (goto-char (point-at-bol))
-          (setq buffer-read-only t)
           (diff-mode)
+          (setq buffer-read-only t)
           (when old
             (select-window old)))
       (message "No differences")
