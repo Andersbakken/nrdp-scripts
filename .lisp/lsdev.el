@@ -392,6 +392,8 @@
           (setq shadow-directory (nth 1 (car shadows)))
         (let ((shadow (completing-read "Shadow: " shadows))
               (s shadows))
+          (when (string= shadow "")
+            (setq shadow (caar shadows)))
           (while (and s (not shadow-directory))
             (let ((n (car s)))
               (setq s (cdr s))
