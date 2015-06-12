@@ -1,6 +1,7 @@
 (require 'delsel)
 (require 'lsdev)
 (require 'nrdp-git)
+(require 'thingatpt)
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
@@ -1198,5 +1199,31 @@ there's a region, all lines that region covers will be duplicated."
         (find-file file)
       (if (and file (length file))
           (message "Can't find %s" file)))))
+
+(defvar insert-c++-cast-alternatives (list "static_cast" "reinterpret_cast" "dynamic_cast" "static_pointer_cast" "std::static_pointer_cast"))
+(defun insert-c++-cast (&optional cast)
+  (interactive)
+  (unless cast
+    (setq cast (completing-read "Cast type: " insert-c++-cast-alternatives  nil nil nil nil (car insert-c++-cast-alternatives)))
+    (unless cast
+      (error "Nothing to cast")))
+  (let ((bounds (bounds-of-thing-at-point 'symbol))
+        pos)
+    (if (not bounds)
+        (progn
+          (insert cast "<")
+          (setq pos (point))
+          (insert ">()"))
+      (goto-char (cdr bounds))
+      (insert ")")
+      (goto-char (car bounds))
+      (insert cast "<")
+      (setq pos (point))
+      (insert ">("))
+    (goto-char pos)))
+
+(defun insert-static-cast (&optional choose)
+  (interactive "P")
+  (insert-c++-cast (unless choose "static_cast")))
 
 (provide 'nrdp-misc)
