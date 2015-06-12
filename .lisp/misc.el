@@ -1201,7 +1201,7 @@ there's a region, all lines that region covers will be duplicated."
           (message "Can't find %s" file)))))
 
 (defvar insert-c++-cast-alternatives (list "static_cast" "reinterpret_cast" "dynamic_cast" "static_pointer_cast" "std::static_pointer_cast"))
-(defun insert-c++-cast (&optional cast)
+(defun insert-c++-cast (&optional cast type)
   (interactive)
   (unless cast
     (setq cast (completing-read "Cast type: " insert-c++-cast-alternatives  nil nil nil nil (car insert-c++-cast-alternatives)))
@@ -1220,7 +1220,9 @@ there's a region, all lines that region covers will be duplicated."
       (insert cast "<")
       (setq pos (point))
       (insert ">("))
-    (goto-char pos)))
+    (goto-char pos)
+    (when type
+      (insert type))))
 
 (defun insert-static-cast (&optional choose)
   (interactive "P")
