@@ -36,6 +36,7 @@ exec_jira() {
     if [ -z "$JIRA_PASSWORD" ]; then
         read -p "JIRA Password: " -s JIRA_PASSWORD
     fi
+    [ -n "$JIRA_USER" ] && JIRA_ARGS="$JIRA_ARGS --user $JIRA_USER"
     [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
     $TEST jira $JIRA_ARGS "$@"
 }
