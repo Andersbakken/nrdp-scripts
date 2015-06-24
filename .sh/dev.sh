@@ -127,13 +127,21 @@ complete-netflix ()
         "$app" --help | grep '^ \+-' | grep -v "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
     fi
     local valueopts=`head -n 2 /tmp/netflix-completions-helper | tail -n 1`
+    local cur=${COMP_WORDS[COMP_CWORD]}
     local prev=${COMP_WORDS[COMP_CWORD-1]}
-    if [ -n "$prev" ] && printf -- "${valueopts}\n" | grep --quiet -- "$prev"; then
-        COMPREPLY=()
-        return;
+    if [ -n "$prev" ]; then
+       if [ "$prev" = "-x" ] || [ "$prev" = "--config-file" ]; then
+           dir=$(type $app | sed -e "s,^$app is ,,")
+           dir=$(dirname $dir)
+           confs=`/bin/ls "$dir/data/etc/conf/" | sed -e 's,\.xml,,' | xargs`
+           COMPREPLY=($(compgen -W "${confs}" -- ${cur}))
+           return;
+       elif printf -- "${valueopts}\n" | grep --quiet -- "$prev"; then
+           COMPREPLY=()
+           return;
+       fi
     fi
 
-    local cur=${COMP_WORDS[COMP_CWORD]}
     local nonvalueopts=`tail -n 1 /tmp/netflix-completions-helper`
     COMPREPLY=(`compgen -W "$valueopts $nonvalueopts" -- $cur`)
     if [ -n "$cur" ] && [ ${#COMPREPLY[@]} -eq 0 ] && printf -- "$cur\n" | grep --quiet -- "^-[^-]"; then
