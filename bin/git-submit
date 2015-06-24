@@ -52,7 +52,7 @@ elif [ "$1" = "cs" ]; then
     fi
     which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
 elif [ "$1" = "changes" ]; then
-    for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g' | tac`; do
+    for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
         [ "$change" = "+" ] && continue
         NOTES=
         git ignore check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
@@ -91,7 +91,7 @@ else
     fi
 
     if [ -z "$IN_CHANGES" ]; then
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command "submit $ORIGIN" "$ORIGIN..HEAD"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit $ORIGIN" "$ORIGIN..HEAD"
         exit 0
     fi
 
