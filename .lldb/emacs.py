@@ -7,7 +7,9 @@ def emake(debugger, command, result, internal_dict):
   os.system("emacsedit.sh -m -n")
 
 def rez(debugger, command, result, internal_dict):
-  print "%s" % debugger.frame.file.fullpath;
+  file = "%s:%d" % (lldb.frame.GetLineEntry().GetFileSpec().fullpath, lldb.frame.GetLineEntry().GetLine())
+  print "Open: %s" % file
+  os.system("emacsedit.sh -n %s" % file)
 
 def ecd(debugger, command, result, internal_dict):
   os.system("emacsedit.sh -n $PWD")
