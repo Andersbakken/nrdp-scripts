@@ -267,8 +267,8 @@ the name of the value of file-name is present."
       (forward-char -1)
       (skip-chars-backward "[\t ]")
       (let ((start (point)))
-        (delete-region start (or (and (search-forward "," nil t) (1- (point)))
-                                 (point-max)))))
+        (delete-region start (1- (or (and (search-forward "," nil t) (point))
+                                     (point-max))))))
     (buffer-string)))
 
 (defun misc-string-suffix-p (suffix string  &optional ignore-case)
