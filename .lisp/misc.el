@@ -358,7 +358,8 @@ to case differences."
                     "::"
                     (buffer-substring-no-properties functionnamestart functionnameend)
                     params
-                    (if (looking-at "\\<const\\>") " const")
+                    (if (looking-at "\\<const\\>")
+                        " const")
                     "\n{\n}\n\n")))))))
 
 ;;skeleton thingie
@@ -368,15 +369,20 @@ to case differences."
   (let* ((insertion-string (make-member-create-function-definition))
          (inline (and insertion-string (misc-string-prefix-p "inline" insertion-string)))
          (include)
+         (old)
          (file (buffer-file-name)))
     (when (and insertion-string file)
-      (c-end-of-statement)
-      (and (re-search-forward "[A-Za-z0-9_]+[\t ]*(" nil t)
-           (c-end-of-statement))
+      (goto-char (point-at-eol))
+      (re-search-backward ") *;")
+      (search-forward ";")
+      (forward-sexp)
+      (setq old (cons (point) (current-buffer)))
       (if inline
           (progn
-            (goto-char (point-max))
-            (re-search-backward "^#endif" (- (point-max) 200) t))
+            (if (search-forward insertion-string nil t)
+                (setq insertion-string nil)
+              (goto-char (point-max))
+              (re-search-backward "^#endif" (- (point-max) 200) t)))
         (when (not (switch-cpp-h))
           (string-match "\\.h$" file)
           (find-file (replace-match ".cpp" t t file))
@@ -384,11 +390,21 @@ to case differences."
             (and (string-match ".*/" file)
                  (setq file (replace-match "" t nil file)))
             (setq include t)))
-        (goto-char (point-max)))
-      (insert "\n" insertion-string)
-      (when include
         (goto-char (point-min))
-        (insert "#include \"" file "\"\n")))))
+        (if (search-forward insertion-string nil t)
+            (setq insertion-string nil)
+          (goto-char (point-max))))
+      (if (not insertion-string)
+          (progn
+            (message "It's already there!")
+            (switch-to-buffer (cdr old))
+            (goto-char (car old)))
+        (insert "\n" insertion-string)
+        (save-excursion
+          (when include
+            (goto-char (point-min))
+            (insert "#include \"" file "\"\n")))
+        (re-search-backward "}")))))
 
 
 (defalias 'agulbra-make-member 'make-member)
