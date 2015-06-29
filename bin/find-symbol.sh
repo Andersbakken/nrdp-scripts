@@ -43,8 +43,8 @@ if [ -z "$symbol" ]; then
     exit 1
 fi
 
-out=`mktemp`
-err=`mktemp`
+out=`mktemp /tmp/XXXXXX`
+err=`mktemp /tmp/XXXXXX`
 test -z "$dirs" && dirs="."
 # echo $out $err
 # echo $dirs
