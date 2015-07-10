@@ -1,3 +1,5 @@
+(when (and (not (fboundp 'magit-toplevel)) (fboundp 'magit-toplevel))
+  (defalias 'magit-toplevel 'magit-toplevel))
 ;;===================
 ;; Magit stuff
 ;;===================
@@ -50,7 +52,7 @@
   (interactive (list (git-grep-prompt)))
   (grep-find (concat "git --no-pager grep -I -n "
                      (shell-quote-argument search)
-                     " -- " (magit-get-top-dir) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
+                     " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
 
 (defun git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
@@ -103,7 +105,7 @@
                                                          (buffer-file-name target)
                                                        (error "git-diff: Not a file buffer")))
                                                     ((stringp target) target)
-                                                    (target (magit-get-top-dir))
+                                                    (target (magit-toplevel))
                                                     (t (error "git-diff: What to do here?")))))
          (buffer (get-buffer-create (if (or git-diff-reuse-diff-buffer (not args))
                                         "*git-diff*"
@@ -112,7 +114,7 @@
       (push "-w" args))
     (if no-split-window
         (switch-to-buffer buffer)
-      (switch-to-buffer-other-window buffer))
+      (set-buffer (switch-to-buffer-other-window buffer)))
     (setq buffer-read-only nil)
     (erase-buffer)
     (setq default-directory dir)
@@ -199,12 +201,13 @@
   (magit-refresh))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
-(defadvice pop-to-buffer (around return-focus activate)
-  (let ((prev (selected-window)))
-    ad-do-it
-    (when (and prev
-               (not (eq prev (selected-window)))
-               (string= (buffer-name) magit-process-buffer-name))
+(when (boundp 'magit-process-buffer-name)
+  (defadvice pop-to-buffer (around return-focus activate)
+    (let ((prev (selected-window)))
+      ad-do-it
+      (when (and prev
+                 (not (eq prev (selected-window))))
+        (string= (buffer-name) magit-process-buffer-name))
       (select-window prev))))
 
 (define-key magit-status-mode-map (kbd "-") 'magit-ediff)
@@ -249,29 +252,14 @@
 
 (add-hook 'magit-refresh-status-hook 'magit-limit-stashes-hook)
 
-(defadvice magit-status (around magit-fullscreen activate)
-  (when magit-fullscreen-status
-    (window-configuration-to-register :magit-fullscreen))
-  ad-do-it
-  (when magit-fullscreen-status
-    (delete-other-windows)))
-
-(defun magit-quit-session ()
-  "Restores the previous window configuration and kills the magit buffer"
-  (interactive)
-  (bury-buffer)
-  (jump-to-register :magit-fullscreen))
-
-(when magit-fullscreen-status
-  (define-key magit-status-mode-map (kbd "q") 'magit-quit-session))
-
 (defun misc-magit-add-action (group key name func)
   (interactive)
-  (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
-    (add-to-list 'group-actions (list key name func))
-    (push 'actions group-actions)
-    (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
-    (setq magit-key-mode-keymaps 'nil)))
+  ;; (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
+  ;;   (add-to-list 'group-actions (list key name func))
+  ;;   (push 'actions group-actions)
+  ;;   (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
+  ;;   (setq magit-key-mode-keymaps 'nil)))
+  )
 
 (defun magit-blame-for-current-revision ()
   (interactive)
