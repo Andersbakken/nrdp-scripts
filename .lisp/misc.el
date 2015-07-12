@@ -1,6 +1,6 @@
 (require 'delsel)
-(require 'lsdev)
 (require 'nrdp-git)
+(require 'lsdev)
 (require 'thingatpt)
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"

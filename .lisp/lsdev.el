@@ -182,7 +182,7 @@
 
 (defun lsdev-magit-status-at-point ()
   (interactive)
-  (let ((root (magit-get-top-dir)))
+  (let ((root (magit-toplevel)))
     (if root
         (magit-status root)
       (call-interactively 'magit-status))))
@@ -264,7 +264,7 @@
           (if (and magit-status
                    (stringp single-source)
                    (> (length single-source) 0)
-                   (magit-get-top-dir single-source))
+                   (magit-toplevel single-source))
               (progn
                 (magit-status single-source)
                 (kill-buffer "*lsdev-complete*"))
