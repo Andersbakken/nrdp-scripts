@@ -1,8 +1,14 @@
-(when (and (not (fboundp 'magit-toplevel)) (fboundp 'magit-toplevel))
-  (defalias 'magit-toplevel 'magit-toplevel))
 ;;===================
 ;; Magit stuff
 ;;===================
+
+;; 1.4.2 compatibility
+(defvar nrdp-git-old-ass-magit nil)
+(when (and (not (fboundp 'magit-toplevel)) (fboundp 'magit-get-top-dir))
+  (setq nrdp-git-old-ass-magit t)
+  (defalias 'magit-toplevel 'magit-get-top-dir)
+  (defalias 'magit-ediff-dwim 'magit-ediff)
+  (defalias 'magit-diff-less-context 'magit-diff-smaller-hunks))
 
 (defun magit-cherry-pick (&optional commit)
   (interactive)
@@ -32,7 +38,7 @@
 
 (defun git-gitify-path (file)
   (if (string-match "^/" file)
-      (let ((root (magit-get-top-dir (file-name-directory file))))
+      (let ((root (magit-toplevel (file-name-directory file))))
         (if (string-match (concat "^" root) file)
             (setq file (substring file (length root))))))
   file)
@@ -210,9 +216,9 @@
         (string= (buffer-name) magit-process-buffer-name))
       (select-window prev))))
 
-(define-key magit-status-mode-map (kbd "-") 'magit-ediff)
+(define-key magit-status-mode-map (kbd "-") 'nrdp-git-magit-ediff-file)
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
-(define-key magit-status-mode-map (kbd "_") 'magit-diff-smaller-hunks)
+(define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
 (define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
 (define-key magit-status-mode-map (kbd "l") 'magit-log-current-section)
 (define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace)
@@ -220,46 +226,6 @@
     (define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
   (define-key magit-log-mode-map (kbd "#") (function magit-show-revision-at-current-line)))
 (define-key magit-log-mode-map (kbd "@") (function magit-blame-for-current-revision))
-
-(defvar-local magit-hidden-stash-overlay nil)
-(defvar-local magit-hide-stashes t)
-(defcustom magit-fullscreen-status nil "Whether magit status always becomes fullscreen" :type 'boolean :group 'magit)
-(defcustom magit-max-stashes 0 "How many stashes to display" :type 'number :group 'magit)
-
-(defun magit-limit-stashes-hook ()
-  (when (> magit-max-stashes 0)
-    (save-excursion
-      (goto-char (point-min))
-      (when (search-forward-regexp "^Stashes:$" nil t)
-        (let ((stashes-beginning (match-beginning 0))
-              (buffer-read-only nil))
-          (if (and (buffer-local-value 'magit-hide-stashes (current-buffer))
-                   (search-forward-regexp (format "^%d: " magit-max-stashes) nil t))
-              (let ((start (point-at-bol))
-                    (end (or (search-forward-regexp "^$" nil t)
-                             (point-max))))
-                (setq-local magit-hidden-stash-overlay (make-overlay start end))
-                (overlay-put magit-hidden-stash-overlay 'invisible t)))
-          (goto-char stashes-beginning)
-          (delete-char 8)
-          (insert-button "Stashes:" 'action (lambda (x)
-                                              (setq magit-hide-stashes (not magit-hide-stashes))
-                                              (if magit-hide-stashes
-                                                  (magit-limit-stashes-hook)
-                                                (when (buffer-local-value 'magit-hidden-stash-overlay (current-buffer))
-                                                  (delete-overlay magit-hidden-stash-overlay)
-                                                  (setq magit-hidden-stash-overlay nil))))))))))
-
-(add-hook 'magit-refresh-status-hook 'magit-limit-stashes-hook)
-
-(defun misc-magit-add-action (group key name func)
-  (interactive)
-  ;; (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
-  ;;   (add-to-list 'group-actions (list key name func))
-  ;;   (push 'actions group-actions)
-  ;;   (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
-  ;;   (setq magit-key-mode-keymaps 'nil)))
-  )
 
 (defun magit-blame-for-current-revision ()
   (interactive)
@@ -296,14 +262,54 @@
     (when (and branch remote)
       (magit-run-git-async "push" remote (concat "HEAD:" branch) magit-custom-options))))
 
-(misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
-(misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
-(misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
-(misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
-(misc-magit-add-action 'pushing "C" "Choose" 'magit-choose-push)
-(misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
-(misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
-(misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)
+(if nrdp-git-old-ass-magit
+    (progn
+      (defvar-local magit-hidden-stash-overlay nil)
+      (defvar-local magit-hide-stashes t)
+      (defcustom magit-max-stashes 0 "How many stashes to display" :type 'number :group 'magit)
+
+      (defun magit-limit-stashes-hook ()
+        (when (> magit-max-stashes 0)
+          (save-excursion
+            (goto-char (point-min))
+            (when (search-forward-regexp "^Stashes:$" nil t)
+              (let ((stashes-beginning (match-beginning 0))
+                    (buffer-read-only nil))
+                (if (and (buffer-local-value 'magit-hide-stashes (current-buffer))
+                         (search-forward-regexp (format "^%d: " magit-max-stashes) nil t))
+                    (let ((start (point-at-bol))
+                          (end (or (search-forward-regexp "^$" nil t)
+                                   (point-max))))
+                      (setq-local magit-hidden-stash-overlay (make-overlay start end))
+                      (overlay-put magit-hidden-stash-overlay 'invisible t)))
+                (goto-char stashes-beginning)
+                (delete-char 8)
+                (insert-button "Stashes:" 'action (lambda (x)
+                                                    (setq magit-hide-stashes (not magit-hide-stashes))
+                                                    (if magit-hide-stashes
+                                                        (magit-limit-stashes-hook)
+                                                      (when (buffer-local-value 'magit-hidden-stash-overlay (current-buffer))
+                                                        (delete-overlay magit-hidden-stash-overlay)
+                                                        (setq magit-hidden-stash-overlay nil))))))))))
+
+      (add-hook 'magit-refresh-status-hook 'magit-limit-stashes-hook)
+
+      (defun misc-magit-add-action (group key name func)
+        (interactive)
+        (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
+          (add-to-list 'group-actions (list key name func))
+          (push 'actions group-actions)
+          (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
+          (setq magit-key-mode-keymaps 'nil)))
+
+      (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
+      (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
+      (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
+      (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
+      (misc-magit-add-action 'pushing "C" "Choose" 'magit-choose-push)
+      (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
+      (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
+      (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)))
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
@@ -316,7 +322,7 @@
   )
 
 (defun magit-find-current-status-buffer ()
-  (let ((topdir (magit-get-top-dir default-directory)))
+  (let ((topdir (magit-toplevel default-directory)))
     (when topdir
       (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*")))))
 
@@ -418,16 +424,12 @@
   (interactive)
   (magit-run-git-async "submit" "-a"))
 
-(defun magit-ediff-buffers (a b)
-  (setq magit-ediff-buffers (list b a))
-  (setq magit-ediff-windows (current-window-configuration))
-  (ediff-buffers b a '(magit-ediff-add-cleanup)))
-
-(defun magit-ediff-file ()
+(defun nrdp-git-magit-ediff-file ()
   (interactive)
-  (let ((a (current-buffer))
-        (b (progn (git-show-head (buffer-file-name)) (current-buffer))))
-    (magit-ediff-buffers b a)))
+  (ediff-buffers (current-buffer)
+                 (progn
+                   (git-show-head (buffer-file-name))
+                   (current-buffer))))
 
 ;; ================================================================================
 ;; git-jira
