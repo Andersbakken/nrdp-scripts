@@ -310,7 +310,15 @@
       (misc-magit-add-action 'pushing "C" "Choose" 'magit-choose-push)
       (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
       (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
-      (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)))
+      (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision))
+  (magit-define-popup-action 'magit-push-popup ?S "Sync" 'magit-sync)
+  (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
+  (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
+  (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
+  (magit-define-popup-action 'magit-push-popup ?C "Choose" 'magit-choose-push)
+  (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
+  (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision))
+
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
