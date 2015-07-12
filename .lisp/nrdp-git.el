@@ -201,18 +201,23 @@
 
 (defun magit-toggle-whitespace ()
   (interactive)
-  (if (member "-w" magit-diff-options)
+  (if (member "-w" (or (and (boundp 'magit-diff-arguments) 'magit-diff-arguments)
+                       magit-diff-options))
       (magit-dont-ignore-whitespace)
     (magit-ignore-whitespace)))
 
 (defun magit-ignore-whitespace ()
   (interactive)
-  (add-to-list 'magit-diff-options "-w")
+  (if (boundp 'magit-diff-arguments)
+      (add-to-list 'magit-diff-arguments "-w")
+    (add-to-list 'magit-diff-options "-w"))
   (magit-refresh))
 
 (defun magit-dont-ignore-whitespace ()
   (interactive)
-  (setq magit-diff-options (remove "-w" magit-diff-options))
+  (if (boundp 'magit-diff-arguments)
+      (setq magit-diff-arguments (remove "-w" magit-diff-arguments))
+    (setq magit-diff-options (remove "-w" magit-diff-options)))
   (magit-refresh))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
