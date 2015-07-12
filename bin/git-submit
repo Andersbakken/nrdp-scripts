@@ -80,7 +80,7 @@ else
         elif echo "$1" | grep -q / || '!' git rev-parse "$1" >/dev/null 2>&1; then
             ORIGIN="$1"
         else
-            IN_CHANGES="$IN_CHANGES $1"
+            IN_CHANGES="$IN_CHANGES `git rev-parse \"$1\"`"
         fi
         shift
     done
