@@ -207,13 +207,14 @@
   (magit-refresh))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
-(when (boundp 'magit-process-buffer-name)
-  (defadvice pop-to-buffer (around return-focus activate)
-    (let ((prev (selected-window)))
-      ad-do-it
-      (when (and prev
-                 (not (eq prev (selected-window))))
-        (string= (buffer-name) magit-process-buffer-name))
+(defadvice pop-to-buffer (around return-focus activate)
+  (let ((prev (selected-window)))
+    ad-do-it
+    (when (and prev
+               (not (eq prev (selected-window)))
+               (or (and (fboundp 'magit-process-buffer-name)
+                        (string= (buffer-name) (magit-process-buffer-name)))
+                   (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
 
 (define-key magit-status-mode-map (kbd "-") 'nrdp-git-magit-ediff-file)
