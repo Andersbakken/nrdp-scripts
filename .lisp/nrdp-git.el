@@ -3,6 +3,7 @@
 ;;===================
 
 ;; 1.4.2 compatibility
+(require 'buffer-local-mode)
 (defvar nrdp-git-old-ass-magit nil)
 (when (and (not (fboundp 'magit-toplevel)) (fboundp 'magit-get-top-dir))
   (setq nrdp-git-old-ass-magit t)
@@ -14,6 +15,7 @@
             (t nil))))
   (defalias 'magit-toplevel 'magit-get-top-dir)
   (defalias 'magit-ediff-dwim 'magit-ediff)
+  (defalias 'magit-get-tracked-branch 'magit-get-remote/branch)
   (defalias 'magit-diff-less-context 'magit-diff-smaller-hunks))
 
 (defun magit-cherry-pick (&optional commit)
@@ -93,14 +95,15 @@
       (setq buffer-read-only nil)
       (erase-buffer)
       (call-process "git" nil t t "show" (format "%s:%s" sha file))
-      (setq buffer-file-name file)
-      (set-auto-mode)
-      (setq buffer-file-name nil)
       (goto-char (point-min))
       (if line
           (forward-line line))
+      (setq buffer-file-name file)
+      (set-auto-mode)
+      (setq buffer-file-name nil)
       (font-lock-fontify-buffer)
-      (setq buffer-read-only t))))
+      (setq buffer-read-only t)
+      (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
 (defvar git-diff-reuse-diff-buffer nil)
 (defun git-diff (&optional -w target no-split-window norestorefocus against)
@@ -169,7 +172,7 @@
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (let ((tracking (magit-get-remote/branch)))
+  (let ((tracking (magit-get-tracked-branch)))
     (if tracking
         (git-show-revision (or file (buffer-file-name)) tracking)
       (message "No tracking branch for branch"))))
