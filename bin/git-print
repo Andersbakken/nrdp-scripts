@@ -46,6 +46,7 @@ while [ -n "$1" ]; do
             echo "  -c|--commit               Print the whole commit, not just the file"
             echo "  -i(.bak)|--inplace(=.bak) Update file to selected commitish"
             echo "  -b|--blame                Blame file"
+            ;;
         *)
             FILES+=("$1")
             ;;
