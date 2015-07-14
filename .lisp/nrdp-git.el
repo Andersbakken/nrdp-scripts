@@ -69,37 +69,35 @@
         (let ((file (magit-buffer-file-name t)))
           (if file
               (magit-file-log file)
-            (call-interactively 'magit-file-log))))
+            (call-interactively 'magit-file-log)))))
+  (defun nrdp-git-magit-buffer-file-name ()
+    (and (stringp header-line-format)
+         (string-match "Commits in [^ ]+ touching \\([^ ]+\\)" header-line-format)
+         (concat default-directory (match-string 1 header-line-format))))
 
-  )
+  (defun nrdp-git-magit-file-log ()
+    (interactive)
+    (let* ((file (rndp-git-magit-buffer-file-name))
+           (buf (cond (file (or (find-buffer-visiting file)
+                                (find-file-noselect file)))
+                      ((buffer-file-name) (current-buffer))
+                      (t nil))))
+      (if buf
+          (with-current-buffer buf
+            (call-interactively 'magit-log-buffer-file))
+        (message "Can't log this buffer"))))
 
-  (progn ;;else
-    (defun nrdp-git-magit-buffer-file-name ()
-      (and (stringp header-line-format)
-           (string-match "Commits in [^ ]+ touching \\([^ ]+\\)" header-line-format)
-           (concat default-directory (match-string 1 header-line-format))))
+  (defun nrdp-git-magit-log ()
+    (interactive)
+    (magit-log (list (magit-get-current-branch))))
 
-    (defun nrdp-git-magit-file-log ()
-      (interactive)
-      (let* ((file (rndp-git-magit-buffer-file-name))
-             (buf (cond (file (or (find-buffer-visiting file)
-                                  (find-file-noselect file)))
-                        ((buffer-file-name) (current-buffer))
-                        (t nil))))
-        (if buf
-            (with-current-buffer buf
-              (call-interactively 'magit-log-buffer-file))
-          (message "Can't log this buffer"))))
-
-    (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'magit-sync)
-    (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
-    (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
-    (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
-    (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
-    (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
-    (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
-  )
-)
+  (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'magit-sync)
+  (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
+  (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
+  (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
+  (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
+  (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
+  (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision))
 
 (defun magit-cherry-pick (&optional commit)
   (interactive)
