@@ -94,7 +94,7 @@
       (setq default-directory dir)
       (setq buffer-read-only nil)
       (erase-buffer)
-      (call-process "git" nil t t "show" (format "%s:%s" sha file))
+      (call-process "git" nil t nil "show" (format "%s:%s" sha file))
       (goto-char (point-min))
       (if line
           (forward-line line))
@@ -231,7 +231,7 @@
                    (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
 
-(define-key magit-status-mode-map (kbd "-") 'nrdp-git-magit-ediff-file)
+(define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-magit-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
 (define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
@@ -444,12 +444,10 @@
   (interactive)
   (magit-run-git-async "submit" "-a"))
 
-(defun nrdp-git-magit-ediff-file ()
+(defun nrdp-git-magit-ediff-file (&optional buffer)
   (interactive)
-  (ediff-buffers (current-buffer)
-                 (progn
-                   (git-show-head (buffer-file-name))
-                   (current-buffer))))
+  (unless buffer (setq buffer (current-buffer)))
+  (ediff-buffers buffer (progn (git-show-head (buffer-file-name buffer)) (current-buffer))))
 
 ;; ================================================================================
 ;; git-jira
