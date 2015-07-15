@@ -77,7 +77,7 @@
 
   (defun nrdp-git-magit-file-log ()
     (interactive)
-    (let* ((file (rndp-git-magit-buffer-file-name))
+    (let* ((file (nrdp-git-magit-buffer-file-name))
            (buf (cond (file (or (find-buffer-visiting file)
                                 (find-file-noselect file)))
                       ((buffer-file-name) (current-buffer))
