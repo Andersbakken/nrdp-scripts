@@ -44,6 +44,22 @@
           (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
           (setq magit-key-mode-keymaps 'nil)))
 
+      (defun magit-toggle-whitespace ()
+        (interactive)
+        (if (member "-w" magit-diff-options)
+            (magit-dont-ignore-whitespace)
+          (magit-ignore-whitespace)))
+
+      (defun magit-ignore-whitespace ()
+        (interactive)
+        (add-to-list 'magit-diff-options "-w")
+        (magit-refresh))
+
+      (defun magit-dont-ignore-whitespace ()
+        (interactive)
+        (setq magit-diff-options (remove "-w" magit-diff-options))
+        (magit-refresh))
+
       (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
       (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
       (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
@@ -91,6 +107,9 @@
   (defun nrdp-git-magit-log ()
     (interactive)
     (magit-log (list (magit-get-current-branch))))
+
+  (fset 'magit-toggle-whitespace
+   [?D ?- ?w ?\C-\M-l ?\C-x ?1 ?\M-x ?e ?v ?a ?l ?- ?b ?u tab return ?\C-\M-l ?q ?\C-x ?\( ?\C-x ?\( ?D ?- ?w ?g])
 
   (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'magit-sync)
   (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
@@ -280,28 +299,6 @@
   "Run git sync."
   (interactive)
   (magit-run-git-async "sync"))
-
-(defun magit-toggle-whitespace ()
-  (interactive)
-  (if (member "-w" (if (boundp 'magit-diff-arguments)
-                       magit-diff-arguments
-                     magit-diff-options))
-      (magit-dont-ignore-whitespace)
-    (magit-ignore-whitespace)))
-
-(defun magit-ignore-whitespace ()
-  (interactive)
-  (if (boundp 'magit-diff-arguments)
-      (add-to-list 'magit-diff-arguments "-w")
-    (add-to-list 'magit-diff-options "-w"))
-  (magit-refresh))
-
-(defun magit-dont-ignore-whitespace ()
-  (interactive)
-  (if (boundp 'magit-diff-arguments)
-      (setq magit-diff-arguments (remove "-w" magit-diff-arguments))
-    (setq magit-diff-options (remove "-w" magit-diff-options)))
-  (magit-refresh))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
 (defadvice pop-to-buffer (around return-focus activate)
