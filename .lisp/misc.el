@@ -948,7 +948,7 @@ to case differences."
 ;; ================================================================================
 
 (defun misc-is-compiled (el)
-  (let ((elc (concat file "c")))
+  (let ((elc (byte-compile-dest-file file)))
     (and (file-exists-p elc)
          (not (file-newer-than-file-p el elc)))))
 
@@ -985,17 +985,20 @@ to case differences."
 
 (defun misc-compile-all (directory &optional norecurse)
   (interactive "D")
-  (misc-find-files directory
-                   "\.el$"
-                   norecurse
-                   #'(lambda (file)
-                       (unless (misc-is-compiled file)
-                         (byte-compile-file file)))
-                   #'(lambda (file)
-                       (or (string-match "/tests?[/$]" file)
-                           (string-match "\\<demo\\>" file)
-                           (string-match "\\<examples?\\>" file)
-                           (string-match "\\.cask[/$]" file)))))
+  (let ((count 0))
+    (misc-find-files directory
+                     "\.el$"
+                     norecurse
+                     #'(lambda (file)
+                         (unless (misc-is-compiled file)
+                           (incf count)
+                           (byte-compile-file file t)))
+                     #'(lambda (file)
+                         (or (string-match "/tests?[/$]" file)
+                             (string-match "\\<demo\\>" file)
+                             (string-match "\\<examples?\\>" file)
+                             (string-match "\\.cask[/$]" file))))
+    count))
 
 (defun misc-compile-all-loadpath ()
   (interactive)
