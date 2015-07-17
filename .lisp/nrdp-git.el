@@ -283,8 +283,9 @@
 
 (defun magit-toggle-whitespace ()
   (interactive)
-  (if (member "-w" (or (and (boundp 'magit-diff-arguments) 'magit-diff-arguments)
-                       magit-diff-options))
+  (if (member "-w" (if (boundp 'magit-diff-arguments)
+                       magit-diff-arguments
+                     magit-diff-options))
       (magit-dont-ignore-whitespace)
     (magit-ignore-whitespace)))
 
