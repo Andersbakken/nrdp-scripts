@@ -2,6 +2,7 @@
 (require 'nrdp-git)
 (require 'lsdev)
 (require 'thingatpt)
+(require 'bytecomp)
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
@@ -271,7 +272,7 @@ the name of the value of file-name is present."
                                      (point-max))))))
     (buffer-string)))
 
-(defun misc-string-suffix-p (suffix string  &optional ignore-case)
+(defun misc-string-suffix-p (suffix string &optional ignore-case)
   "Return non-nil if SUFFIX is a suffix of STRING.
 If IGNORE-CASE is non-nil, the comparison is done without paying
 attention to case differences."
@@ -946,6 +947,64 @@ to case differences."
 ;; mktest
 ;; ================================================================================
 
+(defun misc-is-compiled (el)
+  (let ((elc (concat file "c")))
+    (and (file-exists-p elc)
+         (not (file-newer-than-file-p el elc)))))
+
+(defun misc-check-pattern (pattern file)
+  (cond ((stringp pattern) (string-match pattern file))
+        ((functionp pattern) (funcall pattern file))
+        (t)))
+
+(defun misc-find-files (directory &optional pattern norecurse cb exclude)
+  (let ((files (and (file-directory-p directory)
+                    (directory-files-and-attributes directory t nil t)))
+        (ret (unless (null cb) 0)))
+    (while files
+      (let ((file (car files)))
+        (when (or (not exclude)
+                  (not (misc-check-pattern exclude (car file))))
+          (cond ((misc-string-suffix-p "/." (car file)))
+                ((misc-string-suffix-p "/.." (car file)))
+                ((eq (nth 1 file) t)
+                 (unless norecurse
+                   (if cb
+                       (incf ret (misc-find-files (car file) pattern norecurse cb exclude))
+                     (setq ret (append ret (misc-find-files (car file) pattern norecurse cb exclude))))))
+                ((and (not (nth 1 file)) ;; skip-symlinks
+                      (misc-check-pattern pattern (car file))
+                      (file-writable-p (car file)))
+                 (if (not cb)
+                     (push (car file) ret)
+                   (funcall cb (car file))
+                   (incf ret)))
+                (t))))
+      (setq files (cdr files)))
+    ret))
+
+(defun misc-compile-all (directory &optional norecurse)
+  (interactive "D")
+  (misc-find-files directory
+                   "\.el$"
+                   norecurse
+                   #'(lambda (file)
+                       (unless (misc-is-compiled file)
+                         (byte-compile-file file)))
+                   #'(lambda (file)
+                       (or (string-match "/tests?[/$]" file)
+                           (string-match "\\<demo\\>" file)
+                           (string-match "\\<examples?\\>" file)
+                           (string-match "\\.cask[/$]" file)))))
+
+(defun misc-compile-all-loadpath ()
+  (interactive)
+  (let ((paths load-path)
+        (count 0))
+    (while paths
+      (incf count (misc-compile-all (car paths)))
+      (setq paths (cdr paths)))
+    (message "Compiled %d files" count)))
 
 (defun misc-compare-files-by-modification-time (l r)
   (time-less-p (nth 6 l) (nth 6 r)))
@@ -1183,7 +1242,6 @@ there's a region, all lines that region covers will be duplicated."
                                                  (t nil)))
       (magit-refresh-status-buffer)
       (message (buffer-string)))))
-
 
 (defun nslookup (&optional ip)
   (interactive)
