@@ -63,6 +63,7 @@
       (defalias 'magit-ediff-dwim 'magit-ediff)
       (defalias 'magit-get-tracked-branch 'magit-get-remote/branch)
       (defalias 'magit-diff-less-context 'magit-diff-smaller-hunks)
+      (defalias 'magit-log-popup 'magit-key-mode-popup-logging)
 
       (defun nrdp-git-magit-file-log ()
         (interactive)
@@ -365,8 +366,7 @@
         (setq windows nil)
         (setq ret t))
       (setq windows (cdr windows)))
-    ret)
-  )
+    ret))
 
 (defun magit-find-current-status-buffer ()
   (let ((topdir (magit-toplevel default-directory)))
@@ -409,8 +409,7 @@
   (let ((file (magit-current-section-file)))
     (if file
         (magit-file-log file)
-      (magit-key-mode-popup-logging)))
-  )
+      (magit-log-popup))))
 
 (defun magit-run-on-multiple (commands &optional commit)
   (let (args)
