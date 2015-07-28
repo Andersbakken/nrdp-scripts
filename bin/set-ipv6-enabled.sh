@@ -2,14 +2,14 @@
 
 var=
 case "$1" in
-    on|1|enabled|true)
+    on|1|enabled|true|yes)
         var=0
         ;;
-    off|0|disabled|false)
+    off|0|disabled|false|no)
         var=1
         ;;
     *)
-        echo "Invalid option. Usage: $0 (on|1|enabled|true|off|0|disabled|false)"
+        echo "Invalid option. Usage: $0 (on|1|enabled|true|yes|off|0|disabled|false|no)"
         exit 1
         ;;
 esac
