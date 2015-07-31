@@ -1305,4 +1305,22 @@ there's a region, all lines that region covers will be duplicated."
   (interactive "P")
   (insert-c++-cast (unless choose "static_cast")))
 
+(defun misc-compilation-finish-function (buf str)
+  (cond ((string-match "exited abnormally" str)
+         (message "compilation errors, press C-x ` to visit"))
+        ((with-current-buffer buf
+           (save-excursion
+             (goto-char (point-min))
+             (re-search-forward ":[0-9]+: warning:" nil t)))
+         (message "compilation warnings, press C-x ` to visit"))
+        ((string-match "*compilation*" (buffer-name buf))
+         (if (> (length (window-list)) 1)
+             (let ((windows (get-buffer-window-list buf)))
+               (while windows
+                 (delete-window (car windows))
+                 (setq windows (cdr windows))))
+           (bury-buffer buf))
+         (message "Compilation successful!"))
+        (t nil)))
+
 (provide 'nrdp-misc)
