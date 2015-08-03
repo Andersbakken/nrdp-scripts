@@ -111,7 +111,8 @@
         (interactive)
         (let ((file (cond ((bufferp bufferorfilename) (buffer-file-name bufferorfilename))
                           ((stringp bufferorfilename) bufferorfilename)
-                          (magit-buffer-file-name t))))
+                          ((and (boundp 'magit-buffer-file-name) magit-buffer-file-name))
+                          (t nil))))
           (if file
               (magit-file-log file)
             (call-interactively 'magit-file-log)))))
