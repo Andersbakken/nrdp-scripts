@@ -338,6 +338,9 @@ to case differences."
               (params)
               (const))
           (skip-chars-forward "[\t ]")
+          (when (looking-at "virtual\\>")
+            (forward-char 7)
+            (skip-chars-forward "[\t ]"))
           (setq returnstart (point))
           (when (search-forward "(" (point-at-eol) t)
             (forward-char -1)
@@ -353,7 +356,8 @@ to case differences."
             (setq params (make-member-strip-default-arguments (buffer-substring-no-properties paramsstart (point))))
             (skip-chars-forward "[\t ]")
             (setq return (make-member-fixup-return-value (buffer-substring-no-properties returnstart returnend)))
-            (concat (if (cdr return) "inline ")
+            (concat (if (cdr return)
+                        "inline ")
                     (car return)
                     (combine-and-quote-strings classes "::")
                     "::"
@@ -376,7 +380,9 @@ to case differences."
       (goto-char (point-at-eol))
       (re-search-backward ") *;")
       (search-forward ";")
-      (forward-sexp)
+      (condition-case nil
+          (forward-sexp)
+        (error))
       (setq old (cons (point) (current-buffer)))
       (if inline
           (progn
