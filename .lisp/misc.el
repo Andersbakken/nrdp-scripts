@@ -1319,7 +1319,8 @@ there's a region, all lines that region covers will be duplicated."
                (while windows
                  (delete-window (car windows))
                  (setq windows (cdr windows))))
-           (bury-buffer buf))
+           (switch-to-buffer buf)
+           (bury-buffer))
          (message "Compilation successful!"))
         (t nil)))
 
