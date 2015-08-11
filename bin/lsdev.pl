@@ -559,40 +559,35 @@ sub isRootRelated {
     return $result;
 }
 
-sub filterMatches {
-    my @match_roots = @_;
+sub filterMatches_internal {
+    my ($roots, $matches) = @_;
 
     my @result;
-    foreach(@match_roots) {
+    foreach(@{$roots}) {
         my $root = findRoot($_);
         next if($root->{ignore} || !$root->{path});
         if($#matches != -1) {
-            foreach(@matches) {
+            foreach(@{$matches}) {
                 my $match = $_;
                 my $inverse = 0;
                 if($match =~ /^-(.*)/) {
                     $match = $1;
                     $inverse = 1;
                 }
-                my $matches = 0;
+                my $matched = 0;
                 if($match eq "src" || $match eq "source") {
-                    $matches = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
+                    $matched = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
                 } elsif($match eq "build") {
-                    $matches = defined($root->{source});
+                    $matched = defined($root->{source});
                 } elsif($match =~ /^path:(.*)/) {
-                    $matches = ($root->{path} =~ /$1/i);
+                    $matched = ($root->{path} =~ /$1/i);
                 } else {
                     my $root_name = generateRootName($root);
-                    $matches = ($root_name =~ /$match/i);
-                    if(!$matches) {
-                        my $ido = $match;
-                        $ido =~ s,(.),\1.*,g;
-                        $matches = ($root_name =~ /$ido/i);
-                    }
+                    $matched = ($root_name =~ /$match/i);
                 }
-                $matches = !$matches if($inverse);
-                #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matches\n" if($verbose);
-                unless($matches) {
+                $matched = !$matched if($inverse);
+                #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matched\n" if($verbose);
+                unless($matched) {
                     $root = undef;
                     last;
                 }
@@ -606,6 +601,22 @@ sub filterMatches {
         }
     }
     @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
+    return @result;
+}
+
+sub filterMatches {
+    my ($roots, $matches) = @_;
+
+    my @result = filterMatches_internal($roots, $matches);
+    if($#result == -1) {
+        my @ido_match_roots;
+        foreach(@{matches}) {
+            my $ido_match_root = $_;
+            $ido_match_root =~ s,(.),\1.*,g;
+            push @ido_match_roots, $ido_match_root;
+        }
+        @result = filterMatches_internal($roots, \@ido_match_roots);
+    }
     return @result;
 }
 
@@ -818,7 +829,7 @@ if($display_only eq "default") { #display the currently mapped default
             my $root = $roots{$_};
             push @choices, $root->{path};
         }
-        @choices = filterMatches(@choices);
+        @choices = filterMatches(\@choices, \@matches);
         if($read_devdir_list != 2) {
             my @related_choices;
             for(my $i = 0; $i < @choices; ++$i) {
@@ -901,7 +912,7 @@ if($display_only eq "default") { #display the currently mapped default
                 last if($index >= 0 && $index <= $#choices);
             }
             push @matches, "$choice";
-            @choices = filterMatches(@choices);
+            @choices = filterMatches(\@choices, \@matches);
         }
     }
     if(defined($index)) {
