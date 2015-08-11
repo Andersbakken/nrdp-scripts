@@ -582,7 +582,13 @@ sub filterMatches {
                 } elsif($match =~ /^path:(.*)/) {
                     $matches = ($root->{path} =~ /$1/i);
                 } else {
-                    $matches = (generateRootName($root) =~ /$match/i);
+                    my $root_name = generateRootName($root);
+                    $matches = ($root_name =~ /$match/i);
+                    if(!$matches) {
+                        my $ido = $match;
+                        $ido =~ s,(.),\1.*,g;
+                        $matches = ($root_name =~ /$ido/i);
+                    }
                 }
                 $matches = !$matches if($inverse);
                 #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matches\n" if($verbose);
