@@ -266,6 +266,7 @@
                    (> (length single-source) 0)
                    (magit-toplevel single-source))
               (progn
+                (cd single-source)
                 (magit-status single-source)
                 (kill-buffer "*lsdev-complete*"))
             (progn
