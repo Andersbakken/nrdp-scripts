@@ -1034,7 +1034,9 @@ to case differences."
                      #'(lambda (file)
                          (unless (misc-is-compiled file)
                            (incf count)
-                           (byte-compile-file file t)))
+                           (condition-case nil
+                               (byte-compile-file file t)
+                             (error))))
                      #'(lambda (file)
                          (or (string-match "/tests?[/$]" file)
                              (string-match "\\<demo\\>" file)
