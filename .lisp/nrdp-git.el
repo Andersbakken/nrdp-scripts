@@ -440,7 +440,7 @@
   (let ((file (magit-current-section-file)))
     (if file
         (nrdp-git-magit-file-log file)
-      (magit-log-popup))))
+      (call-interactively 'magit-log-popup))))
 
 (defun magit-run-on-multiple (commands &optional commit)
   (let (args)
