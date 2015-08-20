@@ -125,11 +125,9 @@
 (defun lsdev-cd-completing (string predicate code)
   (let ((complete-list (make-vector 63 0)))
     (with-temp-buffer
-      (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if string string "") (if lsdev-cd-ignore-builds "-build" ""))
+      (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if string string ""))
       (goto-char (point-min))
       (let ((pattern (if (equal "" string) "\\(.*\\)" (concat ".*\\(" string ".*\\)"))))
-        (if lsdev-cd-ignore-builds
-            (setq pattern (concat "src_" pattern)))
         ;; (message (concat "pattern " pattern))
         (while (not (eobp))
           (if (looking-at pattern)
