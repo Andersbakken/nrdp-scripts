@@ -14,6 +14,7 @@ my $detect_rest = 1;
 my $detect_devdirs = 1;
 my $display_only;
 my $display_help = 0;
+my $exact = 0;
 my $answer;
 my $cwd = Cwd::getcwd();
 if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
@@ -46,6 +47,8 @@ sub parseOptions {
             $detect_rest = 0;
         } elsif($option eq "-c") {
             $cwd = shift @_;
+        } elsif($option eq "-e") {
+            $exact = 1;
         } elsif($option eq "-d") {
             $display_only = "default";
         } elsif($option eq "-b") {
@@ -458,19 +461,28 @@ sub addRoot {
     return \%root;
 }
 
-sub generateName {
-    my ($name, $source) = @_;
-    if($source) {
-        my $src_root = findRoot($source);
+sub generateBuildName {
+
+}
+
+sub isRootSource {
+    my ($root) = @_;
+    return (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
+}
+
+sub isRootBuild {
+    my ($root) = @_;
+    return defined($root->{source});
+}
+
+sub generateBuildName {
+    my ($root) = @_;
+
+    my $name = $root->{name};
+    if(isRootBuild($root)) {
+        my $src_root = findRoot($root->{source});
         my $src_name = $src_root->{name};
         $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
-        if(isPathSame($src_root->{source}, $source)) {
-            $name = "${src_prefix}${name}";
-        } else {
-            $name = "${build_prefix}${name}";
-        }
-    } else {
-        $name = "${src_prefix}${name}";
     }
     display "Generated Name: $name\n" if($verbose);
     return $name;
@@ -478,7 +490,10 @@ sub generateName {
 
 sub generateRootName {
     my ($root) = @_;
-    return generateName($root->{name}, $root->{source});
+
+    my $name = $root->{name};
+    $name = generateBuildName($root) if(isRootBuild($root));
+    return (isRootSource($root) ? $src_prefix : $build_prefix) . $name;
 }
 
 sub isPathSame {
@@ -576,11 +591,22 @@ sub filterMatches_internal {
                 }
                 my $matched = 0;
                 if($match eq "src" || $match eq "source") {
-                    $matched = (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
+                    $matched = isRootSource($root);
                 } elsif($match eq "build") {
-                    $matched = defined($root->{source});
+                    $matched = isRootBuild($root);
                 } elsif($match =~ /^path:(.*)/) {
                     $matched = ($root->{path} =~ /$1/i);
+                } elsif($exact) {
+                    my $prefix;
+                    my $name = $match;
+                    if($match =~ /^${src_prefix}/) {
+                        $prefix = "${src_prefix}";
+                    } elsif($match =~ /^${build_prefix}/) {
+                        $prefix = "${build_prefix}";
+                    }
+                    $name = substr $name, length($prefix) if($prefix);
+                    $matched = ($name eq generateBuildName($root)) if(!defined($prefix) || ($prefix eq $build_prefix && isRootBuild($root)));
+                    $matched = ($name eq $root->{name}) if(!$matched && (!defined($prefix) || ($prefix eq $src_prefix && isRootSource($root))));
                 } else {
                     my $root_name = generateRootName($root);
                     $matched = ($root_name =~ /$match/i);
@@ -608,7 +634,7 @@ sub filterMatches {
     my ($roots, $matches) = @_;
 
     my @result = filterMatches_internal($roots, $matches);
-    if($#result == -1) {
+    if(!$exact && $#result == -1) {
         my @ido_match_roots;
         foreach(@{matches}) {
             my $ido_match_root = $_;

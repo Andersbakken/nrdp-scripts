@@ -1,6 +1,5 @@
 (require 'bs)
 (require 'ido)
-(require 'magit)
 (require 'nrdp-git)
 (require 'buffer-pop)
 (eval-when-compile (require 'cl))
@@ -10,18 +9,8 @@
   :group 'tools
   :prefix "lsdev-")
 
-(defcustom lsdev-cd-ignore-builds nil
-  "Whether build directories are shown in lsdev-cd"
-  :type 'boolean
-  :group 'lsdev)
-
 (defcustom lsdev-open-equivalent-use-find nil
   "Whether find is used in lsdev-open-equivalent"
-  :type 'boolean
-  :group 'lsdev)
-
-(defcustom lsdev-cd-magit-status nil
-  "Whether lsdev-cd should jump into magit-status for exact matches"
   :type 'boolean
   :group 'lsdev)
 
@@ -153,8 +142,9 @@
           ((eq code 'lambda)
            (if (intern-soft string complete-list) t nil)))))
 
-(defun lsdev-cd-directory-name-at-point()
+(defun lsdev-cd-directory-name-at-point(&optional point)
   (save-excursion
+    (when point (goto-char point))
     (beginning-of-line)
     ;; (message (buffer-substring (point-at-bol) (point-at-eol)))
     (if (looking-at "^[^[]* \\[\\([^]]*\\)\\]")
@@ -179,13 +169,6 @@
   (let ((dir (lsdev-cd-directory-name-at-point)))
     (if dir
         (lsdev-compile-directory dir (if recompile 1 t)))))
-
-(defun lsdev-magit-status-at-point ()
-  (interactive)
-  (let ((root (magit-toplevel)))
-    (if root
-        (magit-status root)
-      (call-interactively 'magit-status))))
 
 (defun lsdev-git-diff-all-at-point ()
   (interactive)
@@ -217,12 +200,10 @@
 
 (defvar lsdev-mode-custom-bindings nil)
 (defvar lsdev-cd-history nil)
-(defun lsdev-cd-internal (args ignore-builds from-eshell magit-status)
-  (or magit-status (setq magit-status lsdev-cd-magit-status))
+(defun lsdev-cd-mode (args from-eshell listfunc)
+  (unless listfunc (setq listfunc 'find-file))
   (let ((previous (current-buffer)))
     (push "-l" args)
-    (if (or ignore-builds lsdev-cd-ignore-builds)
-        (push "-build" args))
     (if (get-buffer "*lsdev-complete*")
         (kill-buffer "*lsdev-complete*"))
     (switch-to-buffer (get-buffer-create "*lsdev-complete*"))
@@ -236,44 +217,29 @@
           (lsdev-cd-bury-buffer)
           (switch-to-buffer previous))
       (save-excursion
-        (let ((single-source)
-              (firstbuild t)
-              (lines (count-lines (point-min) (point-max))))
+        (let ((lines (count-lines (point-min) (point-max))))
           (goto-char (point-min))
-          (while (and (< (count-lines (point-min) (point)) lines)
-                      (not (looking-at "\*Builds\*")))
-            (if (looking-at "^build_")
-                (save-excursion
-                  (kill-line)
-                  (kill-line)
-                  (goto-char (point-max))
-                  (when firstbuild
-                    (setq firstbuild nil)
-                    (insert "\n*Builds*\n"))
-                  (insert (current-kill 1) "\n"))
+          (if (= lines 1)
               (progn
-                (when (> (point-at-eol) (point-at-bol))
-                  (cond ((not single-source)
-                         (let* ((line (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-                                (match (and (string-match "\\[\\([^]]*\\)\\]" line) (match-string 1 line))))
-                           (setq single-source (or match ""))))
-                        ((stringp single-source)
-                         (setq single-source 0))
-                        (t)))
-                (forward-line))))
-          (if (and magit-status
-                   (stringp single-source)
-                   (> (length single-source) 0)
-                   (magit-toplevel single-source))
-              (progn
-                (magit-status single-source)
+                (funcall listfunc (lsdev-cd-directory-name-at-point))
                 (kill-buffer "*lsdev-complete*"))
-            (progn
+            (let ((firstbuild t))
+              (while (and (< (count-lines (point-min) (point)) lines)
+                          (not (looking-at "\*Builds\*")))
+                (if (looking-at "^build_")
+                    (save-excursion
+                      (kill-line)
+                      (kill-line)
+                      (goto-char (point-max))
+                      (when firstbuild
+                        (setq firstbuild nil)
+                        (insert "\n*Builds*\n"))
+                      (insert (current-kill 1) "\n"))
+                  (forward-line)))
               (setq buffer-read-only t)
               (local-set-key (kbd "q") 'lsdev-cd-bury-buffer)
               (local-set-key (kbd "/") 'lsdev-cd-subdir)
               (local-set-key (kbd "g") 'lsdev-cd-changedir)
-              (local-set-key (kbd "s") 'lsdev-magit-status-at-point)
               (local-set-key (kbd "d") 'lsdev-git-diff-all-at-point)
               (local-set-key (kbd "=") 'lsdev-git-diff-all-at-point)
               (local-set-key (kbd "D") 'git-diff-repo)
@@ -286,21 +252,22 @@
                   (funcall lsdev-mode-custom-bindings))
               (add-to-list 'mode-line-buffer-identification '(:eval (lsdev-cd-modeline-function))))))))))
 
-(defun lsdev-cd (&optional ignore-builds magit-status)
-  (interactive)
-  (let* ((args nil)
-         (exec (executable-find "lsdev.pl"))
+(defun lsdev-cd (&optional prefix listfunc)
+  (interactive "P")
+  (let ((args (list "-a" "-r"))
          (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
-         (alternatives (and exec
-                            (with-temp-buffer
-                              (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn" (if lsdev-cd-ignore-builds "-build" ""))
-                              (cl-remove-duplicates (split-string (buffer-string) "[\f\t\n\r\v_]+") :test 'equal))))
-         (hd (completing-read "LSDEV Directory: " alternatives nil t nil 'lsdev-cd-history)))
+         (project)
+         (split "\f\t\n\r\v"))
+    (if prefix
+        (setq split (concat split "_-"))
+      (push "-e" args))
+    (setq project (completing-read "LSDEV Directory: " (with-temp-buffer
+                                                         (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn")
+                                                         (cl-remove-duplicates (split-string (buffer-string) (concat "[" split "]+")) :test 'equal))
+                                   nil t nil 'lsdev-cd-history))
+    (unless (or (string= project "") (not project) (push (if (string-match "/$" project) (substring project 0 -1) project) args)))
     (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
-    (push "-a" args)
-    (push "-r" args)
-    (unless (or (string= hd "") (not hd)) (push (if (string-match "/$" hd) (substring hd 0 -1) hd) args))
-    (lsdev-cd-internal args ignore-builds from-eshell magit-status)))
+    (lsdev-cd-mode args from-eshell listfunc)))
 
 ;;mode string
 (defvar lsdev-mode t)

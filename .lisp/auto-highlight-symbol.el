@@ -1110,9 +1110,11 @@ You can do these operations at One Key!
 
 (defun ahs-unhighlight (&optional force)
   "Unhighlight"
-  (when (or force
-            (not (memq this-command
-                       ahs-unhighlight-allowed-commands)))
+  (when (and (not (minibufferp (current-buffer)))
+             (or
+              force
+              (not (memq this-command
+                         ahs-unhighlight-allowed-commands))))
     (ahs-remove-all-overlay)
     (remove-hook 'pre-command-hook 'ahs-unhighlight t)))
 
