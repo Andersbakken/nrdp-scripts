@@ -1025,7 +1025,7 @@ to case differences."
       (setq files (cdr files)))
     ret))
 
-(defun misc-compile-all (directory &optional norecurse)
+(defun misc-byte-compile-all (directory &optional norecurse)
   (interactive "D")
   (let ((count 0))
     (misc-find-files directory
@@ -1044,12 +1044,12 @@ to case differences."
                              (string-match "\\.cask[/$]" file))))
     count))
 
-(defun misc-compile-all-loadpath ()
+(defun misc-byte-compile-all-loadpath ()
   (interactive)
   (let ((paths load-path)
         (count 0))
     (while paths
-      (incf count (misc-compile-all (car paths)))
+      (incf count (misc-byte-compile-all (car paths)))
       (setq paths (cdr paths)))
     (message "Compiled %d files" count)))
 
