@@ -1025,15 +1025,17 @@ to case differences."
       (setq files (cdr files)))
     ret))
 
-(defun misc-compile-all (directory &optional norecurse)
+(defun misc-byte-compile-all (directory &optional norecurse)
   (interactive "D")
-  (let ((count 0))
+  (let ((compiled 0)
+        (considered 0))
     (misc-find-files directory
                      "\.el$"
                      norecurse
                      #'(lambda (file)
+                         (incf considered)
                          (unless (misc-is-compiled file)
-                           (incf count)
+                           (incf compiled)
                            (condition-case nil
                                (byte-compile-file file t)
                              (error))))
@@ -1042,16 +1044,19 @@ to case differences."
                              (string-match "\\<demo\\>" file)
                              (string-match "\\<examples?\\>" file)
                              (string-match "\\.cask[/$]" file))))
-    count))
+    (cons compiled considered)))
 
-(defun misc-compile-all-loadpath ()
+(defun misc-byte-compile-all-loadpath ()
   (interactive)
   (let ((paths load-path)
-        (count 0))
+        (considered 0)
+        (compiled 0))
     (while paths
-      (incf count (misc-compile-all (car paths)))
+      (let ((result (misc-byte-compile-all (car paths))))
+        (incf compiled (car result))
+        (incf considered (cdr result)))
       (setq paths (cdr paths)))
-    (message "Compiled %d files" count)))
+    (message "Compiled %d/%d files" compiled considered)))
 
 (defun misc-compare-files-by-modification-time (l r)
   (time-less-p (nth 6 l) (nth 6 r)))
