@@ -76,9 +76,11 @@ while true; do
     elif [ -n "$choose" ] && echo "$choose" | grep '[0-9]'; then
         choose_args="$choose_args -c $choose"
     fi
-    choose_args="$choose_args -+$head -$number -a "
+    choose_args="$choose_args -+$head -$number -n -a "
     change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
-    if [ -n "$change" ]; then
+    if [ "$change" = "n" ] || [ "$change" = "p" ]; then
+        choose="$change"
+    elif [ -n "$change" ]; then
         if [ "$command" = "submit" ]; then
             while true; do
                 do_submit=y

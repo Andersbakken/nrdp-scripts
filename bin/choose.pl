@@ -10,6 +10,7 @@ my $read_option = 1;
 my $read_prompt;
 my $must_ask = 0;
 my $unique = 0;
+my $pager = 1;
 my $rest_options = 0;
 my $options_from=0;
 my $options_count = 20;
@@ -107,6 +108,8 @@ while(@ARGV) {
         $choose = shift @ARGV;
     } elsif($option eq "-u") {
         $unique = 1;
+    } elsif($option eq "-n") {
+        $pager = 0;
     } elsif($option eq "-m") {
         push(@matches, shift @ARGV);
     } elsif($option eq "-a") {
@@ -149,6 +152,7 @@ if($show_help) {
     print STDERR "  -l        Just print options don't query.\n";
     print STDERR "  -u        Ensure unique options.\n";
     print STDERR "  -p <msg>  Display <msg> in prompt.\n";
+    print STDERR "  -n        Disable built in pager.\n";
     print STDERR "  -r <key> <value> Show key and return value.\n";
     print STDERR "  -x <exe>  Run <exe> to gather the list of choices.\n";
     exit 1;
@@ -173,10 +177,18 @@ if($read_option) {
                 if( $input =~ /^([1-9]+[0-9]*)$/ ) {
                     $result = get_option($options_from+$1-1)->{"result"}
                 } elsif( $input eq "n" && $options_count ) {
-                    $options_from += $options_count;
-                    get_options($options_from+$options_count); #prime the options
+                    if($pager) {
+                        $options_from += $options_count;
+                        get_options($options_from+$options_count); #prime the options
+                    } else {
+                        $result = $input;
+                    }
                 } elsif( $input eq "p" && $options_count ) {
-                    $options_from -= $options_count;
+                    if($pager) {
+                        $options_from -= $options_count;
+                    } else {
+                        $result = $input;
+                    }
                 } else {
                     filter_options($input);
                 }
