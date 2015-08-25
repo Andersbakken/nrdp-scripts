@@ -489,7 +489,9 @@
 
 (defun magit-submit (&optional commit)
   (interactive)
-  (magit-run-on-multiple "submit" commit))
+  (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" "1")
+  (magit-run-git-async "submit" commit)
+  (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev))
 
 (defun magit-ignore (&optional commit)
   (interactive)
@@ -497,7 +499,10 @@
 
 (defun magit-submit-all (&optional commit)
   (interactive)
-  (magit-run-git-async "submit" "-a"))
+  (let ((prev (getenv "GIT_POST_SUBMIT_NON_INTERACTIVE")))
+    (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" "1")
+    (magit-run-git-async "submit" "-a")
+    (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev)))
 
 (defun nrdp-git-magit-ediff-file (&optional buffer)
   (interactive)
