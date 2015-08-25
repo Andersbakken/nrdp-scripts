@@ -42,7 +42,7 @@ while [ "$#" -ge 1 ]; do
         mode="changes @{1}.."
     elif echo "$1" | grep "\.\." >/dev/null 2>&1; then
         echo "Range: $1"
-        mode="changes $1"
+        mode="changes --cherry $1"
     elif [ -e "$1" ]; then
         echo "File: $1"
         mode="changes $1"
