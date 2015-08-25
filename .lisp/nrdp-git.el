@@ -489,9 +489,10 @@
 
 (defun magit-submit (&optional commit)
   (interactive)
-  (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" "1")
-  (magit-run-git-async "submit" commit)
-  (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev))
+  (let ((prev (getenv "GIT_POST_SUBMIT_NON_INTERACTIVE")))
+    (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" "1")
+    (magit-run-git-async "submit" commit)
+    (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev)))
 
 (defun magit-ignore (&optional commit)
   (interactive)
