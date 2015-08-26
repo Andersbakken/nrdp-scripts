@@ -4,6 +4,7 @@
 
 ;; 1.4.2 compatibility
 (require 'buffer-local-mode)
+(require 'magit)
 (if (boundp 'magit-key-mode-groups)
     (progn
       (defvar-local magit-hidden-stash-overlay nil)
