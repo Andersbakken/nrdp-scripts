@@ -94,6 +94,13 @@ findsym() {
     fi
 }
 
+function cat-emacs()
+{
+    test -z "$EMACSCLIENT" && EMACSCLIENT=emacsclient
+    emacsclient -e "(misc-cat-emacs)" &> /dev/null
+    cat /tmp/cat-emacs.tmp
+}
+
 function findcmake()
 {
     if [ -z "$1" ]; then
