@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 AUTHOR="$GIT_CHANGES_AUTHOR"
 [ -z "$AUTHOR" ] && AUTHOR=`git config user.email`
@@ -9,6 +9,7 @@ PAGER=less
 MERGES="0"
 BRANCHES="0"
 COUNT_MERGES="0"
+NO_COLOR="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
 while [ "$#" -gt 0 ]; do
@@ -22,6 +23,7 @@ while [ "$#" -gt 0 ]; do
         --no-pager) PAGER=cat ;;
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
+        --no-color) NO_COLOR="1" ;;
         -s) OPTS="$OPTS --author=$AUTHOR" ;; #self changes
         -t)
             tracking_branch=`git tracking 2>/dev/null`
@@ -46,12 +48,17 @@ elif [ "$MERGES" = "0" ]; then
     OPTS="$OPTS --no-merges"
 fi
 OPTS="$OPTS $UNKNOWN_OPTS"
-PRETTY_OPTS="--oneline '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs' --abbrev-commit"
+PRETTY_OPTS="--oneline --abbrev-commit"
+if [ "$NO_COLOR" = "1" ]; then
+    PRETTY_OPTS="$PRETTY_OPTS '--pretty=%h %s %an %ar %gs'"
+else
+    PRETTY_OPTS="$PRETTY_OPTS '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs'"
+fi
 
 if false; then
     eval git $SUBCOMMAND $PRETTY_OPTS $OPTS
 else
-    CHANGES=`eval git $SUBCOMMAND --pretty='%h' $OPTS`
+    CHANGES=`eval git $SUBCOMMAND --no-color --pretty='%h' $OPTS`
     for change in $CHANGES; do
         line=`eval git show --no-patch ${PRETTY_OPTS} ${change}`
         if [ "$COUNT_MERGES" = "1" ]; then

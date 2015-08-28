@@ -1,5 +1,6 @@
 #!/bin/bash
 
+NOCOLOR=
 function syncdir
 {
     cd "$1"
@@ -46,7 +47,7 @@ function syncdir
     else
         git pull
     fi
-    git changes --no-pager @{1}.. 2>/dev/null
+    git changes $NOCOLOR --no-pager @{1}.. 2>/dev/null
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
@@ -72,6 +73,9 @@ while [ -n "$1" ]; do
             ;;
         -r|--recursive)
             recursive=1
+            ;;
+        --no-color)
+            NOCOLOR="--no-color"
             ;;
         --autostash|-a)
             autostash=1

@@ -332,7 +332,7 @@
 (defun magit-sync ()
   "Run git sync."
   (interactive)
-  (magit-run-git-async "sync"))
+  (magit-run-git-async "sync" "--no-color"))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
 (defadvice pop-to-buffer (around return-focus activate)
