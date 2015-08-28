@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/bin/bash
 
 INTERACTIVE="--interactive"
-if [ -z "$GIT_POST_SUBMIT_NON_INTERACTIVE" ]; then
-    INTERACTIVE="--no-interactive"
+if [ -n "$GIT_POST_SUBMIT_NON_INTERACTIVE" ]; then
+    INTERACTIVE="--no-interactive --resolve"
 fi
 if echo "$2" | grep -q "/"; then
     ORIGIN=`echo $2 | cut -d/ -f1`

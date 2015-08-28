@@ -30,8 +30,14 @@ fi
 
 exec_jira() {
     JIRA_ARGS=
-    if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
-        JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+    if [ -z "$JIRA_PASSWORD" ]; then
+        if [ -z "$JIRA_PASSWORD_COMMAND" ] && [ -f "$JIRA_PASSWORD_FILE" ]; then
+            DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+            JIRA_PASSWORD_COMMAND="$DIR/git-jira-password-command.sh $JIRA_PASSWORD_FILE"
+        fi
+        if [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+            JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+        fi
     fi
     if [ -z "$JIRA_PASSWORD" ]; then
         read -p "JIRA Password: " -s JIRA_PASSWORD

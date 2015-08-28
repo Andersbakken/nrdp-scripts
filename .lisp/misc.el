@@ -1373,4 +1373,17 @@ there's a region, all lines that region covers will be duplicated."
          (message "Compilation successful!"))
         (t nil)))
 
+(defun misc-cat-emacs ()
+  (interactive)
+  (with-current-buffer (if (string= (buffer-name) "*server*")
+                           (other-buffer)
+                         (current-buffer))
+    (save-restriction
+      (widen)
+      (let ((output (buffer-substring-no-properties (point-min) (point-max))))
+        (find-file-literally "/tmp/misc-cat-emacs.tmp")
+        (insert output)
+        (basic-save-buffer)
+        (kill-buffer (current-buffer))))))
+
 (provide 'nrdp-misc)
