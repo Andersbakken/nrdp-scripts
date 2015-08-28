@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NOCOLOR=
+GIT_PULLED="git changes --no-pager @{1}.."
 function syncdir
 {
     cd "$1"
@@ -47,13 +47,13 @@ function syncdir
     else
         git pull
     fi
-    git changes $NOCOLOR --no-pager @{1}.. 2>/dev/null
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
     if [ -n "$stashed" ]; then
         git reset HEAD~
     fi
+    $GIT_PULLED 2>/dev/null
     return $rc
 }
 
@@ -74,8 +74,11 @@ while [ -n "$1" ]; do
         -r|--recursive)
             recursive=1
             ;;
+        --no-log)
+            GIT_PULLED=""
+            ;;
         --no-color)
-            NOCOLOR="--no-color"
+            [ -n "$GIT_PULLED" ] && GIT_PULLED="$GIT_PULLED --no-color"
             ;;
         --autostash|-a)
             autostash=1
