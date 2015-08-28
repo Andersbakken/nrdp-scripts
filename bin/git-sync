@@ -1,10 +1,11 @@
 #!/bin/bash
 
-GIT_PULLED="git changes --no-pager @{1}.."
+GIT_PULLED="git changes --no-pager "
 function syncdir
 {
     cd "$1"
     local rc=0
+    local old_head=`git rev-parse HEAD`
 
     GITDIR=`git rev-parse --git-dir`
     if [ -z "$GITDIR" ] && which lsdev.pl >/dev/null 2>&1; then
@@ -53,7 +54,9 @@ function syncdir
     if [ -n "$stashed" ]; then
         git reset HEAD~
     fi
-    $GIT_PULLED 2>/dev/null
+    if [ -n "$GIT_PULLED" ]; then
+        $GIT_PULLED ${old_head}..HEAD 2>/dev/null
+    fi
     return $rc
 }
 
