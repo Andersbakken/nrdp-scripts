@@ -1,35 +1,73 @@
 #!/bin/bash
-if [ "$#" = 2 ]; then
-    branch="$1"
+
+MODE=DISPLAY
+SET=
+BRANCH=
+while [ -n "$1" ]; do
+    case $1 in
+        --help|-h)
+            echo "git tracking [--reset|-r] [--help|-h] [--rebase|-r] [new-tracking-branch]"
+            ;;
+        --reset|-r)
+            MODE=RESET
+            ;;
+        --rebase)
+            MODE=REBASE
+            ;;
+        --branch)
+            shift
+            BRANCH="$1"
+            ;;
+        *)
+            if [ -n "$SET" ]; then
+                BRANCH="$SET"
+                SET="$1"
+            else
+                MODE=SET
+                SET="$1"
+            fi
+            ;;
+    esac
     shift
-else
-    branch="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+done
+
+if [ "$MODE" = "RESET" ] && [ -n "$BRANCH" ]; then
+    echo "I can't do --reset with another branch"
+    exit 1
 fi
-echo "$branch" | grep "(" --quiet && exit 1
+
+[ -z "$BRANCH" ] && BRANCH="`git branch | grep '^\*' | cut -d ' ' -f 2`"
+echo "$BRANCH" | grep "(" --quiet && exit 1
 
 lookupTracking() {
-    remote="`git config \"branch.$branch.remote\"`"
-    test -z "$remote" && exit 1
-    merge="`git config \"branch.$branch.merge\"`"
-    test -z "$merge" && exit 1
-    if [ "$remote" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
-        echo $merge | sed -e 's,^refs/remotes/,,'
+    REMOTE="`git config \"branch.$BRANCH.remote\"`"
+    test -z "$REMOTE" && exit 1
+    MERGE="`git config \"branch.$BRANCH.merge\"`"
+    test -z "$MERGE" && exit 1
+    if [ "$REMOTE" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
+        echo $MERGE | sed -e 's,^refs/remotes/,,'
     else
-        merge="`echo $merge | sed -e 's,^refs\/heads\/,,'`"
-        echo "$remote/$merge"
+        MERGE="`echo $MERGE | sed -e 's,^refs\/heads\/,,'`"
+        echo "$REMOTE/$MERGE"
     fi
 }
 
-if [ "$#" = 0 ]; then
-    lookupTracking
-elif [ "$1" = "rebase" ]; then
-    tracking=`lookupTracking`
-    git rebase --onto "$tracking" "$branch"
-else
-    if [ "`git --version | sed -e 's,[^0-9],,g' | cut -b1,2`" -lt "18" ]; then
-        git branch --set-upstream "$branch" "$1"
-    else
-        git branch --set-upstream-to="$1" "$branch"
-    fi
-fi
+case $MODE in
+    DISPLAY)
+        lookupTracking
+        ;;
+    RESET)
+        git reset --hard `lookupTracking`
+        ;;
+    REBASE)
+        git rebase --onto `lookupTracking` "$BRANCH"
+        ;;
+    SET)
+        if [ "`git --version | sed -e 's,[^0-9],,g' | cut -b1,2`" -lt "18" ]; then
+            git branch --set-upstream "$BRANCH" "$SET"
+        else
+            git branch --set-upstream-to="$SET" "$BRANCH"
+        fi
+        ;;
+esac
 exit 0
