@@ -173,9 +173,18 @@
 (defun git-grep (search)
   "git-grep the entire current repo"
   (interactive (list (git-grep-prompt)))
-  (grep-find (concat "git --no-pager grep -I -n "
-                     (shell-quote-argument search)
-                     " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
+  (let ((args (split-string search " ")))
+    (when (and (not (member args "--"))
+               (let (hasarg)
+                 (mapc #'(lambda (arg)
+                           (when (not (string= "-" (substring arg 0 1)))
+                             (setq hasarg t))) args)
+                 (unless hasarg
+                   (push "--" args)))))
+
+    (grep-find (concat "git --no-pager grep -I -n "
+                       (combine-and-quote-strings args)
+                       " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"))))
 
 (defun git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
