@@ -32,6 +32,7 @@ $detect_suffix = ""; #not used currently
 
 my @matches;
 my %dev_roots;
+my @build_roots;
 
 sub mycaller {
     my @c = caller(1);
@@ -310,10 +311,18 @@ if(-e glob("~/.dev_directories")) {
                     $path_config{$path}->{$k} = $v;
                 } else {
                     my $n = $1;
-                    my $p = canonicalize($2, dirname($dev_directories_path));
-                    display "Found DevDirectory: $n -> $p\n" if($verbose);
-                    $dev_roots{$n} = $p;
-                    addRoot($n, $p);
+                    my $v = $2;
+                    if($n eq "builds") {
+                        my @b = split(/,/, $v);
+                        foreach(@b) {
+                            push @build_roots, canonicalize($v, dirname($dev_directories_path));
+                        }
+                    } else {
+                        my $p = canonicalize($v, dirname($dev_directories_path));
+                        display "Found DevDirectory: $n -> $p\n" if($verbose);
+                        $dev_roots{$n} = $p;
+                        addRoot($n, $p);
+                    }
                 }
             }
         }
@@ -459,10 +468,6 @@ sub addRoot {
         display "Named Root(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
     }
     return \%root;
-}
-
-sub generateBuildName {
-
 }
 
 sub isRootSource {
@@ -658,7 +663,7 @@ if(my $build_marker = findAncestor("CMakeCache.txt") || findAncestor("config.sta
         $src_project_name = basename($src_dir) unless(defined($src_project_name));
         addRoot($src_project_name ? "${src_project_name}" : "src", $src_dir);
         my $bld_project_name = findDevRootName($root_dir);
-        addRoot($bld_project_name ? "${bld_project_name}" : "build", $root_dir, $src_dir);
+        addRoot($bld_project_name ? "${bld_project_name}" : basename($root_dir), $root_dir, $src_dir);
     } else {
         my $project_name = getProjectName($root_dir);
         unless(defined($project_name)) {
@@ -724,10 +729,9 @@ if(defined($dev_roots{sources})) {
     }
 }
 #process anything that looks like a build
-if(defined($dev_roots{builds})) {
-    my $builds = delete $dev_roots{builds};
-    foreach(split(/,/, $builds)) {
-        my $build = $_;
+if(length(@build_roots)) {
+    for(my $i = 0; $i <= $#build_roots; $i++) {
+        my $build = $build_roots[$i];
         display "Looking at build: $build\n" if($verbose);
         if( $detect_devdirs && -d "$build" && opendir(BUILDS, $build) ) {
             while(my $subdir = readdir(BUILDS)) {
@@ -769,7 +773,7 @@ foreach(keys(%dev_roots)) {
             my $src_project_name = findDevRootName($src_dir);
             addRoot($src_project_name ? "${dev_root_name}" : "src", $src_dir);
             my $bld_project_name = findDevRootName($dev_root);
-            addRoot($bld_project_name ? "${dev_root_name}" : "build", $dev_root, $src_dir);
+            addRoot($bld_project_name ? "${dev_root_name}" : basename($dev_root), $dev_root, $src_dir);
         } else {
             addRoot($dev_root_name, $dev_root);
         }
