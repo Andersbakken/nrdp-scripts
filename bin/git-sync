@@ -1,11 +1,12 @@
 #!/bin/bash
 
-GIT_PULLED="git changes --no-pager "
+[ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager "
 function syncdir
 {
     cd "$1"
     local rc=0
-    local old_head=`git rev-parse HEAD`
+    local SYNC_SUMMARY_START=`git rev-parse HEAD`
+    local SYNC_SUMMARY_END="HEAD"
 
     GITDIR=`git rev-parse --git-dir`
     if [ -z "$GITDIR" ] && which lsdev.pl >/dev/null 2>&1; then
@@ -47,6 +48,10 @@ function syncdir
         git svn update
     else
         git pull
+        if which git-tracking >/dev/null 2>&1; then
+            SYNC_SUMMARY_END=`git tracking`
+            SYNC_SUMMARY_START=`git merge-base ${SYNC_SUMMARY_END} ${SYNC_SUMMARY_START}`
+        fi
     fi
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
@@ -54,9 +59,7 @@ function syncdir
     if [ -n "$stashed" ]; then
         git reset HEAD~
     fi
-    if [ -n "$GIT_PULLED" ]; then
-        $GIT_PULLED ${old_head}..HEAD 2>/dev/null
-    fi
+    [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
     return $rc
 }
 
@@ -78,10 +81,10 @@ while [ -n "$1" ]; do
             recursive=1
             ;;
         --no-log)
-            GIT_PULLED=""
+            GIT_SYNC_SUMMARY=""
             ;;
         --no-color)
-            [ -n "$GIT_PULLED" ] && GIT_PULLED="$GIT_PULLED --no-color"
+            [ -n "$GIT_SYNC_SUMMARY" ] && GIT_SYNC_SUMMARY="$GIT_SYNC_SUMMARY --no-color"
             ;;
         --autostash|-a)
             autostash=1
