@@ -117,6 +117,11 @@
           (if file
               (magit-file-log file)
             (call-interactively 'magit-file-log)))))
+  (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
+  (define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
+  (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
+  (define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
+
   (define-key magit-mode-map (kbd "M-w") 'kill-ring-save)
   (defun nrdp-git-magit-buffer-file-name ()
     (and (stringp header-line-format)
@@ -173,9 +178,18 @@
 (defun git-grep (search)
   "git-grep the entire current repo"
   (interactive (list (git-grep-prompt)))
-  (grep-find (concat "git --no-pager grep -I -n "
-                     (shell-quote-argument search)
-                     " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))
+  (let ((args (split-string search " ")))
+    (when (and (not (member args "--"))
+               (let (hasarg)
+                 (mapc #'(lambda (arg)
+                           (when (not (string= "-" (substring arg 0 1)))
+                             (setq hasarg t))) args)
+                 (unless hasarg
+                   (push "--" args)))))
+
+    (grep-find (concat "git --no-pager grep -I -n "
+                       (combine-and-quote-strings args)
+                       " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"))))
 
 (defun git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
