@@ -5,159 +5,10 @@
 ;; 1.4.2 compatibility
 (require 'buffer-local-mode)
 (require 'magit)
+
 (if (boundp 'magit-key-mode-groups)
-    (progn
-      (defvar-local magit-hidden-stash-overlay nil)
-      (defvar-local magit-hide-stashes t)
-      (defcustom magit-max-stashes 0 "How many stashes to display" :type 'number :group 'magit)
-
-      (defun magit-limit-stashes-hook ()
-        (when (> magit-max-stashes 0)
-          (save-excursion
-            (goto-char (point-min))
-            (when (search-forward-regexp "^Stashes:$" nil t)
-              (let ((stashes-beginning (match-beginning 0))
-                    (buffer-read-only nil))
-                (if (and (buffer-local-value 'magit-hide-stashes (current-buffer))
-                         (search-forward-regexp (format "^%d: " magit-max-stashes) nil t))
-                    (let ((start (point-at-bol))
-                          (end (or (search-forward-regexp "^$" nil t)
-                                   (point-max))))
-                      (setq-local magit-hidden-stash-overlay (make-overlay start end))
-                      (overlay-put magit-hidden-stash-overlay 'invisible t)))
-                (goto-char stashes-beginning)
-                (delete-char 8)
-                (insert-button "Stashes:" 'action (lambda (x)
-                                                    (setq magit-hide-stashes (not magit-hide-stashes))
-                                                    (if magit-hide-stashes
-                                                        (magit-limit-stashes-hook)
-                                                      (when (buffer-local-value 'magit-hidden-stash-overlay (current-buffer))
-                                                        (delete-overlay magit-hidden-stash-overlay)
-                                                        (setq magit-hidden-stash-overlay nil))))))))))
-
-      (add-hook 'magit-refresh-status-hook 'magit-limit-stashes-hook)
-
-      (defun misc-magit-add-action (group key name func)
-        (interactive)
-        (let ((group-actions (assoc-default 'actions (assoc-default group magit-key-mode-groups))))
-          (add-to-list 'group-actions (list key name func))
-          (push 'actions group-actions)
-          (setf (second (assoc-default group magit-key-mode-groups)) group-actions)
-          (setq magit-key-mode-keymaps 'nil)))
-
-      (defun magit-toggle-whitespace ()
-        (interactive)
-        (if (member "-w" magit-diff-options)
-            (magit-dont-ignore-whitespace)
-          (magit-ignore-whitespace)))
-
-      (defun magit-ignore-whitespace ()
-        (interactive)
-        (add-to-list 'magit-diff-options "-w")
-        (magit-refresh))
-
-      (defun magit-dont-ignore-whitespace ()
-        (interactive)
-        (setq magit-diff-options (remove "-w" magit-diff-options))
-        (magit-refresh))
-
-      (misc-magit-add-action 'pulling "S" "Sync" 'magit-sync)
-      (misc-magit-add-action 'pushing "J" "Jira" 'magit-jira)
-      (misc-magit-add-action 'pushing "R" "Jira (Don't resolve)" 'magit-jira-no-resolve)
-      (misc-magit-add-action 'pushing "S" "Submit" 'magit-submit)
-      (misc-magit-add-action 'pushing "C" "Choose" 'magit-choose-push)
-      (misc-magit-add-action 'pushing "A" "Submit All" 'magit-submit-all)
-      (misc-magit-add-action 'pushing "I" "Ignore" 'magit-ignore)
-      (misc-magit-add-action 'logging "b" "Blame" 'magit-blame-for-current-revision)
-
-      (defun magit-current-section-string ()
-        (let* ((section (magit-current-section))
-               (info (and section (magit-section-info section))))
-          (cond ((and (listp info) (stringp (nth 1 info))) (nth 1 info))
-                ((stringp info) info)
-                (t nil))))
-      (defalias 'magit-toplevel 'magit-get-top-dir)
-      (defalias 'magit-ediff-dwim 'magit-ediff)
-      (defalias 'magit-get-tracked-branch 'magit-get-remote/branch)
-      (defalias 'magit-diff-less-context 'magit-diff-smaller-hunks)
-      (defalias 'magit-log-popup 'magit-key-mode-popup-logging)
-
-      (defun nrdp-git-magit-cherry-pick (&optional commit)
-        (interactive)
-        (let ((branches))
-          (with-temp-buffer
-            (when (eq 0 (call-process "git" nil t nil "branch"))
-              (goto-char (point-min))
-              (while (not (eobp))
-                ;; (message (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-                (skip-chars-forward " *")
-                (push (buffer-substring-no-properties (point) (point-at-eol)) branches)
-                (forward-line 1))))
-          (with-temp-buffer
-            (when (eq 0 (call-process "git" nil t nil "branch" "-r"))
-              (goto-char (point-min))
-              (while (not (eobp))
-                ;; (message (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-                (skip-chars-forward " ")
-                (push (buffer-substring-no-properties (point) (point-at-eol)) branches)
-                (forward-line 1))))
-          ;; (message (combine-and-quote-strings branches))
-          (unless commit
-            (setq commit (ido-completing-read "Commit: " branches)))
-          (if (> (length commit) 0)
-              (magit-cherry-pick-commit commit)
-            (error "Nothing to cherry-pick"))))
-
-      (defun nrdp-git-magit-file-log (&optional bufferorfilename)
-        (interactive)
-        (let ((file (cond ((bufferp bufferorfilename) (buffer-file-name bufferorfilename))
-                          ((stringp bufferorfilename) bufferorfilename)
-                          ((and (boundp 'magit-buffer-file-name) magit-buffer-file-name))
-                          (t nil))))
-          (message (format "fuck%s" file))
-          (if file
-              (magit-file-log (file-truename file))
-            (call-interactively 'magit-file-log)))))
-  (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
-  (define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
-  (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
-  (define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
-
-  (define-key magit-mode-map (kbd "M-w") 'kill-ring-save)
-  (defun nrdp-git-magit-buffer-file-name ()
-    (and (stringp header-line-format)
-         (string-match "Commits in [^ ]+ touching \\([^ ]+\\)" header-line-format)
-         (concat default-directory (match-string 1 header-line-format))))
-
-  (defun nrdp-git-magit-file-log (&optional bufferorfilename)
-    (interactive)
-    (let* ((file (if (stringp bufferorfilename)
-                     bufferorfilename
-                   (nrdp-git-magit-buffer-file-name)))
-           (buf (cond ((bufferp bufferorfilename) bufferorfilename)
-                      (file (or (find-buffer-visiting file)
-                                (find-file-noselect file)))
-                      ((buffer-file-name) (current-buffer))
-                      (t nil))))
-      (if buf
-          (with-current-buffer buf
-            (call-interactively 'magit-log-buffer-file))
-        (message "Can't log this buffer"))))
-
-  (defun nrdp-git-magit-log ()
-    (interactive)
-    (magit-log (list (magit-get-current-branch))))
-
-  (fset 'magit-toggle-whitespace
-   [?D ?- ?w ?\C-\M-l ?\C-x ?1 ?\M-x ?e ?v ?a ?l ?- ?b ?u tab return ?\C-\M-l ?q ?\C-x ?\( ?\C-x ?\( ?D ?- ?w ?g])
-
-  (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
-  (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
-  (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
-  (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
-  (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
-  (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
-  (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision))
+    (require 'nrdp-git-old-ass-and-bad)
+  (require 'nrdp-git-good))
 
 (defun nrdp-git-gitify-path (file)
   (if (string-match "^/" file)
@@ -178,7 +29,7 @@
 
 (defun nrdp-git-grep (search)
   "git-grep the entire current repo"
-  (interactive (list (git-grep-prompt)))
+  (interactive (list (nrdp-git-grep-prompt)))
   (let ((args (split-string search " ")))
     (when (and (not (member args "--"))
                (let (hasarg)
@@ -198,9 +49,15 @@
         (substring ret 0 (1- (length ret)))
       ret)))
 
+(defun nrdp-git-dir-for-file (&optional file)
+  (magit-toplevel (file-name-directory (file-truename (if (stringp file)
+                                                          file
+                                                        (buffer-file-name file))))))
+
 (defun nrdp-git-revert (&optional buffer)
   (interactive)
-  (let ((file (file-truename (buffer-file-name buffer))))
+  (let* ((default-directory (nrdp-git-dir-for-file buffer))
+         (file (file-truename (buffer-file-name buffer))))
     (if (not file)
         (message "This buffer is not visiting a file")
       (and (y-or-n-p (concat "Are you sure you want to revert " (file-name-nondirectory file)))
@@ -208,6 +65,14 @@
            (= (call-process "git" nil t t "checkout" "HEAD" "--" file) 0)
            (with-current-buffer (or buffer (current-buffer))
              (revert-buffer t t t))))))
+
+
+(defun nrdp-git-deepest-root ()
+  (let ((path default-directory) best)
+    (while (> (length path) 1)
+      (setq best (or (magit-toplevel path) best))
+      (setq path (and (string-match "\\(.*/\\).*/" path) (match-string 1 path))))
+    best))
 
 (defun nrdp-git-show-revision (&optional file sha)
   (interactive "P")
@@ -238,8 +103,8 @@
     (error "You have to pick a SHA!"))
   (let ((line (and (string= file (buffer-file-name)) (count-lines 1 (point)))))
     (let* ((dir (file-name-directory file))
-          (git-file (nrdp-git-gitify-path file))
-          (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
+           (git-file (nrdp-git-gitify-path file))
+           (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
       (switch-to-buffer buffer)
       (setq default-directory dir)
       (setq buffer-read-only nil)
@@ -269,7 +134,7 @@
                      ((stringp target) target)
                      (target (magit-toplevel))
                      (t (error "nrdp-git-diff: What to do here?"))))
-         (dir (file-name-directory file))
+         (dir (nrdp-git-dir-for-file file))
          (old (and (not norestorefocus) (get-buffer-window)))
          (numwindows (length (window-list)))
          (args (list (or against "HEAD") "--" file))
@@ -317,13 +182,14 @@
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) "HEAD"))
+  (nrdp-git-show-revision (or file (buffer-file-name)) "HEAD"))
 
 (defun nrdp-git-show-tracking (&optional file)
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (let ((tracking (magit-get-tracked-branch)))
+  (let* ((default-directory (nrdp-git-dir-for-file file))
+         (tracking (magit-get-tracked-branch)))
     (if tracking
         (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) tracking)
       (message "No tracking branch for branch"))))
@@ -361,7 +227,7 @@
                    (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
 
-(define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-magit-ediff-file (find-file-noselect (magit-current-section-file)))))
+(define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
 (define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
@@ -381,31 +247,6 @@
                (buffer-substring-no-properties (point-at-bol) (point)))))
     (when (and file sha)
       (agb-git-blame sha (file-name-nondirectory file)))))
-
-(defun magit-choose-push ()
-  (interactive)
-  (let* ((remote
-          (with-temp-buffer
-            (call-process "git" nil t nil "remote")
-            (let ((remotes (split-string (buffer-string))))
-              (if (= (length remotes) 1)
-                  (car remotes)
-                (ido-completing-read "Remote: " remotes)))))
-         (branch
-          (with-temp-buffer
-            (call-process "git" nil t nil "branch" "-r")
-            (goto-char (point-min))
-            (let ((match (concat "^ *" remote "/\\(.*\\)$"))
-                  (branches))
-              (while (not (eobp))
-                (when (looking-at match)
-                  (push (match-string 1) branches))
-                (forward-line 1))
-              (if branches
-                  (ido-completing-read "Branch: " branches)
-                (read-from-minibuffer "Branch: "))))))
-    (when (and branch remote)
-      (magit-run-git-async "push" remote (concat "HEAD:" branch) magit-custom-options))))
 
 (defun buffer-is-visible (buffer)
   (let ((windows (window-list)) (ret))
@@ -434,8 +275,9 @@
   (if (fboundp 'magit-file-at-point)
       (let ((res (magit-file-at-point)))
         (and res (concat default-directory res)))
-    (let ((section (magit-current-section-string)))
-      (and section (file-exists-p section) section))))
+    (if (fboundp 'magit-current-section-string)
+        (let ((section (magit-current-section-string)))
+          (and section (file-exists-p section) section)))))
 
 (defun magit-current-section-sha ()
   (if (fboundp 'magit-branch-or-commit-at-point)
@@ -525,7 +367,7 @@
 (defun nrdp-git-ediff-file (&optional buffer)
   (interactive)
   (unless buffer (setq buffer (current-buffer)))
-  (ediff-buffers buffer (progn (nrdp-git-show-head (file-truename (buffer-file-name buffer))) (current-buffer))))
+  (ediff-buffers buffer (progn (nrdp-git-show-head (buffer-file-name buffer)) (current-buffer))))
 
 ;; ================================================================================
 ;; git-jira
@@ -534,7 +376,8 @@
 (defun git-jira (&optional commit)
   (interactive)
   (unless commit
-    (setq commit (magit-read-rev-with-default "Jira commit: ")))
+    (setq commit (let ((result (completing-read "Jira commit: " (split-string (shell-command-to-string "git log --pretty=\"%h %s\" -n 10") "\n"))))
+                   (and result (string-match "^\\([^ ]+\\)" result) (match-string 1 result)))))
   (if commit
       (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
 (provide 'nrdp-git)
