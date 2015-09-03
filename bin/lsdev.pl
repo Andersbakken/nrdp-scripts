@@ -7,6 +7,7 @@ use File::Spec;
 
 use strict;
 
+
 my $verbose = 0;
 my $write_default_file = 0;
 my $read_devdir_list = 1;
@@ -774,6 +775,7 @@ foreach(keys(%dev_roots)) {
             addRoot($src_project_name ? "${dev_root_name}" : "src", $src_dir);
             my $bld_project_name = findDevRootName($dev_root);
             addRoot($bld_project_name ? "${dev_root_name}" : basename($dev_root), $dev_root, $src_dir);
+
         } else {
             addRoot($dev_root_name, $dev_root);
         }

@@ -114,8 +114,9 @@
                           ((stringp bufferorfilename) bufferorfilename)
                           ((and (boundp 'magit-buffer-file-name) magit-buffer-file-name))
                           (t nil))))
+          (message (format "fuck%s" file))
           (if file
-              (magit-file-log file)
+              (magit-file-log (file-truename file))
             (call-interactively 'magit-file-log)))))
   (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
   (define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
@@ -150,7 +151,7 @@
   (fset 'magit-toggle-whitespace
    [?D ?- ?w ?\C-\M-l ?\C-x ?1 ?\M-x ?e ?v ?a ?l ?- ?b ?u tab return ?\C-\M-l ?q ?\C-x ?\( ?\C-x ?\( ?D ?- ?w ?g])
 
-  (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'magit-sync)
+  (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
   (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
   (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
   (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
@@ -158,14 +159,14 @@
   (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
   (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision))
 
-(defun git-gitify-path (file)
+(defun nrdp-git-gitify-path (file)
   (if (string-match "^/" file)
       (let ((root (magit-toplevel (file-name-directory file))))
         (if (string-match (concat "^" root) file)
             (setq file (substring file (length root))))))
   file)
 
-(defun git-grep-prompt ()
+(defun nrdp-git-grep-prompt ()
   (let* ((default (current-word))
          (prompt (if default
                      (concat "Search for: (default " default ") ")
@@ -175,7 +176,7 @@
         search
       (or default ""))))
 
-(defun git-grep (search)
+(defun nrdp-git-grep (search)
   "git-grep the entire current repo"
   (interactive (list (git-grep-prompt)))
   (let ((args (split-string search " ")))
@@ -191,15 +192,15 @@
                        (combine-and-quote-strings args)
                        " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"))))
 
-(defun git-config-value (conf)
+(defun nrdp-git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
     (if (and ret (string-match "\n$" ret))
         (substring ret 0 (1- (length ret)))
       ret)))
 
-(defun git-revert (&optional buffer)
+(defun nrdp-git-revert (&optional buffer)
   (interactive)
-  (let ((file (buffer-file-name (or buffer (current-buffer)))))
+  (let ((file (file-truename (buffer-file-name buffer))))
     (if (not file)
         (message "This buffer is not visiting a file")
       (and (y-or-n-p (concat "Are you sure you want to revert " (file-name-nondirectory file)))
@@ -208,7 +209,7 @@
            (with-current-buffer (or buffer (current-buffer))
              (revert-buffer t t t))))))
 
-(defun git-show-revision (&optional file sha)
+(defun nrdp-git-show-revision (&optional file sha)
   (interactive "P")
   (cond ((stringp file))
         ((bufferp file) (setq file (buffer-file-name)))
@@ -236,42 +237,43 @@
   (unless sha
     (error "You have to pick a SHA!"))
   (let ((line (and (string= file (buffer-file-name)) (count-lines 1 (point)))))
-    (setq file (git-gitify-path file))
-    (let ((dir default-directory)
-          (buffer (get-buffer-create (format "*%s - %s*" file sha))))
+    (let* ((dir (file-name-directory file))
+          (git-file (nrdp-git-gitify-path file))
+          (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
       (switch-to-buffer buffer)
       (setq default-directory dir)
       (setq buffer-read-only nil)
       (erase-buffer)
-      (call-process "git" nil t nil "show" (format "%s:%s" sha file))
+      (call-process "git" nil t nil "show" (format "%s:%s" sha git-file))
       (goto-char (point-min))
       (if line
           (forward-line line))
-      (setq buffer-file-name file)
+      (setq buffer-file-name git-file)
       (set-auto-mode)
       (setq buffer-file-name nil)
       (font-lock-fontify-buffer)
       (setq buffer-read-only t)
       (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
-(defvar git-diff-reuse-diff-buffer nil)
-(defun git-diff (&optional -w target no-split-window norestorefocus against)
+(defvar nrdp-git-diff-reuse-diff-buffer nil)
+(defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against)
   (interactive "P")
-  (let* ((dir default-directory)
+  (let* ((file (cond ((null target)
+                      (if (buffer-file-name)
+                          (file-truename (buffer-file-name))
+                        (error "nrdp-git-diff: Not a file buffer")))
+                     ((bufferp target)
+                      (if (buffer-file-name target)
+                          (file-truename (buffer-file-name target))
+                        (error "nrdp-git-diff: Not a file buffer")))
+                     ((stringp target) target)
+                     (target (magit-toplevel))
+                     (t (error "nrdp-git-diff: What to do here?"))))
+         (dir (file-name-directory file))
          (old (and (not norestorefocus) (get-buffer-window)))
          (numwindows (length (window-list)))
-         (args (list (or against "HEAD") "--" (cond ((null target)
-                                                     (if (buffer-file-name)
-                                                         (buffer-file-name)
-                                                       (error "git-diff: Not a file buffer")))
-                                                    ((bufferp target)
-                                                     (if (buffer-file-name target)
-                                                         (buffer-file-name target)
-                                                       (error "git-diff: Not a file buffer")))
-                                                    ((stringp target) target)
-                                                    (target (magit-toplevel))
-                                                    (t (error "git-diff: What to do here?")))))
-         (buffer (get-buffer-create (if (or git-diff-reuse-diff-buffer (not args))
+         (args (list (or against "HEAD") "--" file))
+         (buffer (get-buffer-create (if (or nrdp-git-diff-reuse-diff-buffer (not args))
                                         "*git-diff*"
                                       (concat "*git-diff: " (car args) "*")))))
     (when -w
@@ -299,31 +301,31 @@
         (delete-window))
       nil)))
 
-(defun git-diff-other (&optional -w target)
+(defun nrdp-git-diff-other (&optional -w target)
   (interactive "P")
-  (git-diff -w target))
+  (nrdp-git-diff -w target))
 
-(defun git-diff-repo (&optional -w)
+(defun nrdp-git-diff-repo (&optional -w)
   (interactive "P")
-  (git-diff -w))
+  (nrdp-git-diff -w))
 
-(defun git-diff-directory (&optional -w)
+(defun nrdp-git-diff-directory (&optional -w)
   (interactive "P")
-  (git-diff -w default-directory))
+  (nrdp-git-diff -w default-directory))
 
-(defun git-show-head (&optional file)
+(defun nrdp-git-show-head (&optional file)
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (git-show-revision (or file (buffer-file-name)) "HEAD"))
+  (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) "HEAD"))
 
-(defun git-show-tracking (&optional file)
+(defun nrdp-git-show-tracking (&optional file)
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
   (let ((tracking (magit-get-tracked-branch)))
     (if tracking
-        (git-show-revision (or file (buffer-file-name)) tracking)
+        (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) tracking)
       (message "No tracking branch for branch"))))
 
 (defun magit-log-mode-current-file ()
@@ -341,9 +343,9 @@
                (goto-char (point-at-bol))
                (skip-chars-forward "[A-Fa-f0-9]")
                (buffer-substring-no-properties (point-at-bol) (point)))))
-    (git-show-revision file sha)))
+    (nrdp-git-show-revision file sha)))
 
-(defun magit-sync ()
+(defun nrdp-magit-sync ()
   "Run git sync."
   (interactive)
   (magit-run-git-async "sync" "--no-color"))
@@ -448,7 +450,7 @@
   (interactive "P")
   (let ((file (magit-current-section-file)))
     (when file
-      (git-diff -w file))))
+      (nrdp-git-diff -w file))))
 
 (defun magit-log-current-section ()
   (interactive)
@@ -520,10 +522,10 @@
     (magit-run-git-async "submit" "-a")
     (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev)))
 
-(defun nrdp-git-magit-ediff-file (&optional buffer)
+(defun nrdp-git-ediff-file (&optional buffer)
   (interactive)
   (unless buffer (setq buffer (current-buffer)))
-  (ediff-buffers buffer (progn (git-show-head (buffer-file-name buffer)) (current-buffer))))
+  (ediff-buffers buffer (progn (nrdp-git-show-head (file-truename (buffer-file-name buffer))) (current-buffer))))
 
 ;; ================================================================================
 ;; git-jira
