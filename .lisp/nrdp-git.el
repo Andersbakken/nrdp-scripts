@@ -104,8 +104,8 @@
     (unless sha
       (error "You have to pick a SHA!"))
     (let* ((line (and (string= file (buffer-file-name)) (count-lines 1 (point))))
-           ((git-file (nrdp-git-gitify-path file))
-            (buffer (get-buffer-create (format "*%s - %s*" git-file sha)))))
+           ((git-file (nrdp-git-gitify-path file)))
+           ((buffer (get-buffer-create (format "*%s - %s*" git-file sha)))))
       (switch-to-buffer buffer)
       (setq buffer-read-only nil)
       (erase-buffer)
