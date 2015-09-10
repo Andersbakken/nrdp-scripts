@@ -121,7 +121,7 @@
       (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
 (defvar nrdp-git-diff-reuse-diff-buffer nil)
-(defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against)
+(defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against word)
   (interactive "P")
   (let* ((file (cond ((null target)
                       (if (buffer-file-name)
@@ -143,6 +143,9 @@
                                       (concat "*git-diff: " (car args) "*")))))
     (when -w
       (push "-w" args))
+    (when word
+      (push "--word-diff=plain" args)
+      (push "--word-diff-regex=." args))
     (if no-split-window
         (switch-to-buffer buffer)
       (set-buffer (switch-to-buffer-other-window buffer)))
@@ -165,6 +168,10 @@
       (when (= numwindows 1)
         (delete-window))
       nil)))
+
+(defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
+  (interactive "P")
+  (nrdp-git-diff -w target no-split-window norestorefocus against t))
 
 (defun nrdp-git-diff-other (&optional -w target)
   (interactive "P")
