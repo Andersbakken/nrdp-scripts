@@ -50,7 +50,11 @@ function syncdir
         git pull
         if which git-tracking >/dev/null 2>&1; then
             SYNC_SUMMARY_END=`git tracking`
-            SYNC_SUMMARY_START=`git merge-base ${SYNC_SUMMARY_END} ${SYNC_SUMMARY_START}`
+            if [ -z "$SYNC_SUMMARY_END" ]; then
+                GIT_SYNC_SUMMARY=
+            else
+                SYNC_SUMMARY_START=`git merge-base ${SYNC_SUMMARY_END} ${SYNC_SUMMARY_START}`
+            fi
         fi
     fi
     if [ -f "$ROOTDIR/.gitmodules" ]; then

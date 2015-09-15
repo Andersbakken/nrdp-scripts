@@ -103,25 +103,25 @@
                                              branches)))))
     (unless sha
       (error "You have to pick a SHA!"))
-    (let ((line (and (string= file (buffer-file-name)) (count-lines 1 (point)))))
-      (let* ((git-file (nrdp-git-gitify-path file))
-             (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
-        (switch-to-buffer buffer)
-        (setq buffer-read-only nil)
-        (erase-buffer)
-        (call-process "git" nil t nil "show" (format "%s:%s" sha git-file))
-        (goto-char (point-min))
-        (if line
-            (forward-line line))
-        (setq buffer-file-name git-file)
-        (set-auto-mode)
-        (setq buffer-file-name nil)
-        (font-lock-fontify-buffer)
-        (setq buffer-read-only t)
-        (buffer-local-set-key (kbd "q") 'bury-buffer)))))
+    (let* ((line (and (string= file (buffer-file-name)) (count-lines 1 (point))))
+           (git-file (nrdp-git-gitify-path file))
+           (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
+      (switch-to-buffer buffer)
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (call-process "git" nil t nil "show" (format "%s:%s" sha git-file))
+      (goto-char (point-min))
+      (if line
+          (forward-line line))
+      (setq buffer-file-name git-file)
+      (set-auto-mode)
+      (setq buffer-file-name nil)
+      (font-lock-fontify-buffer)
+      (setq buffer-read-only t)
+      (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
 (defvar nrdp-git-diff-reuse-diff-buffer nil)
-(defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against)
+(defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against word)
   (interactive "P")
   (let* ((file (cond ((null target)
                       (if (buffer-file-name)
@@ -143,6 +143,9 @@
                                       (concat "*git-diff: " (car args) "*")))))
     (when -w
       (push "-w" args))
+    (when word
+      (push "--word-diff=plain" args)
+      (push "--word-diff-regex=." args))
     (if no-split-window
         (switch-to-buffer buffer)
       (set-buffer (switch-to-buffer-other-window buffer)))
@@ -165,6 +168,10 @@
       (when (= numwindows 1)
         (delete-window))
       nil)))
+
+(defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
+  (interactive "P")
+  (nrdp-git-diff -w target no-split-window norestorefocus against t))
 
 (defun nrdp-git-diff-other (&optional -w target)
   (interactive "P")
@@ -197,10 +204,12 @@
 (defun magit-log-mode-current-file ()
   (save-excursion
     (goto-char (point-min))
-    (if (looking-at "Commits for file \\(.*\\) in [^ ]+$")
-        (buffer-substring-no-properties (match-beginning 1) (match-end 1))
-      (error "Not in approriate magit-log buffer it seems")
-      nil)))
+    (cond ((looking-at "Commits for file \\(.*\\) in [^ ]+$")
+           (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
+          ((string-match "Commits in [^ ]* touching \\(.*\\)" header-line-format)
+           (match-string 1 header-line-format))
+          (t
+           (error "Not in approriate magit-log buffer it seems")))))
 
 (defun magit-show-revision-at-current-line()
   (interactive)
