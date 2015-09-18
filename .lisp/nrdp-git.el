@@ -204,12 +204,13 @@
 (defun magit-log-mode-current-file ()
   (save-excursion
     (goto-char (point-min))
-    (cond ((looking-at "Commits for file \\(.*\\) in [^ ]+$")
-           (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
-          ((string-match "Commits in [^ ]* touching \\(.*\\)" header-line-format)
-           (match-string 1 header-line-format))
-          (t
-           (error "Not in approriate magit-log buffer it seems")))))
+    (let ((file (cond ((looking-at "Commits for file \\(.*\\) in [^ ]+$")
+                       (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
+                      ((string-match "Commits in [^ ]* touching \\(.*\\)" header-line-format)
+                       (match-string 1 header-line-format))
+                      (t
+                       (error "Not in approriate magit-log buffer it seems")))))
+      (if (and file (not (file-name-absolute-p file))) (concat (magit-toplevel) file) file))))
 
 (defun magit-show-revision-at-current-line()
   (interactive)

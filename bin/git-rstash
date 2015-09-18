@@ -45,6 +45,25 @@ for(my $i = 0; $i < $#ARGV+1; ) {
     }
 }
 
+sub basehelp {
+    print "git-rstash [-m rstash-mode] <mode>: Make others changes available without pushing into a branch\n";
+
+    print "\nAvailable modes:\n";
+    print " save: Make an rstash available to others\n";
+    print " apply: Apply someone else's rstash\n";
+    print " show: Show someone else's rstash\n";
+    print " list: Show someone else's rstashes\n";
+
+    print "\nAvailable rstash-mode:\n";
+    print " git-rstash: Start a web server run locally (default)\n";
+    print " git-tag: Push to a remote as a tag\n";
+
+    print "\nOptions:\n";
+    print " -c <sha> : Which SHA to post as the default";
+    print " --no-highlight : Disable patch highlighting";
+    print " --no-pager : Disable pager";
+}
+
 sub getSHA {
     my ($sha) = @_;
     if($sha eq "DEFAULT") {
@@ -78,6 +97,14 @@ if($stash_mode eq "git-rstash") {
         } elsif($ARGV[$i] eq "--no-exit") {
             $send_exit = 0;
             $consume = 1;
+        } elsif($ARGV[$i] eq "-h" || $ARGV[$i] eq "--help" || $ARGV[$i] eq "-help") {
+            basehelp;
+            print "\ngit-rstash options:\n";
+            print " -p <port>: Select port to run server on\n";
+            print " -n <num>: List only <num> changes to browser\n";
+            print " --no-exit: Do not exit the server once the change is pulled\n";
+            print " URL: apply from\n";
+            exit 0;
         } else {
             $url = $ARGV[$i];
             $url =~ s,/$,,g;
@@ -113,7 +140,7 @@ if($stash_mode eq "git-rstash") {
         use HTTP::Status;
 
         my $d = HTTP::Daemon->new(LocalPort => $server_port) || die;
-        print "git-rstash: <", $d->url, ">\n";
+        print "Ready: git-rstash -m git-rstash apply " . $d->url . "\n";
       ACCEPT: while(my $c = $d->accept) {
           while(my $r = $c->get_request) {
               if($r->method eq 'GET') {
@@ -202,6 +229,11 @@ if($stash_mode eq "git-rstash") {
         my $consume = 0;
         my $arg = $ARGV[$i];
         if(0) {
+        } elsif($ARGV[$i] eq "-h" || $ARGV[$i] eq "--help" || $ARGV[$i] eq "-help") {
+            basehelp;
+            print "\ngit-tag options:\n";
+            print " ORIGIN: Which git origin to use\n";
+            exit 0;
         } else {
             $origin = $ARGV[$i];
             $consume = 1;

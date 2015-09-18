@@ -885,7 +885,7 @@ if($display_only eq "default") { #display the currently mapped default
                 $default{source} = $root->{source};
                 if(getPathConfig($root->{path}, "default")) {
                     if($default{path}) {
-                        display "Default: too many!" if($verbose);
+                        display "Default: too many!\n" if($verbose);
                         $default{source} = "";
                         $default{path} = 0;
                     } else {
@@ -893,6 +893,7 @@ if($display_only eq "default") { #display the currently mapped default
                     }
                 }
             } else {
+                display "Default: incompatible: " . $default{source} . " vs " . $root->{source} . "\n" if($verbose);
                 $default{source} = "";
                 $default{path} = 0;
             }
