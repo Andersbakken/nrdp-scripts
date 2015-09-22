@@ -7,15 +7,13 @@ use File::Spec;
 
 use strict;
 
-
 my $verbose = 0;
 my $write_default_file = 0;
 my $read_devdir_list = 1;
 my $detect_rest = 1;
 my $detect_devdirs = 1;
 my $display_only;
-my $display_help = 0;
-my $exact = 0;
+my $match_only;
 my $answer;
 my $cwd = Cwd::getcwd();
 if (exists($ENV{PWD}) && $ENV{PWD} ne $cwd) {
@@ -40,6 +38,33 @@ sub mycaller {
     return $c[2];
 }
 
+sub display {
+    #print STDERR mycaller(), ": ";
+    foreach(@_) {
+        print STDERR $_;
+    }
+}
+
+sub showHelp {
+    display "lsdev [options] [matches]\n";
+    display "\n== Options ==\n";
+    display "-w : Write out the selected directory to the relevant default file (for next invocation with -).\n";
+    display "-m : Disable directory detection which will find any build tree that isn't referenced explicitly.\n";
+    display "-r : Select the root of the selected project (rather than guessing subdirs based on current path).\n";
+    display "-b : Only include the relevant source dirs and shadow dirs in the selection output.\n";
+    display "-a : Force inclusion of all source and shadow dirs in the selection output.\n";
+    display "-l : Just list out the selections and do not actually request selection.\n";
+    display "-p : Just list out the name of the current working directories project if possible.\n";
+    display "\n== Matches ==\n";
+    display "If no matches are provided then it will behave as if -d has been passed, otherwise it will behave as if -a has\n";
+    display "had been passed. If either are passed, then they override these assumptions\n";
+    display "If - is passed then the current 'default' directory will be jumped to, which is specific to the kind of directory\n";
+    display "you are currently in.\n";
+    display "If @ is passed then the current 'emacs' directory will be jumped to.\n";
+    display "Otherwise any other strings are matched and all must match to be included in the selection output\n";
+    exit 0;
+}
+
 sub parseOptions {
     while(@_) {
         my $option = shift @_;
@@ -49,8 +74,16 @@ sub parseOptions {
             $detect_rest = 0;
         } elsif($option eq "-c") {
             $cwd = shift @_;
-        } elsif($option eq "-e") {
-            $exact = 1;
+        } elsif($option eq "-me") {
+            $match_only = "exact";
+        } elsif($option eq "-mr") {
+            $match_only = "regexp";
+        } elsif($option eq "-mw") {
+            $match_only = "word";
+        } elsif($option eq "-mi") {
+            $match_only = "ido";
+        } elsif($option eq "-m") {
+            $match_only = shift @_;
         } elsif($option eq "-d") {
             $display_only = "default";
         } elsif($option eq "-b") {
@@ -65,6 +98,8 @@ sub parseOptions {
             $answer = "rest";
         } elsif($option eq "-ts") {
             $answer = "simple_name";
+        } elsif($option eq "-t") {
+            $answer = shift @_;
         } elsif($option eq "-a") {
             $read_devdir_list = 2;
         } elsif($option eq "-m") {
@@ -74,7 +109,7 @@ sub parseOptions {
         } elsif($option eq "-p") {
             $display_only = "current";
         } elsif($option eq "-h") {
-            $display_help = 1;
+            showHelp();
         } elsif($option eq "-v") {
             $verbose = 1;
         } else {
@@ -96,13 +131,6 @@ if($display_only eq "current") {
     $answer = "all" if(!defined($answer));
 } else {
     $answer = "path" if(!defined($answer));
-}
-
-sub display {
-    #print STDERR mycaller(), ": ";
-    foreach(@_) {
-        print STDERR $_;
-    }
 }
 
 sub answer {
@@ -130,27 +158,6 @@ sub answer {
         display "Answering: $output\n" if($verbose);
     }
 }
-
-sub showHelp {
-    display "lsdev [options] [matches]\n";
-    display "\n== Options ==\n";
-    display "-w : Write out the selected directory to the relevant default file (for next invocation with -).\n";
-    display "-m : Disable directory detection which will find any build tree that isn't referenced explicitly.\n";
-    display "-r : Select the root of the selected project (rather than guessing subdirs based on current path).\n";
-    display "-b : Only include the relevant source dirs and shadow dirs in the selection output.\n";
-    display "-a : Force inclusion of all source and shadow dirs in the selection output.\n";
-    display "-l : Just list out the selections and do not actually request selection.\n";
-    display "-p : Just list out the name of the current working directories project if possible.\n";
-    display "\n== Matches ==\n";
-    display "If no matches are provided then it will behave as if -d has been passed, otherwise it will behave as if -a has\n";
-    display "had been passed. If either are passed, then they override these assumptions\n";
-    display "If - is passed then the current 'default' directory will be jumped to, which is specific to the kind of directory\n";
-    display "you are currently in.\n";
-    display "If @ is passed then the current 'emacs' directory will be jumped to.\n";
-    display "Otherwise any other strings are matched and all must match to be included in the selection output\n";
-    exit 0;
-}
-showHelp() if($display_help);
 
 sub findAncestor {
     my ($file, $dir) = @_;
@@ -581,7 +588,7 @@ sub isRootRelated {
 }
 
 sub filterMatches_internal {
-    my ($roots, $matches) = @_;
+    my ($roots, $matches, $comparator) = @_;
 
     my @result;
     foreach(@{$roots}) {
@@ -602,20 +609,8 @@ sub filterMatches_internal {
                     $matched = isRootBuild($root);
                 } elsif($match =~ /^path:(.*)/) {
                     $matched = ($root->{path} =~ /$1/i);
-                } elsif($exact) {
-                    my $prefix;
-                    my $name = $match;
-                    if($match =~ /^${src_prefix}/) {
-                        $prefix = "${src_prefix}";
-                    } elsif($match =~ /^${build_prefix}/) {
-                        $prefix = "${build_prefix}";
-                    }
-                    $name = substr $name, length($prefix) if($prefix);
-                    $matched = ($name eq generateBuildName($root)) if(!defined($prefix) || ($prefix eq $build_prefix && isRootBuild($root)));
-                    $matched = ($name eq $root->{name}) if(!$matched && (!defined($prefix) || ($prefix eq $src_prefix && isRootSource($root))));
                 } else {
-                    my $root_name = generateRootName($root);
-                    $matched = ($root_name =~ /$match/i);
+                    $matched = $comparator->($match, $root);
                 }
                 $matched = !$matched if($inverse);
                 #display "FilterMatches: $match: [" . $root->{name} . "::" . $root->{path} . "]: $matched\n" if($verbose);
@@ -639,15 +634,47 @@ sub filterMatches_internal {
 sub filterMatches {
     my ($roots, $matches) = @_;
 
-    my @result = filterMatches_internal($roots, $matches);
-    if(!$exact && $#result == -1) {
-        my @ido_match_roots;
-        foreach(@{matches}) {
-            my $ido_match_root = $_;
-            $ido_match_root =~ s,(.),\1.*,g;
-            push @ido_match_roots, $ido_match_root;
+    my @result;
+    if($match_only eq "exact") {
+        @result = filterMatches_internal($roots, $matches, sub {
+            my ($match, $root) = @_;
+            my $prefix;
+            my $name = $match;
+            if($match =~ /^${src_prefix}/) {
+                $prefix = "${src_prefix}";
+            } elsif($match =~ /^${build_prefix}/) {
+                $prefix = "${build_prefix}";
+            }
+            $name = substr $name, length($prefix) if($prefix);
+            return 1 if((!defined($prefix) || ($prefix eq $build_prefix && isRootBuild($root))) && ($name eq generateBuildName($root)));
+            return 1 if((!defined($prefix) || ($prefix eq $src_prefix && isRootSource($root))) && ($name eq $root->{name}));
+            return 0;
+        });
+    } else {
+        if((!defined($match_only) || $match_only eq "word") && $#result == -1) {
+            @result = filterMatches_internal($roots, $matches, sub {
+                my ($match, $root) = @_;
+                my $name = generateRootName($root);
+                my $ws = "[_-]";
+                return 1 if($name =~ /^${match}${ws}/);
+                return 1 if($name =~ /$ws${match}$/);
+                return 1 if($name =~ /$ws${match}$ws/);
+                return 0;
+            })
         }
-        @result = filterMatches_internal($roots, \@ido_match_roots);
+        if((!defined($match_only) || $match_only eq "regexp") && $#result == -1) {
+            @result = filterMatches_internal($roots, $matches, sub {
+                my ($match, $root) = @_;
+                return generateRootName($root) =~ /$match/i;
+            })
+        }
+        if((!defined($match_only) || $match_only eq "ido") && $#result == -1) {
+            @result = filterMatches_internal($roots, $matches, sub {
+                my ($match, $root) = @_;
+                $match =~ s,(.),\1.*,g;
+                return generateRootName($root) =~ /$match/i;
+            })
+        }
     }
     return @result;
 }

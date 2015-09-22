@@ -258,7 +258,7 @@
          (split "\f\t\n\r\v"))
     (if prefix
         (setq split (concat split "_-"))
-      (push "-e" args))
+      (push "-me" args))
     (setq project (completing-read "LSDEV Directory: " (with-temp-buffer
                                                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn")
                                                          (cl-remove-duplicates (split-string (buffer-string) (concat "[" split "]+")) :test 'equal))
