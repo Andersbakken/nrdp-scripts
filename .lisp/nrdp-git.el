@@ -61,8 +61,8 @@
     (if (not file)
         (message "This buffer is not visiting a file")
       (and (y-or-n-p (concat "Are you sure you want to revert " (file-name-nondirectory file)))
-           (= (call-process "git" nil t t "reset" "--" file) 0)
-           (= (call-process "git" nil t t "checkout" "HEAD" "--" file) 0)
+           (= (call-process "git" nil nil nil "reset" "--" file) 0)
+           (= (call-process "git" nil nil nil "checkout" "HEAD" "--" file) 0)
            (with-current-buffer (or buffer (current-buffer))
              (revert-buffer t t t))))))
 
