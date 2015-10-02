@@ -391,6 +391,16 @@ my %roots;
 my $default_dir;
 my $root_dir;
 
+sub isRootSource {
+    my ($root) = @_;
+    return (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
+}
+
+sub isRootBuild {
+    my ($root) = @_;
+    return defined($root->{source});
+}
+
 sub findRoot_internal {
     my ($path, $exact) = @_;
     my $result;
@@ -427,6 +437,19 @@ sub findRoot {
     }
     display "FindRoot: $path: -> " . ($result ? $result->{name} : "(notfound)") . "\n" if($verbose);
     return $result;
+}
+
+sub findRootBuilds {
+    my ($root) = @_;
+    $root = findRoot($root->{source}) if(isRootBuild($root));
+
+    my @result;
+    foreach(keys(%roots)) {
+        my $build_root = $roots{$_};
+        push @result, $build_root if(isRootBuild($build_root) && (!$root || findRoot($build_root->{source}) == $root));
+    }
+    @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
+    return @result;
 }
 
 sub findRootPath {
@@ -478,16 +501,6 @@ sub addRoot {
     return \%root;
 }
 
-sub isRootSource {
-    my ($root) = @_;
-    return (!defined($root->{source}) || isPathSame($root->{path}, $root->{source}));
-}
-
-sub isRootBuild {
-    my ($root) = @_;
-    return defined($root->{source});
-}
-
 sub generateBuildName {
     my ($root) = @_;
 
@@ -495,7 +508,11 @@ sub generateBuildName {
     if(isRootBuild($root)) {
         my $src_root = findRoot($root->{source});
         my $src_name = $src_root->{name};
-        $name = "${src_name}_${name}" unless($name =~ /$src_name/i);
+
+        my @builds = findRootBuilds($src_root);
+        $name = getProjectName($root->{path}) if($#builds == 0);
+        $name = "_${name}" if(length($name));
+        $name = "${src_name}${name}" unless($name =~ /$src_name/i);
     }
     display "Generated Name: $name\n" if($verbose);
     return $name;
