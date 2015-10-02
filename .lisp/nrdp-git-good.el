@@ -44,4 +44,14 @@
 
 (defun magit-current-section-string ())
 
+(defun nrdp-magit-visit-thing-advice (orig-fun &rest args)
+  (interactive)
+  (save-excursion
+    (goto-char (point-at-bol))
+    (if (looking-at "^\\([A-Fa-f0-9]+\\) .*ago$")
+        (magit-show-commit (match-string 1) t)
+      (call-interactively orig-fun))))
+
+(advice-add 'magit-visit-thing :around #'nrdp-magit-visit-thing-advice)
+
 (provide 'nrdp-git-good)
