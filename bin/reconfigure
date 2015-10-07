@@ -86,16 +86,24 @@ elif [ -e "config.status" ]; then
 fi
 if [ -n "$CONFIGURE" ]; then
     if [ -e "config.status" ] && [ ! -e "configure" ]; then
-        if [ "$RECONFIG_RM" ]; then
+        while [ "$RECONFIG_RM" ]; do
             /bin/echo -n "Sure you want to rm -rf in $BUILD? "
             read REALLY
-            if [ "$REALLY" = "y" ]; then
-                rm -f "/tmp/config.status"
-                cp "config.status" "/tmp/config.status"
-                rm -rf *
-                cp "/tmp/config.status" "config.status"
-            fi
-        fi
+            case "$REALLY" in
+                y|yes)
+                    rm -f "/tmp/config.status"
+                    cp "config.status" "/tmp/config.status"
+                    rm -rf *
+                    cp "/tmp/config.status" "config.status"
+                    break
+                    ;;
+                n|no)
+                    exit 1
+                    ;;
+                *)
+                    ;;
+            esac
+        done
     fi
     "$CONFIGURE" "$@"
 fi
