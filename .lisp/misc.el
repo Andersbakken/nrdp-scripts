@@ -1376,7 +1376,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-cat-emacs ()
   (interactive)
-  (with-current-buffer (if (string= (buffer-name) " *server*")
+  (with-current-buffer (if (string-match "^ ?\\*server\\*$" (buffer-name))
                            (other-buffer)
                          (current-buffer))
     (save-restriction
