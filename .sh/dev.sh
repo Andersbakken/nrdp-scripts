@@ -98,7 +98,7 @@ function cat-emacs()
 {
     test -z "$EMACSCLIENT" && EMACSCLIENT=emacsclient
     emacsclient -e "(misc-cat-emacs)" &> /dev/null
-    cat /tmp/cat-emacs.tmp
+    cat /tmp/misc-cat-emacs.tmp
 }
 
 function findcmake()
