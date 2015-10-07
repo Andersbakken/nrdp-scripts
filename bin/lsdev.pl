@@ -439,6 +439,27 @@ sub findRoot {
     return $result;
 }
 
+sub sortRootPredicate {
+    my ($root1, $root2) = @_;
+    return 1 if(isRootBuild($root1) && !isRootBuild($root2));
+    return -1 if(!isRootBuild($root1) && isRootBuild($root2));
+
+    my $path1 = $root1->{path};
+    my $path2 = $root2->{path};
+    return (stat($path2))[9] <=> (stat($path1))[9];
+}
+
+sub sortRootPathPredicate {
+    my ($path1, $path2) = @_;
+
+    my $root1 = findRoot($path1);
+    my $root2 = findRoot($path2);
+    return 1 if(isRootBuild($root1) && !isRootBuild($root2));
+    return -1 if(!isRootBuild($root1) && isRootBuild($root2));
+
+    return (stat($path2))[9] <=> (stat($path1))[9];
+}
+
 sub findRootBuilds {
     my ($root) = @_;
     $root = findRoot($root->{source}) if(isRootBuild($root));
@@ -448,7 +469,7 @@ sub findRootBuilds {
         my $build_root = $roots{$_};
         push @result, $build_root if(isRootBuild($build_root) && (!$root || findRoot($build_root->{source}) == $root));
     }
-    @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
+    @result = sort { sortRootPredicate($a, $b) } @result;
     return @result;
 }
 
@@ -644,7 +665,7 @@ sub filterMatches_internal {
             push @result, $root->{path} if(defined($root));
         }
     }
-    @result = sort { (stat($a))[9] < (stat($b))[9] } @result;
+    @result = sort { sortRootPathPredicate($a, $b) } @result;
     return @result;
 }
 
