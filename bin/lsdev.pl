@@ -517,7 +517,7 @@ sub addRoot {
     #$root{source} = $roots{$root_key}->{source} if(!$source && $roots{$root_key});
     $roots{$root{key}} = \%root;
     if($verbose) {
-        display "Named Root(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n"
+        display "Named Root(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n";
     }
     return \%root;
 }
@@ -532,8 +532,10 @@ sub generateBuildName {
 
         my @builds = findRootBuilds($src_root);
         $name = getProjectName($root->{path}) if($#builds == 0);
-        $name = "_${name}" if(length($name));
-        $name = "${src_name}${name}" unless($name =~ /$src_name/i);
+        unless($name =~ /$src_name/i) {
+            $name = "_${name}" if(length($name));
+            $name = "${src_name}${name}";
+        }
     }
     display "Generated Name: $name\n" if($verbose);
     return $name;
