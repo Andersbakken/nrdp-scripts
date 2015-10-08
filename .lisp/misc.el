@@ -1387,4 +1387,21 @@ there's a region, all lines that region covers will be duplicated."
         (basic-save-buffer)
         (kill-buffer (current-buffer))))))
 
+(defun misc-find-first-non-ascii-char () ;; binary
+  "Find the first non-ascii character from point onwards."
+  (interactive)
+  (let (point)
+    (save-excursion
+      (setq point
+            (catch 'non-ascii
+              (while (not (eobp))
+                (or (eq (char-charset (following-char))
+                        'ascii)
+                    (throw 'non-ascii (point)))
+                (forward-char 1)))))
+    (if point
+        (goto-char point)
+      (message "No non-ascii characters."))))
+
+
 (provide 'nrdp-misc)
