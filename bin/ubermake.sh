@@ -73,6 +73,16 @@ elif [ -e "${MAKE_DIR}Sakefile.js" ]; then
     (cd $MAKE_DIR && sake $SAKE_OPTIONS)
     return
 else
+    if [ -n "$UBERTAGS" ]; then
+        DIR="$MAKE_DIR"
+        [ -z "$DIR" ] && DIR=.
+        COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
+        # echo "FOUND IT $COMPILATION_DATABASEJSON"
+        if [ -e "$COMPILATION_DATABASEJSON" ]; then
+            rc -J "$COMPILATION_DATABASEJSON"
+            exit 0
+        fi
+    fi
     if which ninja >/dev/null 2>&1; then
         NINJA_DIR=$MAKE_DIR
         [ -z "$NINJA_DIR" ] && NINJA_DIR=.
