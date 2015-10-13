@@ -3,7 +3,10 @@ EMAIL=`git config --local user.email`
 if [ -z "$EMAIL" ]; then
     REMOTE=`git remote -v show origin | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
     if echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/"; then
-        DEFAULT_EMAIL="$(whoami)@netflix.com"
+        USERNAME=`whoami`
+        [ "$USERNAME" = "sam" ] && USERNAME="smagnuson"
+        [ "$USERNAME" = "anders" ] && USERNAME="abakken"
+        DEFAULT_EMAIL="${USERNAME}@netflix.com"
     else
         DEFAULT_EMAIL=`git config user.email`
     fi
