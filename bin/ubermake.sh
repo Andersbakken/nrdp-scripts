@@ -17,6 +17,7 @@ findancestor() {
     return 0
 }
 
+VERSION=
 MAKE_DIR=
 MAKE_OPTIONS=
 UBERTAGS=
@@ -26,7 +27,8 @@ while [ "$#" -gt 0 ]; do
         -C) shift; MAKE_DIR="$1" ;;
         -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
         -r|--rtags) UBERTAGS=1 ;;
-        -v) MAKE_DIR="${PWD}/" ;; #disable lsdev
+        --verbose) VERBOSE="1" ;;
+        -v) VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
@@ -94,6 +96,7 @@ else
                 exit 0
             fi
             NINJA_OPTIONS=
+            [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
             [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
             for opt in $MAKEFLAGS $MAKE_OPTIONS; do
                 case $opt in
