@@ -16,6 +16,17 @@ findancestor() {
         done)
     return 0
 }
+SUCCESS_POST_COMMAND=
+ERROR_POST_COMMAND=
+
+finish() {
+    if [ "$1" -eq 0 ]; then
+        [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
+    else
+        [ -n "$ERROR_POST_COMMAND" ] && eval "$ERROR_POST_COMMAND"
+    fi
+    exit "$1"
+}
 
 VERSION=
 MAKE_DIR=
@@ -30,6 +41,8 @@ while [ "$#" -gt 0 ]; do
         --verbose) VERBOSE="1" ;;
         -v) VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
+        -s) shift; SUCCESS_POST_COMMAND="$1" ;;
+        -e) shift; ERROR_POST_COMMAND="$1" ;;
         *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
     esac
     shift
@@ -82,7 +95,7 @@ else
         # echo "FOUND IT $COMPILATION_DATABASEJSON"
         if [ -e "$COMPILATION_DATABASEJSON" ]; then
             rc -J "$COMPILATION_DATABASEJSON"
-            exit 0
+            finish 0
         fi
     fi
     if which ninja >/dev/null 2>&1; then
@@ -93,7 +106,7 @@ else
             cd `dirname $NINJA`
             if [ -n "$UBERTAGS" ]; then
                 ninja -t commands | rc --compile
-                exit 0
+                finish 0
             fi
             NINJA_OPTIONS=
             [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
@@ -106,7 +119,7 @@ else
             done
             NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
             ninja $NINJA_OPTIONS
-            exit $?
+            finish $?
         fi
     fi
 fi
@@ -114,7 +127,7 @@ fi
 [ -z "$MAKE_DIR" ] && MAKE_DIR=.
 if [ -n "$UBERTAGS" ]; then
     RTAGS_RMAKE=1 `which make` -C "$MAKE_DIR" -B
-    exit 0
+    finish 0
 fi
 `which make` -C "$MAKE_DIR" $MAKE_OPTIONS #go for the real make
-exit $?
+finish $?
