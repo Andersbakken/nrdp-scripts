@@ -40,7 +40,11 @@
                    (push "--" args)))))
 
     (grep-find (concat "git --no-pager grep -I -n "
-                       (combine-and-quote-strings args)
+                       (let ((combined (mapconcat 'identity args " ")))
+                         (if (and (not (string-match "\"" combined))
+                                  (string-match " " combined))
+                             (concat "\"" combined "\"")
+                           combined))
                        " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"))))
 
 (defun nrdp-git-config-value (conf)
