@@ -134,8 +134,9 @@ if($display_only eq "current") {
 }
 
 sub answer {
-    my ($root) = @_;
+    my ($root, $rest_dir) = @_;
     my $output;
+    my $path = addRestDir($root->{path}, $rest_dir);
     if($answer eq "all") {
         $output = generateRootName($root) . " [" . $root->{path} . "]";
         if($root->{source}) {
@@ -143,15 +144,15 @@ sub answer {
             $output .= " [" . generateRootName($src_root) . "]";
         }
     } elsif($answer eq "simple_name") {
-        $output = getPathConfig($root->{path}, "prompt");
+        $output = getPathConfig($path, "prompt");
         $output = generateRootName($root) unless($output);
     } elsif($answer eq "name") {
         $output = generateRootName($root);
     } elsif($answer eq "rest") {
-        $output = getRestDir($root->{path});
+        $output = getRestDir($path);
         $output = "<root>" unless(length($output));
     } elsif($answer eq "path") {
-        $output = $root->{path};
+        $output = $path;
     }
     if($output) {
         print STDOUT "$output\n";
@@ -417,6 +418,13 @@ sub findRoot_internal {
     return $result;
 }
 
+sub dumpRoots {
+    display "Roots: [" . mycaller() . "]\n";
+    foreach(keys(%roots)) {
+        display " Root:$_:" . $roots{$_} . ": " . $roots{$_}->{path} . "\n";
+    }
+}
+
 sub findRoot {
     my ($path, $recurse) = @_;
     $path = canonicalize($path);
@@ -517,7 +525,7 @@ sub addRoot {
     #$root{source} = $roots{$root_key}->{source} if(!$source && $roots{$root_key});
     $roots{$root{key}} = \%root;
     if($verbose) {
-        display "Named Root(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n";
+        display "Named Root:" . \%root . "(", $root{key}, ") [", $root{name}, "] -> [", $root{path}, "] {" . $root{source} . "} ($root_location) [" . mycaller() . "]\n";
     }
     return \%root;
 }
@@ -983,8 +991,7 @@ if($display_only eq "default") { #display the currently mapped default
         for(my $i = 0; $i < @choices; ++$i) {
             my $root = findRoot($choices[$i]);
             if($root) {
-                $root->{path} = addRestDir($root->{path}, $rest_dir) if(defined($rest_dir));
-                answer($root);
+                answer($root, $rest_dir);
             }
         }
     } else {
@@ -1040,5 +1047,6 @@ if($display_only eq "default") { #display the currently mapped default
         }
     }
 }
+
 
 
