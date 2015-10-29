@@ -1403,5 +1403,14 @@ there's a region, all lines that region covers will be duplicated."
         (goto-char point)
       (message "No non-ascii characters."))))
 
+(defun misc-isearch-occur ()
+  "*Invoke `occur' from within isearch."
+  (interactive)
+  (let ((case-fold-search isearch-case-fold-search))
+    (occur (if isearch-regexp isearch-string (regexp-quote isearch-string)))))
+
+(define-key isearch-mode-map (kbd "M-W") (function isearch-toggle-word))
+(define-key isearch-mode-map (kbd "M-R") (function isearch-toggle-regexp))
+(define-key isearch-mode-map (kbd "C-o") (function isearch-occur))
 
 (provide 'nrdp-misc)
