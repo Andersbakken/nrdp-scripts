@@ -5,8 +5,6 @@
 (defvar location-stack-ignore nil)
 (defvar location-stack-enabled t)
 
-(require 'cl)
-
 (defun location-stack-clear ()
   (interactive)
   (setq location-stack nil)
