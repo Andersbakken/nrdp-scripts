@@ -32,7 +32,7 @@
   (magit-log (list (magit-get-current-branch))))
 
 (fset 'magit-toggle-whitespace
-      [?D ?- ?w ?\C-\M-l ?\C-x ?1 ?\M-x ?e ?v ?a ?l ?- ?b ?u tab return ?\C-\M-l ?q ?\C-x ?\( ?\C-x ?\( ?D ?- ?w ?g])
+      (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
 
 (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
 (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
