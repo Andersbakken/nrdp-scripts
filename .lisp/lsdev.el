@@ -271,13 +271,14 @@
 (defvar lsdev-mode t)
 (defvar lsdev-modestring nil)
 (defun lsdev-update-modestring (&optional buffer)
-  (unless buffer (setq buffer (current-buffer)))
-  (let ((modeline (lsdev-name buffer)))
-    (if modeline (setq modeline (concat " [" modeline "]")))
-    (set (make-local-variable 'lsdev-modestring) modeline)))
-;;(setq global-mode-string (append global-mode-string '(lsdev-modestring)))
-(if (not (assoc 'lsdev-mode minor-mode-alist))
-    (setq minor-mode-alist (cons '(lsdev-mode lsdev-modestring) minor-mode-alist)))
+  (unless lsdev-modestring
+    (let ((modeline (and (buffer-file-name buffer)
+                         (lsdev-name (or buffer (current-buffer))))))
+      (when modeline
+        (setq-local lsdev-modestring (concat " [" modeline "] "))))))
+
+(add-to-list 'global-mode-string '(:eval lsdev-modestring))
+
 (defadvice switch-to-buffer (after lsdev-update-modestring-adv)
   (lsdev-update-modestring))
 (ad-activate 'switch-to-buffer)
