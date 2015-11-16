@@ -23,19 +23,19 @@
 
 (defalias 'sam-find-ancestor-file 'find-ancestor-file)
 
+(defun misc-current-buffer()
+  (if (string-match "^ ?\\*server\\*$" (buffer-name))
+      (other-buffer)
+    (current-buffer)))
+
 (defun what-file (&optional name) ;;I use this function from emacsclient!
-  (let* ((buffers (buffer-list))
-         (result))
+  (let* ((buffers (buffer-list)) (result))
     (while (and (not result) buffers)
-      (let* ((buffer (car buffers))
-             (file-name (buffer-file-name buffer)))
-        ;; (message (concat "Looking at " file-name))
+      (let* ((buffer (car buffers)) (file-name (buffer-file-name buffer)))
         (when (and file-name (or (not name) (string-match name file-name)))
           (setq result file-name)
           (with-current-buffer buffer
-            (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos))))))
-        ;; (message (concat "Done Looking at " file-name))
-        )
+            (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos)))))))
       (setq buffers (cdr buffers)))
     result))
 
@@ -1367,9 +1367,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-cat-emacs ()
   (interactive)
-  (with-current-buffer (if (string-match "^ ?\\*server\\*$" (buffer-name))
-                           (other-buffer)
-                         (current-buffer))
+  (with-current-buffer (misc-current-buffer)
     (save-restriction
       (widen)
       (let ((output (buffer-substring-no-properties (point-min) (point-max))))
