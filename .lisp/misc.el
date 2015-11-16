@@ -1022,7 +1022,7 @@ to case differences."
   (let ((compiled 0)
         (considered 0))
     (misc-find-files directory
-                     "\.el$"
+                     "\\.el$"
                      norecurse
                      (lambda (file)
                        (incf considered)
