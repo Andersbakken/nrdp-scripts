@@ -165,7 +165,7 @@
           (t (concat (agb-git-blame-root-dir) file)))))
 
 (defun agb-git-blame-buffer-visible (buffer)
-  (car (cl-member-if #'(lambda (arg) (eq buffer (window-buffer arg))) (window-list))))
+  (car (cl-member-if (lambda (arg) (eq buffer (window-buffer arg))) (window-list))))
 
 (defun agb-git-blame-show-diff (&optional otherwindow)
   (interactive "P")

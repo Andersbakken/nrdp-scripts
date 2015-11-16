@@ -33,9 +33,9 @@
   (let ((args (split-string search " ")))
     (when (and (not (member args "--"))
                (let (hasarg)
-                 (mapc #'(lambda (arg)
-                           (when (not (string= "-" (substring arg 0 1)))
-                             (setq hasarg t))) args)
+                 (mapc (lambda (arg)
+                         (when (not (string= "-" (substring arg 0 1)))
+                           (setq hasarg t))) args)
                  (unless hasarg
                    (push "--" args)))))
 

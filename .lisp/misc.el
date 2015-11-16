@@ -18,18 +18,8 @@
 (defalias 'sam-is-ancestor 'is-ancestor)
 
 (defun find-ancestor-file (file-name &optional directory)
-  "Try to recursively go upwards from this directory and see if a file with
-the name of the value of file-name is present."
-  (let ((check-dir (cond (directory ;; extrapolate from name
-                          (if (equal (substring directory -1) "/")
-                              directory
-                            (concat directory "/")))
-                         (t default-directory) ;; hmm, use default
-                         )))
-    (while (not (or (<= (length check-dir) 0) (string-equal check-dir "/") (file-exists-p (concat check-dir file-name))))
-      (setq check-dir (substring check-dir 0 (string-match "[^/]*/?$" check-dir))))
-    ;; if we did found a file!
-    (if (<= (length check-dir) 1) nil  (concat check-dir file-name))))
+  (let ((dir (locate-dominating-file (or directory default-directory) file-name)))
+    (and dir (expand-file-name (concat dir file-name)))))
 
 (defalias 'sam-find-ancestor-file 'find-ancestor-file)
 
@@ -39,12 +29,13 @@ the name of the value of file-name is present."
     (while (and (not result) buffers)
       (let* ((buffer (car buffers))
              (file-name (buffer-file-name buffer)))
-        (message (concat "Looking at " file-name))
+        ;; (message (concat "Looking at " file-name))
         (when (and file-name (or (not name) (string-match name file-name)))
           (setq result file-name)
           (with-current-buffer buffer
             (save-restriction (widen) (setq result (format "%s:%d" result (line-number-at-pos))))))
-        (message (concat "Done Looking at " file-name)))
+        ;; (message (concat "Done Looking at " file-name))
+        )
       (setq buffers (cdr buffers)))
     result))
 
@@ -73,15 +64,13 @@ the name of the value of file-name is present."
             (t
              (setq i 1)
              (setq numWindows (count-windows))
-             (while  (< i numWindows)
-               (let* (
-                      (w1 (elt (window-list) i))
+             (while (< i numWindows)
+               (let* ((w1 (elt (window-list) i))
                       (w2 (elt (window-list) (+ (% i numWindows) 1)))
                       (b1 (window-buffer w1))
                       (b2 (window-buffer w2))
                       (s1 (window-start w1))
-                      (s2 (window-start w2))
-                      )
+                      (s2 (window-start w2)))
                  (set-window-buffer w1 b2)
                  (set-window-buffer w2 b1)
                  (set-window-start w1 s2)
@@ -123,10 +112,12 @@ the name of the value of file-name is present."
   (goto-char (point-max))
   (insert (format-time-string "\n\n============== MARK: %Y-%m-%d %H:%M:%S %Z =====================\n\n"))
   (setq buffer-read-only t))
+
 (defun tailf-clear()
   (interactive) (setq buffer-read-only nil)
   (erase-buffer)
   (setq buffer-read-only t))
+
 (defun tailf (file)
   (interactive "FFile: ")
   (setq file (expand-file-name file))
@@ -147,9 +138,6 @@ the name of the value of file-name is present."
       (set-process-query-on-exit-flag process nil)
       (pop-to-buffer buffer) process)))
 
-;;====================
-;; Carriage return bogusness
-;;====================
 (defun --misc-replace-string-helper (from to &optional start end)
   (let ((count 0))
     (save-excursion
@@ -168,6 +156,10 @@ the name of the value of file-name is present."
         (replace-match (or to "") nil t)))
     (and (> count 0) count)))
 
+;;====================
+;; Carriage return bogusness
+;;====================
+
 (defun dos-to-unix ()
   "Replace \r\n with \n"
   (interactive)
@@ -183,7 +175,6 @@ the name of the value of file-name is present."
       (let ((b-window (get-buffer-window ediff-buffer-B)))
         (if b-window (delete-window b-window))
         (kill-buffer ediff-buffer-B))))
-(provide 'nrdp-misc)
 
 ;;===================
 ;; Insert prints all over the board
@@ -337,7 +328,7 @@ to case differences."
          (ret)
          (seenvar)
          (len (1- (length words))))
-;;    (message "[%s]" (combine-and-quote-strings words "|"))
+    ;;    (message "[%s]" (combine-and-quote-strings words "|"))
     (while (>= len 0)
       (let ((word (nth len words)))
         (if (not seenvar)
@@ -991,7 +982,7 @@ to case differences."
 ;; ================================================================================
 
 (defun misc-is-compiled (el)
-  (let ((elc (byte-compile-dest-file file)))
+  (let ((elc (byte-compile-dest-file el)))
     (and (file-exists-p elc)
          (not (file-newer-than-file-p el elc)))))
 
@@ -1033,18 +1024,18 @@ to case differences."
     (misc-find-files directory
                      "\.el$"
                      norecurse
-                     #'(lambda (file)
-                         (incf considered)
-                         (unless (misc-is-compiled file)
-                           (incf compiled)
-                           (condition-case nil
-                               (byte-compile-file file t)
-                             (error))))
-                     #'(lambda (file)
-                         (or (string-match "/tests?[/$]" file)
-                             (string-match "\\<demo\\>" file)
-                             (string-match "\\<examples?\\>" file)
-                             (string-match "\\.cask[/$]" file))))
+                     (lambda (file)
+                       (incf considered)
+                       (unless (misc-is-compiled file)
+                         (incf compiled)
+                         (condition-case nil
+                             (byte-compile-file file t)
+                           (error))))
+                     (lambda (file)
+                       (or (string-match "/tests?[/$]" file)
+                           (string-match "\\<demo\\>" file)
+                           (string-match "\\<examples?\\>" file)
+                           (string-match "\\.cask[/$]" file))))
     (cons compiled considered)))
 
 (defun misc-byte-compile-all-loadpath ()

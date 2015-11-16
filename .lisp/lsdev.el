@@ -422,7 +422,7 @@
                     (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
                            (src-root-len (1+ (length src-root))))
                       (setq file (completing-read "File: "
-                                                  (mapcar #'(lambda (arg) (substring arg src-root-len)) files)))
+                                                  (mapcar (lambda (arg) (substring arg src-root-len)) files)))
                       (if file
                           (setq file (concat src-root "/" file)))))
                 (if file
