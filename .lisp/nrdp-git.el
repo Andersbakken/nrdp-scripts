@@ -10,11 +10,22 @@
     (require 'nrdp-git-old-ass-and-bad)
   (require 'nrdp-git-good))
 
-(defun nrdp-git-gitify-path (file)
-  (if (string-match "^/" file)
-      (let ((root (magit-toplevel (file-name-directory file))))
-        (if (string-match (concat "^" root) file)
-            (setq file (substring file (length root))))))
+(defun nrdp-git-gitify-path (file sha)
+  (when (string-match "^/" file)
+    (let ((root (magit-toplevel (file-name-directory file))))
+      (when (string-match (concat "^" root) file)
+        (setq file (substring file (length root))))))
+  (when file
+    (with-temp-buffer
+      (let ((fullrev (shell-command-to-string (concat "git rev-parse " sha))))
+        (cd (magit-toplevel (file-name-directory file)))
+        (call-process "git" nil t nil "log" "--stat" "--follow" "--pretty=%H" file)
+        (goto-char (point-min))
+        (when (and (search-forward fullrev nil t)
+                   (re-search-forward "[A-Za-z0-9]" nil t))
+          (let ((start (1- (point))))
+            (when (search-forward " " nil t)
+              (setq file (buffer-substring-no-properties start (1- (point))))))))))
   file)
 
 (defun nrdp-git-grep-prompt ()
@@ -108,7 +119,7 @@
     (unless sha
       (error "You have to pick a SHA!"))
     (let* ((line (and (string= file (buffer-file-name)) (count-lines 1 (point))))
-           (git-file (nrdp-git-gitify-path file))
+           (git-file (nrdp-git-gitify-path file sha))
            (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
       (switch-to-buffer buffer)
       (setq buffer-read-only nil)
