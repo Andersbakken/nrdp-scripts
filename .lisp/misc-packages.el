@@ -5,6 +5,7 @@
 (require 'package)
 (add-to-list 'package-archives '("marmalade" . "https://marmalade-repo.org/packages/"))
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
+(package-initialize)
 
 (defun misc-package-install (&optional query)
   (interactive "P")
@@ -40,12 +41,10 @@
 
 (defun misc-init-packages (packages)
   (let ((cur (misc-current-packages)))
-    (package-initialize)
-    (package-refresh-contents)
     (while packages
       (unless (member (car packages) cur)
         (message "Installing missing package %s" (symbol-name (car packages)))
         (package-install (intern (symbol-name (car packages)))))
       (setq packages (cdr packages)))))
 
-(provide 'nrdp-misc-packages)
+(provide 'misc-packages)
