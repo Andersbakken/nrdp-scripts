@@ -12,10 +12,10 @@ gs()
       esac
       shift
     done
-    if [ "`lsdev.pl -r -l $LSDEV_FLAGS | wc -l`" != "1" ] && $(git rev-parse --git-dir &> /dev/null); then
-        git $ACTION
-    else
+    if [ `lsdev.pl -r -l $LSDEV_FLAGS | wc -l` = "1" ]; then
         git lsdev $LSDEV_FLAGS -- $ACTION
+    elif $(git rev-parse --git-dir &> /dev/null); then
+        git $ACTION
     fi
 }
 
