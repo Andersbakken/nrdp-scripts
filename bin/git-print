@@ -39,6 +39,9 @@ while [ -n "$1" ]; do
         --dry-run|-N)
             TEST=1
             ;;
+        -v|--verbose)
+            VERBOSE=1
+            ;;
         --help|-h)
             echo "$0 [options] files..."
             echo "  -q|--quiet                Don't actually echo out the contents"
@@ -79,7 +82,7 @@ for FILE in "${FILES[@]}"; do
         COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
     fi
     [ -z "$COMMITISH" ] && COMMITISH="HEAD"
-    echo "Print: $FILE @ $COMMITISH" >&2
+    [ -n "$VERBOSE" ] && echo "Print: $FILE @ $COMMITISH" >&2
     if [ "$MODE" = "file" ]; then
         $TEST git show "${COMMITISH}:${SUBDIR}${FILE}"
     elif [ "$MODE" = "inplace" ]; then
