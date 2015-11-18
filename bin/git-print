@@ -6,6 +6,11 @@ count_tilde() {
     return 0
 }
 
+resolve_file_at_commitish() {
+    commitish=`git rev-parse "$2"`
+    git log --follow --stat --pretty="%H" "$1" | grep -A 2 $commitish | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'
+}
+
 TEST=
 MODE=file
 BAK=
@@ -60,36 +65,38 @@ done
 for FILE in "${FILES[@]}"; do
     COMMITISH=
 
-    SUBDIR="$(git rev-parse --show-prefix)"
     if echo "$FILE" | grep '@.*' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\(.*\)@\(.*\)$,\2,g'`
         FILE=`echo "$FILE" | sed 's,^\(.*\)@\(.*\)$,\1,g'`
         COMMITISH=`git rev-parse --verify $MOD 2>/dev/null`
-        [ -z "$COMMITISH" ] && COMMITISH=`git rev-list -n 1 --until="$MOD" HEAD -- ${FILE}`
+        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
+        [ -z "$COMMITISH" ] && COMMITISH=`git rev-list -n 1 --until="$MOD" HEAD -- ${RESOLVED_FILE}`
     elif echo "$FILE" | grep '\#.*' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\(.*\)#\(.*\)$,\2,g'`
         FILE=`echo "$FILE" | sed 's,^\(.*\)#\(.*\)$,\1,g'`
         if echo "$MOD" | grep '~' >/dev/null 2>&1; then
             count_tilde $MOD
-            COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
+            COMMITISH=`git rev-list --follow -n $? HEAD -- ${FILE} | tail -1`
         else
-            COMMITISH=`git rev-list HEAD -- ${FILE} | tail -$MOD | head -1`
+            COMMITISH=`git rev-list --follow HEAD -- ${FILE} | tail -$MOD | head -1`
         fi
+        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
     elif echo "$FILE" | grep '~' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\([^~]*\)\(~.*\)$,\2,g'`
         FILE=`echo "$FILE" | sed 's,^\([^~]*\)\(~.*\)$,\1,g'`
         count_tilde $MOD
         COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
+        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
     fi
     [ -z "$COMMITISH" ] && COMMITISH="HEAD"
-    [ -n "$VERBOSE" ] && echo "Print: $FILE @ $COMMITISH" >&2
+    [ -n "$VERBOSE" ] && echo "Print: $RESOLVED_FILE @ $COMMITISH" >&2
     if [ "$MODE" = "file" ]; then
-        $TEST git show "${COMMITISH}:${SUBDIR}${FILE}"
+        $TEST git show "${COMMITISH}:${RESOLVED_FILE}"
     elif [ "$MODE" = "inplace" ]; then
         [ -n "$BAK" ] && /bin/cp "$FILE" "${FILE}${BAK}"
-        $TEST git show "${COMMITISH}:${SUBDIR}${FILE}" > "$FILE"
+        $TEST git show "${COMMITISH}:${RESOLVED_FILE}" > "$FILE"
     elif [ "$MODE" = "blame" ]; then
-        $TEST git blame "${COMMITISH}" -- "${FILE}"
+        $TEST git blame "${COMMITISH}" -- "${RESOLVED_FILE}"
     elif [ "$MODE" = "commit" ]; then
         $TEST git show "${COMMITISH}"
     fi
