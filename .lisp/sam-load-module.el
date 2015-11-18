@@ -14,7 +14,8 @@
      (t (message "No module: %s" module)))
     (if filepath
         (let ((compiled-filepath (byte-compile-dest-file filepath)))
-      (add-to-list 'load-path (file-name-directory filepath))
+	  (add-to-list 'load-path (file-name-directory filepath))
           (if (or (not (file-exists-p compiled-filepath)) (file-newer-than-file-p filepath compiled-filepath))
               (byte-compile-file filepath t)
-            (load compiled-filepath))))))
+            (load compiled-filepath)))
+      (require (intern module) filename t))))
