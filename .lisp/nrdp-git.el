@@ -180,8 +180,9 @@
             (select-window old)))
       (message "No differences")
       (kill-buffer (current-buffer))
-      (when (= numwindows 1)
-        (delete-window))
+      (if (= numwindows 1)
+          (delete-window)
+        (other-window 1))
       nil)))
 
 (defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
