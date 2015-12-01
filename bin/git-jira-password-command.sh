@@ -6,5 +6,5 @@ while [ -n "`ps aux | grep "\<gpg[^-]" | grep -v grep`" ]; do # apparently pidof
     sleep 1
 done
 
-password=`${GPG} --no-tty -d "$1" | tail -n 1`
-echo -n "$password"
+PASSWORD=`${GPG} --no-tty -d "$1" 2>/dev/null | tail -n 1`
+echo -n "$PASSWORD"
