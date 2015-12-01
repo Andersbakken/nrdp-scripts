@@ -1402,4 +1402,17 @@ there's a region, all lines that region covers will be duplicated."
 (define-key isearch-mode-map (kbd "M-R") (function isearch-toggle-regexp))
 (define-key isearch-mode-map (kbd "C-o") (function isearch-occur))
 
+(defun misc-join-line (&optional arg)
+  "Join this line or the lines in the selected region."
+  (interactive)
+  (cond ((region-active-p)
+         (let ((min (line-number-at-pos (region-beginning))))
+           (goto-char (region-end))
+           (while (> (line-number-at-pos) min)
+             (join-line)
+             (if arg (delete-horizontal-space)))))
+        (t (join-line 1)))
+  (if (or (looking-at "}") (save-excursion (forward-char -1) (looking-at "{")))
+      (insert " ")))
+
 (provide 'nrdp-misc)
