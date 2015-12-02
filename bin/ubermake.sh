@@ -114,6 +114,7 @@ else
             for opt in $MAKEFLAGS $MAKE_OPTIONS; do
                 case $opt in
                     clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
+                    -k) NINJA_OPTIONS="$NINJA_OPTIONS -k 1000" ;;
                     *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                 esac
             done
