@@ -19,7 +19,7 @@
     (with-temp-buffer
       (let ((fullrev (shell-command-to-string (concat "git rev-parse " sha))))
         (cd (magit-toplevel (file-name-directory file)))
-        (call-process "git" nil t nil "log" "--stat" "--follow" "--pretty=%H" file)
+        (call-process "git" nil t nil "log" "--stat" "--stat-name-width=10000" "--follow" "--pretty=%H" file)
         (goto-char (point-min))
         (when (and (search-forward fullrev nil t)
                    (re-search-forward "[A-Za-z0-9]" nil t))
