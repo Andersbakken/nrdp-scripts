@@ -10,12 +10,12 @@
     (require 'nrdp-git-old-ass-and-bad)
   (require 'nrdp-git-good))
 
-(defun nrdp-git-gitify-path (file sha)
+(defun nrdp-git-gitify-path (file sha &optional nofollow)
   (when (string-match "^/" file)
     (let ((root (magit-toplevel (file-name-directory file))))
       (when (string-match (concat "^" root) file)
         (setq file (substring file (length root))))))
-  (when file
+  (when (and file (not nofollow))
     (with-temp-buffer
       (let ((fullrev (shell-command-to-string (concat "git rev-parse " sha))))
         (cd (magit-toplevel (file-name-directory file)))
@@ -89,7 +89,7 @@
       (setq path (and (string-match "\\(.*/\\).*/" path) (match-string 1 path))))
     best))
 
-(defun nrdp-git-show-revision (&optional file sha)
+(defun nrdp-git-show-revision (&optional file sha nofollow)
   (interactive "P")
   (cond ((stringp file))
         ((bufferp file) (setq file (buffer-file-name)))
@@ -119,7 +119,7 @@
     (unless sha
       (error "You have to pick a SHA!"))
     (let* ((line (and (string= file (buffer-file-name)) (count-lines 1 (point))))
-           (git-file (nrdp-git-gitify-path file sha))
+           (git-file (nrdp-git-gitify-path file sha nofollow))
            (buffer (get-buffer-create (format "*%s - %s*" git-file sha))))
       (switch-to-buffer buffer)
       (setq buffer-read-only nil)
@@ -205,7 +205,7 @@
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (nrdp-git-show-revision (or file (buffer-file-name)) "HEAD"))
+  (nrdp-git-show-revision (or file (buffer-file-name)) "HEAD" t))
 
 (defun nrdp-git-show-tracking (&optional file)
   (interactive)
@@ -214,7 +214,7 @@
   (let* ((default-directory (nrdp-git-dir-for-file file))
          (tracking (magit-get-tracked-branch)))
     (if tracking
-        (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) tracking)
+        (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) tracking t)
       (message "No tracking branch for branch"))))
 
 (defun magit-log-mode-current-file ()
