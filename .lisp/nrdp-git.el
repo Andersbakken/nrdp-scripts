@@ -10,16 +10,16 @@
     (require 'nrdp-git-old-ass-and-bad)
   (require 'nrdp-git-good))
 
-(defun nrdp-git-gitify-path (file sha)
+(defun nrdp-git-gitify-path (file sha &optional follow)
   (when (string-match "^/" file)
     (let ((root (magit-toplevel (file-name-directory file))))
       (when (string-match (concat "^" root) file)
         (setq file (substring file (length root))))))
-  (when file
+  (when (and file follow)
     (with-temp-buffer
       (let ((fullrev (shell-command-to-string (concat "git rev-parse " sha))))
         (cd (magit-toplevel (file-name-directory file)))
-        (call-process "git" nil t nil "log" "--stat" "--follow" "--pretty=%H" file)
+        (call-process "git" nil t nil "log" "--stat" "--stat-name-width=10000" "--follow" "--pretty=%H" file)
         (goto-char (point-min))
         (when (and (search-forward fullrev nil t)
                    (re-search-forward "[A-Za-z0-9]" nil t))
@@ -124,7 +124,11 @@
       (switch-to-buffer buffer)
       (setq buffer-read-only nil)
       (erase-buffer)
-      (call-process "git" nil t nil "show" (format "%s:%s" sha git-file))
+      (unless (= (call-process "git" nil t nil "show" (format "%s:%s" sha git-file)) 0)
+        (erase-buffer)
+        (setq git-file (nrdp-git-gitify-path file sha t))
+        (rename-buffer (format "*%s - %s*" git-file sha))
+        (call-process "git" nil t nil "show" (format "%s:%s" sha git-file)))
       (goto-char (point-min))
       (if line
           (forward-line line))

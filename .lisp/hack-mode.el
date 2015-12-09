@@ -170,8 +170,6 @@
     (forward-line -1)
     (if arg (transpose-lines 1))))
 
-(setq litter-printf-function (lambda() (hack-mode-insert-debug-printf nil "")))
-
 (defun hack-mode-insert-debug-code-line-pre(&optional prefix)
   (interactive "P")
   (hack-mode-insert-debug-code-line prefix t))
