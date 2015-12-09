@@ -51,7 +51,7 @@ elif [ "$1" = "cs" ]; then
         exit 1
     fi
     which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -command submit submit
-elif [ "$1" = "changes" ]; then
+elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
         [ "$change" = "+" ] && continue
         NOTES=
