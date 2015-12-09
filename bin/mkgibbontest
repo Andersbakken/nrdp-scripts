@@ -6,6 +6,7 @@ fi
 choose_opts="-a"
 write=
 stub=0
+stdin=0
 editfile=0
 bug=
 url=
@@ -14,6 +15,11 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         -f|--force)
             write=1
+            ;;
+        -)
+            editfile=1
+            write=1
+            stdin=1
             ;;
         -s|--stub)
             editfile=1
@@ -79,7 +85,7 @@ fi
 
 if [ "$write" = "1" ]; then
     if [ "$stub" = "1" ]; then
-        cat >$test_file <<EOF
+        cat >"$test_file" <<EOF
 /*global nrdp*/
 function keyboardHandler(key)
 {
@@ -106,8 +112,10 @@ function main() {
 }
 nrdp.gibbon.init(main);
 EOF
+    elif [ "$stdin" = "1" ]; then
+        cat >"$test_file"
     elif [ -e "$url" ]; then
-    cp -f "$url" "$test_file"
+        cp -f "$url" "$test_file"
     else
         if which jira >/dev/null 2>&1; then
             if [ -z "$url" ]; then
@@ -152,7 +160,6 @@ fi
 if [ -e "$test_file" ]; then
     echo "File: $test_file"
     echo "URL: $test_url"
-    echo -e "$test_url" | yank -c >/dev/null 2>&1
     if [ "$editfile" = "1" ]; then
         if [ -n "$NF_EDITOR" ]; then
             $NF_EDITOR "$test_file"
@@ -162,6 +169,7 @@ if [ -e "$test_file" ]; then
             echo "Neither \$EDITOR nor \$NF_EDITOR are set. Not sure what to do"
         fi
     fi
+        echo -e "$test_url" | yank -c >/dev/null 2>&1
 fi
 
 
