@@ -39,12 +39,24 @@
       (setq pkg (cdr pkg)))
     (insert "))\n")))
 
+(defvar misc-packages nil)
 (defun misc-init-packages (packages)
+  (setq misc-packages packages)
   (let ((cur (misc-current-packages)))
     (while packages
       (unless (member (car packages) cur)
         (message "Installing missing package %s" (symbol-name (car packages)))
         (package-install (intern (symbol-name (car packages)))))
       (setq packages (cdr packages)))))
+
+(defun misc-list-unaccounted-packages (&optional packages)
+  (interactive)
+  (unless packages
+    (setq packages misc-packages))
+  (package-show-package-list
+   (cl-remove-if-not (lambda (x) (and (not (memq x packages))
+                                      (not (package-built-in-p x))
+                                      (package-installed-p x)))
+                  (mapcar 'car package-archive-contents))))
 
 (provide 'misc-packages)
