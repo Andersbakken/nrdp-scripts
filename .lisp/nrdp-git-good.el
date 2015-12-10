@@ -40,6 +40,8 @@
 (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
 (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
+(when (string< "20151209.731" (magit-version))
+  (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
 (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
 
 (defun magit-current-section-string ())
