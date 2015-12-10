@@ -6,9 +6,62 @@
 (require 'buffer-local-mode)
 (require 'magit)
 
-(if (boundp 'magit-key-mode-groups)
-    (require 'nrdp-git-old-ass-and-bad)
-  (require 'nrdp-git-good))
+(define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
+(define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
+(define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
+(define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
+
+(define-key magit-mode-map (kbd "M-w") 'kill-ring-save)
+(defun nrdp-git-magit-buffer-file-name ()
+  (and (stringp header-line-format)
+       (string-match "Commits in [^ ]+ touching \\([^ ]+\\)" header-line-format)
+       (concat default-directory (match-string 1 header-line-format))))
+
+(defun nrdp-git-magit-file-log (&optional bufferorfilename)
+  (interactive)
+  (let* ((file (if (stringp bufferorfilename)
+                   bufferorfilename
+                 (nrdp-git-magit-buffer-file-name)))
+         (buf (cond ((bufferp bufferorfilename) bufferorfilename)
+                    (file (or (find-buffer-visiting file)
+                              (find-file-noselect file)))
+                    ((buffer-file-name) (current-buffer))
+                    (t nil))))
+    (if buf
+        (with-current-buffer buf
+          (let* ((magit-buffer-file-name (file-truename (buffer-file-name buf)))
+                 (default-directory (file-name-directory magit-buffer-file-name)))
+            (magit-log-head (list "--follow") (list magit-buffer-file-name))))
+      (message "Can't log this buffer"))))
+
+(defun nrdp-git-magit-log ()
+  (interactive)
+  (magit-log (list (magit-get-current-branch))))
+
+(fset 'magit-toggle-whitespace
+      (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
+
+(magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
+(magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
+(magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
+(magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
+(magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
+(magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
+(when (string< "20151209.731" (magit-version))
+  (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
+(magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
+
+(defun magit-current-section-string ())
+
+(defun nrdp-magit-visit-thing-advice (orig-fun &rest args)
+  (interactive)
+  (save-excursion
+    (goto-char (point-at-bol))
+    (if (looking-at "^\\([A-Fa-f0-9]+\\) .*ago$")
+        (magit-show-commit (match-string 1) t)
+      (call-interactively orig-fun))))
+
+(advice-add 'magit-visit-thing :around #'nrdp-magit-visit-thing-advice)
 
 (defun nrdp-git-gitify-path (file sha &optional follow)
   (when (string-match "^/" file)
