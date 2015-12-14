@@ -539,7 +539,8 @@ to case differences."
             (when (file-readable-p candidate)
               ;; (message "Found in simple search: %s" candidate)
               (return candidate)))
-          (and (gtags-get-rootpath)
+          (and (executable-find "gtags")
+               (gtags-get-rootpath)
                (dolist (candidate candidates)
                  (with-temp-buffer
                    (call-process (executable-find "global") nil t nil "-Pa" (concat "/" (file-name-nondirectory candidate) "$"))
