@@ -119,13 +119,20 @@ EOF
     else
         if which jira >/dev/null 2>&1; then
             if [ -z "$url" ]; then
-                if [ -z "$JIRA_PASSWORD" ] && [ -n "$JIRA_PASSWORD_COMMAND" ]; then
-                    JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+                if [ -z "$JIRA_PASSWORD" ]; then
+                    if [ -z "$JIRA_PASSWORD_COMMAND" ] && [ -f "$JIRA_PASSWORD_FILE" ]; then
+                        DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+                        JIRA_PASSWORD_COMMAND="$DIR/git-jira-password-command.sh $JIRA_PASSWORD_FILE"
+                    fi
+                    if [ -n "$JIRA_PASSWORD_COMMAND" ]; then
+                        JIRA_PASSWORD="`$JIRA_PASSWORD_COMMAND`"
+                    fi
+
+                    if [ -z "$JIRA_PASSWORD" ]; then
+                        read -p "JIRA Password: " -s JIRA_PASSWORD
+                    fi
                 fi
                 JIRA_ARGS=
-                if [ -z "$JIRA_PASSWORD" ]; then
-                    read -p "JIRA Password: " -s JIRA_PASSWORD
-                fi
                 [ -n "$JIRA_PASSWORD" ] && JIRA_ARGS="$JIRA_ARGS --password $JIRA_PASSWORD"
                 urls=
                 urls="$urls `jira $JIRA_ARGS --action getIssue --issue $bug    | grep -o 'https*://[^ ]*'`"
