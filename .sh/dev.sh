@@ -93,6 +93,11 @@ findsym() {
         fi
     fi
 }
+# print lines that match $1 first
+function part()
+{
+    v="$*" awk '{if($0~ENVIRON["v"])print;else x=x$0"\n"}END{printf"%s",x}';
+}
 
 function cat-emacs()
 {
