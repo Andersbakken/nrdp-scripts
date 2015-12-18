@@ -119,9 +119,9 @@
       ret)))
 
 (defun nrdp-git-dir-for-file (&optional file)
-  (magit-toplevel (file-name-directory (file-truename (if (stringp file)
-                                                          file
-                                                        (buffer-file-name file))))))
+  (magit-toplevel (file-name-directory (file-truename (cond ((stringp file) file)
+                                                            ((buffer-file-name file))
+                                                            (t default-directory))))))
 
 (defun nrdp-git-revert (&optional buffer)
   (interactive)
