@@ -1415,10 +1415,14 @@ there's a region, all lines that region covers will be duplicated."
 (defvar misc-compiles-dir "~/.emacs.d/compiles")
 (defun misc-store-last-compile (&optional proc)
   (mkdir misc-compiles-dir t)
-  (let* ((count (length (misc-find-files misc-compiles-dir "/compile_[0-9]+\\.txt$")))
-         (name (format "%s/compile_%04d.txt" misc-compiles-dir count)))
+  (let* ((count 0))
+    (misc-find-files misc-compiles-dir "/compile_[0-9]+\\.txt$" t (lambda (file)
+                                                                    (and (string-match "/compile_\\([0-9]+\\)\\.txt$" file)
+                                                                         (setq count (max count (string-to-number (match-string 1 file)))))))
     (save-restriction
       (widen)
-      (write-region (point-min) (point-max) name))))
+      (write-region (point-min) (point-max)
+                    (format "%s/compile_%04d.txt" misc-compiles-dir (1+ count))))))
+
 
 (provide 'nrdp-misc)
