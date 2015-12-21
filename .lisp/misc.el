@@ -391,9 +391,8 @@ to case differences."
                     "::"
                     (buffer-substring-no-properties functionnamestart functionnameend)
                     params
-                    (if (looking-at "\\<const\\>")
-                        " const")
-                    "\n{\n}\n\n")))))))
+                    (when (looking-at "\\<const\\>")
+                      " const"))))))))
 
 ;;skeleton thingie
 (defun make-member ()
@@ -430,7 +429,9 @@ to case differences."
             (message "It's already there!")
             (switch-to-buffer (cdr old))
             (goto-char (car old)))
-        (insert insertion-string)
+        (unless (looking-back "\n\n")
+          (insert "\n"))
+        (insert insertion-string "\n{\n}\n")
         (save-excursion
           (goto-char (point-min))
           (let ((include (concat "#include \"" (file-name-nondirectory file) "\"")))
