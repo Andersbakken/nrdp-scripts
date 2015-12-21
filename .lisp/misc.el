@@ -433,9 +433,9 @@ to case differences."
         (insert insertion-string)
         (save-excursion
           (goto-char (point-min))
-          (let ((include (concat "#include \"" (file-name-nondirectory file) "\"\n\n")))
+          (let ((include (concat "#include \"" (file-name-nondirectory file) "\"")))
             (unless (search-forward include nil t)
-              (insert include))))
+              (insert include "\n"))))
         (re-search-backward "}")))))
 
 (defalias 'agulbra-make-member 'make-member)
