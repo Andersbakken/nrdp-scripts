@@ -1054,8 +1054,8 @@ to case differences."
 (defun misc-directory-files-helper (dir match dirsonly sortbymodicationtime)
   (let ((all (directory-files-and-attributes dir nil match t))
         (ret))
-    (if sortbymodicationtime
-        (setq all (sort all 'misc-compare-files-by-modification-time)))
+    (when sortbymodicationtime
+      (setq all (sort all 'misc-compare-files-by-modification-time)))
     (while all
       (let ((name (caar all)))
         (unless (or (string= name ".")
@@ -1345,6 +1345,8 @@ there's a region, all lines that region covers will be duplicated."
   (insert-c++-cast (unless choose "static_cast")))
 
 (defun misc-compilation-finish-function (buf str)
+  (when misc-store-compiles
+    (misc-store-last-compile))
   (cond ((string-match "exited abnormally" str)
          (message "compilation errors, press C-x ` to visit"))
         ((with-current-buffer buf
@@ -1414,16 +1416,25 @@ there's a region, all lines that region covers will be duplicated."
       (insert " ")))
 
 (defvar misc-compiles-dir "~/.emacs.d/compiles")
+(defvar misc-store-compiles nil) ;; Set to integer to limit number of files kept
 (defun misc-store-last-compile (&optional proc)
   (mkdir misc-compiles-dir t)
-  (let* ((count 0))
+  (let* ((max 0)
+         (count 0))
     (misc-find-files misc-compiles-dir "/compile_[0-9]+\\.txt$" t (lambda (file)
-                                                                    (and (string-match "/compile_\\([0-9]+\\)\\.txt$" file)
-                                                                         (setq count (max count (string-to-number (match-string 1 file)))))))
+                                                                    (when (string-match "/compile_\\([0-9]+\\)\\.txt$" file)
+                                                                      (incf count)
+                                                                      (setq max (max max (string-to-number (match-string 1 file)))))))
+    (when (and (numberp misc-store-compiles)
+               (>= count misc-store-compiles))
+      (let* ((compiles (nreverse (misc-directory-files-helper misc-compiles-dir "compile_[0-9]+.txt" nil t))))
+        (while (>= count misc-store-compiles)
+          (delete-file (concat misc-compiles-dir "/" (car compiles)))
+          (decf count)
+          (setq compiles (cdr compiles)))))
     (save-restriction
       (widen)
       (write-region (point-min) (point-max)
-                    (format "%s/compile_%04d.txt" misc-compiles-dir (1+ count))))))
-
+                    (format "%s/compile_%06d.txt" misc-compiles-dir (1+ max))))))
 
 (provide 'nrdp-misc)
