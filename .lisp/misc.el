@@ -1437,4 +1437,48 @@ there's a region, all lines that region covers will be duplicated."
       (write-region (point-min) (point-max)
                     (format "%s/compile_%06d.txt" misc-compiles-dir (1+ max))))))
 
+(defvar xclip-use-primary nil)
+(defvar xclip-process nil)
+(defvar xclip-location nil)
+(defun xclip-sentinel (process event)
+  (when (eq (process-status process) 'exit)
+    (when (and (buffer-live-p (car xclip-location))
+               (let ((visible))
+                 (mapc (lambda (window)
+                         (when (eq (window-buffer window) (car xclip-location))
+                           (setq visible t)))
+                       (window-list)))
+               (with-current-buffer (car xclip-location)
+                 (= (point) (cdr xclip-location))))
+      (let ((output (with-current-buffer (process-buffer process)
+                      (buffer-substring-no-properties (point-min) (point-max)))))
+        (when (> (length output) 0)
+          (switch-to-buffer (car xclip-location))
+          (insert output)))))
+  (unless (eq (process-status process) 'run)
+    (kill-buffer (process-buffer xclip-process))
+    (setq xclip-process nil
+          xclip-location nil)))
+
+(defun xclip-yank ()
+  (interactive)
+  (unless (getenv "DISPLAY")
+    (error "No X11 connection"))
+  (unless (executable-find "xclip")
+    (error "No xclip"))
+  (when buffer-read-only
+    (error "Buffer is read only"))
+  (when (and xclip-process
+             (not (eq (process-status xclip-process) 'exit))
+             (not (eq (process-status xclip-process) 'signal)))
+    (error "Already pasting..."))
+
+  (let ((buf (get-buffer-create " *XClip*")))
+    (with-current-buffer buf
+      (buffer-disable-undo buf)
+      (erase-buffer))
+    (setq xclip-process (start-process "XClip" buf "xclip" "-out" "-selection" (if xclip-use-primary "primary" "clipboard")))
+    (setq xclip-location (cons (current-buffer) (point)))
+    (set-process-sentinel xclip-process 'xclip-sentinel)))
+
 (provide 'nrdp-misc)
