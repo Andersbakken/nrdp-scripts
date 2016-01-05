@@ -960,6 +960,24 @@ to case differences."
                                  (completing-read "File: " (list "1080.xml" "common.xml" "config.xml" "gibbon.xml" "graphics.xml" "input.xml" "oem.xml" "rs-client.xml" "rs-server.xml" "stress.xml" "test.xml")))
                          srcdir))
 
+(defun sam-commandline-arg (s)
+  "Detect switch on commandline and interpret it."
+  (let ((args command-line-args)
+        (ret nil))
+    (while args
+      (let ((arg (downcase (car args)))(value nil))
+	(setq args (cdr args))
+	(cond
+         ((equal arg (concat "-" s))
+          (progn
+            (setq value t)
+            (if (and args (not (string-match "^-" (car args)))) (setq value (car args)))
+	    ))
+         ((string-match (concat "--" s "=") arg) (setq value (replace-match "" t t arg)))
+         )
+	(if value (progn (setq ret value) (setq args nil)))))
+    ret))
+
 ;; ================================================================================
 ;; agb-isearch
 ;; ================================================================================
