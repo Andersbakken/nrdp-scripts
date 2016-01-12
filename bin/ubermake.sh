@@ -129,13 +129,21 @@ if [ -z "$MAKE_DIR" ]; then
     NAME=`lsdev.pl -p -ts`
     if [ -n "$NAME" ] && [ -n "$ALL" ]; then
         SOURCE_PATH=`lsdev.pl -r -tp source`
+        REST_PATH=`lsdev.pl -p -tr`
+        [ "$REST_PATH" = "<root>" ] && REST_PATH=
         if [ -d "$SOURCE_PATH" ]; then
-            (cd "$SOURCE_PATH" && lsdev.pl -l -tp -b) | while read path; do
-                if [ "$path" != "$SOURCE_PATH" ]; then
-                    echo -e "=======================\nBuilding $path\n==================\n"
-                    build "$path"
+            (cd "$SOURCE_PATH" && lsdev.pl -l -tp -b | while read p; do
+                if [ "$p" != "$SOURCE_PATH" ]; then
+                    BUILD_PATH="${p}${REST_PATH}"
+                    if [ -d "$BUILD_PATH" ]; then
+                        echo
+                        echo "============================================================"
+                        echo "Building: $BUILD_PATH"
+                        echo "============================================================"
+                        build "$BUILD_PATH" || exit 1
+                    fi
                 fi
-            done
+            done; exit 0)
             finish $?
         fi
     fi
