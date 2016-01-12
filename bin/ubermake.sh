@@ -143,7 +143,7 @@ if [ -z "$MAKE_DIR" ]; then
                         build "$BUILD_PATH" || exit 1
                     fi
                 fi
-            done; exit 0)
+            done; exit $?)
             finish $?
         fi
     fi

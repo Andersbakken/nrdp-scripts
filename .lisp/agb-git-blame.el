@@ -31,8 +31,8 @@
 (define-key agb-git-blame-mode-map (kbd "o") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "f") (function agb-git-blame-show-revision))
 (define-key agb-git-blame-mode-map (kbd "#") (function agb-git-blame-show-revision))
-(define-key agb-git-blame-mode-map (kbd "RET") (function agb-git-blame-show-diff))
-(define-key agb-git-blame-mode-map (kbd "ENTER") (function agb-git-blame-show-diff))
+(define-key agb-git-blame-mode-map (kbd "<RET>") (function agb-git-blame-show-diff))
+(define-key agb-git-blame-mode-map (kbd "<ENTER>") (function agb-git-blame-show-diff))
 
 (define-derived-mode agb-git-blame-mode fundamental-mode
   ;; (setq font-lock-defaults '(agb-git-blame-faces))
@@ -198,6 +198,7 @@
                   (switch-to-buffer-other-window (get-buffer-create bufname))
                   (other-window 1)))
               (setq agb-git-blame-last-temp-buffer (current-buffer))
+              (erase-buffer)
               (call-process "git" nil (current-buffer) nil "show" commit)
               (goto-char (point-min))
               (diff-mode)
