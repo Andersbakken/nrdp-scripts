@@ -128,7 +128,7 @@ done
 if [ -z "$MAKE_DIR" ]; then
     NAME=`lsdev.pl -p -ts`
     if [ -n "$NAME" ] && [ -n "$ALL" ]; then
-        SOURCE_PATH=`lsdev.pl -tp source`
+        SOURCE_PATH=`lsdev.pl -r -tp source`
         if [ -d "$SOURCE_PATH" ]; then
             (cd "$SOURCE_PATH" && lsdev.pl -l -tp -b) | while read path; do
                 if [ "$path" != "$SOURCE_PATH" ]; then
