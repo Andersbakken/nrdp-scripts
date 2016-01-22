@@ -432,11 +432,16 @@ to case differences."
         (unless (looking-back "\n\n")
           (insert "\n"))
         (insert insertion-string "\n{\n}\n")
-        (save-excursion
-          (goto-char (point-min))
-          (let ((include (concat "#include \"" (file-name-nondirectory file) "\"")))
-            (unless (search-forward include nil t)
-              (insert include "\n"))))
+        (unless inline
+          (save-excursion
+            (goto-char (point-min))
+            (let ((include (concat "#include \"" (file-name-nondirectory file) "\""))
+                  (includerx (concat "#include [\"<]" (file-name-nondirectory file) "[\">]")))
+              (unless (search-forward-regexp includerx nil t)
+                (when (looking-at "/\\*")
+                  (search-forward "*/")
+                  (insert "\n\n"))
+                (insert include "\n")))))
         (re-search-backward "}")))))
 
 (defalias 'agulbra-make-member 'make-member)
@@ -966,16 +971,16 @@ to case differences."
         (ret nil))
     (while args
       (let ((arg (downcase (car args)))(value nil))
-	(setq args (cdr args))
-	(cond
+    (setq args (cdr args))
+    (cond
          ((equal arg (concat "-" s))
           (progn
             (setq value t)
             (if (and args (not (string-match "^-" (car args)))) (setq value (car args)))
-	    ))
+        ))
          ((string-match (concat "--" s "=") arg) (setq value (replace-match "" t t arg)))
          )
-	(if value (progn (setq ret value) (setq args nil)))))
+    (if value (progn (setq ret value) (setq args nil)))))
     ret))
 
 ;; ================================================================================
