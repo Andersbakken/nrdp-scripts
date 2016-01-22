@@ -1214,15 +1214,12 @@ to case differences."
   (interactive)
   (unless mkgibbontest-directory
     (error "You have to set mkgibbontest-directory to something."))
-  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
+  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "\.js$" nil t))
          (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
          (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
     (when (file-exists-p abspath)
       (mkgibbontest-copy (file-name-nondirectory abspath))
       (find-file abspath))))
-
-
-;;
 
 (defun include-file (&optional file)
   (interactive)
