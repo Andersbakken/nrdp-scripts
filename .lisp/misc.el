@@ -1457,6 +1457,14 @@ there's a region, all lines that region covers will be duplicated."
       (write-region (point-min) (point-max)
                     (format "%s/compile_%06d.txt" misc-compiles-dir (1+ max))))))
 
+(defun misc-grep-compiles ()
+  (interactive)
+  (grep-find
+   (read-shell-command
+    "Run find (like this): "
+    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 grep -n ")
+    'grep-find-history)))
+
 (defvar xclip-use-primary nil)
 (defvar xclip-process nil)
 (defvar xclip-location nil)
