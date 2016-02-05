@@ -1186,11 +1186,15 @@ to case differences."
           "nrdp.gibbon.init(main);\n"))
 
 (defun mkgibbontest-copy (name)
-  (kill-new (concat mkgibbontest-webprefix "/" name)))
+  (kill-new (concat mkgibbontest-webprefix "/" name))
+  (message "Killed %s" (concat mkgibbontest-webprefix "/" name)))
 
 (defun mkgibbontest-copy-current ()
   (interactive)
-  (mkgibbontest-copy (file-name-nondirectory (buffer-file-name))))
+  (if (misc-string-prefix-p mkgibbontest-webprefix (buffer-file-name))
+      (mkgibbontest-copy (file-name-nondirectory (buffer-file-name)))
+    (kill-new (buffer-file-name))
+    (message "Killed: %s" (buffer-file-name))))
 
 (defalias 'cdgibbontest-copy-current 'mkgibbontest-copy-current)
 
