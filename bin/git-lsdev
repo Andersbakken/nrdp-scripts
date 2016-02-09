@@ -44,6 +44,7 @@ ROOTDIRS=`lsdev.pl $LSDEV_OPTS -tp $LSDEV_DIRS`
 for ROOTDIR in $ROOTDIRS; do
    if [ -d "$ROOTDIR" ]; then
        cd "$ROOTDIR"
+       ROOTDIR=`pwd` # kill trailing slash, ~ etc
        ROOT=$(git rev-parse --show-toplevel) 2>/dev/null
        if [ -d "$ROOT" ]; then
            cd "$ROOT"

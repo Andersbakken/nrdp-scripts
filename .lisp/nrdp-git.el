@@ -17,8 +17,16 @@
        (string-match "Commits in [^ ]+ touching \\([^ ]+\\)" header-line-format)
        (concat default-directory (match-string 1 header-line-format))))
 
-(defun nrdp-git-magit-file-log (&optional bufferorfilename)
-  (interactive)
+(defun nrdp-git-magit-log-args (prefix &rest other)
+  (let* ((n (cond ((null prefix) (list (concat "-n" (number-to-string (window-height)))))
+                  ((numberp prefix) (list (concat "-n" (number-to-string prefix))))
+                  (t nil))))
+    (if other
+        (append other n)
+      n)))
+
+(defun nrdp-git-magit-file-log (&optional prefix bufferorfilename)
+  (interactive "P")
   (let* ((file (if (stringp bufferorfilename)
                    bufferorfilename
                  (nrdp-git-magit-buffer-file-name)))
@@ -31,12 +39,12 @@
         (with-current-buffer buf
           (let* ((magit-buffer-file-name (file-truename (buffer-file-name buf)))
                  (default-directory (file-name-directory magit-buffer-file-name)))
-            (magit-log-head (list "--follow") (list magit-buffer-file-name))))
+            (magit-log-head (nrdp-git-magit-log-args prefix "--follow") (list magit-buffer-file-name))))
       (message "Can't log this buffer"))))
 
-(defun nrdp-git-magit-log ()
-  (interactive)
-  (magit-log (list (magit-get-current-branch))))
+(defun nrdp-git-magit-log (&optional prefix)
+  (interactive "P")
+  (magit-log (list (magit-get-current-branch)) (nrdp-git-magit-log-args prefix)))
 
 (fset 'magit-toggle-whitespace
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
@@ -105,11 +113,7 @@
                    (push "--" args)))))
 
     (grep-find (concat "git --no-pager grep -I -n "
-                       (let ((combined (mapconcat 'identity args " ")))
-                         (if (and (not (string-match "\"" combined))
-                                  (string-match " " combined))
-                             (concat "\"" combined "\"")
-                           combined))
+                       (mapconcat 'identity args " ")
                        " -- " (magit-toplevel) " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"))))
 
 (defun nrdp-git-config-value (conf)
@@ -378,11 +382,11 @@
     (when file
       (nrdp-git-diff -w file))))
 
-(defun magit-log-current-section ()
-  (interactive)
+(defun magit-log-current-section (&optional prefix)
+  (interactive "P")
   (let ((file (magit-current-section-file)))
     (if file
-        (nrdp-git-magit-file-log file)
+        (nrdp-git-magit-file-log prefix file)
       (call-interactively 'magit-log-popup))))
 
 (defun magit-run-on-multiple (commands &optional commit)

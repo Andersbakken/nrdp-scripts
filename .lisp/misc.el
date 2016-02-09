@@ -432,11 +432,16 @@ to case differences."
         (unless (looking-back "\n\n")
           (insert "\n"))
         (insert insertion-string "\n{\n}\n")
-        (save-excursion
-          (goto-char (point-min))
-          (let ((include (concat "#include \"" (file-name-nondirectory file) "\"")))
-            (unless (search-forward include nil t)
-              (insert include "\n"))))
+        (unless inline
+          (save-excursion
+            (goto-char (point-min))
+            (let ((include (concat "#include \"" (file-name-nondirectory file) "\""))
+                  (includerx (concat "#include [\"<]" (file-name-nondirectory file) "[\">]")))
+              (unless (search-forward-regexp includerx nil t)
+                (when (looking-at "/\\*")
+                  (search-forward "*/")
+                  (insert "\n\n"))
+                (insert include "\n")))))
         (re-search-backward "}")))))
 
 (defalias 'agulbra-make-member 'make-member)
@@ -865,7 +870,8 @@ to case differences."
 (defun goto-line-with-feedback ()
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive)
-  (let ((had-git-gutter git-gutter-mode))
+  (let ((had-git-gutter (and (boundp 'git-gutter-mode) git-gutter-mode))
+        (had-git-gutter+ (and (boundp 'git-gutter+-mode) git-gutter+-mode)))
     (unwind-protect
         (progn
           (linum-mode 1)
@@ -881,10 +887,9 @@ to case differences."
                    (forward-char (1- (string-to-number (match-string 1 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
       (linum-mode -1)
-      (if had-git-gutter
-          (git-gutter-mode 1)))
-    )
-  )
+      (cond (had-git-gutter (git-gutter-mode 1))
+            (had-git-gutter+ (git-gutter+-mode 1))
+            (t nil)))))
 
 ;; ================================================================================
 ;; agb-occur
@@ -966,16 +971,16 @@ to case differences."
         (ret nil))
     (while args
       (let ((arg (downcase (car args)))(value nil))
-	(setq args (cdr args))
-	(cond
+    (setq args (cdr args))
+    (cond
          ((equal arg (concat "-" s))
           (progn
             (setq value t)
             (if (and args (not (string-match "^-" (car args)))) (setq value (car args)))
-	    ))
+        ))
          ((string-match (concat "--" s "=") arg) (setq value (replace-match "" t t arg)))
          )
-	(if value (progn (setq ret value) (setq args nil)))))
+    (if value (progn (setq ret value) (setq args nil)))))
     ret))
 
 ;; ================================================================================
@@ -1181,11 +1186,15 @@ to case differences."
           "nrdp.gibbon.init(main);\n"))
 
 (defun mkgibbontest-copy (name)
-  (kill-new (concat mkgibbontest-webprefix "/" name)))
+  (kill-new (concat mkgibbontest-webprefix "/" name))
+  (message "Killed %s" (concat mkgibbontest-webprefix "/" name)))
 
 (defun mkgibbontest-copy-current ()
   (interactive)
-  (mkgibbontest-copy (file-name-nondirectory (buffer-file-name))))
+  (if (misc-string-prefix-p mkgibbontest-webprefix (buffer-file-name))
+      (mkgibbontest-copy (file-name-nondirectory (buffer-file-name)))
+    (kill-new (buffer-file-name))
+    (message "Killed: %s" (buffer-file-name))))
 
 (defalias 'cdgibbontest-copy-current 'mkgibbontest-copy-current)
 
@@ -1209,15 +1218,12 @@ to case differences."
   (interactive)
   (unless mkgibbontest-directory
     (error "You have to set mkgibbontest-directory to something."))
-  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "gibbontest-" nil t))
+  (let* ((tests (misc-directory-files-helper mkgibbontest-directory "\.js$" nil t))
          (test (and tests (ido-completing-read (format "Gibbon test (default %s): " (car tests)) tests)))
          (abspath (concat mkgibbontest-directory "/" (or test (car tests)))))
     (when (file-exists-p abspath)
       (mkgibbontest-copy (file-name-nondirectory abspath))
       (find-file abspath))))
-
-
-;;
 
 (defun include-file (&optional file)
   (interactive)
@@ -1454,6 +1460,14 @@ there's a region, all lines that region covers will be duplicated."
       (widen)
       (write-region (point-min) (point-max)
                     (format "%s/compile_%06d.txt" misc-compiles-dir (1+ max))))))
+
+(defun misc-grep-compiles ()
+  (interactive)
+  (grep-find
+   (read-shell-command
+    "Run find (like this): "
+    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 grep -n ")
+    'grep-find-history)))
 
 (defvar xclip-use-primary nil)
 (defvar xclip-process nil)
