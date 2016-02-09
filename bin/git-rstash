@@ -9,26 +9,28 @@ $root .= "/..";
 chdir($root);
 
 my $stash_mode;
-if($ARGV[0] eq "-m") {
-    shift @ARGV;
-    $stash_mode = $ARGV[0];
-    shift @ARGV;
-} else {
-    $stash_mode = `git config rstash.mode`;
-    chomp($stash_mode);
-}
-$stash_mode = "git-rstash" if(!length($stash_mode));
-
 my $mode = "save";
-$mode = shift @ARGV if($#ARGV >= 0 && ($ARGV[0] eq "save" || $ARGV[0] eq "apply" || $ARGV[0] eq "show" || $ARGV[0] eq "list" || $ARGV[0] eq "drop"));
-
 my $source_highlight = 1;
 my $pager = $ENV{"PAGER"};
 my $default_sha = "DEFAULT";
 for(my $i = 0; $i < $#ARGV+1; ) {
     my $consume = 0;
     my $arg = $ARGV[$i];
-    if($ARGV[$i] eq "-c") {
+    if($ARGV[$i] eq "save" || $ARGV[$i] eq "apply" || $ARGV[$i] eq "show" || $ARGV[$i] eq "list" || $ARGV[$i] eq "drop") {
+        $mode = $ARGV[$i];
+        $consume = 1;
+        if(length(`git rev-parse --verify $ARGV[$i+1] 2>/dev/null`)) {
+            $default_sha = $ARGV[$i+1];
+            $consume = 2;
+        } elsif(!length($stash_mode) && $ARGV[$i+1] =~ /^http:/) {
+            $stash_mode = "git-rstash";
+            $default_sha = $ARGV[$i+1];
+            $consume = 2;
+        }
+    } elsif($ARGV[$i] eq "-m") {
+        $stash_mode = $ARGV[$i+1];
+        $consume = 2;
+    } elsif($ARGV[$i] eq "-c") {
         $default_sha = $ARGV[$i+1];
         $consume = 2;
     } elsif($ARGV[$i] eq "--no-pager") {
@@ -43,6 +45,12 @@ for(my $i = 0; $i < $#ARGV+1; ) {
     } else {
         $i++;
     }
+}
+
+unless(length($stash_mode)) {
+    $stash_mode = `git config rstash.mode`;
+    chomp($stash_mode);
+    $stash_mode = "git-rstash" unless(length($stash_mode));
 }
 
 sub basehelp {
@@ -82,6 +90,10 @@ sub getSHA {
 
 if($stash_mode eq "git-rstash") {
     my $url = undef;
+    if($default_sha =~ /^http:/) {
+        $url = $default_sha;
+        $default_sha = "DEFAULT";
+    }
     my $send_exit = 1;
     my $max_list = 50;
     my $server_port = undef;
@@ -225,13 +237,17 @@ if($stash_mode eq "git-rstash") {
     }
 } elsif($stash_mode eq "git-tag") {
     my $origin;
+    my $tag_prefix = "git-rstash-";
     for(my $i = 0; $i < $#ARGV+1; ) {
         my $consume = 0;
         my $arg = $ARGV[$i];
-        if(0) {
+        if($ARGV[$i] eq "-t") {
+            $tag_prefix = $ARGV[$i+1];
+            $consume = 2;
         } elsif($ARGV[$i] eq "-h" || $ARGV[$i] eq "--help" || $ARGV[$i] eq "-help") {
             basehelp;
             print "\ngit-tag options:\n";
+            print " -t [tag-prefix]: Prefix for tags\n";
             print " ORIGIN: Which git origin to use\n";
             exit 0;
         } else {
@@ -250,7 +266,6 @@ if($stash_mode eq "git-rstash") {
         $origin = "origin" if(!length($origin));
     }
 
-    my $tag_prefix = "git-rstash-";
     if($mode eq "save") {
         my $sha = getSHA("DEFAULT");
         $sha = `git rev-parse $sha`;
