@@ -274,7 +274,7 @@
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
   (let* ((default-directory (nrdp-git-dir-for-file file))
-         (tracking (magit-get-tracked-branch)))
+         (tracking (magit-get-upstream-branch)))
     (if tracking
         (nrdp-git-show-revision (file-truename (or file (buffer-file-name))) tracking)
       (message "No tracking branch for branch"))))
