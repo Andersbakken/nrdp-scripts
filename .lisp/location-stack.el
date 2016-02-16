@@ -137,4 +137,11 @@
   (interactive)
   (location-stack-jump 1))
 
+(defun location-stack-toggle ()
+  (interactive)
+  (location-stack-push)
+  (if (= location-stack-index 0)
+      (location-stack-previous)
+    (location-stack-jump (- location-stack-index))))
+
 (provide 'location-stack)
