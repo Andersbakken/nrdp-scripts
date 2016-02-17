@@ -1551,7 +1551,7 @@ there's a region, all lines that region covers will be duplicated."
     (unless (string-match "(" page)
       (let ((alternatives (sort (mapcar (lambda (line)
                                           (and (string-match "^[^(]*(\\([^)]*\\)" line) (match-string 1 line)))
-                                        (split-string (shell-command-to-string (concat "apropos ^" page "$")) "\n" t))
+                                        (split-string (shell-command-to-string (concat "whatis " page)) "\n" t))
                                 (lambda (a b)
                                   (< (misc-man-idx a) (misc-man-idx b))))))
         (when alternatives
