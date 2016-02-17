@@ -1514,7 +1514,7 @@ there's a region, all lines that region covers will be duplicated."
     (set-process-sentinel xclip-process 'xclip-sentinel)))
 
 ;; man-page stuff
-(defvar misc-man-preference (list "3" "2" "3posix" "2posix" "3.*" "2.*"))
+(defvar misc-man-preference (list "3" "3posix" "3.*" "2" "2posix" "2.*"))
 (defun misc-man-idx (type)
   (let ((idx 0)
         (pref misc-man-preference))
@@ -1555,7 +1555,7 @@ there's a region, all lines that region covers will be duplicated."
                                 (lambda (a b)
                                   (< (misc-man-idx a) (misc-man-idx b))))))
         (when alternatives
-          (setq page (concat page " " (car alternatives))))))
+          (setq page (concat page "(" (car alternatives) ")")))))
     (if (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
         (man (concat (match-string 2 page) " " (match-string 1 page)))
       (man page))))
