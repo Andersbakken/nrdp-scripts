@@ -1513,4 +1513,51 @@ there's a region, all lines that region covers will be duplicated."
     (setq xclip-location (cons (current-buffer) (point)))
     (set-process-sentinel xclip-process 'xclip-sentinel)))
 
+;; man-page stuff
+(defvar misc-man-preference (list "3" "2" "3posix" "2posix" "3.*" "2.*"))
+(defun misc-man-idx (type)
+  (let ((idx 0)
+        (pref misc-man-preference))
+    (while pref
+      (if (string-match (concat "^" (car pref) "$") type)
+          (setq pref nil)
+        (setq pref (cdr pref))
+        (incf idx)))
+    idx))
+
+(defun misc-man-completion-cache ()
+  (mapcar (lambda (line)
+            (and (string-match "^\\([^ ]*\\) (\\([0-9][^)]*\\))" line)
+                 (concat (match-string 1 line) "(" (match-string 2 line) ")")))
+          (split-string (shell-command-to-string "apropos .") "\n" t)))
+
+(defvar misc-man-completion-cache (misc-man-completion-cache))
+(defun misc-man (&optional word)
+  (interactive "P")
+  (when (and word (listp word))
+    (setq word nil)
+    (setq misc-man-completion-cache (misc-man-completion-cache)))
+
+  (let* ((sym (thing-at-point 'symbol)) ;; completion
+         (prompt (format "Man page%s: "
+                         (or (and sym (format " (default \"%s\")" sym)) "")))
+         (page (misc-trim-string (or word (completing-read-default prompt misc-man-completion-cache nil nil nil nil sym)))))
+    (unless (> (length page) 0)
+      (setq page sym))
+    (unless page
+      (error "No page?"))
+    (when (string-match "^\\(.*\\)($" page)
+      (setq page (match-string 1 page)))
+    (unless (string-match "(" page)
+      (let ((alternatives (sort (mapcar (lambda (line)
+                                          (and (string-match "^[^(]*(\\([^)]*\\)" line) (match-string 1 line)))
+                                        (split-string (shell-command-to-string (concat "apropos ^" page "$")) "\n" t))
+                                (lambda (a b)
+                                  (< (misc-man-idx a) (misc-man-idx b))))))
+        (when alternatives
+          (setq page (concat page " " (car alternatives))))))
+    (if (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
+        (man (concat (match-string 2 page) " " (match-string 1 page)))
+      (man page))))
+
 (provide 'nrdp-misc)
