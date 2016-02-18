@@ -1571,6 +1571,13 @@ there's a region, all lines that region covers will be duplicated."
                            ((misc-liberal-file-exists (nrdp-git-deepest-root)))
                            (t default-directory))))
 
+(defvar misc-grep-find-not
+  " -not -name error.js -not -name xboxupsellpage.js -not -name '*.min.js' -not -name 'string-unpack-code.js'")
+(defvar misc-grep-find-source-files
+  "\\( -name \"*.cpp\" -o -name \"*.h\" -o -name \"*.c\" -o -name \"*.js\" -o -name \".mm\" -o -name \"*.m\" -o -name \"*.inc\" -o -name \"*.cc\" -o -iname \"*.hpp\" -o -name \"*.py\" -o -name \"*.el\" -o -name \"*.java\" -o -name \"*.html\" \\)")
+(defvar misc-grep-find-cmake
+  "\\( -name \"CMakeLists.txt\" -o -name \"*.cmake\" \\)")
+
 ;; Use -w phrase to search for whole words
 (defun misc-grep-find (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
   (when (and (eq major-mode 'cmake-mode)
@@ -1611,10 +1618,10 @@ there's a region, all lines that region covers will be duplicated."
     (grep-find
      (read-shell-command
       "Run find (like this): "
-      (concat "find " dir (concat " -type f " grep-find-not " ")
+      (concat "find " dir (concat " -type f " misc-grep-find-not " ")
               (cond ((integerp filterType) "")
-                    (filterType grep-find-cmake)
-                    (t grep-find-source-files))
+                    (filterType misc-grep-find-cmake)
+                    (t misc-grep-find-source-files))
               " -print0 | xargs -0 grep -n ")
       'grep-find-history))))
 
