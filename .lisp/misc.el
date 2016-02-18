@@ -1600,7 +1600,7 @@ there's a region, all lines that region covers will be duplicated."
                                      (setq suffix " (sources)")
                                      (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
                               ag-arguments)))
-          (ag (let ((search (ag/read-from-minibuffer (concat "ag" suffix))))
+          (ag (let ((search (ag/read-from-minibuffer (format "Ag (%s)%s" dir suffix))))
                 (let ((args (list "-w" "--word-regexp"
                                   "-o" "--only-matching"
                                   "-i" "--ignore-case"
