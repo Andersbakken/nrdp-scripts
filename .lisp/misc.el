@@ -1665,7 +1665,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")
-  (misc-grep-find-helper (project-root) filterType))
+  (misc-grep-find-helper (misc-project-root) filterType))
 
 (defun misc-grep-find (&optional filterType)
   (interactive "P")
