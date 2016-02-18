@@ -1561,4 +1561,69 @@ there's a region, all lines that region covers will be duplicated."
         (man (concat (match-string 2 page) " " (match-string 1 page)))
       (man page))))
 
+
+(defun misc-liberal-file-exists (arg)
+  (and arg (file-exists-p arg) arg))
+
+(defun misc-project-root()
+  (s-chop-suffix "/" (cond ((misc-liberal-file-exists (gtags-get-rootpath)))
+                           ((misc-liberal-file-exists (lsdev-root-dir default-directory)))
+                           ((misc-liberal-file-exists (nrdp-git-deepest-root)))
+                           (t default-directory))))
+
+;; Use -w phrase to search for whole words
+(defun misc-grep-find (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
+  (when (and (eq major-mode 'cmake-mode)
+             (or (not (integerp filterType))))
+    (setq filterType (not filterType)))
+  (if (and (executable-find "ag")
+           (fboundp 'ag))
+      (let* ((suffix "")
+             (ag-arguments (append
+                            (cond ((integerp filterType)
+                                   (setq current-prefix-arg nil)
+                                   nil)
+                                  (filterType
+                                   (setq suffix " (cmake)")
+                                   (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$"))
+                                  (t
+                                   (setq suffix " (sources)")
+                                   (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
+                            ag-arguments)))
+        (ag (let ((search (ag/read-from-minibuffer (concat "ag" suffix))))
+              (let ((args (list "-w" "-o" "-i" "-s" "-c" "-v"))
+                    (argargs (list "-C" "-A" "-B"))
+                    (split (split-string search)))
+                (while split
+                  (cond ((member (car split) args)
+                         (push (car split) ag-arguments)
+                         (when (string-match (concat (car split) "\\> *") search)
+                           (setq search (replace-match "" t t search))))
+                        ((member (car split) argargs)
+                         (push (cadr split) ag-arguments)
+                         (push (car split) ag-arguments)
+                         (when (string-match (concat (car split) "\\> *[^ ]* *") search)
+                           (setq search (replace-match "" t t search))))
+                        (t))
+                  (setq split (cdr split))))
+              search)
+            dir))
+    (grep-find
+     (read-shell-command
+      "Run find (like this): "
+      (concat "find " dir (concat " -type f " grep-find-not " ")
+              (cond ((integerp filterType) "")
+                    (filterType grep-find-cmake)
+                    (t grep-find-source-files))
+              " -print0 | xargs -0 grep -n ")
+      'grep-find-history))))
+
+(defun misc-grep-find-project (&optional filterType)
+  (interactive "P")
+  (misc-grep-find (project-root) filterType))
+
+(defun misc-grep-find (&optional filterType)
+  (interactive "P")
+  (misc-grep-find default-directory filterType))
+
 (provide 'nrdp-misc)
