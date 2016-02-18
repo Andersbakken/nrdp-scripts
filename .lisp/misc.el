@@ -1600,9 +1600,33 @@ there's a region, all lines that region covers will be duplicated."
                                    (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
                             ag-arguments)))
         (ag (let ((search (ag/read-from-minibuffer (concat "ag" suffix))))
-              (let ((args (list "-w" "-o" "-i" "-c" "-v" "-S"))
-                    (appendargs (list "-s" "-S" "-i"))
-                    (argargs (list "-C" "-A" "-B"))
+              (let ((args (list "-w" "--word-regexp"
+                                "-o" "--only-matching"
+                                "-i" "--ignore-case"
+                                "-c" "--count"
+                                "-v" "--invert-match"
+                                "-S" "--smart-case"
+                                "-u" "--unrestricted"
+                                "-a" "--all-types"
+                                "-z" "--search-zip"
+                                "-F" "--fixed-strings"
+                                "-t" "--all-text"
+                                "-U" "--skip-vcs-ignores"
+                                "-f" "--follow"
+                                "-l" "--files-with-matches"
+                                "-L" "--files-without-matches"
+                                "--hidden"
+                                "--search-binary"))
+                    (appendargs (list "-s" "--case-sensitive"
+                                      "-S" "--smart-case"
+                                      "-i" "--ignore-case"))
+                    (argargs (list "-C" "--context"
+                                   "-A" "--after"
+                                   "-B" "--before"
+                                   "-G" "--file-search-regex"
+                                   "--ignore"
+                                   "--ignore-dir"
+                                   "--depth"))
                     (split (split-string search)))
                 (while split
                   (cond ((string= (car split) "--")
