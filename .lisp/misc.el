@@ -1581,7 +1581,7 @@ there's a region, all lines that region covers will be duplicated."
   "\\( -name \"CMakeLists.txt\" -o -name \"*.cmake\" \\)")
 
 ;; Use -w phrase to search for whole words
-(defun misc-grep-find (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
+(defun misc-grep-find-helper (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
   (when (and (eq major-mode 'cmake-mode)
              (or (not (integerp filterType))))
     (setq filterType (not filterType)))
@@ -1629,10 +1629,10 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")
-  (misc-grep-find (project-root) filterType))
+  (misc-grep-find-helper (project-root) filterType))
 
 (defun misc-grep-find (&optional filterType)
   (interactive "P")
-  (misc-grep-find default-directory filterType))
+  (misc-grep-find-helper default-directory filterType))
 
 (provide 'nrdp-misc)
