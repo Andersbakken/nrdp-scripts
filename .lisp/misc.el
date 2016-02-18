@@ -1531,17 +1531,18 @@ there's a region, all lines that region covers will be duplicated."
                  (concat (match-string 1 line) "(" (match-string 2 line) ")")))
           (split-string (shell-command-to-string "apropos .") "\n" t)))
 
-(defvar misc-man-completion-cache (misc-man-completion-cache))
+(defvar misc-man-completion-cache nil)
 (defun misc-man (&optional word)
   (interactive "P")
-  (when (and word (listp word))
-    (setq word nil)
-    (setq misc-man-completion-cache (misc-man-completion-cache)))
+  (when (cond ((not misc-man-completion-cache))
+              ((and word (listp word)) (setq word nil) t)
+              (t (> (time-to-seconds (time-since (cdr misc-man-completion-cache))) (* 24 60 60))))
+    (setq misc-man-completion-cache (cons (misc-man-completion-cache) (current-time))))
 
   (let* ((sym (thing-at-point 'symbol)) ;; completion
          (prompt (format "Man page%s: "
                          (or (and sym (format " (default \"%s\")" sym)) "")))
-         (page (misc-trim-string (or word (completing-read-default prompt misc-man-completion-cache nil nil nil nil sym)))))
+         (page (misc-trim-string (or word (completing-read-default prompt (car misc-man-completion-cache) nil nil nil nil sym)))))
     (unless (> (length page) 0)
       (setq page sym))
     (unless page
