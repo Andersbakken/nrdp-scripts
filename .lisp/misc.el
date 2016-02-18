@@ -3,6 +3,8 @@
 (require 'lsdev)
 (require 'thingatpt)
 (require 'bytecomp)
+(require 's)
+
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
