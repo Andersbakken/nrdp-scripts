@@ -1587,70 +1587,72 @@ there's a region, all lines that region covers will be duplicated."
     (setq filterType (not filterType)))
   (if (and (executable-find "ag")
            (fboundp 'ag))
-      (let* ((suffix "")
-             (ag-arguments (append
-                            (cond ((integerp filterType)
-                                   (setq current-prefix-arg nil)
-                                   nil)
-                                  (filterType
-                                   (setq suffix " (cmake)")
-                                   (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$"))
-                                  (t
-                                   (setq suffix " (sources)")
-                                   (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
-                            ag-arguments)))
-        (ag (let ((search (ag/read-from-minibuffer (concat "ag" suffix))))
-              (let ((args (list "-w" "--word-regexp"
-                                "-o" "--only-matching"
-                                "-i" "--ignore-case"
-                                "-c" "--count"
-                                "-v" "--invert-match"
-                                "-S" "--smart-case"
-                                "-u" "--unrestricted"
-                                "-a" "--all-types"
-                                "-z" "--search-zip"
-                                "-F" "--fixed-strings"
-                                "-t" "--all-text"
-                                "-U" "--skip-vcs-ignores"
-                                "-f" "--follow"
-                                "-l" "--files-with-matches"
-                                "-L" "--files-without-matches"
-                                "--hidden"
-                                "--search-binary"))
-                    (appendargs (list "-s" "--case-sensitive"
-                                      "-S" "--smart-case"
-                                      "-i" "--ignore-case"))
-                    (argargs (list "-C" "--context"
-                                   "-A" "--after"
-                                   "-B" "--before"
-                                   "-G" "--file-search-regex"
-                                   "--ignore"
-                                   "--ignore-dir"
-                                   "--depth"))
-                    (split (split-string search)))
-                (while split
-                  (cond ((string= (car split) "--")
-                         (when (string-match "-- *" search)
-                           (setq search (replace-match "" t t search)))
-                         (setq split nil))
-                        ((member (car split) appendargs)
-                         (nbutlast ag-arguments) ;; remove --
-                         (setq ag-arguments (append ag-arguments (list (car split) "--")))
-                         (when (string-match (concat (car split) "\\> *") search)
-                           (setq search (replace-match "" t t search))))
-                        ((member (car split) args)
-                         (push (car split) ag-arguments)
-                         (when (string-match (concat (car split) "\\> *") search)
-                           (setq search (replace-match "" t t search))))
-                        ((member (car split) argargs)
-                         (push (cadr split) ag-arguments)
-                         (push (car split) ag-arguments)
-                         (when (string-match (concat (car split) "\\> *[^ ]* *") search)
-                           (setq search (replace-match "" t t search))))
-                        (t))
-                  (setq split (cdr split))))
-              search)
-            dir))
+      (let ((old-ag-arguments (copy-sequence ag-arguments)))
+        (let* ((suffix "")
+               (ag-arguments (append
+                              (cond ((integerp filterType)
+                                     (setq current-prefix-arg nil)
+                                     nil)
+                                    (filterType
+                                     (setq suffix " (cmake)")
+                                     (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$"))
+                                    (t
+                                     (setq suffix " (sources)")
+                                     (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
+                              ag-arguments)))
+          (ag (let ((search (ag/read-from-minibuffer (concat "ag" suffix))))
+                (let ((args (list "-w" "--word-regexp"
+                                  "-o" "--only-matching"
+                                  "-i" "--ignore-case"
+                                  "-c" "--count"
+                                  "-v" "--invert-match"
+                                  "-S" "--smart-case"
+                                  "-u" "--unrestricted"
+                                  "-a" "--all-types"
+                                  "-z" "--search-zip"
+                                  "-F" "--fixed-strings"
+                                  "-t" "--all-text"
+                                  "-U" "--skip-vcs-ignores"
+                                  "-f" "--follow"
+                                  "-l" "--files-with-matches"
+                                  "-L" "--files-without-matches"
+                                  "--hidden"
+                                  "--search-binary"))
+                      (appendargs (list "-s" "--case-sensitive"
+                                        "-S" "--smart-case"
+                                        "-i" "--ignore-case"))
+                      (argargs (list "-C" "--context"
+                                     "-A" "--after"
+                                     "-B" "--before"
+                                     "-G" "--file-search-regex"
+                                     "--ignore"
+                                     "--ignore-dir"
+                                     "--depth"))
+                      (split (split-string search)))
+                  (while split
+                    (cond ((string= (car split) "--")
+                           (when (string-match "-- *" search)
+                             (setq search (replace-match "" t t search)))
+                           (setq split nil))
+                          ((member (car split) appendargs)
+                           (nbutlast ag-arguments) ;; remove --
+                           (setq ag-arguments (append ag-arguments (list (car split) "--")))
+                           (when (string-match (concat (unless (cdr split) " *") (car split) "\\> *") search)
+                             (setq search (replace-match "" t t search))))
+                          ((member (car split) args)
+                           (push (car split) ag-arguments)
+                           (when (string-match (concat (unless (cdr split) " *") (car split) "\\> *") search)
+                             (setq search (replace-match "" t t search))))
+                          ((member (car split) argargs)
+                           (push (cadr split) ag-arguments)
+                           (push (car split) ag-arguments)
+                           (when (string-match (concat (unless (cdr split) " *") (car split) "\\> *[^ ]* *") search)
+                             (setq search (replace-match "" t t search))))
+                          (t))
+                    (setq split (cdr split))))
+                search)
+              dir))
+        (setq ag-arguments old-ag-arguments))
     (grep-find
      (read-shell-command
       "Run find (like this): "
