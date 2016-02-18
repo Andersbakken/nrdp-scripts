@@ -63,8 +63,10 @@ else
     IN_CHANGES=
     PUSH=yes
     AUTOSTASH=
+    AUTODETACH=
     ORIGIN="$TRACKING"
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
+    [ "`git config submit.autodetach`" != "false" ] && AUTODETACH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ]; then
             PUSH=no
@@ -73,6 +75,8 @@ else
             BRANCH="$1"
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
+        elif [ "$1" = "--autodetach" ]; then
+            AUTODETACH="yes"
         elif [ "$1" = "-a" ]; then
             for change in `git cherry $ORIGIN | grep '^+ ' | sed 's,^+,,g'`; do
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
@@ -80,19 +84,46 @@ else
         elif echo "$1" | grep -q / || '!' git rev-parse "$1" >/dev/null 2>&1; then
             ORIGIN="$1"
         else
-            IN_CHANGES="$IN_CHANGES `git rev-parse \"$1\"`"
+            IN_CHANGES="$IN_CHANGES $1"
         fi
         shift
     done
 
+    detached=
     if ! git sync --check "$ORIGIN" >/dev/null 2>&1; then
-        echo "Make sure you sync first! [$ORIGIN]" >&2
-        exit 1
+        if [ -n "$AUTODETACH" ]; then
+            echo "Upstream has been modified, autodetaching..."
+            detached="`git rev-parse --abbrev-ref HEAD`"
+            git branch -f submit-autodetach
+            git checkout submit-autodetach
+            git tracking "$TRACKING"
+            if ! git sync; then
+                git rebase --abort ### this assumes you're autosetup.rebase=true
+                git checkout "$detached"
+                git branch -D submit-autodetach
+                echo "Make sure you sync first! [$ORIGIN]. We had conflicts, gave up..."
+                exit 2
+            fi
+        else
+            echo "Make sure you sync first! [$ORIGIN]" >&2
+            exit 1
+        fi
     fi
 
     if [ -z "$IN_CHANGES" ]; then
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit $ORIGIN" "$ORIGIN..HEAD"
+        if [ -n "$detached" ]; then
+            git checkout $detached
+            git branch -D submit-autodetach
+        fi
         exit 0
+    else
+        RESOLVED_CHANGES=""
+        for change in $IN_CHANGES; do
+            SHA1=`git rev-parse "$change"`
+            RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+        done
+        IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
     [ -z "$BRANCH" ] && BRANCH="$ORIGIN"
@@ -103,9 +134,9 @@ else
 
     stashed=
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
-        stashed=1
         ignore_marker=`git ignore marker 2>/dev/null`
         git commit -a -m "${ignore_marker}git-submit" --allow-empty
+        stashed=`git rev-parse HEAD`
     fi
 
     COMMON_SHA1=`git merge-base HEAD $BRANCH`
@@ -140,6 +171,13 @@ else
             if git push $PUSH_ORIGIN "$NEW_SHA1:$PUSH_BRANCH"; then
                 [ -x "$GITROOT/.git/hooks/post-submit" ] && "$GITROOT/.git/hooks/post-submit" "$COMMON_SHA1" "$BRANCH"
             fi
+        fi
+    fi
+    if [ -n "$detached" ]; then
+        git checkout "$detached"
+        git branch -D submit-autodetach
+        if [ -n "$stashed" ]; then
+            git cherry-pick --allow-empty "$stashed"
         fi
     fi
     if [ -n "$stashed" ]; then
