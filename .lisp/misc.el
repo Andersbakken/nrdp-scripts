@@ -1669,10 +1669,12 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")
+  (setq current-prefix-arg nil)
   (misc-grep-find-helper (misc-project-root) filterType))
 
 (defun misc-grep-find (&optional filterType)
   (interactive "P")
+  (setq current-prefix-arg nil)
   (misc-grep-find-helper default-directory filterType))
 
 (provide 'nrdp-misc)
