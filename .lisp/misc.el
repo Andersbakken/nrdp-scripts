@@ -886,7 +886,7 @@ to case differences."
                    (goto-char (/ (* (point-max) (string-to-number (match-string 1 res))) 100)))
                   ((string-match "^:?\\([0-9]+\\):\\([0-9]+\\):?$" res)
                    (--misc-goto-line-helper (string-to-number (match-string 1 res)))
-                   (forward-char (1- (string-to-number (match-string 1 res)))))
+                   (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
       (linum-mode -1)
       (cond (had-git-gutter (git-gutter-mode 1))
