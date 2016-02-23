@@ -397,33 +397,37 @@ to case differences."
                    (search-forward "\\*/")
                    (skip-chars-forward "[\t\n ]"))
                   (t))
-            (unless (looking-at "{")
-              (concat (if (cdr return)
-                          "inline ")
-                      (car return)
-                      (combine-and-quote-strings classes "::")
-                      "::"
-                      (buffer-substring-no-properties functionnamestart functionnameend)
-                      params
-                      const))))))))
+            (if (not (looking-at "{"))
+                (cons (concat (if (cdr return)
+                                  "inline ")
+                              (car return)
+                              (combine-and-quote-strings classes "::")
+                              "::"
+                              (buffer-substring-no-properties functionnamestart functionnameend)
+                              params
+                              const)
+                      (point))
+              (forward-sexp)
+              (cons nil (point)))))))))
 
 ;;skeleton thingie
 (defun make-member ()
   "make a skeleton member function in the .cpp file"
   (interactive)
-  (let* ((insertion-string (make-member-create-function-definition))
+  (let* ((insertion-data (make-member-create-function-definition))
+         (insertion-string (car insertion-data))
+         (end (cdr insertion-data))
          (inline (and insertion-string (misc-string-prefix-p "inline" insertion-string)))
          (old)
          (file (buffer-file-name))
          (other-file))
-    (when (and insertion-string file)
-      (setq other-file (concat (file-name-sans-extension file) ".cpp"))
-      (goto-char (point-at-eol))
-      (re-search-backward ") *;")
-      (search-forward ";")
+    (when end
+      (goto-char end)
       (condition-case nil
           (forward-sexp)
-        (error))
+        (error)))
+    (when (and insertion-string file)
+      (setq other-file (concat (file-name-sans-extension file) ".cpp"))
       (setq old (cons (point) (current-buffer)))
       (if inline
           (progn
