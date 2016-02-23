@@ -1549,6 +1549,8 @@ there's a region, all lines that region covers will be duplicated."
       (setq page sym))
     (unless page
       (error "No page?"))
+    (when (string-match "^[^(]*([^)]*$" page)
+      (setq page (concat page ")")))
     (when (string-match "^\\(.*\\)($" page)
       (setq page (match-string 1 page)))
     (unless (string-match "(" page)
