@@ -386,15 +386,26 @@ to case differences."
             (setq params (make-member-strip-default-arguments (buffer-substring-no-properties paramsstart (point))))
             (skip-chars-forward "[\t ]")
             (setq return (make-member-fixup-return-value (buffer-substring-no-properties returnstart returnend)))
-            (concat (if (cdr return)
-                        "inline ")
-                    (car return)
-                    (combine-and-quote-strings classes "::")
-                    "::"
-                    (buffer-substring-no-properties functionnamestart functionnameend)
-                    params
-                    (when (looking-at "\\<const\\>")
-                      " const"))))))))
+            (when (looking-at "\\<const\\>")
+              (setq const " const")
+              (goto-char (match-end 0)))
+            (skip-chars-forward "[\t\n ]")
+            (cond ((looking-at "//")
+                   (goto-char (point-at-eol))
+                   (skip-chars-forward "[\t\n ]"))
+                  ((looking-at "/\\*")
+                   (search-forward "\\*/")
+                   (skip-chars-forward "[\t\n ]"))
+                  (t))
+            (unless (looking-at "{")
+              (concat (if (cdr return)
+                          "inline ")
+                      (car return)
+                      (combine-and-quote-strings classes "::")
+                      "::"
+                      (buffer-substring-no-properties functionnamestart functionnameend)
+                      params
+                      const))))))))
 
 ;;skeleton thingie
 (defun make-member ()
