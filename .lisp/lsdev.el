@@ -17,6 +17,7 @@
 ;;general lsdev utilities
 (defun lsdev-dirs-internal (&rest match)
   (let ((result)
+        (default-directory (if (file-directory-p default-directory) default-directory "/"))
         (args '("-ta" "-l")))
     (if match (dolist (m match) (add-to-list 'args m t)))
     (with-temp-buffer
