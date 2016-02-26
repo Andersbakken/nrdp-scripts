@@ -6,6 +6,8 @@ git() #make git checkout commands usable with submodules
         command git "$@"
     elif [ "$1" == "clone" ]; then
         command git "$@" --recursive
+    elif [ "$1" == "clean" ]; then
+        command git "$@" && git submodule foreach git "$@"
     elif [ "$1" == "pull" ]; then
         command git "$@" && git submodule update --init --recursive
     elif [ "$1" == "checkout" ]; then
