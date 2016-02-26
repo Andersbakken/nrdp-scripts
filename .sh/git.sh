@@ -9,7 +9,7 @@ git() #make git checkout commands usable with submodules
     elif [ "$1" == "pull" ]; then
         command git "$@" && git submodule update --init --recursive
     elif [ "$1" == "checkout" ]; then
-        command git "$@" && git submodule update --init --recursive
+        command git "$@" && git submodule update --init --recursive --force
     elif [ "$1" == "reset" ]; then
         if echo "$@" | grep -e "--hard" >/dev/null; then
             command git "$@" && git submodule update --init --recursive --force
