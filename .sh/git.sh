@@ -1,16 +1,21 @@
 
 git() #make git checkout commands usable with submodules
 {
-    if [[ $@ == clone* ]]; then
-        gitargs=$(echo "$@" | cut -c6-)
-        command git clone --recursive $gitargs
-    elif [[ $@ == pull* ]]; then
+    if [ "$1" == "--skip-submodule" ]; then
+        shift
+        command git "$@"
+    elif [ "$1" == "clone" ]; then
+        command git "$@" --recursive
+    elif [ "$1" == "pull" ]; then
         command git "$@" && git submodule update --init --recursive
-    elif [[ $@ == checkout* ]]; then
+    elif [ "$1" == "checkout" ]; then
         command git "$@" && git submodule update --init --recursive
+    elif [ "$1" == "reset" ] && echo "$@" | grep -e "--hard" >/dev/null; then
+        command git "$@" && git submodule update --init --recursive --force
     else
         command git "$@"
     fi
+
 }
 
 gs() #sync a tree
