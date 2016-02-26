@@ -1,5 +1,19 @@
-#sync a tree
-gs()
+
+git() #make git checkout commands usable with submodules
+{
+    if [[ $@ == clone* ]]; then
+        gitargs=$(echo "$@" | cut -c6-)
+        command git clone --recursive $gitargs
+    elif [[ $@ == pull* ]]; then
+        command git "$@" && git submodule update --init --recursive
+    elif [[ $@ == checkout* ]]; then
+        command git "$@" && git submodule update --init --recursive
+    else
+        command git "$@"
+    fi
+}
+
+gs() #sync a tree
 {
     ACTION="sync -r"
     LSDEV_FLAGS="src "
