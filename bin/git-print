@@ -69,7 +69,6 @@ for FILE in "${FILES[@]}"; do
         MOD=`echo "$FILE" | sed 's,^\(.*\)@\(.*\)$,\2,g'`
         FILE=`echo "$FILE" | sed 's,^\(.*\)@\(.*\)$,\1,g'`
         COMMITISH=`git rev-parse --verify $MOD 2>/dev/null`
-        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
         [ -z "$COMMITISH" ] && COMMITISH=`git rev-list -n 1 --until="$MOD" HEAD -- ${RESOLVED_FILE}`
     elif echo "$FILE" | grep '\#.*' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\(.*\)#\(.*\)$,\2,g'`
@@ -80,15 +79,15 @@ for FILE in "${FILES[@]}"; do
         else
             COMMITISH=`git rev-list --follow HEAD -- ${FILE} | tail -$MOD | head -1`
         fi
-        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
     elif echo "$FILE" | grep '~' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\([^~]*\)\(~.*\)$,\2,g'`
         FILE=`echo "$FILE" | sed 's,^\([^~]*\)\(~.*\)$,\1,g'`
         count_tilde $MOD
         COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
-        RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
+    else
+        COMMITISH="HEAD"
     fi
-    [ -z "$COMMITISH" ] && COMMITISH="HEAD"
+    RESOLVED_FILE=`resolve_file_at_commitish "$FILE" "$COMMITISH"`
     [ -n "$VERBOSE" ] && echo "Print: $RESOLVED_FILE @ $COMMITISH" >&2
     if [ "$MODE" = "file" ]; then
         $TEST git show "${COMMITISH}:${RESOLVED_FILE}"
