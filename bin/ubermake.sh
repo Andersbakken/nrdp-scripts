@@ -19,6 +19,29 @@ findancestor() {
 SUCCESS_POST_COMMAND=
 ERROR_POST_COMMAND=
 
+numcores() {
+    if [ -e "/proc/cpuinfo" ]; then
+        grep -c "^processor" "/proc/cpuinfo"
+    else
+        sysctl -n hw.ncpu
+    fi
+}
+
+resolvelink () {
+    filename="$1"
+    max=10
+    while [ $max -gt 0 -a -L "$filename" ]; do
+        max=$((max - 1))
+        link=$(readlink "$filename")
+        if echo "$link" | grep --quiet "^/"; then
+            filename="$link"
+        else
+            filename="$(dirname $filename)/$link"
+        fi
+    done
+    echo $filename
+}
+
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
@@ -87,7 +110,46 @@ build() {
                         *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
                     esac
                 done
+                NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
                 NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
+                # START=`date +%s%N | cut -b1-13`
+                NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" | sed -e 's,-j *,,'`"
+                if [ -n "$NUM" ]; then
+                    CORES=`numcores`
+                    MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
+                    if [ "$NUM" -gt "$MAX" ]; then
+                        # echo "max is $max num is $num"
+                        LINE=`ninja -t commands | grep "\.o" | head -n1`
+                        for i in $LINE; do
+                            [ ! -e "$i" ] && continue
+                            echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
+                            # echo "$i" | grep --quiet "\\(icecream\\|icecc\\|plast\\)" && break
+
+                            if [ -L "$i" ]; then
+                                RESOLVED="`resolvelink $i`"
+                                if [ "$(basename $RESOLVED)" = "gcc-rtags-wrapper.sh" ]; then
+                                    for f in $(which -a "$(basename "$i")"); do
+                                        RESOLVED="`resolvelink $f`"
+                                        [ "$(basename $RESOLVED)" != "gcc-rtags-wrapper.sh" ] && break
+                                    done
+                                fi
+                                i="$RESOLVED"
+                            fi
+                            case "$i" in
+                                *icecc|*plastc)
+                                    # echo "It's icecream $f $i"
+                                    ;;
+                                *) ### no build farm, lets reduce jobs
+                                    NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j[0-9]\+,-j$MAX,g"`
+                                    # echo "Found thing $i"
+                                    ;;
+                            esac
+                            break
+                        done
+                    fi
+                fi
+                # END=`date +%s%N | cut -b1-13`
+                # expr $END - $START
                 ninja $NINJA_OPTIONS
                 return $?
             fi
@@ -133,17 +195,17 @@ if [ -z "$MAKE_DIR" ]; then
         [ "$REST_PATH" = "<root>" ] && REST_PATH=
         if [ -d "$SOURCE_PATH" ]; then
             (cd "$SOURCE_PATH" && lsdev.pl -l -tp -b | while read p; do
-                if [ "$p" != "$SOURCE_PATH" ]; then
-                    BUILD_PATH="${p}${REST_PATH}"
-                    if [ -d "$BUILD_PATH" ]; then
-                        echo
-                        echo "============================================================"
-                        echo "Building: $BUILD_PATH"
-                        echo "============================================================"
-                        build "$BUILD_PATH" || exit 1
-                    fi
-                fi
-            done; exit $?)
+                        if [ "$p" != "$SOURCE_PATH" ]; then
+                            BUILD_PATH="${p}${REST_PATH}"
+                            if [ -d "$BUILD_PATH" ]; then
+                                echo
+                                echo "============================================================"
+                                echo "Building: $BUILD_PATH"
+                                echo "============================================================"
+                                build "$BUILD_PATH" || exit 1
+                            fi
+                        fi
+                    done; exit $?)
             finish $?
         fi
     fi
