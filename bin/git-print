@@ -8,7 +8,11 @@ count_tilde() {
 
 resolve_file_at_commitish() {
     commitish=`git rev-parse "$2"`
-    git log --follow --stat --stat-name-width=10000 --pretty="%H" "$1" | grep -A 2 $commitish | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'
+    file=`git log --follow --stat --stat-name-width=10000 --pretty="%H" "$1" | grep -A 2 $commitish | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
+    if [ -z "$file" ]; then
+        file=`git log -n 1 --stat --stat-name-width=10000 --pretty="%H" "$1" | head -n3 | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
+    fi
+    echo "$file"
 }
 
 TEST=
@@ -75,9 +79,9 @@ for FILE in "${FILES[@]}"; do
         FILE=`echo "$FILE" | sed 's,^\(.*\)#\(.*\)$,\1,g'`
         if echo "$MOD" | grep '~' >/dev/null 2>&1; then
             count_tilde $MOD
-            COMMITISH=`git rev-list --follow -n $? HEAD -- ${FILE} | tail -1`
+            COMMITISH=`git rev-list -n $? HEAD -- ${FILE} | tail -1`
         else
-            COMMITISH=`git rev-list --follow HEAD -- ${FILE} | tail -$MOD | head -1`
+            COMMITISH=`git rev-list HEAD -- ${FILE} | tail -$MOD | head -1`
         fi
     elif echo "$FILE" | grep '~' >/dev/null 2>&1; then
         MOD=`echo "$FILE" | sed 's,^\([^~]*\)\(~.*\)$,\2,g'`
