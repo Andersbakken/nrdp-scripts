@@ -18,7 +18,7 @@
        (concat default-directory (match-string 1 header-line-format))))
 
 (defun nrdp-git-magit-log-args (prefix &rest other)
-  (let* ((n (cond ((null prefix) (list (concat "-n" (number-to-string (window-height)))))
+  (let* ((n (cond ((null prefix) (list (concat "-n" (number-to-string (* (window-height) 3)))))
                   ((numberp prefix) (list (concat "-n" (number-to-string prefix))))
                   (t nil))))
     (if other
