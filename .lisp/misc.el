@@ -1597,6 +1597,16 @@ there's a region, all lines that region covers will be duplicated."
 (defvar misc-grep-find-cmake
   "\\( -name \"CMakeLists.txt\" -o -name \"*.cmake\" \\)")
 
+
+(defvar shell-quote-argument-in-ag nil)
+(defadvice shell-quote-argument (around argument activate)
+  (if shell-quote-argument-in-ag
+      (setq ad-return-value
+            (if (equal argument "")
+                "''"
+              (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'")))
+    ad-do-it))
+
 ;; Use -w phrase to search for whole words
 (defun misc-grep-find-helper (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
   (when (and (eq major-mode 'cmake-mode)
@@ -1606,6 +1616,7 @@ there's a region, all lines that region covers will be duplicated."
            (fboundp 'ag))
       (let ((old-ag-arguments (copy-sequence ag-arguments)))
         (let* ((suffix "")
+               (shell-quote-argument-in-ag t)
                (ag-arguments (append
                               (cond ((integerp filterType)
                                      (setq current-prefix-arg nil)
