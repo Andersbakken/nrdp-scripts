@@ -18,6 +18,8 @@
       (call-interactively 'package-install))))
 
 (defun misc-current-packages ()
+  (unless package-activated-list
+    (package-refresh-contents))
   (let ((ret)
         (pkgs package-activated-list))
     (while pkgs
