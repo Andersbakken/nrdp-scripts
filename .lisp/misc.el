@@ -1615,26 +1615,17 @@ there's a region, all lines that region covers will be duplicated."
   (if (and (executable-find "ag")
            (fboundp 'ag))
       (let ((old-ag-arguments (copy-sequence ag-arguments)))
-        (let* ((suffix "")
+        (let* ((mode (cond ((integerp filterType) (setq current-prefix-arg nil) "*")
+                           (filterType (setq current-prefix-arg nil) "cmake")
+                           (t "sources")))
                (shell-quote-argument-in-ag t)
-               (ag-arguments (append
-                              (cond ((integerp filterType)
-                                     (setq current-prefix-arg nil)
-                                     nil)
-                                    (filterType
-                                     (setq suffix " (cmake)")
-                                     (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$"))
-                                    (t
-                                     (setq suffix " (sources)")
-                                     (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")))
-                              ag-arguments))
                (search-result
-                (let ((result (read-from-minibuffer (format "Ag%s: " suffix) (concat "\"" dir (unless (string-match "/$" dir) "/") "\" "))))
-                  (unless (string-match "^\"\\([^\"]+\\)\" +\\(.*\\) *$" result)
+                (let ((result (read-from-minibuffer "Ag " (concat mode ": \"" dir (unless (string-match "/$" dir) "/") "\" "))))
+                  (unless (string-match "^ *\\([^:]*\\): *\"\\([^\"]+\\)\" +\\(.*\\) *$" result)
                     (error "Invalid ag!"))
                   result))
-               (default-directory (setq dir (match-string 1 search-result)))
-               (search (match-string 2 search-result))
+               (default-directory (setq dir (match-string 2 search-result)))
+               (search (match-string 3 search-result))
                (args (list "-w" "--word-regexp"
                            "-o" "--only-matching"
                            "-i" "--ignore-case"
@@ -1663,6 +1654,16 @@ there's a region, all lines that region covers will be duplicated."
                               "--ignore-dir"
                               "--depth"))
                (split (split-string search)))
+          (let ((m (or (match-string 1 search-result) mode)))
+            (cond ((string= m "sources")
+                   (setq ag-arguments (append
+                                       (list "--shell" "--cc" "--cpp" "--js" "--objc" "--objcpp" "--java" "--python" "--elisp" "--xml" "--json" "--perl" "-G" ".*\.inc$")
+                                       ag-arguments)))
+                  ((string= m "cmake")
+                   (setq ag-arguments (append
+                                       (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$")
+                                       ag-arguments)))
+                  (t)))
           (while split
             (cond ((string= (car split) "--")
                    (when (string-match "-- *" search)
