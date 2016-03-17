@@ -446,7 +446,7 @@ to case differences."
             (message "It's already there!")
             (switch-to-buffer (cdr old))
             (goto-char (car old)))
-        (unless (looking-back "\n\n")
+        (unless (looking-back "\n\n" (point-at-bol))
           (insert "\n"))
         (insert insertion-string "\n{\n}\n")
         (unless inline
@@ -894,6 +894,9 @@ to case differences."
           (linum-mode 1)
           (if had-git-gutter
               (git-gutter-mode 0))
+          (if had-git-gutter+
+              (git-gutter+-mode 0))
+
           (let ((res (read-from-minibuffer "Goto line: ")))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
                    (goto-char (1+ (string-to-number (match-string 1 res)))))
@@ -1602,9 +1605,9 @@ there's a region, all lines that region covers will be duplicated."
 (defadvice shell-quote-argument (around argument activate)
   (if shell-quote-argument-in-ag
       (setq ad-return-value
-            (if (equal argument "")
-                "''"
-              (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'")))
+            (cond ((string= argument "") "''")
+                  ((string-match "^\".*\"$" argument) argument)
+                  (t (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'"))))
     ad-do-it))
 
 ;; Use -w phrase to search for whole words
@@ -1661,7 +1664,7 @@ there's a region, all lines that region covers will be duplicated."
                                        ag-arguments)))
                   ((string= m "cmake")
                    (setq ag-arguments (append
-                                       (list "-G" "CMakeLists.txt" "-G" ".*\.cmake$")
+                                       (list "-G" "[Cc]make")
                                        ag-arguments)))
                   (t)))
           (while split
