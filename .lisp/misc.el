@@ -1611,11 +1611,13 @@ there's a region, all lines that region covers will be duplicated."
     ad-do-it))
 
 ;; Use -w phrase to search for whole words
+(defvar misc-grep-find-prefer-ag nil)
 (defun misc-grep-find-helper (dir filterType) ;; filterType integerp: all files, filterType t: cmake, otherwise: sources
   (when (and (eq major-mode 'cmake-mode)
              (or (not (integerp filterType))))
     (setq filterType (not filterType)))
-  (if (and (executable-find "ag")
+  (if (and misc-grep-find-prefer-ag
+           (executable-find "ag")
            (fboundp 'ag))
       (let ((old-ag-arguments (copy-sequence ag-arguments)))
         (let* ((mode (cond ((integerp filterType) (setq current-prefix-arg nil) "*")
