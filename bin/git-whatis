@@ -1,0 +1,6 @@
+#!/bin/sh
+git describe "$@" 2>/dev/null && exit 0
+git describe --all --always "$@" && exit 0
+git describe --tags "$@" 2>/dev/null && exit 0
+git describe --contains "$@" 2>/dev/null && exit 0
+exit 1
