@@ -16,6 +16,7 @@ set print vtbl on
 set print demangle on
 set demangle-style gnu-v3
 set print sevenbit-strings off
+set print asm-demangle on
 
 source ~/.gdb/init_os_start.gdb
 source ~/.gdb/init_host_start.gdb
