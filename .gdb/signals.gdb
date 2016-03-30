@@ -12,3 +12,4 @@ end
 
 nosigpipe
 nosignal SIGTTIN
+nosignal SIGUSR2
