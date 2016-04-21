@@ -104,7 +104,7 @@
   "git-grep the entire current repo"
   (interactive (list (nrdp-git-grep-prompt)))
   (let ((args (split-string search " ")))
-    (when (and (not (member args "--"))
+    (when (and (not (member "--" args))
                (let (hasarg)
                  (mapc (lambda (arg)
                          (when (not (string= "-" (substring arg 0 1)))
