@@ -56,7 +56,7 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
         [ "$change" = "+" ] && continue
         NOTES=
         git ignore check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
-        echo "$(git changes --max-count=1 $change)$NOTES"
+        echo "$(git changes --no-ignores --max-count=1 $change)$NOTES"
     done
 else
     BRANCH=

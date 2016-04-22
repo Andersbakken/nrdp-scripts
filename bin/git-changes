@@ -5,6 +5,7 @@ AUTHOR="$GIT_CHANGES_AUTHOR"
 [ -z "$AUTHOR" ] && AUTHOR=`whoami`
 
 OPTS=""
+IGNORES="1"
 PAGER=less
 MERGES="0"
 BRANCHES="0"
@@ -20,6 +21,7 @@ while [ "$#" -gt 0 ]; do
         -a) MERGES="1" ;;
         -b) BRANCHES="1" ;;
         -) COUNT_MERGES="1" ;;
+        --no-ignores) IGNORES="0" ;;
         --no-pager) PAGER=cat ;;
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
@@ -70,7 +72,9 @@ else
             [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
             [ -n "$branches" ] && line="$line ($branches)";
         fi
-        git ignore check "$change" >/dev/null && line="$line (IGNORED)"
+        if [ "$IGNORES" = "1" ]; then
+            git ignore check "$change" >/dev/null && line="$line (IGNORED)"
+        fi
         echo $line
     done | $PAGER
 fi

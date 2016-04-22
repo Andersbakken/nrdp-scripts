@@ -1,6 +1,6 @@
 #!/bin/bash
 
-[ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager "
+[ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager --no-ignores "
 function syncdir
 {
     cd "$1"
