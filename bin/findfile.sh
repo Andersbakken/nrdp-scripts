@@ -26,13 +26,19 @@ if echo "$FILE" | grep --quiet "^//" && test -n "$P4CONFIG" -o -n "$P4PORT"; the
         FILE=`echo $W | awk '{print $3}'`
     fi
 elif [ ! -e "$FILE" ]; then
-    FILES=`global -P "$FILE" 2>/dev/null`
-    if [ -n "$FILES" ]; then
-        FILE="$(choose.pl $FILES)"
+    if echo "$FILE" | grep --quiet "^/.*[+@]0x[0-9a-fA-F]\+$"; then
+        F=`echo $FILE | sed -e 's,[+@]0x[0-9a-fA-F]\+$,,'`
+        A=`echo $FILE | sed -e 's,^.*[+@]\(0x[0-9a-fA-F]\+\)$,\1,'`
+        FILE=`addr2line -e "$F" -a "$A" | tail -1`
     else
-        #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
-        SYMBOLS=`global -x "$FILE"  2>/dev/null | awk '{print $3":"$2}'`
-        [ -n "$SYMBOLS" ] && FILE="$(choose.pl $SYMBOLS)"
+        FILES=`global -P "$FILE" 2>/dev/null`
+        if [ -n "$FILES" ]; then
+            FILE="$(choose.pl $FILES)"
+        else
+            #SYMBOLS=`global -x "$FILE" | awk '{print "-r \"" $4,$5,$6,$7,$8,$9"\" " $3":"$2}'`
+            SYMBOLS=`global -x "$FILE"  2>/dev/null | awk '{print $3":"$2}'`
+            [ -n "$SYMBOLS" ] && FILE="$(choose.pl $SYMBOLS)"
+        fi
     fi
 fi
 if [ -n "$OFFSET" ]; then
