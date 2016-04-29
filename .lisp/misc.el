@@ -1486,7 +1486,7 @@ there's a region, all lines that region covers will be duplicated."
   (grep-find
    (read-shell-command
     "Run find (like this): "
-    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 grep -n ")
+    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 -p 8 -n 256 grep -n ")
     'grep-find-history)))
 
 (defvar xclip-use-primary nil)
@@ -1699,7 +1699,7 @@ there's a region, all lines that region covers will be duplicated."
               (cond ((integerp filterType) "")
                     (filterType misc-grep-find-cmake)
                     (t misc-grep-find-source-files))
-              " -print0 | xargs -0 grep -n ")
+              " -print0 | xargs -0 -p 8 -n 256 grep -n ")
       'grep-find-history))))
 
 (defun misc-grep-find-project (&optional filterType)
