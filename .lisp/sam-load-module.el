@@ -7,6 +7,7 @@
   (unless filename (setq filename module))
   (let (filepath)
     (cond
+     ((file-exists-p filename) (setq filepath filename))
      ((file-exists-p (concat sam-load-module-path "/" module "/" filename ".el")) (setq filepath (expand-file-name (concat sam-load-module-path "/" module "/" filename ".el"))))
      ((file-exists-p (concat sam-load-module-path "/" filename ".el")) (setq filepath (expand-file-name (concat sam-load-module-path "/" filename ".el"))))
      ((file-exists-p (concat sam-load-module-path "/" module "/" filename)) (setq filepath (expand-file-name (concat sam-load-module-path "/" module "/" filename))))
