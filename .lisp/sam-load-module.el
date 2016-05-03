@@ -20,3 +20,5 @@
               (byte-compile-file filepath t)
             (load compiled-filepath)))
       (require (intern module) filename t))))
+
+(provide 'sam-load-module)
