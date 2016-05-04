@@ -306,7 +306,7 @@
       (overlay-put lsdev-overlay 'after-string (concat (propertize " " 'display
                                                                    `(space :align-to (- right-fringe
                                                                                         ,(1+ (length text)))))
-                                                       (propertize text 'face 'lsdev-overlay-face)))
+                                                       text))
       (run-with-idle-timer lsdev-overlay-timeout nil (lambda () (when lsdev-overlay
                                                                   (delete-overlay lsdev-overlay)
                                                                   (setq lsdev-overlay nil)))))))
