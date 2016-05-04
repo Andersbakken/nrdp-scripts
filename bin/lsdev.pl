@@ -154,7 +154,9 @@ sub answer {
     } elsif($answer eq "path") {
         $output = $path;
     } else {
-        $output = $output = generateRootName($root) . " " . getPathConfig($path, $answer);
+        my $value = getPathConfig($path, $answer);
+        $value = getPathConfig($root->{source}, $answer) if(!$value && $root->{source});
+        $output = generateRootName($root) . " $value";
     }
     if($output) {
         print STDOUT "$output\n";
