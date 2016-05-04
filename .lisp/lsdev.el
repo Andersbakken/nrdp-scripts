@@ -271,12 +271,39 @@
 ;;mode string
 (defvar lsdev-mode t)
 (defvar lsdev-modestring nil)
+(defvar lsdev-overlay-timeout 2)
+(defvar lsdev-overlay nil)
+(defface lsdev-overlay-face
+  '((((class color) (background dark)) (:background "blue"))
+    (((class color) (background light)) (:background "blue"))
+    (t (:bold t)))
+  "Face used lsdev overlays."
+  :group 'lsdev)
+
+(defvar lsdev-last-overlay-text nil)
 (defun lsdev-update-modestring (&optional buffer)
   (unless lsdev-modestring
     (let ((modeline (and (buffer-file-name buffer)
                          (lsdev-name (or buffer (current-buffer))))))
       (when modeline
-        (setq-local lsdev-modestring (concat " [" modeline "] "))))))
+        (setq-local lsdev-modestring (concat " [" modeline "] ")))))
+  (when (and
+         lsdev-modestring
+         (not (string= lsdev-modestring lsdev-last-overlay-text)))
+    (setq lsdev-last-overlay-text lsdev-modestring)
+    (let ((pos)
+          (text (substring lsdev-modestring 2 -2))
+          (overlay))
+      (save-excursion
+        (goto-char (window-start))
+        (setq pos (line-end-position)))
+      (setq overlay (make-overlay pos pos))
+      (overlay-put overlay 'after-string (concat (propertize " " 'display
+                                                             `(space :align-to (- right-fringe
+                                                                                  ,(1+ (length text)))))
+                                                 (propertize text 'face 'lsdev-overlay-face)))
+      (sit-for lsdev-overlay-timeout)
+      (delete-overlay overlay))))
 
 (add-to-list 'global-mode-string '(:eval lsdev-modestring))
 
