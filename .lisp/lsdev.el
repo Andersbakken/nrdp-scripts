@@ -281,6 +281,7 @@
   :group 'lsdev)
 
 (defvar lsdev-last-overlay-text nil)
+(defvar lsdev-format-message 'identity)
 (defun lsdev-update-modestring (&optional buffer)
   (unless lsdev-modestring
     (let ((modeline (and (buffer-file-name buffer)
@@ -292,7 +293,7 @@
          (not (string= lsdev-modestring lsdev-last-overlay-text)))
     (setq lsdev-last-overlay-text lsdev-modestring)
     (let ((pos)
-          (text (substring lsdev-modestring 2 -2))
+          (text (funcall lsdev-format-message (substring lsdev-modestring 2 -2)))
           (overlay))
       (save-excursion
         (goto-char (window-start))
