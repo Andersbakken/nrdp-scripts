@@ -1702,6 +1702,36 @@ there's a region, all lines that region covers will be duplicated."
               " -print0 | xargs -0 -p 8 -n 256 grep -n ")
       'grep-find-history))))
 
+(defun misc-mss-enable () ;;minimal-session-saver
+  (require 'minimal-session-saver)
+  (defvar misc-loaded-session nil)
+  (unless misc-loaded-session
+    (setq misc-loaded-session t)
+    (condition-case nil
+        (minimal-session-saver-load)
+      (error)))
+  (defvar misc-mss-store-timer nil)
+  (defun misc-mss-store ()
+    (setq misc-mss-store-timer nil)
+    (minimal-session-saver-store))
+
+  (defun misc-mss-schedule-store ()
+    (when misc-mss-store-timer
+      (cancel-timer misc-mss-store-timer))
+    (setq misc-mss-store-timer (run-with-idle-timer 5 nil (function misc-mss-store))))
+
+  (defun misc-mss-kill-buffer-hook ()
+    (when (buffer-file-name)
+      (unless (file-directory-p default-directory)
+        (cd "/"))
+      (misc-mss-schedule-store))
+    t)
+
+  (add-hook 'find-file-hook (function misc-mss-schedule-store))
+  (add-hook 'kill-buffer-hook (function misc-mss-kill-buffer-hook))
+  (add-hook 'kill-emacs-hook (function minimal-session-saver-store)))
+
+
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")
   (setq current-prefix-arg nil)
