@@ -273,7 +273,7 @@
 (defvar lsdev-modestring nil)
 (defvar lsdev-overlay-timeout 2)
 (defvar lsdev-overlay nil)
-(defface lsdev-overlay-face
+(defface lsdev-overlay-default-face
   '((((class color) (background dark)) (:background "blue"))
     (((class color) (background light)) (:background "blue"))
     (t (:bold t)))
@@ -281,14 +281,18 @@
   :group 'lsdev)
 
 (defvar lsdev-last-overlay-text nil)
-(defvar lsdev-format-message 'identity)
+(defun lsdev-format-message-default (text &optional other)
+  (propertize text 'face 'lsdev-overlay-default-face))
+
+(defvar lsdev-format-message 'lsdev-format-message-default)
 (defun lsdev-update-modestring (&optional buffer)
   (unless lsdev-modestring
     (let ((modeline (and (buffer-file-name buffer)
                          (lsdev-name (or buffer (current-buffer))))))
       (when modeline
         (setq-local lsdev-modestring (concat " [" modeline "] ")))))
-  (unless (string= lsdev-modestring lsdev-last-overlay-text)
+  (when (and lsdev-modestring
+             (not (string= lsdev-modestring lsdev-last-overlay-text)))
     (setq lsdev-last-overlay-text lsdev-modestring)
     (let ((pos)
           (text (funcall lsdev-format-message (substring lsdev-modestring 2 -2)))
