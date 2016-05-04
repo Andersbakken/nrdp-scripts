@@ -288,9 +288,7 @@
                          (lsdev-name (or buffer (current-buffer))))))
       (when modeline
         (setq-local lsdev-modestring (concat " [" modeline "] ")))))
-  (when (and
-         lsdev-modestring
-         (not (string= lsdev-modestring lsdev-last-overlay-text)))
+  (unless (string= lsdev-modestring lsdev-last-overlay-text)
     (setq lsdev-last-overlay-text lsdev-modestring)
     (let ((pos)
           (text (funcall lsdev-format-message (substring lsdev-modestring 2 -2)))
@@ -298,13 +296,16 @@
       (save-excursion
         (goto-char (window-start))
         (setq pos (line-end-position)))
-      (setq overlay (make-overlay pos pos))
-      (overlay-put overlay 'after-string (concat (propertize " " 'display
-                                                             `(space :align-to (- right-fringe
-                                                                                  ,(1+ (length text)))))
-                                                 (propertize text 'face 'lsdev-overlay-face)))
-      (sit-for lsdev-overlay-timeout)
-      (delete-overlay overlay))))
+      (when lsdev-overlay
+        (delete-overlay lsdev-overlay))
+      (setq lsdev-overlay (make-overlay pos pos))
+      (overlay-put lsdev-overlay 'after-string (concat (propertize " " 'display
+                                                                   `(space :align-to (- right-fringe
+                                                                                        ,(1+ (length text)))))
+                                                       (propertize text 'face 'lsdev-overlay-face)))
+      (run-with-idle-timer lsdev-overlay-timeout nil (lambda () (when lsdev-overlay
+                                                                  (delete-overlay lsdev-overlay)
+                                                                  (setq lsdev-overlay nil)))))))
 
 (add-to-list 'global-mode-string '(:eval lsdev-modestring))
 
