@@ -3,5 +3,5 @@
 #    echo "Must sync first!"
 #    exit 1
 #fi
-git ignore remote push "$2" || exit 1
+git ignore-commit remote push "$2" || exit 1
 exit 0

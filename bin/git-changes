@@ -73,7 +73,7 @@ else
             [ -n "$branches" ] && line="$line ($branches)";
         fi
         if [ "$IGNORES" = "1" ]; then
-            git ignore check "$change" >/dev/null && line="$line (IGNORED)"
+            git ignore-commit check "$change" >/dev/null && line="$line (IGNORED)"
         fi
         echo $line
     done | $PAGER

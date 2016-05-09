@@ -70,7 +70,7 @@ elif [ "$1" = "remote" ]; then
                 else # Update to existing branch, examine new commits
                     range="${remote_sha}..${local_sha}"
                 fi
-                if git ignore check "$range"; then
+                if git ignore-commit check "$range"; then
                     echo "Ignored commit found in $local_ref. Aborted."
                     exit 1
                 fi

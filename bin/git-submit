@@ -55,7 +55,7 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
     for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
         [ "$change" = "+" ] && continue
         NOTES=
-        git ignore check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
+        git ignore-commit check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
         echo "$(git changes --no-ignores --max-count=1 $change)$NOTES"
     done
 else
@@ -134,7 +134,7 @@ else
 
     stashed=
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
-        ignore_marker=`git ignore marker 2>/dev/null`
+        ignore_marker=`git ignore-commit marker 2>/dev/null`
         git commit -a -m "${ignore_marker}git-submit" --allow-empty
         stashed=`git rev-parse HEAD`
     fi
@@ -146,7 +146,7 @@ else
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
-        elif git ignore check "$SHA1" >/dev/null; then
+        elif git ignore-commit check "$SHA1" >/dev/null; then
             echo "$SHA1 is marked to ignore!"
             continue
         fi
