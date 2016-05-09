@@ -1006,10 +1006,10 @@ to case differences."
 ;; ================================================================================
 ;; agb-isearch
 ;; ================================================================================
-;; (define-key isearch-mode-map (kbd "C-w") (function agb-isearch-yank-word-or-char-from-beginning-of-symbol))
+;; (define-key isearch-mode-map (kbd "C-w") (function misc-isearch-yank-word-or-char-from-beginning-of-symbol))
 ;; (define-key isearch-mode-map (kbd "M-w") (function isearch-yank-word-or-char))
 
-(defun agb-isearch-yank-word-or-char-from-beginning-of-symbol ()
+(defun misc-isearch-yank-word-or-char-from-beginning-of-symbol ()
   "Move to beginning of symbol before yanking word in isearch-mode."
   (interactive)
   (if (and (= 0 (length isearch-string)) (bounds-of-thing-at-point 'symbol))

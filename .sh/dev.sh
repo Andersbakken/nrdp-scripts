@@ -173,3 +173,5 @@ complete-netflix ()
 if [ -n "$BASH" ]; then
     complete -F complete-netflix -o default netflix ./netflix
 fi
+
+alias clean-var="rm -rf data/var"
