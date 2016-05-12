@@ -29,7 +29,7 @@ elif [ ! -e "$FILE" ]; then
     if echo "$FILE" | grep --quiet "^/.*[+@]0x[0-9a-fA-F]\+$"; then
         F=`echo $FILE | sed -e 's,[+@]0x[0-9a-fA-F]\+$,,'`
         A=`echo $FILE | sed -e 's,^.*[+@]\(0x[0-9a-fA-F]\+\)$,\1,'`
-        FILE=`addr2line -e "$F" -a "$A" | tail -1`
+        FILE=`addr2line -e "$F" -a "$A" | tail -1 | awk '{print $1}'`
     else
         FILES=`global -P "$FILE" 2>/dev/null`
         if [ -n "$FILES" ]; then
