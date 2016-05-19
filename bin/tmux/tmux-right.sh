@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -x
 RESULT=`uptime | sed 's/.*load average: \([0-9.]*\), \([0-9.]*\), \([0-9.]*\)/Load: \1 \2 \3/'`
 
 JOBS_TOTAL=0
@@ -41,6 +41,15 @@ if [ "$JOBS_TOTAL" != 0 ]; then
         RESULT="($MY_JOBS|${JOBS_TOTAL}) $RESULT"
     else
         RESULT="(${JOBS_TOTAL}) $RESULT"
+    fi
+fi
+
+if [ -e "$HOME/.current-source-dir" ]; then
+    CURRENT_SOURCE=`cat $HOME/.current-source-dir`
+    if [ -n "$CURRENT_SOURCE" ]; then
+        pushd "$CURRENT_SOURCE" >/dev/null
+        RESULT="(GIT:$(git summarize)) $RESULT"
+        popd >/dev/null
     fi
 fi
 

@@ -1,0 +1,4 @@
+#!/bin/sh
+
+GIT_SUMMARY="$(git symbolic-ref --short HEAD)"
+echo $GIT_SUMMARY

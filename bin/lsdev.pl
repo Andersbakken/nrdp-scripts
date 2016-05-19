@@ -88,6 +88,8 @@ sub parseOptions {
             $display_only = "default";
         } elsif($option eq "-b") {
             $read_devdir_list = -1;
+        } elsif($option eq "-tS") {
+            $answer = "source";
         } elsif($option eq "-tp") {
             $answer = "path";
         } elsif($option eq "-tn") {
@@ -146,6 +148,9 @@ sub answer {
     } elsif($answer eq "simple_name") {
         $output = getPathConfig($path, "prompt");
         $output = generateRootName($root) unless($output);
+    } elsif($answer eq "source") {
+        $output = $root->{source};
+        $output = $root->{path} unless($output);
     } elsif($answer eq "name") {
         $output = generateRootName($root);
     } elsif($answer eq "rest") {
