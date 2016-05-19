@@ -54,7 +54,7 @@
 (magit-define-popup-action 'magit-push-popup ?A "Submit all" 'magit-submit-all)
 (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
 (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
-(magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore)
+(magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore-commit)
 (when (string< "20151209.731" (magit-version))
   (magit-define-popup-action 'magit-pull-popup ?F "Pull from tracking" 'magit-pull-from-upstream)
   (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
@@ -441,9 +441,9 @@
     (magit-run-on-multiple (list "submit" "--no-autodetach") commit)
     (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev)))
 
-(defun magit-ignore (&optional commit)
+(defun magit-ignore-commit (&optional commit)
   (interactive)
-  (magit-run-on-multiple "ignore" commit))
+  (magit-run-on-multiple "ignore-commit" commit))
 
 (defun magit-submit-all (&optional commit)
   (interactive)

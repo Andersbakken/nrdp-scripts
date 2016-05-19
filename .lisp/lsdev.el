@@ -264,7 +264,11 @@
                                                          (call-process (executable-find "lsdev.pl") nil (list t nil) nil "-a" "-l" "-tn")
                                                          (cl-remove-duplicates (split-string (buffer-string) (concat "[" split "]+")) :test 'equal))
                                    nil t nil 'lsdev-cd-history))
-    (unless (or (string= project "") (not project) (push (if (string-match "/$" project) (substring project 0 -1) project) args)))
+    (unless (or (string= project "")
+                (not project))
+      (push (if (string-match "/$" project)
+                (substring project 0 -1) project)
+            args))
     (setq lsdev-cd-history (cl-remove-duplicates lsdev-cd-history :from-end t :test 'equal))
     (lsdev-cd-mode args from-eshell listfunc)))
 

@@ -1486,7 +1486,7 @@ there's a region, all lines that region covers will be duplicated."
   (grep-find
    (read-shell-command
     "Run find (like this): "
-    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 -p 8 -n 256 grep -n ")
+    (concat "find " misc-compiles-dir " -type f -print0 | xargs -0 -P 30 grep -n ")
     'grep-find-history)))
 
 (defvar xclip-use-primary nil)
@@ -1699,38 +1699,37 @@ there's a region, all lines that region covers will be duplicated."
               (cond ((integerp filterType) "")
                     (filterType misc-grep-find-cmake)
                     (t misc-grep-find-source-files))
-              " -print0 | xargs -0 -p 8 -n 256 grep -n ")
+              " -print0 | xargs -0 -P 30 grep -n ")
       'grep-find-history))))
 
+(require 'minimal-session-saver nil t)
+(defvar misc-loaded-session nil)
+(unless misc-loaded-session
+  (setq misc-loaded-session t)
+  (condition-case nil
+      (and (fboundp 'minimal-session-saver-load) (minimal-session-saver-load))
+    (error)))
+(defvar misc-mss-store-timer nil)
+(defun misc-mss-store ()
+  (setq misc-mss-store-timer nil)
+  (and (fboundp 'minimal-session-saver-store) (minimal-session-saver-store)))
+
+(defun misc-mss-schedule-store ()
+  (when misc-mss-store-timer
+    (cancel-timer misc-mss-store-timer))
+  (setq misc-mss-store-timer (run-with-idle-timer 5 nil (function misc-mss-store))))
+
+(defun misc-mss-kill-buffer-hook ()
+  (when (buffer-file-name)
+    (unless (file-directory-p default-directory)
+      (cd "/"))
+    (misc-mss-schedule-store))
+  t)
+
 (defun misc-mss-enable () ;;minimal-session-saver
-  (require 'minimal-session-saver)
-  (defvar misc-loaded-session nil)
-  (unless misc-loaded-session
-    (setq misc-loaded-session t)
-    (condition-case nil
-        (minimal-session-saver-load)
-      (error)))
-  (defvar misc-mss-store-timer nil)
-  (defun misc-mss-store ()
-    (setq misc-mss-store-timer nil)
-    (minimal-session-saver-store))
-
-  (defun misc-mss-schedule-store ()
-    (when misc-mss-store-timer
-      (cancel-timer misc-mss-store-timer))
-    (setq misc-mss-store-timer (run-with-idle-timer 5 nil (function misc-mss-store))))
-
-  (defun misc-mss-kill-buffer-hook ()
-    (when (buffer-file-name)
-      (unless (file-directory-p default-directory)
-        (cd "/"))
-      (misc-mss-schedule-store))
-    t)
-
   (add-hook 'find-file-hook (function misc-mss-schedule-store))
   (add-hook 'kill-buffer-hook (function misc-mss-kill-buffer-hook))
   (add-hook 'kill-emacs-hook (function minimal-session-saver-store)))
-
 
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")
