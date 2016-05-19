@@ -1,4 +1,5 @@
 #!/bin/sh
 
 GIT_SUMMARY="$(git symbolic-ref --short HEAD)"
+[ -n "$(git status --porcelain)" ] && GIT_SUMMARY="${GIT_SUMMARY}*"
 echo $GIT_SUMMARY
