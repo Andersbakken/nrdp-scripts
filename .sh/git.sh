@@ -24,6 +24,11 @@ git() #make git checkout commands usable with submodules
 
 }
 
+update_current_pwd()
+{
+    echo "$PWD" >$HOME/.current-pwd
+}
+
 gs() #sync a tree
 {
     ACTION="sync -r"

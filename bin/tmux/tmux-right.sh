@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 RESULT=`uptime | sed 's/.*load average: \([0-9.]*\), \([0-9.]*\), \([0-9.]*\)/Load: \1 \2 \3/'`
 
 JOBS_TOTAL=0
@@ -44,12 +44,20 @@ if [ "$JOBS_TOTAL" != 0 ]; then
     fi
 fi
 
-if [ -e "$HOME/.current-source-dir" ]; then
-    CURRENT_SOURCE=`cat $HOME/.current-source-dir`
-    if [ -n "$CURRENT_SOURCE" ]; then
-        pushd "$CURRENT_SOURCE" >/dev/null
-        GIT_SUMMARY=`git summarize`
-        [ -n "$GIT_SUMMARY" ] && RESULT="(GIT:${GIT_SUMMARY}) $RESULT"
+if [ -e "$HOME/.current-pwd" ]; then
+    CURRENT_PWD=`cat $HOME/.current-pwd`
+    if [ -n "$CURRENT_PWD" ]; then
+        pushd "$CURRENT_PWD" >/dev/null
+        SRC_PWD=`git rev-parse --show-toplevel 2>/dev/null`
+        [ -z "$SRC_PWD" ] && which lsdev.pl >/dev/null && SRC_PWD=`lsdev.pl -p -tS 2>/dev/null`
+        if [ -n "$SRC_PWD" ]; then
+            pushd "$SRC_PWD" >/dev/null
+            GIT_SUMMARY=`git summarize`
+            [ -n "$GIT_SUMMARY" ] && RESULT="(GIT:${GIT_SUMMARY}) $RESULT"
+            popd >/dev/null
+        fi
+        which lsdev.pl >/dev/null && LSDEV=`lsdev.pl -p -ts 2>/dev/null`
+        [ -n "$LSDEV" ] && RESULT="$LSDEV $RESULT"
         popd >/dev/null
     fi
 fi

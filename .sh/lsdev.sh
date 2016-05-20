@@ -152,14 +152,6 @@ whatdev() {
 }
 alias wdd="whatdev -ta"
 
-update_current_source_dir()
-{
-    local SRC_PWD=`git rev-parse --show-toplevel 2>/dev/null`
-    [ -z "$SRC_PWD" ] && SRC_PWD=`whatdev -tS 2>/dev/null`
-    [ -z "$SRC_PWD" ] && SRC_PWD="$PWD"
-    echo "$SRC_PWD" >$HOME/.current-source-dir
-}
-
 setdev() {
     DIR=`lsdev -w $@`
     if [ -n "$DIR" ]; then
