@@ -48,7 +48,8 @@ if [ -e "$HOME/.current-source-dir" ]; then
     CURRENT_SOURCE=`cat $HOME/.current-source-dir`
     if [ -n "$CURRENT_SOURCE" ]; then
         pushd "$CURRENT_SOURCE" >/dev/null
-        RESULT="(GIT:$(git summarize)) $RESULT"
+        GIT_SUMMARY=`git summarize`
+        [ -n "$GIT_SUMMARY" ] && RESULT="(GIT:${GIT_SUMMARY}) $RESULT"
         popd >/dev/null
     fi
 fi
