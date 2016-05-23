@@ -1710,11 +1710,6 @@ there's a region, all lines that region covers will be duplicated."
 
 (require 'minimal-session-saver nil t)
 (defvar misc-loaded-session nil)
-(unless misc-loaded-session
-  (setq misc-loaded-session t)
-  (condition-case nil
-      (and (fboundp 'minimal-session-saver-load) (minimal-session-saver-load))
-    (error)))
 (defvar misc-mss-store-timer nil)
 (defun misc-mss-store ()
   (setq misc-mss-store-timer nil)
@@ -1733,6 +1728,11 @@ there's a region, all lines that region covers will be duplicated."
   t)
 
 (defun misc-mss-enable () ;;minimal-session-saver
+  (unless misc-loaded-session
+    (setq misc-loaded-session t)
+    (condition-case nil
+        (and (fboundp 'minimal-session-saver-load) (minimal-session-saver-load))
+      (error)))
   (add-hook 'find-file-hook (function misc-mss-schedule-store))
   (add-hook 'kill-buffer-hook (function misc-mss-kill-buffer-hook))
   (add-hook 'kill-emacs-hook (function minimal-session-saver-store)))
