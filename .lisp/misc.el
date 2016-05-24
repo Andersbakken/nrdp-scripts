@@ -1599,6 +1599,17 @@ there's a region, all lines that region covers will be duplicated."
                            ((misc-liberal-file-exists (nrdp-git-deepest-root)))
                            (t default-directory))))
 
+(defun misc-save-current-macro-to-dot-emacs (name)
+  "Save the current macro as named function definition inside your initialization file so you can reuse it anytime in the future."
+  (interactive "SSave Macro as: ")
+  (name-last-kbd-macro name)
+  (save-excursion 
+    (find-file-literally user-init-file)
+    (goto-char (point-max))
+    (insert "\n\n;; Saved macro\n")
+    (insert-kbd-macro name)
+    (insert "\n")))
+
 (defvar misc-grep-find-not
   " -not -name error.js -not -name xboxupsellpage.js -not -name '*.min.js' -not -name 'string-unpack-code.js'")
 (defvar misc-grep-find-source-files
