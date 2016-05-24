@@ -42,6 +42,29 @@
             (magit-log-head (nrdp-git-magit-log-args prefix "--follow") (list magit-buffer-file-name))))
       (message "Can't log this buffer"))))
 
+(defun nrdp-git-merge-conflicts (&optional file)
+  (interactive "P")
+  (cond ((stringp file))
+        ((bufferp file) (setq file (buffer-file-name)))
+        ((integerp file)) ;; all files
+        ((null file) (setq file (buffer-file-name)))
+        (t (setq file (read-file-name "File: "))))
+  (when file
+    (setq file (file-truename file)))
+  (let ((default-directory (nrdp-git-dir-for-file (or file default-directory)))
+        (buffer (get-buffer-create (if file (format "*%s - git merge-conflicts*" file) "*git merge-conflicts*"))))
+    (switch-to-buffer buffer)
+    (setq buffer-read-only nil)
+    (erase-buffer)
+    (if (not (= (call-process "git" nil t nil "merge-conflicts" "--no-color" "-p" (or file "")) 0))
+        (progn
+          (message "%s" (buffer-substring-no-properties (point-min) (1- (point-max))))
+          (kill-buffer buffer))
+      (goto-char (point-min))
+      (diff-mode)
+      (setq buffer-read-only t)
+      (buffer-local-set-key (kbd "q") 'bury-buffer))))
+
 (defun nrdp-git-magit-log (&optional prefix)
   (interactive "P")
   (magit-log (list (magit-get-current-branch)) (nrdp-git-magit-log-args prefix)))

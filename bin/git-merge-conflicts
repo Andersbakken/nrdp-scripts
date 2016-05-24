@@ -1,0 +1,88 @@
+#!/bin/bash
+
+function printLine()
+{
+    echo "$1"
+    local DASHES=""
+    for i in $(seq 2 $(echo $1 | wc -c)); do
+        DASHES="${DASHES}-"
+    done
+    echo "$DASHES"
+}
+
+FILES=()
+P=
+COLOR="--color"
+PRETTY=--oneline
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-h)
+            echo "git merge-conflicts [-p|--patch] [--no-color] [-h|--help] [--pretty=<format>] ...files..."
+            exit 0
+            ;;
+        -p|--patch)
+            P="1"
+            ;;
+        --no-color)
+            COLOR=""
+            ;;
+        --pretty=*)
+            PRETTY="--pretty=`echo $1 | sed -e 's,^--pretty=,,'`"
+            ;;
+        --pretty)
+            shift
+            PRETTY="--pretty=$1"
+            ;;
+        *)
+            if [ -e "$1" ]; then
+                FILES+=("$1")
+            else
+                echo "$1 doesn't seem to exist" >2
+                exit 1
+            fi
+            ;;
+        esac
+    shift
+done
+
+cd "`git rev-parse --show-toplevel`"
+MERGE_HEAD="`cat .git/MERGE_HEAD 2>/dev/null`"
+if [ -z "$MERGE_HEAD" ]; then
+    echo "You don't seem to be in a merge conflict..."
+    exit 1
+fi
+git status --porcelain | grep "^.U" | while read conflict file; do
+    if [ -n "$FILES" ]; then
+        FOUND=
+        for f in "${FILES[@]}"; do
+            if [ "$f" -ef "$file" ]; then
+                FOUND=1
+                break
+            fi
+        done
+        if [ -z "$FOUND" ]; then
+            continue
+        fi
+    fi
+    FIRST=
+    for commit in `git cherry HEAD $MERGE_HEAD | awk '{print $2}'`; do
+        # echo considering commit $commit for file $file
+        if [ "`git log --pretty=%H -n1 --follow $commit $file`" = "$commit" ]; then
+            if [ -z "$FIRST" ]; then
+                printLine "Commits touching $file:"
+                FIRST=1
+            fi
+
+            if [ "$P" ]; then
+                git log $COLOR -p -n1 --follow $commit $file | cat
+            else
+                git log $COLOR $PRETTY -n1 --follow $commit $file | cat
+            fi
+            # echo "Found commit!"
+        fi
+        # break
+    done
+    if [ "$FIRST" ]; then
+        echo
+    fi
+done
