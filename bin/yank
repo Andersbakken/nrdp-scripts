@@ -34,14 +34,14 @@ else
     fi
     if [ -z "$file" ]; then
         if [ "$mode" = "copy" ]; then
-            "$xclip" -i
+            "$xclip" -selection clipboard -i
         else
-            "$xclip" -o
+            "$xclip" -selection clipboard -o
         fi
     elif [ "$mode" = "paste" ]; then
-        "$xclip" -o > "$file"
+        "$xclip" -o -selection clipboard > "$file"
     elif [ "$mode" = "paste_append" ]; then
-        "$xclip" -o >> "$file"
+        "$xclip" -o -selection clipboard >> "$file"
     fi
 fi
 
