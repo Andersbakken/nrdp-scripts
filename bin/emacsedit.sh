@@ -10,6 +10,7 @@ LINE=0
 COL=
 OFFSET=
 TEST=
+EMACSWINDOW=yes
 EMACSDAEMON=no
 
 while [ "$#" -gt 0 ]; do
@@ -24,7 +25,8 @@ while [ "$#" -gt 0 ]; do
     -n) EMACSWAIT=no ;;
     -q) TEST=exists ;;
     --daemon|-d) EMACSDAEMON="yes" ;;
-    -nw) unset DISPLAY; EMACSOPTS="$EMACSOPTS -nw"; ;;
+    -w) EMACSWINDOW=yes ;;
+    -nw) EMACSWINDOW=no ;;
     -h|--help|-help) echo "$0: [options] [file]"
         echo "Options:"
         echo "  -c    Must confirm execution"
@@ -47,7 +49,7 @@ if [ -z "$EMACS" ]; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
         EMACS="emacsclient"
-        [ "$EMACSWAIT" = "yes" ] && EMACS="$EMACS -nw"
+        [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
     fi
     if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
@@ -56,6 +58,10 @@ if [ -z "$EMACS" ]; then
             EMACS="$EMACS -a $(which emacs)"
         fi
         [ "$EMACSWAIT" = "no" ] && EMACS="$EMACS -n"
+        if [ "$EMACSWINDOW" = "no" ]; then
+           unset DISPLAY
+           EMACS="$EMACS -nw"
+        fi
     else
         echo "No emacs client available!"
         return
