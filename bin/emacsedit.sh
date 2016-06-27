@@ -10,7 +10,7 @@ LINE=0
 COL=
 OFFSET=
 TEST=
-EMACSWINDOW=yes
+EMACSWINDOW=
 EMACSDAEMON=no
 
 while [ "$#" -gt 0 ]; do
@@ -49,7 +49,7 @@ if [ -z "$EMACS" ]; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
         EMACS="emacsclient"
-        [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
+        [ -n "$EMACSWINDOW" ] && [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
     fi
     if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
