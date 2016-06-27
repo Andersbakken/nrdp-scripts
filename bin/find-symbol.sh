@@ -50,9 +50,9 @@ test -z "$dirs" && dirs="."
 # echo $dirs
 find $dirs -name "*.so*" -or -name "*.a" -or -name "*.o" -or -name "*.dylib" | while read file; do
     # echo $file
-    $nm $file | $filt >$out 2> $err
+    $nm $file 2>$err | $filt >$out
     if grep "no symbols" $err --quiet; then
-        $nm -D $file | $c++filt >$out 2> $err
+        $nm -D $file 2>$err | $filt >$out
     fi
 
     if grep "$symbol" -l $out --quiet; then

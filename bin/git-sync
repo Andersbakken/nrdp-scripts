@@ -19,7 +19,11 @@ function syncdir
         echo "Not a git tree!"
         return
     fi
-    ROOTDIR=`cd $GITDIR/.. && pwd`
+    ROOTDIR=`git rev-parse --show-toplevel`
+    if [ -z "$ROOTDIR" ]; then
+        echo "Can't find root dir"
+        return
+    fi
 
     cd "$ROOTDIR"
     stashed=

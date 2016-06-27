@@ -45,8 +45,9 @@ while [ -n "$1" ]; do
     shift
 done
 
+MERGE_HEAD="$(cat $(git rev-parse --git-dir)/MERGE_HEAD 2>/dev/null)"
+
 cd "`git rev-parse --show-toplevel`"
-MERGE_HEAD="`cat .git/MERGE_HEAD 2>/dev/null`"
 if [ -z "$MERGE_HEAD" ]; then
     echo "You don't seem to be in a merge conflict..."
     exit 1
