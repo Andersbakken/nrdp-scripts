@@ -561,6 +561,22 @@
             (switch-to-buffer (car (gethash project buffers))))
           (kill-buffer buffer))))))
 
-      ;; (message "Got project [%s]" project))))
+;; (message "Got project [%s]" project))))
+
+(defvar lsdev-git-sync-src nil)
+(defun lsdev-git-sync-sentinel (process event)
+  (when (eq (process-status process) 'exit)
+    (with-current-buffer (process-buffer process)
+      (if (= (process-exit-status process) 0)
+          (message "Synced git repo %s" lsdev-git-sync-src)
+        (message "git sync error: %s" (buffer-substring-no-properties (point-min) (point-max))))
+      (kill-buffer (current-buffer)))))
+
+(defun lsdev-git-sync ()
+  (interactive)
+  (let ((dir (completing-read "git sync: " (lsdev-dirs-all "-build"))))
+    (setq lsdev-git-sync-src dir)
+    (set-process-sentinel (start-process (concat "lsdev git sync " dir) " *lsdev-git-sync*" "git" "lsdev" dir "--" "sync" "-r") 'lsdev-git-sync-sentinel)
+    (message "Syncing %s..." dir)))
 
 (provide 'lsdev)
