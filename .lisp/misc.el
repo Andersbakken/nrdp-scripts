@@ -1397,6 +1397,11 @@ there's a region, all lines that region covers will be duplicated."
 (defun misc-compilation-finish-function (buf str)
   (when misc-store-compiles
     (misc-store-last-compile))
+  (with-current-buffer buf
+    (let ((old buffer-read-only))
+      (setq buffer-read-only nil)
+      (ansi-color-filter-region (point-min) (point-max))
+      (setq buffer-read-only old)))
   (cond ((string-match "exited abnormally" str)
          (message "compilation errors, press C-x ` to visit"))
         ((with-current-buffer buf
@@ -1603,7 +1608,7 @@ there's a region, all lines that region covers will be duplicated."
   "Save the current macro as named function definition inside your initialization file so you can reuse it anytime in the future."
   (interactive "SSave Macro as: ")
   (name-last-kbd-macro name)
-  (save-excursion 
+  (save-excursion
     (find-file-literally user-init-file)
     (goto-char (point-max))
     (insert "\n\n;; Saved macro\n")
