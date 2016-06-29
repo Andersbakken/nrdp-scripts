@@ -10,8 +10,11 @@ LINE=0
 COL=
 OFFSET=
 TEST=
-EMACSWINDOW=
 EMACSDAEMON=no
+
+EMACSWINDOW=
+[ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
+[ `uname -s` = "Linux" ] && [ -z "$DISPLAY" ] && EMACSWINDOW=no
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -26,7 +29,7 @@ while [ "$#" -gt 0 ]; do
     -q) TEST=exists ;;
     --daemon|-d) EMACSDAEMON="yes" ;;
     -w) EMACSWINDOW=yes ;;
-    -nw) EMACSWINDOW=no ;;
+    -nw) unset DISPLAY; EMACSWINDOW=no ;;
     -h|--help|-help) echo "$0: [options] [file]"
         echo "Options:"
         echo "  -c    Must confirm execution"
@@ -49,7 +52,7 @@ if [ -z "$EMACS" ]; then
         EMACS="gnuclient -q"
     elif which emacsclient >/dev/null 2>&1; then
         EMACS="emacsclient"
-        [ -n "$EMACSWINDOW" ] && [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
+        [ -z "$EMACSWINDOW" ] && [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
     fi
     if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
@@ -58,10 +61,7 @@ if [ -z "$EMACS" ]; then
             EMACS="$EMACS -a $(which emacs)"
         fi
         [ "$EMACSWAIT" = "no" ] && EMACS="$EMACS -n"
-        if [ "$EMACSWINDOW" = "no" ]; then
-           unset DISPLAY
-           EMACS="$EMACS -nw"
-        fi
+        [ "$EMACSWINDOW" = "no" ] && EMACS="$EMACS -nw"
     else
         echo "No emacs client available!"
         return
@@ -70,9 +70,11 @@ else
     EMACS="$EMACS $EMACSOPTS"
 fi
 
-if [ "$EMACSWAIT" = "no" ] && [ -z "$FILE" ]; then
-   MODE="eval"
-   FILE="(raise-frame)"
+if [ -z "$FILE" ]; then
+    if [ "$EMACSWAIT" = "no" ] || [ "$EMACSWINDOW" != "no" ]; then
+        MODE="eval"
+        FILE="(raise-frame)"
+    fi
 fi
 
 if [ -n "$FILE" ]; then
