@@ -1,6 +1,9 @@
 [ -z "$ICECC_JOBS_MAX" ] && ICECC_JOBS_MAX=10
 [ -z "$ICECC_JOBS_MIN" ] && ICECC_JOBS_MIN=1
-[ -z "$ICECC_SCHEDULER_HOST" ] && [ -e "/etc/icecc/icecc.conf" ] && . /etc/icecc/icecc.conf
+if [ -z "$ICECC_SCHEDULER_HOST" ]; then
+    [ -e "/etc/icecc/icecc.conf" ] && . /etc/icecc/icecc.conf 
+    [ -e "/etc/icecc/icecc.conf.override" ] && . /etc/icecc/icecc.conf.override 
+fi
 [ ! -d "$ICECC_DIR" ] && ICECC_DIR=
 if [ ! -z "$ICECC_DIR" ]; then
    true #do nothing
