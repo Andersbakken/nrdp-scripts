@@ -58,8 +58,8 @@ for ROOTDIR in $ROOTDIRS; do
            echo "============================================================="
            $TEST git $COMMAND || ERROR=1
            if [ "$RECURSIVE" = "yes" ]; then
-               find -L "$ROOTDIR" -maxdepth 4 -type d -name ".git" | while read i; do
-                   cd "$i/.."
+               find -L "$ROOTDIR" -maxdepth 4 -name ".git" | while read i; do
+                   cd "`dirname \"$i\"`"
                    SUBDIR=`pwd`
                    if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
                        if [ -e ".lsdev_config" ]; then
