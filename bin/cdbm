@@ -300,7 +300,7 @@ sub cdbm_add {
       if( $history ) {
 	$append = 0;
 	unshift @paths, $path;
-	$#paths = 10;
+	$#paths = 50;
       } else {
 	push @paths, $path;
       }
