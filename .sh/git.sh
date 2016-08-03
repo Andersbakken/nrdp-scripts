@@ -38,6 +38,7 @@ update_current_pwd()
 {
     echo "$PWD" >$HOME/.current-pwd
 }
+add_prompt_command "update_current_pwd"
 
 gs() #sync a tree
 {
