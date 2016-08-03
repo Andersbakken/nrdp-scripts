@@ -1,5 +1,3 @@
-#cdbm
-
 __cdl_helper()
 {
     dir="$1"
@@ -16,15 +14,15 @@ __cdl_helper()
 
 cd() {
     D=`cdbm "$@"`
-    builtin cd "$D"
+    [ -n "$D" ] && builtin cd "$D"
 }
 cdl() {
-    dir="`__cdl_helper $1`"
-    test -d "$dir" && cd "$dir"
+    D="`__cdl_helper $1`"
+    [ -n "$D" ] && test -d "$D" && cd "$D"
 }
 cdo() {
    eval DIR="$1"
-   builtin cd "$DIR"
+   [ -n "$D" ] && builtin cd "$DIR"
 }
 
 
