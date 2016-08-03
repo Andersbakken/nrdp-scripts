@@ -12,17 +12,22 @@ __cdl_helper()
     done
 }
 
-cd() {
-    D=`cdbm "$@"`
-    [ -n "$D" ] && builtin cd "$D"
-}
-cdl() {
-    D="`__cdl_helper $1`"
-    [ -n "$D" ] && test -d "$D" && cd "$D"
-}
 cdo() {
    eval DIR="$1"
    [ -n "$D" ] && builtin cd "$DIR"
 }
 
+cdbm_cd_command() {
+    builtin cd "$1"
+}
 
+test -z "$CDBM_CD_COMMAND" && export CDBM_CD_COMMAND="cdbm_cd_command"
+
+cd() {
+    D=`cdbm "$@"`
+    [ -n "$D" ] && "$CDBM_CD_COMMAND" "$D" "$@"
+}
+cdl() {
+    D="`__cdl_helper $1`"
+    [ -n "$D" ] && test -d "$D" && cd "$D"
+}
