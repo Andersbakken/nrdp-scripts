@@ -149,13 +149,13 @@
         (replace-match (or to "") nil t)))
     (and (> count 0) count)))
 
-(defun --misc-replace-regexp-helper (from to &optional start end)
+(defun --misc-replace-regexp-helper (from to &optional start end literal)
   (let ((count 0))
     (save-excursion
       (goto-char (or start (point-min)))
       (while (re-search-forward from end t)
         (incf count)
-        (replace-match (or to "") nil t)))
+        (replace-match (or to "") nil literal)))
     (and (> count 0) count)))
 
 ;;====================
