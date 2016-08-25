@@ -100,6 +100,7 @@ if [ -n "$FILE" ]; then
         FILE=`echo $FILE | cut -d, -f1`
     fi
     if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ]; then
+        >&2 echo "$FILE doesn't seem to exist"
         exit 1
     fi
     if [ "$TEST" = "exists" ]; then
