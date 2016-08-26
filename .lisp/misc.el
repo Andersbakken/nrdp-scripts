@@ -1558,7 +1558,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-man-completion-cache ()
   (mapcar (lambda (line)
-            (and (string-match "^\\([^ ]*\\) (\\([0-9][^)]*\\))" line)
+            (and (string-match "^\\([^ ]*\\) *(\\([0-9][^)]*\\))" line)
                  (concat (match-string 1 line) "(" (match-string 2 line) ")")))
           (split-string (shell-command-to-string "apropos .") "\n" t)))
 
