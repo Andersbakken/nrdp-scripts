@@ -246,6 +246,7 @@
       (when -w
         (push "-w" args))
       (when word
+        (push "--color=always" args)
         (push "--word-diff=plain" args)
         (push "--word-diff-regex=." args))
       (if no-split-window
@@ -258,6 +259,8 @@
                (not (= (point-min) (point-max))))
           (progn
             (goto-char (point-min))
+            (when word
+              (ansi-color-apply-on-region (point-min) (point-max)))
             (insert "$ git diff " (combine-and-quote-strings args) "\n")
             (search-forward-regexp "^@@ ")
             (goto-char (point-at-bol))
