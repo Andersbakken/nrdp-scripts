@@ -8,9 +8,9 @@ count_tilde() {
 
 resolve_file_at_commitish() {
     commitish=`git rev-parse "$2"`
-    file=`git log --follow --stat --stat-name-width=10000 --pretty="%H" "$1" | grep -A 2 $commitish | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
+    file=`git log --follow --stat --stat-name-width=10000 --pretty="%H" -- "$1" | grep -A 2 $commitish | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
     if [ -z "$file" ]; then
-        file=`git log -n 1 --stat --stat-name-width=10000 --pretty="%H" "$1" | head -n3 | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
+        file=`git log -n 1 --stat --stat-name-width=10000 --pretty="%H" -- "$1" | head -n3 | tail -n1 | sed -e 's,^ *,,' -e 's, *|.*,,'`
     fi
     echo "$file"
 }
