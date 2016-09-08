@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+msg="$1"
+[ "$msg" == "" ] && msg="Empty commit"
+git commit --allow-empty -m "${msg}"
