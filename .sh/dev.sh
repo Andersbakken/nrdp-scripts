@@ -144,8 +144,8 @@ complete-netflix ()
     modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
     if [ ! -e "/tmp/netflix-completions-helper" ] || [ "$modified" != "`head -n 1 /tmp/netflix-completions-helper`" ]; then
         echo $modified > /tmp/netflix-completions-helper
-        "$app" --help | grep '^ \+-' | grep "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
-        "$app" --help | grep '^ \+-' | grep -v "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
+        "$app" --help --dump | grep '^ \+-' | grep "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
+        "$app" --help --dump | grep '^ \+-' | grep -v "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
     fi
     local valueopts=`head -n 2 /tmp/netflix-completions-helper | tail -n 1`
     local cur=${COMP_WORDS[COMP_CWORD]}

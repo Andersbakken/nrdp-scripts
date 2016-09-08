@@ -11,6 +11,7 @@ COL=
 OFFSET=
 TEST=
 EMACSDAEMON=no
+NO_CREATE_FILE=
 
 EMACSWINDOW=
 [ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
@@ -25,6 +26,7 @@ while [ "$#" -gt 0 ]; do
     -t) MODE=tail ;;
     -m) MODE=make ;;
     -s|--dry) TEST=echo ;;
+    --no-create-file) NO_CREATE_FILE=1 ;;
     -n) EMACSWAIT=no ;;
     -q) TEST=exists ;;
     --daemon|-d) EMACSDAEMON="yes" ;;
@@ -96,6 +98,10 @@ if [ -n "$FILE" ]; then
     elif echo "$FILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
         OFFSET=`echo $FILE | cut -d, -f2`
         FILE=`echo $FILE | cut -d, -f1`
+    fi
+    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ]; then
+        >&2 echo "$FILE doesn't seem to exist"
+        exit 1
     fi
     if [ "$TEST" = "exists" ]; then
         [ -e "$FILE" ] && exit 0

@@ -153,14 +153,15 @@
 (defun nrdp-git-revert (&optional buffer)
   (interactive)
   (let* ((default-directory (nrdp-git-dir-for-file buffer))
-         (file (file-truename (buffer-file-name buffer))))
-    (if (not file)
-        (message "This buffer is not visiting a file")
-      (and (y-or-n-p (concat "Are you sure you want to revert " (file-name-nondirectory file)))
-           (= (call-process "git" nil nil nil "reset" "--" file) 0)
-           (= (call-process "git" nil nil nil "checkout" "HEAD" "--" file) 0)
-           (with-current-buffer (or buffer (current-buffer))
-             (revert-buffer t t t))))))
+         (file (and (buffer-file-name buffer)
+                    (file-truename (buffer-file-name buffer)))))
+    (cond ((not file) (message "This buffer is not visiting a file"))
+          ((not default-directory) (message "Dude... where's the repo?"))
+          (t (and (y-or-n-p (concat "Are you sure you want to revert " (file-name-nondirectory file)))
+                  (= (call-process "git" nil nil nil "reset" "--" file) 0)
+                  (= (call-process "git" nil nil nil "checkout" "HEAD" "--" file) 0)
+                  (with-current-buffer (or buffer (current-buffer))
+                    (revert-buffer t t t)))))))
 
 
 (defun nrdp-git-deepest-root ()
@@ -241,34 +242,38 @@
          (buffer (get-buffer-create (if (or nrdp-git-diff-reuse-diff-buffer (not args))
                                         "*git-diff*"
                                       (concat "*git-diff: " (car args) "*")))))
-    (when -w
-      (push "-w" args))
-    (when word
-      (push "--word-diff=plain" args)
-      (push "--word-diff-regex=." args))
-    (if no-split-window
-        (switch-to-buffer buffer)
-      (set-buffer (switch-to-buffer-other-window buffer)))
-    (setq buffer-read-only nil)
-    (erase-buffer)
-    (setq default-directory dir)
-    (if (and (= (apply #'call-process "git" nil t t "diff" args) 0)
-             (not (= (point-min) (point-max))))
-        (progn
-          (goto-char (point-min))
-          (insert "$ git diff " (combine-and-quote-strings args) "\n")
-          (search-forward-regexp "^@@ ")
-          (goto-char (point-at-bol))
-          (diff-mode)
-          (setq buffer-read-only t)
-          (when old
-            (select-window old)))
-      (message "No differences")
-      (kill-buffer (current-buffer))
-      (if (= numwindows 1)
-          (delete-window)
-        (other-window 1))
-      nil)))
+    (when dir
+      (when -w
+        (push "-w" args))
+      (when word
+        (push "--color=always" args)
+        (push "--word-diff=plain" args)
+        (push "--word-diff-regex=." args))
+      (if no-split-window
+          (switch-to-buffer buffer)
+        (set-buffer (switch-to-buffer-other-window buffer)))
+      (setq buffer-read-only nil)
+      (erase-buffer)
+      (setq default-directory dir)
+      (if (and (= (apply #'call-process "git" nil t t "diff" args) 0)
+               (not (= (point-min) (point-max))))
+          (progn
+            (goto-char (point-min))
+            (when word
+              (ansi-color-apply-on-region (point-min) (point-max)))
+            (insert "$ git diff " (combine-and-quote-strings args) "\n")
+            (search-forward-regexp "^@@ ")
+            (goto-char (point-at-bol))
+            (diff-mode)
+            (setq buffer-read-only t)
+            (when old
+              (select-window old)))
+        (message "No differences")
+        (kill-buffer (current-buffer))
+        (if (= numwindows 1)
+            (delete-window)
+          (other-window 1))
+        nil))))
 
 (defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
   (interactive "P")
