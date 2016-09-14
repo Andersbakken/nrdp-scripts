@@ -343,6 +343,12 @@
                    (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
 
+(defadvice magit-status-internal (around fixdir activate)
+  (let ((dir (ad-get-arg 0)))
+    (unless (file-name-absolute-p dir)
+      (ad-set-arg 0 (expand-file-name dir))))
+  ad-do-it)
+
 (define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
