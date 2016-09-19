@@ -155,13 +155,20 @@ build() {
             fi
         fi
     fi
-    [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
-    [ -z "$BUILD_DIR" ] && BUILD_DIR=.
-    if [ -n "$RTAGS" ]; then
-        RTAGS_RMAKE=1 `which make` -C "$BUILD_DIR" -B
-        return 0
-    fi
-    `which make` -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
+    which -a make | while read i; do
+        if [ -L "$i" ] && readlink "$i" | grep --quiet ubermake.sh; then
+            continue
+        fi
+        [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
+        [ -z "$BUILD_DIR" ] && BUILD_DIR=.
+        if [ -n "$RTAGS" ]; then
+            RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
+            return 0
+        fi
+        "$i" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
+        break
+    done
+
     return $?
 }
 
