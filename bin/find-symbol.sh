@@ -48,6 +48,7 @@ err=`mktemp /tmp/XXXXXX`
 test -z "$dirs" && dirs="."
 # echo $out $err
 # echo $dirs
+FIRST=1
 find $dirs -name "*.so*" -or -name "*.a" -or -name "*.o" -or -name "*.dylib" | while read file; do
     # echo $file
     $nm $file 2>$err | $filt >$out
@@ -59,6 +60,11 @@ find $dirs -name "*.so*" -or -name "*.a" -or -name "*.o" -or -name "*.dylib" | w
         echo "$file:"
         echo -----------------------------
         grep $symbol $out
+        if [ -n "$FIRST" ]; then
+            echo
+        else
+            FIRST=
+        fi
     fi
 done
 
