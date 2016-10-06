@@ -109,7 +109,7 @@ seticecc() {
        NUMJOBS="$MAXJOBS"
        fi
    else
-       export ICECC=0
+       export ICECC=no
        export ICECC_DISABLED=1
        if echo $PATH | grep $ICECC_DIR >/dev/null 2>&1; then
            PATH=`echo $PATH | sed "s,${ICECC_DIR},${ICECC_DIR}${ICECC_OFF},g"`
