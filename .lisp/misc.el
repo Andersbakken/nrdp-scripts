@@ -893,15 +893,14 @@ to case differences."
 (defun goto-line-with-feedback ()
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive)
-  (let ((had-git-gutter (and (boundp 'git-gutter-mode) git-gutter-mode))
-        (had-git-gutter+ (and (boundp 'git-gutter+-mode) git-gutter+-mode)))
+  (let ((mode (cond ((and (fboundp 'git-gutter-mode) git-gutter-mode) 'git-gutter-mode)
+                    ((and (fboundp 'git-gutter+-mode) git-gutter+-mode) 'git-gutter+-mode)
+                    (t nil))))
     (unwind-protect
         (progn
           (linum-mode 1)
-          (if had-git-gutter
-              (git-gutter-mode 0))
-          (if had-git-gutter+
-              (git-gutter+-mode 0))
+          (when mode
+            (funcall mode 0))
 
           (let ((res (read-from-minibuffer "Goto line: ")))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
@@ -913,9 +912,8 @@ to case differences."
                    (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
       (linum-mode -1)
-      (cond (had-git-gutter (git-gutter-mode 1))
-            (had-git-gutter+ (git-gutter+-mode 1))
-            (t nil)))))
+      (when mode
+        (funcall mode 1)))))
 
 ;; ================================================================================
 ;; agb-occur
