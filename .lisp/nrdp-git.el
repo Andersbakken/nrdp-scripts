@@ -132,7 +132,8 @@
                  (mapc (lambda (arg)
                          (when (not (string= "-" (substring arg 0 1)))
                            (setq hasarg t))) args)
-                 (unless hasarg
+                 (if hasarg
+                     (setq args (append (list "\"") args (list "\"")))
                    (push "--" args)))))
 
     (grep-find (concat "git --no-pager grep -I -n "
