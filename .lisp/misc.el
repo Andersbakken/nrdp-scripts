@@ -893,8 +893,8 @@ to case differences."
 (defun goto-line-with-feedback ()
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive)
-  (let ((mode (cond ((and (fboundp 'git-gutter-mode) git-gutter-mode) 'git-gutter-mode)
-                    ((and (fboundp 'git-gutter+-mode) git-gutter+-mode) 'git-gutter+-mode)
+  (let ((mode (cond ((and (boundp 'git-gutter-mode) git-gutter-mode) 'git-gutter-mode)
+                    ((and (boundp 'git-gutter+-mode) git-gutter+-mode) 'git-gutter+-mode)
                     (t nil))))
     (unwind-protect
         (progn
