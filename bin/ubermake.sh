@@ -119,7 +119,7 @@ build() {
                     MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
                     if [ "$NUM" -gt "$MAX" ]; then
                         # echo "max is $max num is $num"
-                        LINE=`ninja -t commands | grep "\.o" | head -n1`
+                        LINE=`ninja -t commands | grep "\.o" 2>/dev/null | head -n1`
                         for i in $LINE; do
                             [ ! -e "$i" ] && continue
                             echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
