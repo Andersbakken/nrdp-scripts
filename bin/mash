@@ -31,6 +31,7 @@ if echo $PACKAGE | grep -q '/'; then
 else
     PACKAGE=`brew info $PACKAGE | head -1 | cut -d: -f1`
     [ -z "$PACKAGE" ] && exit 1
+    echo $PACKAGE | grep -q '/' || PACKAGE="homebrew/core/$PACKAGE"
 fi
 
 echo $PACKAGE
@@ -44,8 +45,12 @@ cd "$TAP_DIR" || exit 1
 if [ "$MODE" = "list" ]; then
     if [ -n "$SHA" ]; then
 	git show "$SHA"
-    else
+    elif [ -e "${FORMULA}.rb" ]; then
 	git log "${FORMULA}.rb"
+    elif [ -e "Formula/${FORMULA}.rb" ]; then
+	git log "Formula/${FORMULA}.rb"
+    else
+	echo "Cannot find ${FORMULA}"
     fi
 elif [ "$MODE" = "install" ]; then
     if [ -z "$SHA" ]; then
