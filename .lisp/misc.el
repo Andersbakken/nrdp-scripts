@@ -1618,9 +1618,10 @@ there's a region, all lines that region covers will be duplicated."
           (if (string-match rx (car all))
               (setq page (car all) all nil)
             (setq all (cdr all))))))
-    (if (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
-        (man (concat (match-string 1 page) " " (match-string 2 page)))
-      (man page))))
+    (when (and (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
+               (string= (match-string 2 page) "-a"))
+      (setq page (concat "-a " (match-string 1 page))))
+    (man page)))
 
 
 (defun misc-liberal-file-exists (arg)
