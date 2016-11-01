@@ -54,10 +54,72 @@ finish() {
 build() {
     local BUILD_DIR="$1"
     echo $BUILD_DIR | grep --quiet "/$" || BUILD_DIR="${BUILD_DIR}/"
-    if [ -e "${BUILD_DIR}Makefile" ]; then
-        [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
-        true #ok, make it is...
-    elif [ -x "`which scons`" ] && [ -e "${BUILD_DIR}SConstruct" ]; then
+    if which ninja >/dev/null 2>&1; then
+        NINJA_DIR=$BUILD_DIR
+        [ -z "$NINJA_DIR" ] && NINJA_DIR=.
+        NINJA=`findancestor build.ninja $NINJA_DIR`
+        if [ -e "$NINJA" ]; then
+            cd `dirname $NINJA`
+            if [ -n "$RTAGS" ]; then
+                ninja -t commands | rc --compile
+                return 0
+            fi
+            NINJA_OPTIONS=
+            [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
+            [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
+            for opt in $MAKEFLAGS $MAKE_OPTIONS; do
+                case $opt in
+                    clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
+                    -k) NINJA_OPTIONS="$NINJA_OPTIONS -k 1000" ;;
+                    *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
+                esac
+            done
+            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
+            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
+            # START=`date +%s%N | cut -b1-13`
+            NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" | sed -e 's,-j *,,' | tail -n1`"
+            if [ -n "$NUM" ]; then
+                CORES=`numcores`
+                MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
+                if [ "$NUM" -gt "$MAX" ]; then
+                    # echo "max is $max num is $num"
+                    LINE=`ninja -t commands | grep "\.o" 2>/dev/null | head -n1`
+                    for i in $LINE; do
+                        [ ! -e "$i" ] && continue
+                        echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
+                        # echo "$i" | grep --quiet "\\(icecream\\|icecc\\|plast\\)" && break
+
+                        if [ -L "$i" ]; then
+                            RESOLVED="`resolvelink $i`"
+                            if [ "$(basename $RESOLVED)" = "gcc-rtags-wrapper.sh" ]; then
+                                for f in $(which -a "$(basename "$i")"); do
+                                    RESOLVED="`resolvelink $f`"
+                                    [ "$(basename $RESOLVED)" != "gcc-rtags-wrapper.sh" ] && break
+                                done
+                            fi
+                            i="$RESOLVED"
+                        fi
+                        case "$i" in
+                            *icecc|*plastc)
+                            # echo "It's icecream $f $i"
+                            ;;
+                            *) ### no build farm, lets reduce jobs
+                                NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j[0-9]\+,-j$MAX,g"`
+                                # echo "Found thing $i"
+                                ;;
+                        esac
+                        break
+                    done
+                fi
+            fi
+            # END=`date +%s%N | cut -b1-13`
+            # expr $END - $START
+            ninja $NINJA_OPTIONS
+            return $?
+        fi
+    fi
+
+    if [ -x "`which scons`" ] && [ -e "${BUILD_DIR}SConstruct" ]; then
         SCONS_OPTIONS=
         for opt in $MAKEFLAGS $MAKE_OPTIONS; do
             case $opt in
@@ -79,82 +141,18 @@ build() {
         done
         (cd $BUILD_DIR && sake $SAKE_OPTIONS)
         return
-    else
-        if [ -n "$RTAGS" ]; then
-            DIR="$BUILD_DIR"
-            [ -z "$DIR" ] && DIR=.
-            COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
-            # echo "FOUND IT $COMPILATION_DATABASEJSON"
-            if [ -e "$COMPILATION_DATABASEJSON" ]; then
-                rc -J "$COMPILATION_DATABASEJSON"
-                return 0
-            fi
-        fi
-        if which ninja >/dev/null 2>&1; then
-            NINJA_DIR=$BUILD_DIR
-            [ -z "$NINJA_DIR" ] && NINJA_DIR=.
-            NINJA=`findancestor build.ninja $NINJA_DIR`
-            if [ -e "$NINJA" ]; then
-                cd `dirname $NINJA`
-                if [ -n "$RTAGS" ]; then
-                    ninja -t commands | rc --compile
-                    return 0
-                fi
-                NINJA_OPTIONS=
-                [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
-                [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
-                for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-                    case $opt in
-                        clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
-                        -k) NINJA_OPTIONS="$NINJA_OPTIONS -k 1000" ;;
-                        *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
-                    esac
-                done
-                NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
-                NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
-                # START=`date +%s%N | cut -b1-13`
-                NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" | sed -e 's,-j *,,' | tail -n1`"
-                if [ -n "$NUM" ]; then
-                    CORES=`numcores`
-                    MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
-                    if [ "$NUM" -gt "$MAX" ]; then
-                        # echo "max is $max num is $num"
-                        LINE=`ninja -t commands | grep "\.o" | head -n1`
-                        for i in $LINE; do
-                            [ ! -e "$i" ] && continue
-                            echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
-                            # echo "$i" | grep --quiet "\\(icecream\\|icecc\\|plast\\)" && break
-
-                            if [ -L "$i" ]; then
-                                RESOLVED="`resolvelink $i`"
-                                if [ "$(basename $RESOLVED)" = "gcc-rtags-wrapper.sh" ]; then
-                                    for f in $(which -a "$(basename "$i")"); do
-                                        RESOLVED="`resolvelink $f`"
-                                        [ "$(basename $RESOLVED)" != "gcc-rtags-wrapper.sh" ] && break
-                                    done
-                                fi
-                                i="$RESOLVED"
-                            fi
-                            case "$i" in
-                                *icecc|*plastc)
-                                    # echo "It's icecream $f $i"
-                                    ;;
-                                *) ### no build farm, lets reduce jobs
-                                    NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j[0-9]\+,-j$MAX,g"`
-                                    # echo "Found thing $i"
-                                    ;;
-                            esac
-                            break
-                        done
-                    fi
-                fi
-                # END=`date +%s%N | cut -b1-13`
-                # expr $END - $START
-                ninja $NINJA_OPTIONS
-                return $?
-            fi
+    elif [ -n "$RTAGS" ]; then
+        DIR="$BUILD_DIR"
+        [ -z "$DIR" ] && DIR=.
+        COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
+        # echo "FOUND IT $COMPILATION_DATABASEJSON"
+        if [ -e "$COMPILATION_DATABASEJSON" ]; then
+            rc -J "$COMPILATION_DATABASEJSON"
+            return 0
         fi
     fi
+    [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
+
     which -a make | while read i; do
         if [ -L "$i" ] && readlink "$i" | grep --quiet ubermake.sh; then
             continue

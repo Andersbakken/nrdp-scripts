@@ -172,6 +172,15 @@
   (interactive)
   (--misc-replace-string-helper "\n" "\r\n" ))
 
+(defun ediff-copy-both-to-C ()
+  (interactive)
+  (ediff-copy-diff ediff-current-difference nil 'C nil
+                   (concat
+                    (ediff-get-region-contents ediff-current-difference 'A ediff-control-buffer)
+                    (ediff-get-region-contents ediff-current-difference 'B ediff-control-buffer))))
+(defun add-d-to-ediff-mode-map () (define-key ediff-mode-map "d" 'ediff-copy-both-to-C))
+(add-hook 'ediff-keymap-setup-hook 'add-d-to-ediff-mode-map)
+
 (defun ediff-cleanup-buffer-b-handler ()
   (if ediff-buffer-B
       (let ((b-window (get-buffer-window ediff-buffer-B)))
@@ -893,15 +902,14 @@ to case differences."
 (defun goto-line-with-feedback ()
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive)
-  (let ((had-git-gutter (and (boundp 'git-gutter-mode) git-gutter-mode))
-        (had-git-gutter+ (and (boundp 'git-gutter+-mode) git-gutter+-mode)))
+  (let ((mode (cond ((bound-and-true-p git-gutter-mode) 'git-gutter-mode)
+                    ((bound-and-true-p git-gutter+-mode) 'git-gutter+-mode)
+                    (t nil))))
     (unwind-protect
         (progn
           (linum-mode 1)
-          (if had-git-gutter
-              (git-gutter-mode 0))
-          (if had-git-gutter+
-              (git-gutter+-mode 0))
+          (when mode
+            (funcall mode 0))
 
           (let ((res (read-from-minibuffer "Goto line: ")))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
@@ -913,9 +921,8 @@ to case differences."
                    (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
       (linum-mode -1)
-      (cond (had-git-gutter (git-gutter-mode 1))
-            (had-git-gutter+ (git-gutter+-mode 1))
-            (t nil)))))
+      (when mode
+        (funcall mode 1)))))
 
 ;; ================================================================================
 ;; agb-occur
@@ -1645,7 +1652,7 @@ there's a region, all lines that region covers will be duplicated."
     (insert "\n")))
 
 (defvar misc-grep-find-not
-  " -not -name error.js -not -name xboxupsellpage.js -not -name '*.min.js' -not -name 'string-unpack-code.js'")
+  " -not -name error.js -not -name xboxupsellpage.js -not -name '*.min.js' -not -name 'string-unpack-code.js' -not -path '*/sunspider/*'")
 (defvar misc-grep-find-source-files
   "\\( -name \"*.cpp\" -o -name \"*.h\" -o -name \"*.c\" -o -name \"*.js\" -o -name \".mm\" -o -name \"*.m\" -o -name \"*.inc\" -o -name \"*.cc\" -o -iname \"*.hpp\" -o -name \"*.py\" -o -name \"*.el\" -o -name \"*.java\" -o -name \"*.html\" \\)")
 (defvar misc-grep-find-cmake

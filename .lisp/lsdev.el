@@ -429,13 +429,11 @@
               (buffer-substring-no-properties (point-min) (1- (point-max)))))
         (t nil)))
 
-(defun lsdev-open-equivalent ()
-  (interactive)
+(defun lsdev-equivalent-file ()
   (when (buffer-file-name)
     (let* ((default-directory "/")
            (current-root (lsdev-root-dir (buffer-file-name)))
            (relative (substring (buffer-file-name) (length current-root)))
-           (ctx (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
            (all (lsdev-dirs-all "src_"))
            (names)
            (alternatives))
@@ -464,12 +462,27 @@
                                                   (mapcar (lambda (arg) (substring arg src-root-len)) files)))
                       (when file
                         (setq file (concat src-root "/" file)))))
-                (when file
-                  (find-file file)
-                  (let ((old (point)))
-                    (goto-char (point-min))
-                    (unless (search-forward ctx nil t)
-                      (goto-char old)))))))))))
+                file)))))))
+
+(defun lsdev-open-equivalent (&optional ediff)
+  (interactive "P")
+  (when (buffer-file-name)
+    (let ((ctx (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+          (file (lsdev-equivalent-file)))
+      (cond ((not file) (message "No file found"))
+            (ediff
+             (let ((buf (find-file-noselect file)))
+               (unless buf
+                 (error "Can't open buffer: %s" file))
+               (if (listp ediff)
+                   (ediff-buffers buf (current-buffer))
+                 (ediff-buffers (current-buffer) buf))))
+            (t
+             (find-file file)
+             (let ((old (point)))
+               (goto-char (point-min))
+               (unless (search-forward ctx nil t)
+                 (goto-char old))))))))
 
 (defun lsdev-adddev (&optional name path)
   (interactive)
