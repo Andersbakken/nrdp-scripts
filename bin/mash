@@ -1,0 +1,60 @@
+#!/bin/sh
+
+MODE=list
+PACKAGE=
+SHA=
+
+while [ -n "$1" ]; do
+    case $1 in
+        list)
+	    MODE=list
+	    ;;
+        install)
+	    MODE=install
+	    ;;
+	*)
+	    if [ -z "$PACKAGE" ]; then
+		PACKAGE="$1"
+	    else
+		SHA="$1"
+	    fi
+	    ;;
+    esac
+    shift
+done
+if [ -z "$PACKAGE" ]; then
+    echo "Must supply a package!"
+    exit 1
+fi
+if echo $PACKAGE | grep -q '/'; then
+    brew info $PACKAGE >/dev/null || exit 1
+else
+    PACKAGE=`brew info $PACKAGE | head -1 | cut -d: -f1`
+    [ -z "$PACKAGE" ] && exit 1
+fi
+
+echo $PACKAGE
+
+TAP=`echo $PACKAGE | cut -d/ -f1`
+NAME=`echo $PACKAGE | cut -d/ -f2`
+FORMULA=`echo $PACKAGE | cut -d/ -f3`
+
+TAP_DIR="$(brew --prefix)/Homebrew/Library/Taps/${TAP}/homebrew-${NAME}"
+cd "$TAP_DIR" || exit 1
+if [ "$MODE" = "list" ]; then
+    if [ -n "$SHA" ]; then
+	git show "$SHA"
+    else
+	git log "${FORMULA}.rb"
+    fi
+elif [ "$MODE" = "install" ]; then
+    if [ -z "$SHA" ]; then
+	echo "Must specify sha!"
+	exit 1
+    fi
+    brew unlink "${FORMULA}"
+    OLD_SHA=`git rev-parse HEAD`
+    git reset --hard "$SHA" >/dev/null
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install "${FORMULA}"
+    git reset --hard "$OLD_SHA"
+fi
