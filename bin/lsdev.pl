@@ -4,8 +4,11 @@ use Cwd;
 use Cwd 'abs_path';
 use File::Basename;
 use File::Spec;
+use Time::HiRes qw/ time sleep /;
 
 use strict;
+
+my $starttime = time;
 
 my $verbose = 0;
 my $write_default_file = 0;
@@ -41,7 +44,8 @@ sub mycaller {
 sub display {
     #print STDERR mycaller(), ": ";
     foreach(@_) {
-        print STDERR $_;
+        my $now = time - $starttime;
+        print STDERR "$now $_";
     }
 }
 
