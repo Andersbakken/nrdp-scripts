@@ -885,10 +885,10 @@ to case differences."
                                         ; (setq compilation-error-regexp-alist nil)
 
 (require 'compile)
-(setq compilation-error-regexp-alist (delete 'gnu compilation-error-regexp-alist))
-(add-to-list 'compilation-error-regexp-alist compilation-gnu)
-(add-to-list 'compilation-error-regexp-alist compilation-error-warning-regexp)
-(add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
+;; (setq compilation-error-regexp-alist (delete 'gnu compilation-error-regexp-alist))
+;; (add-to-list 'compilation-error-regexp-alist compilation-gnu)
+;; (add-to-list 'compilation-error-regexp-alist compilation-error-warning-regexp)
+;; (add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
 
 (defun compilation-parse-errors-filename (filename)
   (if (or (equal major-mode 'grep-mode) (and filename (file-exists-p filename))) filename))
