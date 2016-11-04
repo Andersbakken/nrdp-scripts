@@ -4,8 +4,12 @@ use Cwd;
 use Cwd 'abs_path';
 use File::Basename;
 use File::Spec;
+use Time::HiRes qw/ time sleep /;
+use Fcntl ':mode';
 
 use strict;
+
+my $starttime = time;
 
 my $verbose = 0;
 my $write_default_file = 0;
@@ -41,9 +45,32 @@ sub mycaller {
 sub display {
     #print STDERR mycaller(), ": ";
     foreach(@_) {
-        print STDERR $_;
+        print STDERR "$_";
     }
 }
+
+my %stat_cache;
+sub cstat {
+    my ($file) = @_;
+    my $result = $stat_cache{$file};
+    unless($result) {
+        my @r = stat($file);
+        $result = \@r;
+        $stat_cache{$file} = $result;
+    }
+    return $result;
+}
+sub cisdir {
+    my ($file) = @_;
+    my @stat = @{cstat($file)};
+    return S_ISDIR($stat[2]);
+}
+sub cexists {
+    my ($file) = @_;
+    my @stat = @{cstat($file)};
+    return $#stat != -1;
+}
+
 
 sub showHelp {
     display "lsdev [options] [matches]\n";
@@ -175,7 +202,7 @@ sub findAncestor {
     for( ; $dir; $dir = dirname($dir)) {
         my $r = "$dir/$file";
         $r =~ s,//+,/,g;
-        return $r if(-e $r);
+        return $r if(cexists($r));
         last if(length($dir) <= 1);
     }
     return undef;
@@ -183,12 +210,12 @@ sub findAncestor {
 
 sub processSourceDir {
     my ($src_dir) = @_;
-    if(-e "${src_dir}/configure" || -e "${src_dir}/Makefile" || -e "${src_dir}/*.pro" ||
-       -e "${src_dir}/CMakeLists.txt") { #buildable
+    if(cexists("${src_dir}/configure") || cexists("${src_dir}/Makefile") || cexists("${src_dir}/*.pro") ||
+       cexists("${src_dir}/CMakeLists.txt")) { #buildable
         return 1;
-    } elsif(-e "${src_dir}/.lsdev_shadows" || -e "${src_dir}/.lsdev_config") { #lsdev
+    } elsif(cexists("${src_dir}/.lsdev_shadows") || cexists("${src_dir}/.lsdev_config")) { #lsdev
         return 1;
-    } elsif(-d "${src_dir}/.git") { #really?
+    } elsif(cisdir("${src_dir}/.git")) { #really?
         return 1;
     }
     return 0;
@@ -197,7 +224,7 @@ sub processSourceDir {
 sub processBuildDir {
     my ($build_dir) = @_;
     my $src_dir;
-    if(-e "${build_dir}/CMakeCache.txt") {
+    if(cexists("${build_dir}/CMakeCache.txt")) {
         my $cmake_cache = "${build_dir}/CMakeCache.txt";
         display " Found $cmake_cache!\n" if($verbose);
         if(open( CMAKE_CACHE, "<$cmake_cache")) {
@@ -210,7 +237,7 @@ sub processBuildDir {
             }
             close(CMAKE_CACHE);
         }
-    } elsif(-e "${build_dir}/config.status") {
+    } elsif(cexists("${build_dir}/config.status")) {
         my $config_status = "${build_dir}/config.status";
         display " Found $config_status!\n" if($verbose);
         if(open( CONFIG_STATUS, "<$config_status")) {
@@ -223,7 +250,7 @@ sub processBuildDir {
             }
             close(CONFIG_STATUS);
         }
-    } elsif(-e "${build_dir}/.lsdev_config") {
+    } elsif(cexists("${build_dir}/.lsdev_config")) {
         my $source = getPathConfig(${build_dir}, "source");
         if($source && $dev_roots{$source}) {
             $src_dir = $dev_roots{$source};
@@ -235,22 +262,32 @@ sub processBuildDir {
     return $src_dir;
 }
 
+my %resolveLinks_cache;
 sub resolveLinks {
     my ($file) = @_;
-    $file = abs_path($file) if(-e "$file");
-    return $file;
+    my $result = $resolveLinks_cache{$file};
+    unless($result) {
+        $result = abs_path($file) if(cexists("$file"));
+        $resolveLinks_cache{$file} = $result;
+    }
+    return $result;
 }
 
+my %canonicalize_cache;
 sub canonicalize {
     my ($file, $base) = @_;
-    my @globs = glob($file);
-    my $result = @globs ? $globs[0] : $file;
-    if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
-        $result = File::Spec->rel2abs($result, $base);
+    my $result = $canonicalize_cache{"${base}::${file}"};
+    unless($result) {
+        my @globs = glob($file);
+        $result = @globs ? $globs[0] : $file;
+        if(!File::Spec->file_name_is_absolute($result) && defined($base)) {
+            $result = File::Spec->rel2abs($result, $base);
+        }
+        $result =~ s,/*$,,g;
+        $result =~ s,/+,/,g;
+        $result = "/" unless(length($result));
+        $canonicalize_cache{"${base}::${file}"} = $result;
     }
-    $result =~ s,/*$,,g;
-    $result =~ s,/+,/,g;
-    $result = "/" unless(length($result));
     return $result;
 }
 
@@ -302,7 +339,7 @@ sub findFileMap {
 }
 
 my %path_config;
-if(-e glob("~/.dev_directories")) {
+if(cexists(glob("~/.dev_directories"))) {
     my $dev_directories_path = glob("~/.dev_directories");
     display "ProcessingDevDirectories: $dev_directories_path\n" if($verbose);
     if(open(FILE, "<$dev_directories_path")) {
@@ -351,7 +388,7 @@ if(-e glob("~/.dev_directories")) {
 sub parsePathConfig {
     my ($path) = @_;
     my $lsdev_config_file = "$path/.lsdev_config";
-    return parseConfig($lsdev_config_file) if(-e $lsdev_config_file);
+    return parseConfig($lsdev_config_file) if(cexists($lsdev_config_file));
     return undef;
 }
 
@@ -367,11 +404,11 @@ sub getPathConfig {
 sub addRestDir {
     my ($root_dir, $rest_dir) = @_;
     my $result = $root_dir;
-    if(-d "$result/$rest_dir") {
+    if(cisdir("$result/$rest_dir")) {
         $result .= "/$rest_dir";
         for(my $current = canonicalize($result); $current && length($current) > length($root_dir);
             $current = dirname($current)) {
-            if(-d $current) {
+            if(cisdir($current)) {
                 $result = $current;
                 last;
             }
@@ -436,6 +473,7 @@ sub dumpRoots {
 
 sub findRoot {
     my ($path, $recurse) = @_;
+    display "FindingRoot: $path\n" if($verbose);
     $path = canonicalize($path);
     my $result = findRoot_internal($path, 0);
     if(!$result) {
@@ -463,7 +501,7 @@ sub sortRootPredicate {
 
     my $path1 = $root1->{path};
     my $path2 = $root2->{path};
-    return (stat($path2))[9] <=> (stat($path1))[9];
+    return (cstat($path2))[9] <=> (cstat($path1))[9];
 }
 
 sub sortRootPathPredicate {
@@ -474,7 +512,7 @@ sub sortRootPathPredicate {
     return 1 if(isRootBuild($root1) && !isRootBuild($root2));
     return -1 if(!isRootBuild($root1) && isRootBuild($root2));
 
-    return (stat($path2))[9] <=> (stat($path1))[9];
+    return (cstat($path2))[9] <=> (cstat($path1))[9];
 }
 
 sub findRootBuilds {
@@ -793,12 +831,12 @@ if(defined($dev_roots{sources})) {
     foreach(split(/,/, $sources)) {
         my $source = $_;
         display "Looking at source: $source\n" if($verbose);
-        if( $detect_devdirs && -d "$source" && opendir(SOURCES, $source) ) {
+        if( $detect_devdirs && cisdir("$source") && opendir(SOURCES, $source) ) {
             while(my $subdir = readdir(SOURCES)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $src_dir = "$source/$subdir";
                 next if(getPathConfig($src_dir, "ignore"));
-                if(-d $src_dir && processSourceDir($src_dir)) {
+                if(cisdir($src_dir) && processSourceDir($src_dir)) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
                         $project_name = findDevRootName($src_dir);
@@ -818,13 +856,13 @@ if(length(@build_roots)) {
     for(my $i = 0; $i <= $#build_roots; $i++) {
         my $build = $build_roots[$i];
         display "Looking at build: $build\n" if($verbose);
-        if( $detect_devdirs && -d "$build" && opendir(BUILDS, $build) ) {
+        if( $detect_devdirs && cisdir("$build") && opendir(BUILDS, $build) ) {
             while(my $subdir = readdir(BUILDS)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $build_dir = "$build/$subdir";
                 next if(getPathConfig($build_dir, "ignore"));
                 my $src_dir;
-                $src_dir = processBuildDir($build_dir) if(-d $build_dir);
+                $src_dir = processBuildDir($build_dir) if(cisdir($build_dir));
                 if(defined($src_dir) && ($read_devdir_list >= 1 || isPathSame($src_dir, $root_dir) || isPathSame($src_dir, $default_dir))) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
@@ -864,7 +902,7 @@ foreach(keys(%dev_roots)) {
             addRoot($dev_root_name, $dev_root);
         }
     }
-    if(-e "$dev_root/.lsdev_shadows" ) {
+    if(cexists("$dev_root/.lsdev_shadows")) {
         my %shadows = parseRoots("$dev_root/.lsdev_shadows");
         foreach(keys(%shadows)) {
             my $shadow_root_name = $_;
@@ -878,7 +916,7 @@ foreach(keys(%dev_roots)) {
 unless(defined($default_dir)) {
     my $lsdev_default_file = findAncestor(".lsdev_default", $root_dir);
     $lsdev_default_file = glob("~/.lsdev_default") unless($lsdev_default_file);
-    if($lsdev_default_file && -e $lsdev_default_file) {
+    if($lsdev_default_file && cexists($lsdev_default_file)) {
         my $lsdev_default_file_dir = dirname($lsdev_default_file);
         if(!$root_dir || length(resolveLinks($lsdev_default_file_dir)) >= length(resolveLinks($root_dir))) {
             display " Found $lsdev_default_file!\n" if($verbose);
@@ -926,7 +964,7 @@ if($display_only eq "default") { #display the currently mapped default
     }
 
     my @choices;
-    if($#matches == -1 && $rest_dir && -d $rest_dir) {
+    if($#matches == -1 && $rest_dir && cisdir($rest_dir)) {
         unless(defined(findRoot($rest_dir))) {
             my $root = addRoot("passed", $rest_dir);
             if(my $src = processBuildDir($root->{path})) {
