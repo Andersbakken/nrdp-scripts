@@ -1,6 +1,7 @@
 #!/bin/sh
 
 MODE=list
+CLEANUP=no
 PACKAGE=
 SHA=
 
@@ -11,6 +12,9 @@ while [ -n "$1" ]; do
 	    ;;
         install)
 	    MODE=install
+	    ;;
+        --cleanup)
+	    CLEANUP=yes
 	    ;;
 	*)
 	    if [ -z "$PACKAGE" ]; then
@@ -60,6 +64,8 @@ elif [ "$MODE" = "install" ]; then
     brew unlink "${FORMULA}"
     OLD_SHA=`git rev-parse HEAD`
     git reset --hard "$SHA" >/dev/null
-    HOMEBREW_NO_AUTO_UPDATE=1 brew install "${FORMULA}"
+    BREW_INSTALL_ARGS=""
+    [ "$CLEANUP" = "yes" ] && BREW_INSTALL_ARGS="$BREW_INSTALL_ARGS --cleanup"
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install ${BREW_INSTALL_ARGS} "${FORMULA}"
     git reset --hard "$OLD_SHA"
 fi
