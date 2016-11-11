@@ -1,5 +1,6 @@
 #!/bin/sh
 
+PAGER=less
 MODE=list
 CLEANUP=no
 COLOR=yes
@@ -8,18 +9,11 @@ SHA=
 
 while [ -n "$1" ]; do
     case $1 in
-        list)
-	    MODE=list
-	    ;;
-        install)
-	    MODE=install
-	    ;;
-        --cleanup)
-	    CLEANUP=yes
-	    ;;
-        --no-color)
-	    COLOR=no
-	    ;;
+        list) MODE=list ;;
+        install) MODE=install ;;
+        --cleanup) CLEANUP=yes ;;
+        --no-pager) PAGER=cat ;;
+        --no-color) COLOR=no ;;
         *)
 	    if [ -z "$PACKAGE" ]; then
 		PACKAGE="$1"
