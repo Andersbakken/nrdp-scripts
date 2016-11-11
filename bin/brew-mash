@@ -2,6 +2,7 @@
 
 MODE=list
 CLEANUP=no
+COLOR=yes
 PACKAGE=
 SHA=
 
@@ -16,7 +17,10 @@ while [ -n "$1" ]; do
         --cleanup)
 	    CLEANUP=yes
 	    ;;
-	*)
+        --no-color)
+	    COLOR=no
+	    ;;
+        *)
 	    if [ -z "$PACKAGE" ]; then
 		PACKAGE="$1"
 	    else
@@ -47,14 +51,30 @@ FORMULA=`echo $PACKAGE | cut -d/ -f3`
 TAP_DIR="$(brew --prefix)/Homebrew/Library/Taps/${TAP}/homebrew-${NAME}"
 cd "$TAP_DIR" || exit 1
 if [ "$MODE" = "list" ]; then
+    PRETTY_OPTS="--oneline --abbrev-commit"
+    if [ "$COLOR" = "yes" ]; then
+        PRETTY_OPTS="$PRETTY_OPTS '--pretty=%h %s %ar %gs'"
+    else
+        PRETTY_OPTS="$PRETTY_OPTS '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(magenta)%ar%Creset %gs'"
+    fi
+
     if [ -n "$SHA" ]; then
 	git show "$SHA"
-    elif [ -e "${FORMULA}.rb" ]; then
-	git log "${FORMULA}.rb"
-    elif [ -e "Formula/${FORMULA}.rb" ]; then
-	git log "Formula/${FORMULA}.rb"
     else
-	echo "Cannot find ${FORMULA}"
+        if [ -e "${FORMULA}.rb" ]; then
+            FORMULA="${FORMULA}.rb"
+        elif [ -e "Formula/${FORMULA}.rb" ]; then
+            FORMULA="Formula/${FORMULA}.rb"
+        fi
+        if [ -e "${FORMULA}" ]; then
+            CHANGES=`eval git log --no-color --pretty='%h' ${FORMULA}`
+            for change in $CHANGES; do
+                line=`eval git show --no-patch ${PRETTY_OPTS} ${change}`
+                echo $line
+            done | $PAGER
+        else
+	    echo "Cannot find ${FORMULA}"
+        fi
     fi
 elif [ "$MODE" = "install" ]; then
     if [ -z "$SHA" ]; then
