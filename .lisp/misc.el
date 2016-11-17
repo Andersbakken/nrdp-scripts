@@ -904,10 +904,12 @@ to case differences."
   (interactive)
   (let ((mode (cond ((bound-and-true-p git-gutter-mode) 'git-gutter-mode)
                     ((bound-and-true-p git-gutter+-mode) 'git-gutter+-mode)
-                    (t nil))))
+                    (t nil)))
+        (hadlinum (bound-and-true-p linum-mode)))
     (unwind-protect
         (progn
-          (linum-mode 1)
+          (unless hadlinum
+            (linum-mode 1))
           (when mode
             (funcall mode 0))
 
@@ -920,7 +922,8 @@ to case differences."
                    (--misc-goto-line-helper (string-to-number (match-string 1 res)))
                    (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
-      (linum-mode -1)
+      (unless hadlinum
+        (linum-mode -1))
       (when mode
         (funcall mode 1)))))
 
