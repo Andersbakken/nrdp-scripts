@@ -12,6 +12,7 @@ use strict;
 my $starttime = time;
 
 my $verbose = 0;
+my $detect_default;
 my $write_default_file = 0;
 my $read_devdir_list = 1;
 my $detect_rest = 1;
@@ -112,7 +113,7 @@ sub parseOptions {
         } elsif($option eq "-m") {
             $match_only = shift @_;
         } elsif($option eq "-d") {
-            $display_only = "default";
+            $detect_default = 1;
         } elsif($option eq "-b") {
             $read_devdir_list = -1;
         } elsif($option eq "-tS") {
@@ -150,8 +151,7 @@ sub parseOptions {
 parseOptions(split(/ /, $ENV{LSDEV_FLAGS})) if($ENV{LSDEV_FLAGS});
 parseOptions(@ARGV);
 
-$display_only = "default" if(!defined($display_only) &&
-                             $#matches == 0 && $matches[0] eq "-");
+$display_only = "default" if(!defined($display_only) && $#matches == 0 && $matches[0] eq "-");
 
 if($display_only eq "current") {
     $read_devdir_list = 3;
@@ -161,6 +161,7 @@ if($display_only eq "current") {
 } else {
     $answer = "path" if(!defined($answer));
 }
+$detect_default = ($read_devdir_list == 1 || $read_devdir_list == 3) unless(defined($detect_default));
 
 sub answer {
     my ($root, $rest_dir) = @_;
@@ -1003,7 +1004,7 @@ if($display_only eq "default") { #display the currently mapped default
             my $root_name = generateRootName($root);
             $default{source} = $root->{source} unless(exists($default{source}));
 
-            if($read_devdir_list != 2 && isPathSame($default{source}, $root->{source})) {
+            if($detect_default && isPathSame($default{source}, $root->{source})) {
                 $default{source} = $root->{source};
                 if(getPathConfig($root->{path}, "default")) {
                     if($default{path}) {
