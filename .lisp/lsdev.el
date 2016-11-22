@@ -19,9 +19,13 @@
   (let ((result)
         (default-directory (if (file-directory-p default-directory) default-directory "/"))
         (args '("-ta" "-l")))
-    (if match (dolist (m match) (add-to-list 'args m t)))
+
+    (setq args (append args (cl-remove-if-not 'identity match)))
+    ;; (if match
+    ;;     (dolist (m match) (add-to-list 'args m t)))
     (with-temp-buffer
       (apply #'call-process (executable-find "lsdev.pl") nil t nil args)
+      ;; (message "Called lsdev from %s: lsdev.pl %s ->\n%s" default-directory (combine-and-quote-strings args) (buffer-string))
       (goto-char (point-min))
       (while (not (eobp))
         (if (looking-at "^\\([^ ]*\\) \\[\\([^]]*\\)\\]")
@@ -69,11 +73,13 @@
       (if (and dir (file-directory-p dir))
           (cd dir)
         (setq olddir nil))
-      (setq retval (apply #'lsdev-dirs-internal "build" "-l" "-b" match))
+
+      (setq retval (apply #'lsdev-dirs-internal (append (list "build" "-l" "-b") (cl-remove-if-not 'identity match))))
       (unless (= (length retval) 1)
-        (setq retval (apply #'lsdev-dirs-internal "build" "-l" match)))
-      (if olddir
-          (cd olddir))
+        (setq retval (apply #'lsdev-dirs-internal (append (list "build" "-l") (cl-remove-if-not 'identity match)))))
+
+      (when olddir
+        (cd olddir))
       retval)))
 
 (defun lsdev-is-build-dir (&optional dir)
@@ -381,8 +387,8 @@
           (recompile))
     (lsdev-compile-directory)))
 
-(defun lsdev-shadows ()
-  (lsdev-dirs-build (lsdev-root-dir (expand-file-name default-directory))))
+(defun lsdev-shadows (&rest args)
+  (apply #'lsdev-dirs-build (lsdev-root-dir (expand-file-name default-directory)) args))
 
 (defun lsdev-compile-shadow(&optional auto)
   (interactive "P")
