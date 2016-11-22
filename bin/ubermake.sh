@@ -54,6 +54,17 @@ finish() {
 build() {
     local BUILD_DIR="$1"
     echo $BUILD_DIR | grep --quiet "/$" || BUILD_DIR="${BUILD_DIR}/"
+    if [ -n "$RTAGS" ]; then
+        DIR="$BUILD_DIR"
+        [ -z "$DIR" ] && DIR=.
+        COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
+        # echo "FOUND IT $COMPILATION_DATABASEJSON"
+        if [ -e "$COMPILATION_DATABASEJSON" ]; then
+            rc -J "$COMPILATION_DATABASEJSON"
+            return 0
+        fi
+    fi
+
     if which ninja >/dev/null 2>&1; then
         NINJA_DIR=$BUILD_DIR
         [ -z "$NINJA_DIR" ] && NINJA_DIR=.
@@ -141,15 +152,6 @@ build() {
         done
         (cd $BUILD_DIR && sake $SAKE_OPTIONS)
         return
-    elif [ -n "$RTAGS" ]; then
-        DIR="$BUILD_DIR"
-        [ -z "$DIR" ] && DIR=.
-        COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
-        # echo "FOUND IT $COMPILATION_DATABASEJSON"
-        if [ -e "$COMPILATION_DATABASEJSON" ]; then
-            rc -J "$COMPILATION_DATABASEJSON"
-            return 0
-        fi
     fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
 
