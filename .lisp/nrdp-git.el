@@ -126,7 +126,7 @@
 (defun nrdp-git-grep (search)
   "git-grep the entire current repo"
   (interactive (list (nrdp-git-grep-prompt)))
-  (when (string-match "^[^\"]* [^\"]*$" search)
+  (when (string-match "^[^\"-]* [^\"-]*$" search)
     (setq search (concat "\"" search "\"")))
 
   (grep-find (concat "git --no-pager grep -I -n "
