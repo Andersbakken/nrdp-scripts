@@ -461,7 +461,7 @@
   (interactive)
   (let ((file (or (magit-current-section-file) (buffer-file-name))))
     (when file
-      (magit-run-git-async "fstash" file))))
+      (magit-run-git-async "fstash" "--quiet" file))))
 
 (defun magit-log-current-section (&optional prefix)
   (interactive "P")
