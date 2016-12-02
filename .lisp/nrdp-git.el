@@ -78,6 +78,8 @@
 (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
 (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
 (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore-commit)
+(magit-define-popup-action 'magit-stash-popup ?b "Buffer" 'nrdp-git-stash-buffer)
+
 (when (string< "20151209.731" (magit-version))
   (magit-define-popup-action 'magit-pull-popup ?F "Pull from tracking" 'magit-pull-from-upstream)
   (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
@@ -454,6 +456,12 @@
   (let ((file (magit-current-section-file)))
     (when file
       (nrdp-git-diff -w file))))
+
+(defun nrdp-git-stash-buffer ()
+  (interactive)
+  (let ((file (or (magit-current-section-file) (buffer-file-name))))
+    (when file
+      (magit-run-git-async "fstash" file))))
 
 (defun magit-log-current-section (&optional prefix)
   (interactive "P")
