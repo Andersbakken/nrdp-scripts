@@ -287,9 +287,7 @@
     (let ((modeline (and (buffer-file-name buffer)
                          (lsdev-name (or buffer (current-buffer))))))
       (when modeline
-        (setq-local lsdev-modestring (concat " [" modeline "] ")))))
-  (when (and lsdev-modestring
-             (not (string= lsdev-modestring lsdev-last-overlay-text)))))
+        (setq-local lsdev-modestring (concat " [" modeline "] "))))))
 
 (add-to-list 'global-mode-string '(:eval lsdev-modestring))
 

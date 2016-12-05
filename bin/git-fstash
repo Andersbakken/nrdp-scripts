@@ -1,63 +1,76 @@
-#!/bin/sh
+#!/bin/bash
 
-COMMAND=`basename $0 | sed 's,^git-,,'`
-
-die() {
-   echo $1 >&2
-   exit 1
+containsElement() {
+    local e
+    for e in "${@:2}"; do [[ "$e" == "$1" ]] && return 0; done
+    return 1
 }
 
-if [ "$1" = "pop" ] || [ "$COMMAND" = "unfstash" ]; then
-    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
-    [ -z "$ref" ] && die "No fstash!"
-    commit=`echo $ref | awk '{print $1}'`
-    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
-    if git cherry-pick -n "$commit"; then
-	echo "Applied: $commit"
-	git reflog delete "$spec"
-	git status
-    fi
-elif [ "$1" = "apply" ]; then
-    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
-    [ -z "$ref" ] && die "No fstash!"
-    commit=`echo $ref | awk '{print $1}'`
-    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
-    if git cherry-pick -n "$commit"; then
-	echo "Applied: $commit"
-	git status
-    fi
-elif [ "$1" = "delete" ]; then
-    ref=`git reflog | grep git-fstash | head -1 | awk '{print $1, $2}'`
-    [ -z "$ref" ] && die "No fstash!"
-    commit=`echo $ref | awk '{print $1}'`
-    spec=`echo $ref | awk '{print $2}' | sed "s,:$,,"`
-    echo "Deleted: $commit"
-    git reflog delete "$spec"
-elif [ "$1" = "flush" ]; then
-    for spec in `git reflog | grep git-fstash | tac | awk '{print $2}'`; do
-        echo "Deleted: $commit"
-        [ "$2" = "-v" ] && git reflog delete "$spec"
+realPath() {
+    OURPWD=$PWD
+    cd "$(dirname "$1")"
+    LINK=$(readlink "$(basename "$1")")
+    while [ "$LINK" ]; do
+        cd "$(dirname "$LINK")"
+        LINK=$(readlink "$(basename "$1")")
     done
-elif [ "$1" = "list" ]; then
-    for stash in `git reflog | grep git-fstash | awk '{print $1}'`; do
-	echo "git-fstash: $stash"
-	[ "$2" = "-v" ] && git diff-tree --stat -M $stash~ $stash
-    done
-else
-    [ "$1" = "save" ] && shift
-    MSG="git-fstash"
-    [ "$#" -gt 0 ] && MSG="${MSG}: $@"
-    git commit -a -m "$MSG" >/dev/null 2>&1 || die "Nothing to fstash"
-    commit=`git rev-parse HEAD`
+    REALPATH="$PWD/$(basename "$1")"
+    cd "$OURPWD"
+    echo "$REALPATH"
+}
+FILES=()
+DIRS=()
+STASHARGS=()
+while [ -n "$1" ]; do
+    case $1 in
+        --help|-h)
+            echo "git stash-file [files...] -m|--message message -mmessage -q --quit"
+            ;;
+        -m|--message)
+            STASHARGS+=($1)
+            shift
+            STASHARGS+=($1)
+            ;;
+        -m*|-q|--quiet)
+            STASHARGS+=($1)
+            ;;
+        *)
+            if [ -f "$1" ]; then
+                FILES+=(`realPath "$1"`)
+            elif [ -d "$1" ]; then
+                DIRS+=(`realPath "$1"`)
+            else
+                1>&2 echo "$1 is not a file or a directory"
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
 
-    git whatchanged -1 | grep "^:" | awk '{print $6}' | while read file; do
-        if git show "HEAD~:$file" >"$file" 2>/dev/null; then
-            true
-         else
-            rm -f "$file";
-        fi
-        git reset --quiet HEAD~1 -- "$file"
-    done
-    git reset --quiet --soft HEAD~1
-    echo "Stashed: $commit"
+if [ -z "${FILES[@]}" ] && [ -z "${DIRS[@]}" ]; then
+    1>&2 echo "Nothing to do do"
+    exit 1
 fi
+
+TMP=`mktemp`
+GITROOT=`git rev-parse --show-toplevel`
+bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff --git" | sed -e 's,^diff --git a/\(.*\) b/[^/].*$,\1,' | while read i; do
+    FILE="$GITROOT/$i"
+    if containsElement "$FILE" "${FILES[@]}"; then
+        echo "a" >> "$TMP"
+    else
+        FOUND=
+        for DIR in "${DIRS[@]}"; do
+            if echo "$FILE" | grep --quiet "${DIR}/"; then
+                echo "a" >> "$TMP"
+                FOUND=1
+                break
+            fi
+        done
+        [ -z "$FOUND" ] && echo "d" >> "$TMP"
+    fi
+done
+
+git stash -p $STASHARGS < "$TMP"
+rm "$TMP"
