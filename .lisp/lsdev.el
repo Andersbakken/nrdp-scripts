@@ -358,11 +358,11 @@
 (defun lsdev-shadows (&rest args)
   (apply #'lsdev-dirs-build (lsdev-root-dir (expand-file-name default-directory)) args))
 
-(defun lsdev-compile-shadow(&optional auto)
+(defun lsdev-compile-shadow(&optional auto switches)
   (interactive "P")
   (let* ((build-dir (expand-file-name default-directory))
          (src-root (lsdev-root-dir build-dir))
-         (shadows (lsdev-dirs-build src-root))
+         (shadows (lsdev-dirs-build src-root switches))
          (shadow-directory))
     (when shadows
       (setq shadow-directory nil)
