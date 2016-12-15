@@ -60,5 +60,5 @@ cd "${NAME}"
 [ -z "$BRANCHES" ] && BRANCHES=`git branch -r | grep -v "origin/HEAD" | awk -F/ '{print $2}'`
 for branch in $BRANCHES; do
     git branch "$branch" "origin/$branch"
-    git new-workdir `pwd` "../$branch" "$branch"
+    git worktree `pwd` "../$branch" "$branch"
 done
