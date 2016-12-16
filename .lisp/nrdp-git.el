@@ -399,7 +399,7 @@
                                 (setq buffers (cdr buffers)))))
                           (when found
                             (switch-to-buffer found)
-                            (magit-refresh-status-buffer)
+                            (magit-refresh)
                             t))))
         (call-interactively 'magit-status)))
 
