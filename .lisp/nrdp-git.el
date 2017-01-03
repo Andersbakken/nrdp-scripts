@@ -152,6 +152,7 @@
     (let* ((hasdashdash)
            (quote)
            (hasarg)
+           (default-directory (magit-toplevel dir))
            (args (mapcar (lambda (arg)
                          (when (string= arg "--")
                            (setq hasdashdash t))
