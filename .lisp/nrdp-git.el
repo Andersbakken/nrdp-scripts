@@ -152,6 +152,7 @@
     (let* ((hasdashdash)
            (quote)
            (hasarg)
+           (default-directory (magit-toplevel dir))
            (args (mapcar (lambda (arg)
                          (when (string= arg "--")
                            (setq hasdashdash t))
@@ -383,6 +384,25 @@
                         (string= (buffer-name) (magit-process-buffer-name)))
                    (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
+
+(defun nrdp-magit-status (&optional prefix)
+  (interactive "P")
+  (when (or prefix (not (let ((buffers (buffer-list))
+                              (top (magit-toplevel))
+                              (found))
+                          (unless top
+                            (error "Not a git repo"))
+                          (while (and buffers (not found))
+                            (let ((buf (car buffers)))
+                              (if (and (string-match "^\*magit: " (buffer-name buf))
+                                       (string= (with-current-buffer buf default-directory) top))
+                                  (setq found buf buffers nil)
+                                (setq buffers (cdr buffers)))))
+                          (when found
+                            (switch-to-buffer found)
+                            (magit-refresh)
+                            t))))
+        (call-interactively 'magit-status)))
 
 (defadvice magit-status-internal (around fixdir activate)
   (let ((dir (ad-get-arg 0)))

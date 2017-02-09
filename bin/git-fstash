@@ -31,8 +31,12 @@ while [ -n "$1" ]; do
             shift
             STASHARGS+=($1)
             ;;
-        -m*|-q|--quiet)
+        -m*)
             STASHARGS+=($1)
+            ;;
+        -q|--quiet)
+            STASHARGS+=($1)
+            QUIET=1
             ;;
         *)
             if [ -f "$1" ]; then
@@ -48,7 +52,7 @@ while [ -n "$1" ]; do
     shift
 done
 
-if [ -z "${FILES[@]}" ] && [ -z "${DIRS[@]}" ]; then
+if [ ${#FILES[@]} -eq 0 ] && [ ${#DIRS[@]} -eq 0 ]; then
     1>&2 echo "Nothing to do do"
     exit 1
 fi
@@ -72,5 +76,9 @@ bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff -
     fi
 done
 
-git stash -p $STASHARGS < "$TMP"
+if [ "$QUIET" ]; then
+    git stash -p $STASHARGS < "$TMP" > /dev/null
+else
+    git stash -p $STASHARGS < "$TMP"
+fi
 rm "$TMP"

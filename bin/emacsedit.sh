@@ -99,7 +99,7 @@ if [ -n "$FILE" ]; then
         OFFSET=`echo $FILE | cut -d, -f2`
         FILE=`echo $FILE | cut -d, -f1`
     fi
-    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ]; then
+    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ] && [ "$MODE" != "eval" ] ; then
         >&2 echo "$FILE doesn't seem to exist"
         exit 1
     fi
