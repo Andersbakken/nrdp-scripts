@@ -152,6 +152,7 @@
     (let* ((hasdashdash)
            (quote)
            (hasarg)
+           (default-directory (magit-toplevel dir))
            (args (mapcar (lambda (arg)
                          (when (string= arg "--")
                            (setq hasdashdash t))
@@ -174,10 +175,10 @@
   (let ((dir (magit-toplevel)))
     (unless dir
       (error "No git dir"))
-    (nrdp-git-grep (cond ((and (null prefix)
-                               (file-directory-p (concat dir "src")))
+    (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
                           (concat dir "src"))
                          ((null prefix) dir)
+                         ((stringp prefix) (concat dir prefix))
                          (t default-directory)))))
 
 (defun nrdp-git-config-value (conf)
@@ -384,6 +385,25 @@
                    (string-match "^\\*magit-process: " (buffer-name))))
       (select-window prev))))
 
+(defun nrdp-magit-status (&optional prefix)
+  (interactive "P")
+  (when (or prefix (not (let ((buffers (buffer-list))
+                              (top (magit-toplevel))
+                              (found))
+                          (unless top
+                            (error "Not a git repo"))
+                          (while (and buffers (not found))
+                            (let ((buf (car buffers)))
+                              (if (and (string-match "^\*magit: " (buffer-name buf))
+                                       (string= (with-current-buffer buf default-directory) top))
+                                  (setq found buf buffers nil)
+                                (setq buffers (cdr buffers)))))
+                          (when found
+                            (switch-to-buffer found)
+                            (magit-refresh)
+                            t))))
+        (call-interactively 'magit-status)))
+
 (defadvice magit-status-internal (around fixdir activate)
   (let ((dir (ad-get-arg 0)))
     (unless (file-name-absolute-p dir)
@@ -399,6 +419,7 @@
 (if (fboundp 'magit-show-file-revision)
     (define-key magit-log-mode-map (kbd "#") (function magit-show-file-revision))
   (define-key magit-log-mode-map (kbd "#") (function magit-show-revision-at-current-line)))
+(define-key magit-log-mode-map (kbd "=") (function nrdp-magit-log-show-diff))
 (define-key magit-log-mode-map (kbd "@") (function magit-blame-for-current-revision))
 
 (defun magit-blame-for-current-revision ()
@@ -452,6 +473,12 @@
             (t string)))))
 
 (defun magit-diff-current-section (&optional -w)
+  (interactive "P")
+  (let ((file (magit-current-section-file)))
+    (when file
+      (nrdp-git-diff -w file))))
+
+(defun nrdp-magit-log-show-diff (&optional -w)
   (interactive "P")
   (let ((file (magit-current-section-file)))
     (when file
