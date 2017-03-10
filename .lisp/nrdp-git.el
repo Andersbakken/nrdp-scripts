@@ -133,6 +133,7 @@
   (unless dir
     (error "No git dir"))
   (let* ((default (current-word))
+         (pipe)
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
                    "git grep: pwd: "))
@@ -144,8 +145,13 @@
     (setq search (if (> (match-end 2) (match-beginning 2))
                      (match-string 2 result)
                    default))
+
     (unless search
       (error "Nothing to search for"))
+    (let ((pipeidx (string-match "|" search)))
+      (when pipeidx
+        (setq pipe (substring search pipeidx))
+        (setq search (substring search 0 pipeidx))))
     (when (string-match "^[^\"-]* [^\"-]*$" search)
       (setq search (concat "\"" search "\"")))
 
@@ -154,21 +160,24 @@
            (hasarg)
            (default-directory (magit-toplevel dir))
            (args (mapcar (lambda (arg)
-                         (when (string= arg "--")
-                           (setq hasdashdash t))
-                         (when (and (not hasdashdash)
-                                    (not hasarg)
-                                    (not (string= "-" (substring arg 0 1))))
-                           (setq hasarg t))
-                         (shell-quote-argument arg))
-                       (split-string-and-unquote search))))
+                           (when (string= arg "--")
+                             (setq hasdashdash t))
+                           (when (and (not hasdashdash)
+                                      (not hasarg)
+                                      (not (string= "-" (substring arg 0 1))))
+                             (setq hasarg t))
+                           (shell-quote-argument arg))
+                         (split-string-and-unquote search))))
       (when (and (not hasdashdash)
                  (not hasarg))
         (push "--" args))
 
       (grep-find (concat "git --no-pager grep -I -n "
                          (mapconcat 'identity args " ")
-                         " -- " dir " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'")))))
+                         (if hasdashdash "" " -- ")
+                         dir
+                         " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
+                         pipe)))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
