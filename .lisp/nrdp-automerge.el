@@ -161,7 +161,7 @@
                                            ((eq type 'abort) "--abort")
                                            ((eq type 'continue) "--continue")
                                            (t (error "bad!")))
-                                     (if nrdp-automerge-dry "--dry"))))
+                                     (if nrdp-automerge-dry "--dry" "--no-dry"))))
 
 (defun nrdp-automerge-git-status-inline ()
   (interactive)
