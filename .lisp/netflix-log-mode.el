@@ -266,6 +266,7 @@
   (add-to-invisibility-spec '(level . nil))
   (add-to-invisibility-spec '(area . nil))
   (add-to-invisibility-spec '(log-log . t))
+  (setq global-auto-revert-ignore-buffer t)
   ;; calls to nrdp.log.log() are going to show up twice, once for NBP and once for UI_SCRIPT
   (netflix-log-hide-nrdp-log-log))
 
