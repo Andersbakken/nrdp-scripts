@@ -26,6 +26,7 @@ FILES=()
 DIRS=()
 STASHARGS=("save" "-p")
 HAS_MESSAGE=
+DRY=
 while [ -n "$1" ]; do
     case $1 in
         --help|-h)
@@ -43,6 +44,9 @@ while [ -n "$1" ]; do
         -q|--quiet)
             STASHARGS+=($1)
             QUIET=1
+            ;;
+        --dry)
+            DRY=1
             ;;
         *)
             if [ -f "$1" ]; then
@@ -63,20 +67,14 @@ if [ ${#FILES[@]} -eq 0 ] && [ ${#DIRS[@]} -eq 0 ]; then
     exit 1
 fi
 
-if [ -z "$HAS_MESSAGE" ]; then
-    MSG="fstash";
-    [ ${#FILES[@]} -gt 0 ] && MSG="$MSG files: ${FILES[@]}"
-    [ ${#DIRS[@]} -gt 0 ] && MSG="$MSG dirs: ${DIRS[@]}"
-    STASHARGS+=("$MSG")
-    # echo "dirs ${DIRS[@]} files ${FILES[@]} msg: $MSG args ${STASHARGS[@]}"
-fi
-# exit 0
 
 TMP=`mktemp`
+TMPFILES=`mktemp`
 GITROOT=`git rev-parse --show-toplevel`
 bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff --git" | sed -e 's,^diff --git a/\(.*\) b/[^/].*$,\1,' | while read i; do
     FILE="$GITROOT/$i"
     if containsElement "$FILE" "${FILES[@]}"; then
+        basename $FILE >> "$TMPFILES"
         echo "a" >> "$TMP"
     else
         FOUND=
@@ -84,6 +82,7 @@ bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff -
             if echo "$FILE" | grep --quiet "${DIR}/"; then
                 echo "a" >> "$TMP"
                 FOUND=1
+                basename $FILE >> "$TMPFILES"
                 break
             fi
         done
@@ -91,11 +90,22 @@ bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff -
     fi
 done
 
-# echo "${STASHARGS[@]}"
-# exit 0
-if [ "$QUIET" ]; then
-    git stash "${STASHARGS[@]}" < "$TMP" > /dev/null
-else
-    git stash "${STASHARGS[@]}" < "$TMP"
+if [ -z "$HAS_MESSAGE" ]; then
+    MSG=`cat $TMPFILES | xargs`
+    if [ -n "$MSG" ]; then
+        STASHARGS+=("fstash: $MSG")
+    fi
 fi
-rm "$TMP"
+
+if [ "$DRY" ]; then
+    echo "Would have run:"
+    echo "git stash ${STASHARGS[@]}"
+else
+    if [ "$QUIET" ]; then
+        git stash "${STASHARGS[@]}" < "$TMP" > /dev/null
+    else
+        git stash "${STASHARGS[@]}" < "$TMP"
+    fi
+fi
+rm -f "$TMP"
+rm -f "$TMPFILES"
