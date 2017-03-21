@@ -25,6 +25,32 @@
         (append other n)
       n)))
 
+(defun nrdp-git-magit-current-things ()
+  (let* ((types (list 'commit 'file 'stash))
+         (type types)
+         (matchedtype)
+         (ret))
+    (while type
+      (setq ret (magit-region-sections (car type)))
+      (if ret
+          (setq matchedtype (car type)
+                type nil)
+        (setq type (cdr type))))
+    (unless ret
+      (let ((current (magit-current-section)))
+        (when current
+          (setq matchedtype (car (member (magit-section-type current) types))
+                ret (list current)))))
+    (cond ((eq matchedtype 'file)
+           (let ((root (magit-toplevel)))
+             (cons (mapcar (lambda (item) (concat root (magit-section-value item))) ret) 'file)))
+          (matchedtype (cons (mapcar #'magit-section-value ret) matchedtype))
+          (t nil))))
+
+(defun nrdp-git-magit-current-things-filtered (filter)
+  (let ((ret (nrdp-git-magit-current-things)))
+    (and (eq (cdr ret) filter) (car ret))))
+
 (defun nrdp-git-magit-file-log (&optional prefix bufferorfilename)
   (interactive "P")
   (let* ((file (if (stringp bufferorfilename)
@@ -85,7 +111,8 @@
   (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
 (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
 
-(defun magit-current-section-string ())
+(unless (fboundp 'magit-current-section-string)
+  (defun magit-current-section-string ()))
 
 (defun nrdp-magit-visit-thing-advice (orig-fun &rest args)
   (interactive)
@@ -495,9 +522,12 @@
 
 (defun nrdp-git-stash-buffer ()
   (interactive)
-  (let ((file (or (magit-current-section-file) (buffer-file-name))))
-    (when file
-      (magit-run-git-async "fstash" "--quiet" file))))
+  (let ((files (nrdp-git-magit-current-things-filtered 'file)))
+    (when (and (not files) (buffer-file-name))
+      (setq files (list (buffer-file-name))))
+    (if files
+        (apply #'magit-run-git-async "fstash" "--quiet" files)
+      (message "Nothing to fstash"))))
 
 (defun magit-log-current-section (&optional prefix)
   (interactive "P")
@@ -506,30 +536,13 @@
         (nrdp-git-magit-file-log prefix file)
       (call-interactively 'magit-log-popup))))
 
-(defun magit-run-on-multiple (commands &optional commit)
-  (let (args)
-    (cond (commit (push commit args))
-          (mark-active
-           (let ((lines (split-string (buffer-substring-no-properties
-                                       (save-excursion
-                                         (goto-char (min (region-beginning) (region-end)))
-                                         (point-at-bol))
-                                       (save-excursion
-                                         (goto-char (1- (max (region-beginning) (region-end))))
-                                         (point-at-eol))) "\n")))
-             (while lines
-               (let ((line (car lines)))
-                 (if (string-match "^[A-Fa-f0-9]+" line)
-                     (progn
-                       (push (match-string 0 line) args)
-                       (setq lines (cdr lines)))
-                   (setq lines nil args nil))))))
-          ((magit-current-section-sha) (push (magit-current-section-sha) args))
-          (t
-           (push (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
-                   (cond ((string= "" val) "HEAD")
-                         (t val)))
-                 args)))
+(defun magit-run-on-multiple-commits (commands &optional commit)
+  (let ((args (cond (commit (list commit))
+                    ((nrdp-git-magit-current-things-filtered 'commit))
+                    (t
+                     (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
+                       (cond ((string= "" val) (list "HEAD"))
+                             (t (list val))))))))
     (when (> (length args) 0)
       (cond ((listp commands)
              (let ((rev (reverse commands)))
@@ -543,9 +556,9 @@
 
 (defun magit-jira (&optional commit noresolve)
   (interactive)
-  (magit-run-on-multiple (if noresolve
-                             (list "jira" "--no-interactive" "--comment")
-                           (list "jira" "--resolve" "--no-interactive" "--comment")) commit))
+  (magit-run-on-multiple-commits (if noresolve
+                                     (list "jira" "--no-interactive" "--comment")
+                                   (list "jira" "--resolve" "--no-interactive" "--comment")) commit))
 
 (defun magit-jira-no-resolve (&optional commit)
   (interactive)
@@ -555,12 +568,12 @@
   (interactive)
   (let ((prev (getenv "GIT_POST_SUBMIT_NON_INTERACTIVE")))
     (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" "1")
-    (magit-run-on-multiple (list "submit" "--no-autodetach") commit)
+    (magit-run-on-multiple-commits (list "submit" "--no-autodetach") commit)
     (setenv "GIT_POST_SUBMIT_NON_INTERACTIVE" prev)))
 
 (defun magit-ignore-commit (&optional commit)
   (interactive)
-  (magit-run-on-multiple "ignore-commit" commit))
+  (magit-run-on-multiple-commits "ignore-commit" commit))
 
 (defun magit-submit-all (&optional commit)
   (interactive)
