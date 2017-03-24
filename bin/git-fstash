@@ -15,28 +15,38 @@ realPath() {
         LINK=$(readlink "$(basename "$1")")
     done
     REALPATH="$PWD/$(basename "$1")"
+    if [ -d "$REALPATH" ]; then
+        cd "$REALPATH"
+        REALPATH="$PWD"
+    fi
     cd "$OURPWD"
     echo "$REALPATH"
 }
 FILES=()
 DIRS=()
-STASHARGS=()
+STASHARGS=("save" "-p")
+HAS_MESSAGE=
+DRY=
 while [ -n "$1" ]; do
     case $1 in
         --help|-h)
             echo "git stash-file [files...] -m|--message message -mmessage -q --quit"
             ;;
         -m|--message)
-            STASHARGS+=($1)
+            HAS_MESSAGE=1
             shift
             STASHARGS+=($1)
             ;;
         -m*)
-            STASHARGS+=($1)
+            STASHARGS+=(`echo $1 | sed -e 's,^-m,,'`)
+            HAS_MESSAGE=1
             ;;
         -q|--quiet)
             STASHARGS+=($1)
             QUIET=1
+            ;;
+        --dry)
+            DRY=1
             ;;
         *)
             if [ -f "$1" ]; then
@@ -57,11 +67,14 @@ if [ ${#FILES[@]} -eq 0 ] && [ ${#DIRS[@]} -eq 0 ]; then
     exit 1
 fi
 
+
 TMP=`mktemp`
+TMPFILES=`mktemp`
 GITROOT=`git rev-parse --show-toplevel`
 bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff --git" | sed -e 's,^diff --git a/\(.*\) b/[^/].*$,\1,' | while read i; do
     FILE="$GITROOT/$i"
     if containsElement "$FILE" "${FILES[@]}"; then
+        basename $FILE >> "$TMPFILES"
         echo "a" >> "$TMP"
     else
         FOUND=
@@ -69,6 +82,7 @@ bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff -
             if echo "$FILE" | grep --quiet "${DIR}/"; then
                 echo "a" >> "$TMP"
                 FOUND=1
+                basename $FILE >> "$TMPFILES"
                 break
             fi
         done
@@ -76,9 +90,22 @@ bash -c "while true; do echo d; done" | git stash -p 2>/dev/null | grep "^diff -
     fi
 done
 
-if [ "$QUIET" ]; then
-    git stash -p $STASHARGS < "$TMP" > /dev/null
-else
-    git stash -p $STASHARGS < "$TMP"
+if [ -z "$HAS_MESSAGE" ]; then
+    MSG=`cat $TMPFILES | xargs`
+    if [ -n "$MSG" ]; then
+        STASHARGS+=("fstash: $MSG")
+    fi
 fi
-rm "$TMP"
+
+if [ "$DRY" ]; then
+    echo "Would have run:"
+    echo "git stash ${STASHARGS[@]}"
+else
+    if [ "$QUIET" ]; then
+        git stash "${STASHARGS[@]}" < "$TMP" > /dev/null
+    else
+        git stash "${STASHARGS[@]}" < "$TMP"
+    fi
+fi
+rm -f "$TMP"
+rm -f "$TMPFILES"
