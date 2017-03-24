@@ -502,18 +502,16 @@ sub sortRootPredicate {
 
     my $path1 = $root1->{path};
     my $path2 = $root2->{path};
+    my $default1 = getPathConfig($path1, "default");
+    my $default2 = getPathConfig($path2, "default");
+    return -1 if($default1 && !$default2);
+    return 1 if($default2 && !$default1);
     return (cstat($path2))[9] <=> (cstat($path1))[9];
 }
 
 sub sortRootPathPredicate {
     my ($path1, $path2) = @_;
-
-    my $root1 = findRoot($path1);
-    my $root2 = findRoot($path2);
-    return 1 if(isRootBuild($root1) && !isRootBuild($root2));
-    return -1 if(!isRootBuild($root1) && isRootBuild($root2));
-
-    return (cstat($path2))[9] <=> (cstat($path1))[9];
+    return sortRootPredicate(findRoot($path1), findRoot($path2));
 }
 
 sub findRootBuilds {
