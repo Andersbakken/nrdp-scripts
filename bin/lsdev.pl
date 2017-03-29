@@ -963,17 +963,7 @@ if($display_only eq "default") { #display the currently mapped default
     }
 
     my @choices;
-    if($#matches == -1 && $rest_dir && cisdir($rest_dir)) {
-        unless(defined(findRoot($rest_dir))) {
-            my $root = addRoot("passed", $rest_dir);
-            if(my $src = processBuildDir($root->{path})) {
-                $root->{source} = $src;
-                addRoot("${src_prefix}passed", $src) unless(defined(findRoot($src)));
-            }
-        }
-        push @choices, $rest_dir;
-        $rest_dir = undef;
-    } elsif($#matches == 0 && $matches[0] eq "-") {
+    if($#matches == 0 && $matches[0] eq "-") {
         push @choices, $default_dir;
     } elsif($#matches == -1 && !$detect_rest && $root_dir) {
         push @choices, $root_dir;
