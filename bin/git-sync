@@ -27,10 +27,15 @@ function syncdir
 
     cd "$ROOTDIR"
     stashed=
+    local PULLARGS=
     if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
-        stashed=1
-        ignore_marker=`git ignore-commit marker 2>/dev/null`
-        git commit -a -m "${ignore_marker}git-sync" --allow-empty
+        if [ "$autostash" = "pull" ]; then
+            PULLARGS="--autostash"
+        else
+            stashed=1
+            ignore_marker=`git ignore-commit marker 2>/dev/null`
+            git commit -a -m "${ignore_marker}git-sync" --allow-empty
+        fi
     fi
     if [ -n "$check" ]; then
         local_sha=`git rev-parse HEAD`
@@ -53,7 +58,7 @@ function syncdir
     elif git config -l | grep "^svn-remote" --quiet; then
         git svn update
     else
-        git pull
+        git pull $PULLARGS
         if which git-tracking >/dev/null 2>&1; then
             SYNC_SUMMARY_END=`git tracking`
             if [ -z "$SYNC_SUMMARY_END" ]; then
@@ -75,10 +80,7 @@ function syncdir
 
 idx=0
 check=
-autostash=0
-if [ "`git config sync.autostash`" != "false" ]; then
-    autostash=1
-fi
+autostash=`git config sync.autostash`
 while [ -n "$1" ]; do
     case "$1" in
         -c|--check)
@@ -92,6 +94,12 @@ while [ -n "$1" ]; do
             ;;
         --no-log)
             GIT_SYNC_SUMMARY=""
+            ;;
+        --autostash-pull)
+            autostash=pull
+            ;;
+        -a=*|--autostash=*)
+            autostash=`echo $1 | sed -e 's,^[^=]*=,,'`
             ;;
         --no-color)
             [ -n "$GIT_SYNC_SUMMARY" ] && GIT_SYNC_SUMMARY="$GIT_SYNC_SUMMARY --no-color"
