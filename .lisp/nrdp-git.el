@@ -201,7 +201,7 @@
 
       (grep-find (concat "git --no-pager grep -I -n "
                          (mapconcat 'identity args " ")
-                         (if hasdashdash "" " -- ")
+                         (if hasdashdash " " " -- ")
                          dir
                          " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
                          pipe)))))
