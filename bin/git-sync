@@ -81,6 +81,13 @@ function syncdir
 idx=0
 check=
 autostash=`git config sync.autostash`
+if [ "$autostash" = "pull" ]; then
+    VERSION=`git --version | cut -d' ' -f3`
+    if [ `echo $VERSION | awk -F. '{print $1}'` -eq 2 ] && [ `echo $VERSION | awk -F. '{print $2}'` -lt 9 ]; then
+        autostash=1
+    fi
+fi
+
 while [ -n "$1" ]; do
     case "$1" in
         -c|--check)
