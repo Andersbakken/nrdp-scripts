@@ -353,6 +353,13 @@
           (other-window 1))
         nil))))
 
+(defun nrdp-git-diff-tracking (&optional -w target no-split-window norestorefocus word)
+  (interactive "P")
+  (let ((tracking (magit-get-upstream-branch)))
+    (if tracking
+        (nrdp-git-diff -w target no-split-window norestorefocus tracking word)
+      (message "No tracking branch for branch"))))
+
 (defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
   (interactive "P")
   (nrdp-git-diff -w target no-split-window norestorefocus against t))
