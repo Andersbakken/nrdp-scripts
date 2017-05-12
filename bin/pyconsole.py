@@ -166,25 +166,18 @@ class SocketThread( threading.Thread ):
 
                     inbound_data += data_received
 
-                    while True:
-
-                        line , separator , rest = inbound_data.partition( "\n" )
-
-                        if len( line ) > 0:
-
-                            if ( not self.filter ) or ( self.filter and self.filter.search( line ) ):
-
-                                print line
-
-                                if self.log:
-                                    self.log.write( line + "\n" )
-
-                        inbound_data = rest
-
-                        if len( separator ) == 0:
-
-                            break
-
+                    if self.filter :
+                    	if self.filter.search( line ):
+                            line , rest = inbound_data.partition( "\n" )
+                            if len( line ) > 0:
+                                if ( not self.filter ) or ( self.filter and self.filter.search( line ) ):
+                                    print line
+                                    if self.log:
+                                        self.log.write( line + "\n" )
+                    else:
+                        print inbound_data,
+                        if self.log:
+                            self.log.write( inbound_data )
 
                 if self.sock in errors:
 
