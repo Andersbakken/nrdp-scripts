@@ -178,6 +178,8 @@ class SocketThread( threading.Thread ):
                         print inbound_data,
                         if self.log:
                             self.log.write( inbound_data )
+                        inbound_data = ""
+
 
                 if self.sock in errors:
 
