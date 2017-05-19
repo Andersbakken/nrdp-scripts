@@ -128,12 +128,7 @@
       (save-excursion
         (goto-char (point-max))
         (setq buffer-read-only nil)
-        (insert output)
-        (while (< (point) (point-max))
-          (when (looking-at "")
-            (delete-char 1)
-            (insert "\n"))
-          (forward-char))
+        (insert (replace-regexp-in-string "" "\n" output))
         (setq buffer-read-only t)))))
 
 (defun nrdp-automerge-run-next-command ()
