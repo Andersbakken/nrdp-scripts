@@ -103,7 +103,8 @@
         (kill-buffer buf))
       (setq buf (get-buffer-create nrdp-automerge-buffer-name))
       (switch-to-buffer buf)
-      (when nrdp-automerge-current-shell-process
+      (when (and nrdp-automerge-current-shell-process
+                 (eq (process-status nrdp-automerge-current-shell-process) 'running))
         (kill-process nrdp-automerge-current-shell-process))
       (setq nrdp-automerge-current-shell-process nil
             nrdp-automerge-pending-shell-commands nil)
