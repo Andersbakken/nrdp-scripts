@@ -118,11 +118,14 @@
   (when (eq process nrdp-automerge-current-shell-process)
     (with-current-buffer (nrdp-automerge-buffer)
       (let ((atend (= (point) (point-max))))
-        ;; (message "got output")
         (save-excursion
           (goto-char (point-max))
           (setq buffer-read-only nil)
-          (insert (replace-regexp-in-string "" "\n" output))
+          (let ((start (point)))
+            (insert output)
+            (goto-char start)
+            (while (search-forward "" nil t)
+              (delete-region (point-at-bol) (point))))
           (setq buffer-read-only t))
         (when atend
           (goto-char (point-max)))))))
