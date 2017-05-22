@@ -59,7 +59,7 @@
                              (not nrdp-automerge-dry)))
   (nrdp-automerge-update-header))
 
-(defun nrdp-automerge-status()
+(defun nrdp-automerge-status ()
   (let ((ret (list (if (file-exists-p (concat (nrdp-automerge-nrdp-repo-path) "/.git/AUTOMERGE"))
                        "automerge underway"
                      "no automerge underway"))))
@@ -70,17 +70,10 @@
 (defun nrdp-automerge-update-header ()
   (save-excursion
     (with-current-buffer (nrdp-automerge-buffer)
-      (let ((old buffer-read-only))
-        (setq buffer-read-only nil)
-        (goto-char (point-min))
-        (forward-line 1)
-        (when (looking-at "--------------")
-          (delete-region (point-min) (point-at-eol)))
-        (let ((string (mapconcat 'identity (append (mapcar (lambda (action)
-                                                             (format "%s: %s" (car action) (cdr action)))
-                                                           nrdp-automerge-actions)
-                                                   (list (nrdp-automerge-status))) "  ")))
-          (insert string "\n" (make-string (length string) ?-) "\n"))))))
+      (setq header-line-format (mapconcat 'identity (append (mapcar (lambda (action)
+                                                                      (format "%s: %s" (car action) (cdr action)))
+                                                                    nrdp-automerge-actions)
+                                                            (list (nrdp-automerge-status))) "  ")))))
 
 (setq nrdp-automerge-actions nil)
 (nrdp-automerge-define-action (kbd "m") "Merge" 'nrdp-automerge-merge)
@@ -124,12 +117,15 @@
 (defun nrdp-automerge-process-filter (process output)
   (when (eq process nrdp-automerge-current-shell-process)
     (with-current-buffer (nrdp-automerge-buffer)
-      ;; (message "got output")
-      (save-excursion
-        (goto-char (point-max))
-        (setq buffer-read-only nil)
-        (insert (replace-regexp-in-string "" "\n" output))
-        (setq buffer-read-only t)))))
+      (let ((atend (= (point) (point-max))))
+        ;; (message "got output")
+        (save-excursion
+          (goto-char (point-max))
+          (setq buffer-read-only nil)
+          (insert (replace-regexp-in-string "" "\n" output))
+          (setq buffer-read-only t))
+        (when atend
+          (goto-char (point-max)))))))
 
 (defun nrdp-automerge-run-next-command ()
   ;; (message "nrdp-automerge-run-next-command %d" (length nrdp-automerge-pending-shell-commands))
