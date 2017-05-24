@@ -1802,4 +1802,7 @@ there's a region, all lines that region covers will be duplicated."
   (setq current-prefix-arg nil)
   (misc-grep-find-helper default-directory filterType))
 
+(require 'asm-mode)
+(add-hook 'asm-mode-hook (lambda () (local-set-key (vector asm-comment-char) 'self-insert-command)))
+
 (provide 'nrdp-misc)
