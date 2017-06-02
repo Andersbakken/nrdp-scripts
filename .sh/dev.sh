@@ -137,6 +137,25 @@ addrtoline() {
     done
 }
 
+nf_sync_gibbon()
+{
+    outdir="$1"
+    if [ -z "$outdir" ]; then
+        echo "Must specify output directory!"
+        return 1
+    fi
+    mkdir -p "$outdir"
+    for a in libJavaScriptCore.so libWTF.so netflix data/; do
+        if [ -e "$a" ]; then
+            out="$outdir/$a"
+            echo "Handling: $out"
+            rsync -varc "$a" "$out"
+        fi
+    done
+    chmod 664 "$outdir/data/etc/conf/common.xml"
+    sync
+}
+
 complete-netflix ()
 {
     app=${COMP_WORDS[0]}
