@@ -1064,8 +1064,7 @@ to case differences."
                        (incf ret (misc-find-files (car file) pattern norecurse cb exclude))
                      (setq ret (append ret (misc-find-files (car file) pattern norecurse cb exclude))))))
                 ((and (not (nth 1 file)) ;; skip-symlinks
-                      (misc-check-pattern pattern (car file))
-                      (file-writable-p (car file)))
+                      (misc-check-pattern pattern (car file)))
                  (if (not cb)
                      (push (car file) ret)
                    (funcall cb (car file))
@@ -1083,7 +1082,7 @@ to case differences."
                      norecurse
                      (lambda (file)
                        (incf considered)
-                       (unless (misc-is-compiled file)
+                       (unless (or (misc-is-compiled file) (not (file-writable-p file)))
                          (incf compiled)
                          (condition-case nil
                              (byte-compile-file file t)
@@ -1801,5 +1800,8 @@ there's a region, all lines that region covers will be duplicated."
   (interactive "P")
   (setq current-prefix-arg nil)
   (misc-grep-find-helper default-directory filterType))
+
+(require 'asm-mode)
+(add-hook 'asm-mode-hook (lambda () (local-set-key (vector asm-comment-char) 'self-insert-command)))
 
 (provide 'nrdp-misc)
