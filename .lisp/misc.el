@@ -1804,4 +1804,11 @@ there's a region, all lines that region covers will be duplicated."
 (require 'asm-mode)
 (add-hook 'asm-mode-hook (lambda () (local-set-key (vector asm-comment-char) 'self-insert-command)))
 
+(defun unslack()
+  (interactive)
+  (let ((start (if (region-active-p) (region-beginning) (point-min)))
+        (end (if (region-active-p) (region-end) (point-max))))
+    (--misc-replace-string-helper "“" "\"" (min start end) (max start end))
+    (--misc-replace-string-helper "”" "\"" (min start end) (max start end))))
+
 (provide 'nrdp-misc)
