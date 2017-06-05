@@ -142,6 +142,13 @@
               (setq file (buffer-substring-no-properties start (1- (point))))))))))
   file)
 
+(defun nrdp-git-grep-shell-quote-argument (arg)
+  (cond ((string-match "^\"" arg) arg)
+        ((not (string-match " " arg)) arg)
+        ((not (string-match "\"" arg)) (concat "\"" arg "\""))
+        ((not (string-match "'" arg)) (concat "'" arg "'"))
+        (t (shell-quote-argument arg))))
+
 (defun nrdp-git-grep-prompt (dir)
   (let* ((default (current-word))
          (prompt (if default
@@ -193,7 +200,7 @@
                                       (not hasarg)
                                       (not (string= "-" (substring arg 0 1))))
                              (setq hasarg t))
-                           (shell-quote-argument arg))
+                           (nrdp-git-grep-shell-quote-argument arg))
                          (split-string-and-unquote search))))
       (when (and (not hasdashdash)
                  (not hasarg))
