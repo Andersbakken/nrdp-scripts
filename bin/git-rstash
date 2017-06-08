@@ -3,9 +3,8 @@
 use Env;
 use strict;
 
-my $root = `git rev-parse --git-dir`;
+my $root = `git rev-parse --show-toplevel`;
 chomp($root);
-$root .= "/..";
 chdir($root);
 
 my $stash_mode;
