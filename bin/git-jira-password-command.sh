@@ -2,7 +2,7 @@
 
 [[ $(type -P "gpg2") ]] && GPG="gpg2" || GPG="gpg"
 
-while [ -n "`ps aux | grep "\<gpg[^-]" | grep -v grep`" ]; do # apparently pidof gpg returns pid for gpg-agent
+while [ -n "`ps aux | grep "\<gpg[^-a-zA-Z]" | grep -v grep`" ]; do # apparently pidof gpg returns pid for gpg-agent
     sleep 1
 done
 
