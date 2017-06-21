@@ -9,6 +9,43 @@
 
 (defvar hack-mode-printf-format (cons "[%s:%d]" ", __FILE__, __LINE__"))
 
+;;====================
+;; Licensing fu
+;;====================
+(defvar hack-mode-license-rege-list
+  '( ;;First one is my default license type
+    ("without the permission of Netflix" "NETFLIX")
+    ("Copyright.*Yahoo! Inc" "YAHOO")
+    ("QT_BEGIN_LICENSE" "TROLL")
+    ("Copyright.*Aventail Corporation" "AVENTAIL")
+    ("Copyright.*The Apache Software Foundation" "APACHE")
+    ;;  ("Copyright.*X Consortium" "X11")
+    ("\\(Boston, MA[ \t]+02111-1307, USA\\|Cambridge, MA 02139, USA\\)" "GPL")
+    ("SUCH DAMAGE\\.[     ]*" "BSD")
+    ("\\\*\\* or implied warranty\\.[     ]*" "NCAR")
+    ))
+(defvar hack-mode-buffer-license-type nil)
+(make-variable-buffer-local 'hack-mode-buffer-license-type)
+(defun hack-mode-license-remove()
+  "This will remove licences below and stick the license type in the modeline, hidecopyleft wasn't good enough"
+  (interactive)
+  (if (not hack-mode-buffer-license-type)
+      (let ((found nil) (regexp-list hack-mode-license-rege-list) (lic nil))
+        (widen) 
+        (goto-char (point-min))
+        (push-mark)
+        (while (and (not found) regexp-list)
+          (if (setq found (re-search-forward (car (car regexp-list)) nil t))
+              (let ((eoc (search-forward "*/")) (boc (search-backward "/*")))
+                (setq lic (nth 1 (car regexp-list)))
+                (narrow-to-region eoc (point-max))
+                ;;(setq mode-line-buffer-identification (list "(" lic ") " mode-line-buffer-identification))
+                ))
+          (setq regexp-list (cdr regexp-list)))
+        (setq hack-mode-buffer-license-type lic))
+    (pop-mark)))
+;;(mapcar '(lambda (hooksym) (add-hook hooksym 'hack-mode-license-remove)) '(c-mode-hook c++-mode-hook))
+
 ;;default stuff (my preferred hack mode)
 (defun default-find-file-hook ()
   (hack-mode-no-tabs))
@@ -209,13 +246,25 @@
            (dolist (mode hack-modes)
              (if (string= (car (nth 1 mode)) mode-name) (setq hack-mode (nth 1 mode))))))
 (defun hack-mode-guess()
-  (setq hack-mode (block stop-guessing
-                    (dolist (mode hack-modes)
-                      (cond
-                       ((functionp (car mode)) (if (funcall (car mode)) (return-from stop-guessing (nth 1 mode))))
-                       ((stringp (car mode)) (if (and (buffer-file-name) (string-match (car mode) (buffer-file-name))) (return-from stop-guessing (nth 1 mode))))
-                       (t nil)))))
-  (unless hack-mode (hack-mode-set "Default")))
+  (if hack-mode-buffer-license-type
+      (hack-mode-set (downcase sam-buffer-license-type))
+    (progn
+      (setq hack-mode (block stop-guessing
+                        (dolist (mode hack-modes)
+                          (cond
+                           ((functionp (car mode)) (if (funcall (car mode)) (return-from stop-guessing (nth 1 mode))))
+                           ((stringp (car mode)) (if (and (buffer-file-name) (string-match (car mode) (buffer-file-name))) (return-from stop-guessing (nth 1 mode))))
+                           (t nil)))))
+      (unless hack-mode (hack-mode-set "Default")))))
 (hack-mode-set "Default")
+
+(add-hook 'find-file-hooks (lambda()
+                             (hack-mode-guess)
+                             (if (nth hack-mode-find-file-mode-nth hack-mode) (funcall (nth hack-mode-find-file-mode-nth hack-mode)))))
+(add-hook 'c-mode-common-hook (lambda()
+                                (hack-mode-guess)
+                                (hack-mode-templatize-file)
+                                ;;(hack-mode-license-remove) ;;find any license & remove it
+                                (if (nth hack-mode-c-mode-nth hack-mode) (funcall (nth hack-mode-c-mode-nth hack-mode)))))
 
 (provide 'hack-mode)
