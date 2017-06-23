@@ -144,7 +144,7 @@
 
 (defun nrdp-git-grep-shell-quote-argument (arg)
   (cond ((string-match "^\"" arg) arg)
-        ((not (string-match " " arg)) arg)
+        ((not (string-match " " arg)) (concat "\"" arg "\""))
         ((not (string-match "\"" arg)) (concat "\"" arg "\""))
         ((not (string-match "'" arg)) (concat "'" arg "'"))
         (t (shell-quote-argument arg))))
