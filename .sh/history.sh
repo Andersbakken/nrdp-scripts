@@ -20,6 +20,12 @@ history_share_auto()
                 export HISTORY_SHARE_AUTO_WRITE=1
             elif [ "$a" = "nowrite" ]; then
                 export HISTORY_SHARE_AUTO_WRITE=0
+            elif [ "$a" = "off"  ] || [ "$a" = "none" ]; then
+                export HISTORY_SHARE_AUTO_READ=0
+                export HISTORY_SHARE_AUTO_WRITE=0
+            elif [ "$a" = "on"  ] || [ "$a" = "all" ]; then
+                export HISTORY_SHARE_AUTO_READ=1
+                export HISTORY_SHARE_AUTO_WRITE=1
             fi
         done
     fi
