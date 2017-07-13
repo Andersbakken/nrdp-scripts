@@ -899,16 +899,18 @@ to case differences."
   (goto-char (point-min))
   (forward-line (1- N)))
 
-(defun goto-line-with-feedback ()
+(defun goto-line-with-feedback (&optional nolinum)
   "Show line numbers temporarily, while prompting for the line number input"
-  (interactive)
-  (let ((mode (cond ((bound-and-true-p git-gutter-mode) 'git-gutter-mode)
+  (interactive "P")
+  (setq nolinum (or nolinum (> (point-max) 524288)))
+  (let ((mode (cond (nolinum nil)
+                    ((bound-and-true-p git-gutter-mode) 'git-gutter-mode)
                     ((bound-and-true-p git-gutter+-mode) 'git-gutter+-mode)
                     (t nil)))
         (hadlinum (bound-and-true-p linum-mode)))
     (unwind-protect
         (progn
-          (unless hadlinum
+          (unless (or nolinum hadlinum)
             (linum-mode 1))
           (when mode
             (funcall mode 0))
@@ -922,7 +924,7 @@ to case differences."
                    (--misc-goto-line-helper (string-to-number (match-string 1 res)))
                    (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
-      (unless hadlinum
+      (unless (or nolinum hadlinum)
         (linum-mode -1))
       (when mode
         (funcall mode 1)))))
