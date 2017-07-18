@@ -145,11 +145,11 @@ nf_sync_gibbon()
         return 1
     fi
     mkdir -p "$outdir"
-    for a in libJavaScriptCore.so libWTF.so netflix data/; do
+    for a in lib/libJavaScriptCore.so lib/libWTF.so lib/librex_pcre.so netflix data/; do
         if [ -e "$a" ]; then
-            out="$outdir/$a"
-            echo "Handling: $out"
-            rsync -varc "$a" "$out"
+            echo "Handling: ${a}"
+            mkdir -p "$outdir/`dirname $a`"
+            rsync -varc "$a" "$outdir/$a"
         fi
     done
     chmod 664 "$outdir/data/etc/conf/common.xml"
