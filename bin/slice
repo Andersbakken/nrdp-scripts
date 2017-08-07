@@ -1,0 +1,89 @@
+#!/bin/bash
+
+function usage()
+{
+    echo "Usage: slice [...options...] [file] " > "$1"
+    echo "  -c|--bytes          Use bytes instead of lines" > "$1"
+    echo "  -h|--help           Display this help" > "$1"
+}
+
+FROM=
+COUNT=10
+SWITCH=-n
+FILE=
+
+function consumeRange ()
+{
+    if [ -n "$FROM" ]; then
+        usage "&2"
+        echo "Invalid argument \"$1\"" >&2
+        exit 1
+    fi
+
+
+    if echo "$1" | grep --quiet "^[0-9]\+-[0-9]\+$"; then
+        FROM=`echo $1 | awk -F- '{print $1}'`
+        COUNT=`echo $1 | awk -F- '{print $2}'`
+    elif echo "$1" | grep --quiet "^[0-9]\+$"; then
+        FROM="$1"
+    else
+        usage "&2"
+        echo "Invalid range $1"
+        exit 1
+    fi
+}
+
+while [ -n "$1" ]; do
+    case "$1" in
+        --help|-h)
+            usage "&1"
+            ;;
+        -c)
+            SWITCH="-c"
+            shift
+            consumeRange "$1"
+            ;;
+        -c*)
+            SWITCH="-c"
+            consumeRange `echo $1 | sed -e 's,^-.,,'`
+            ;;
+        --bytes=*)
+            SWITCH="-c"
+            consumeRange `echo $1 | sed -e 's,^[^=*]=,,'`
+            ;;
+        -[0-9]*)
+            consumeRange `echo $1 | sed -e 's,^-,,'`
+            ;;
+        -n)
+            shift
+            consumeRange "$1"
+            ;;
+        -n*)
+            consumeRange `echo $1 | sed -e 's,^-.,,'`
+            ;;
+        --lines=*)
+            consumeRange `echo $1 | sed -e 's,^[^=*]=,,'`
+            ;;
+        *)
+            if [ -n "$FILE" ]; then
+                usage "&2"
+                echo "Invalid argument \"$1\"" >&2
+                exit 1
+            elif [ ! -e "$1" ]; then
+                usage "&2"
+                if echo $1 | grep --quiet "^-"; then
+                    echo "Invalid argument \"$1\"" >&2
+                else
+                    echo "$1 doesn't seem to exist" >&2
+                    fi
+                exit 1
+            else
+                FILE="$1"
+            fi
+            ;;
+    esac
+    shift
+done
+
+tail "$SWITCH" +$FROM $FILE | head "$SWITCH" "$COUNT"
+# echo "file $FILE from $FROM count $COUNT bytes $BYTES"
