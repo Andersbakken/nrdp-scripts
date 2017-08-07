@@ -75,7 +75,8 @@ build() {
                 ninja -t commands | rc --compile
                 return 0
             fi
-            NINJA_OPTIONS="-d keeprsp"
+            NINJA_OPTIONS=""
+            #NINJA_OPTIONS="$NINJA_OPTIONS -d keeprsp"
             [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
             [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
             for opt in $MAKEFLAGS $MAKE_OPTIONS; do
