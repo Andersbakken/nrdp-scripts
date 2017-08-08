@@ -83,7 +83,7 @@ build() {
                 case $opt in
                     clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
                     -k) NINJA_OPTIONS="$NINJA_OPTIONS -k 1000" ;;
-                    *) NINJA_OPTIONS="$NINJA_OPTIONS $opt" ;;
+                    *) NINJA_OPTIONS="$NINJA_OPTIONS \"$opt\"" ;;
                 esac
             done
             NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
@@ -126,7 +126,7 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            ninja $NINJA_OPTIONS
+            eval ninja $NINJA_OPTIONS
             return $?
         fi
     fi
@@ -136,10 +136,10 @@ build() {
         for opt in $MAKEFLAGS $MAKE_OPTIONS; do
             case $opt in
                 clean|distclean) SCONS_OPTIONS="$SCONS_OPTIONS -c" ;;
-                *) SCONS_OPTIONS="$SCONS_OPTIONS $opt" ;;
+                *) SCONS_OPTIONS="$SCONS_OPTIONS \"$opt\"" ;;
             esac
         done
-        (cd $BUILD_DIR && scons $SCONS_OPTIONS)
+        (cd $BUILD_DIR && eval scons $SCONS_OPTIONS)
         return
     elif [ -e "${BUILD_DIR}Sakefile.js" ]; then
         SAKE_OPTIONS=
@@ -148,10 +148,10 @@ build() {
                 -j[0-9]*) ;;
                 help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
                 distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
-                *) SAKE_OPTIONS="$SAKE_OPTIONS $opt" ;;
+                *) SAKE_OPTIONS="$SAKE_OPTIONS \"$opt\"" ;;
             esac
         done
-        (cd $BUILD_DIR && sake $SAKE_OPTIONS)
+        (cd $BUILD_DIR && eval sake $SAKE_OPTIONS)
         return
     fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
@@ -166,7 +166,7 @@ build() {
             RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
             return 0
         fi
-        "$i" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
+        eval "$i" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
         break
     done
 
@@ -190,7 +190,7 @@ while [ "$#" -gt 0 ]; do
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
         -s) shift; SUCCESS_POST_COMMAND="$1" ;;
         -e) shift; ERROR_POST_COMMAND="$1" ;;
-        *) MAKE_OPTIONS="$MAKE_OPTIONS $1" ;;
+        *) MAKE_OPTIONS="$MAKE_OPTIONS \"$1\"" ;;
     esac
     shift
 done
