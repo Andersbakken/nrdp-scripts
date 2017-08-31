@@ -87,7 +87,7 @@ build() {
                 esac
             done
             NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
-            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j$,-j1000,'`
+            NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j\("\),-j1000\1,'`
             # START=`date +%s%N | cut -b1-13`
             NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" | sed -e 's,-j *,,' | tail -n1`"
             if [ -n "$NUM" ]; then
