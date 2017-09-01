@@ -89,13 +89,13 @@ build() {
             NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e "s,-j \([0-9]\+\),-j\1,g"`
             NINJA_OPTIONS=`echo $NINJA_OPTIONS | sed -e 's,-j ,-j1000 ,g' -e 's,-j\("\),-j1000\1,'`
             # START=`date +%s%N | cut -b1-13`
-            NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" | sed -e 's,-j *,,' | tail -n1`"
+            NUM="`echo $NINJA_OPTIONS | grep -o -- "-j *[0-9]\+" 2>/dev/null | sed -e 's,-j *,,' | tail -n1`"
             if [ -n "$NUM" ]; then
                 CORES=`numcores`
                 MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
                 if [ "$NUM" -gt "$MAX" ]; then
                     # echo "max is $max num is $num"
-                    LINE=`ninja -t commands | grep " -c\>" | grep "\.o\>" 2>/dev/null | head -n1`
+                    LINE=`ninja -t commands | grep " -c\>" 2>/dev/null | grep "\.o\>" 2>/dev/null | head -n1`
                     for i in $LINE; do
                         [ ! -e "$i" ] && continue
                         echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
