@@ -1229,7 +1229,7 @@ to case differences."
 (defun mkgibbontest-copy-current ()
   (interactive)
   (if (misc-string-prefix-p mkgibbontest-directory (buffer-file-name))
-      (mkgibbontest-copy (file-name-nondirectory (buffer-file-name)))
+      (mkgibbontest-copy (substring (buffer-file-name) (length mkgibbontest-directory)))
     (kill-new (buffer-file-name))
     (message "Killed: %s" (buffer-file-name))))
 
