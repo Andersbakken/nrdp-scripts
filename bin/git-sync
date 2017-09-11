@@ -139,7 +139,7 @@ while [ $i -lt $idx ]; do
     root="${dirs[$i]}"
     syncdir "$root" || rc=1
     if [ -n "$recursive" ]; then
-        find -L "$root" -mindepth 1 -maxdepth 4 -type d -name ".git" | while read i; do
+        find -L "$root" -mindepth 1 -maxdepth 4 -type d -name ".git" 2>/dev/null | while read i; do
             sub=`cd $i/.. && pwd`
             if [ "$root" != "$sub" ]; then
                 syncdir "$sub" || rc=1
