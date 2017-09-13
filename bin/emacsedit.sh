@@ -17,6 +17,12 @@ EMACSWINDOW=
 [ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
 [ `uname -s` = "Linux" ] && [ -z "$DISPLAY" ] && EMACSWINDOW=no
 
+function raise()
+{
+    [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
+    $TEST $EMACS -e "(raise-frame)"
+}
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
     -f) EMACS="emacs" ;;
@@ -81,6 +87,7 @@ fi
 
 if [ -n "$FILE" ]; then
     if [ "$MODE" = "run" ]; then
+        raise
         $TEST $EMACS -e "$FILE"
         exit 1
     fi
@@ -107,15 +114,15 @@ if [ -n "$FILE" ]; then
         [ -e "$FILE" ] && exit 0
         exit 1
     elif [ "$MODE" = "eval" ]; then
+        raise
         $TEST $EMACS -e "$FILE"
     elif [ "$MODE" = "make" ]; then
-        $TEST $EMACS -e "(raise-frame)"
         [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
         $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
     elif [ "$MODE" = "tail" ]; then
         $TEST $EMACS -e "(tailf \"$FILE\")"
     elif [ -n "$OFFSET" ]; then
-        $TEST $EMACS -e "(raise-frame)"
+        raise
         $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
     else
         JUMP=
@@ -125,10 +132,11 @@ if [ -n "$FILE" ]; then
         else
             JUMP=0
         fi
-        $TEST $EMACS -e "(raise-frame)"
+        raise
         $TEST eval $EMACS "+${JUMP}" "\"$FILE\""
     fi
 elif [ "$TEST" != "exists" ]; then
+    raise
     $TEST eval $EMACS
 fi
 exit 0
