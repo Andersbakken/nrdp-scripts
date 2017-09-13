@@ -114,7 +114,6 @@ if [ -n "$FILE" ]; then
         [ -e "$FILE" ] && exit 0
         exit 1
     elif [ "$MODE" = "eval" ]; then
-        raise
         $TEST $EMACS -e "$FILE"
     elif [ "$MODE" = "make" ]; then
         [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
