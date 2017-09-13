@@ -25,14 +25,16 @@
   :type 'function)
 
 (defun nrdp-automerge-nrdp-repo-path ()
-  (if (string-match "^/" nrdp-automerge-nrdp-repo)
-      nrdp-automerge-nrdp-repo
-    (concat nrdp-automerge-tools-path "/automerge/" nrdp-automerge-nrdp-repo)))
+  (expand-file-name
+   (if (string-match "^/" nrdp-automerge-nrdp-repo)
+       nrdp-automerge-nrdp-repo
+     (concat nrdp-automerge-tools-path "/automerge/" nrdp-automerge-nrdp-repo))))
 
 (defun nrdp-automerge-branches ()
-  (if (string-match "^/" nrdp-automerge-branches)
-      nrdp-automerge-branches
-    (concat nrdp-automerge-tools-path "/automerge/" nrdp-automerge-branches)))
+  (expand-file-name
+   (if (string-match "^/" nrdp-automerge-branches)
+       nrdp-automerge-branches
+     (concat nrdp-automerge-tools-path "/automerge/" nrdp-automerge-branches))))
 
 (defconst nrdp-automerge-buffer-name "*nrdp-automerge*")
 
@@ -148,7 +150,7 @@
     (nrdp-automerge-run-next-command)))
 
 (defun nrdp-automerge-push-git-automerge-command (type)
-  (nrdp-automerge-push-command (list (concat nrdp-automerge-tools-path "/automerge/git-automerge")
+  (nrdp-automerge-push-command (list (expand-file-name (concat nrdp-automerge-tools-path "/automerge/git-automerge"))
                                      "--repo" "ssh://git@stash.corp.netflix.com:7999/nrdp/nrdp.git"
                                      "--dir" (nrdp-automerge-nrdp-repo-path)
                                      (nrdp-automerge-branches)
@@ -164,8 +166,8 @@
 
 (defun nrdp-automerge-update-repo ()
   (if (executable-find "git-sync")
-      (nrdp-automerge-push-command (list "git" "-C" nrdp-automerge-tools-path "sync" "--no-color"))
-    (nrdp-automerge-push-command (list "git" "-C" nrdp-automerge-tools-path "pull"))))
+      (nrdp-automerge-push-command (list "git" "-C" (expand-file-name nrdp-automerge-tools-path) "sync" "--no-color"))
+    (nrdp-automerge-push-command (list "git" "-C" (expand-file-name nrdp-automerge-tools-path) "pull"))))
 
 (defun nrdp-automerge-abort ()
   (interactive)
