@@ -899,6 +899,7 @@ to case differences."
   (goto-char (point-min))
   (forward-line (1- N)))
 
+(defvar goto-line-with-feedback-history nil)
 (defun goto-line-with-feedback (&optional nolinum)
   "Show line numbers temporarily, while prompting for the line number input"
   (interactive "P")
@@ -915,7 +916,7 @@ to case differences."
           (when mode
             (funcall mode 0))
 
-          (let ((res (read-from-minibuffer "Goto line: ")))
+          (let ((res (read-from-minibuffer "Goto line: " nil nil nil 'goto-line-with-feedback-history)))
             (cond ((string-match "^,\\([0-9]+\\)$" res)
                    (goto-char (1+ (string-to-number (match-string 1 res)))))
                   ((string-match "^\\([0-9]+\\)%$" res)
