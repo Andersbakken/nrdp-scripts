@@ -167,10 +167,10 @@ build() {
             return 0
         fi
         eval "$i" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
-        break
+        return $?
     done
 
-    return $?
+    return 1
 }
 
 ALL=
