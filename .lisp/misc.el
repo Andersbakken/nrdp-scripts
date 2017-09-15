@@ -891,7 +891,12 @@ to case differences."
 ;; (add-to-list 'compilation-error-regexp-alist compilation-note-regexp)
 
 (defun compilation-parse-errors-filename (filename)
-  (if (or (equal major-mode 'grep-mode) (and filename (file-exists-p filename))) filename))
+  (cond ((equal major-mode 'grep-mode) filename)
+        ((null filename) filename)
+        ((not (file-name-absolute-p filename)) filename)
+        ((file-exists-p filename) filename)
+        (t nil)))
+
 (setq compilation-parse-errors-filename-function (function compilation-parse-errors-filename))
 
 ;; (define-key global-map [remap goto-line] 'goto-line-with-feedback)
