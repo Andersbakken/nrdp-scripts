@@ -19,6 +19,16 @@ findancestor() {
 SUCCESS_POST_COMMAND=
 ERROR_POST_COMMAND=
 
+findmake() {
+    which -a make | while read i; do
+        if [ -L "$i" ] && readlink "$i" | grep --quiet ubermake.sh; then
+            continue
+        fi
+        echo $i
+        break
+    done
+}
+
 numcores() {
     if [ -e "/proc/cpuinfo" ]; then
         grep -c "^processor" "/proc/cpuinfo"
@@ -156,21 +166,20 @@ build() {
     fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
 
-    which -a make | while read i; do
-        if [ -L "$i" ] && readlink "$i" | grep --quiet ubermake.sh; then
-            continue
-        fi
-        [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
-        [ -z "$BUILD_DIR" ] && BUILD_DIR=.
-        if [ -n "$RTAGS" ]; then
-            RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
-            return 0
-        fi
-        eval "$i" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
-        return $?
-    done
+    MAKE=`findmake`
+    if [ -z "$MAKE" ]; then
+        echo "Can't find make"
+        exit 1
+    fi
 
-    return 1
+    [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
+    [ -z "$BUILD_DIR" ] && BUILD_DIR=.
+    if [ -n "$RTAGS" ]; then
+        RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
+        return 0
+    fi
+    eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
+    return $?
 }
 
 ALL=
