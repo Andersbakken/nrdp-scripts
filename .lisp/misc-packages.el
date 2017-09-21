@@ -43,11 +43,10 @@
 
 (defvar misc-packages nil)
 (defun misc-init-packages (packages)
-  (setq misc-packages packages)
-  (let ((cur (misc-current-packages))
-        (updated))
+  (let (updated)
     (while packages
-      (unless (member (car packages) cur)
+      (push (car packages) misc-packages)
+      (when (not (package-installed-p (car packages)))
         (when (not updated)
           (setq updated t)
           (package-refresh-contents))
