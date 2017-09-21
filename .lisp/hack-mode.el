@@ -7,7 +7,13 @@
 (defconst hack-mode-find-file-mode-nth 3)
 (defconst hack-mode-find-log-nth 4)
 
-(defvar hack-mode-printf-format (cons "[%s:%d]" ", __FILE__, __LINE__"))
+(defun hack-mode-printf-format ()
+  (let* ((fn (buffer-file-name))
+         (name (if fn
+                   (file-name-nondirectory fn)
+                 (buffer-name))))
+
+    (cons (concat "[" name ":%d]") ", __LINE__")))
 
 ;;====================
 ;; Licensing fu
@@ -31,7 +37,7 @@
   (interactive)
   (if (not hack-mode-buffer-license-type)
       (let ((found nil) (regexp-list hack-mode-license-rege-list) (lic nil))
-        (widen) 
+        (widen)
         (goto-char (point-min))
         (push-mark)
         (while (and (not found) regexp-list)
@@ -59,7 +65,7 @@
            )))
 (defun troll-log-message (msg &optional nopercent) "Insert Troll logging message."
        (let ((result))
-         (insert (concat "qWarning(\"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format)))
+         (insert (concat "qWarning(\"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format))))
          (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))
          (insert ");")
          result))
@@ -125,7 +131,7 @@
                (setq result (point)))
            (progn
              (insert "Log::error"
-                     "(TRACE_LOG, \"" (car hack-mode-printf-format) ": " msg "\"" (cdr hack-mode-printf-format))
+                     "(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
              (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))))
          (insert ");")
          result))
@@ -166,7 +172,7 @@
       (progn
         (if (or (eq major-mode 'js2-mode) (eq major-mode 'js-mode))
             (insert "console.log('" msg "');")
-          (progn (insert (concat "printf(\"" (car hack-mode-printf-format) ": " msg "\\n\"" (cdr hack-mode-printf-format)))
+          (progn (insert (concat "printf(\"" (car (hack-mode-printf-format)) ": " msg "\\n\"" (cdr (hack-mode-printf-format))))
                  (if (and (not nopercent) (string-match "%" msg))
                      (progn (insert ", ") (setq msg-pos (point))))
                  (insert "); fflush(stdout);")))))
