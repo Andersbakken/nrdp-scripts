@@ -41,7 +41,7 @@ ecd()
     if [ -n "$1" ]; then
         emacsedit.sh -n "$1"
     else
-        cdd "@"
+        cddev "@"
     fi
 }
 
