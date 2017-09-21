@@ -15,6 +15,7 @@
 
     (cons (concat "[" name ":%d]") ", __LINE__")))
 
+(defvar hack-mode-templatize-header-format "__%s_H__")
 ;;====================
 ;; Licensing fu
 ;;====================
@@ -228,7 +229,7 @@
            (let ((name (file-name-nondirectory (buffer-file-name))) (empty-file (not (/= (point-min) (point-max)))))
              (if (nth hack-mode-templatize-nth hack-mode) (funcall (nth hack-mode-templatize-nth hack-mode)))
              (if (and empty-file name (string-match "\\.h$" name))
-                 (let ((define (upcase (format "__%s_H__" (file-name-sans-extension name)))))
+                 (let ((define (upcase (format hack-mode-templatize-header-format (file-name-sans-extension name)))))
                    (goto-char (point-max))
                    (insert "#ifndef " define "\n"
                            "#define " define "\n"
