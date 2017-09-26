@@ -1609,36 +1609,37 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-man (&optional word)
   (interactive "P")
-  (when (cond ((not misc-man-completion-cache))
-              ((and word (listp word)) (setq word nil) t)
-              (t (> (time-to-seconds (time-since (cdr misc-man-completion-cache))) (* 24 60 60))))
-    (setq misc-man-completion-cache (cons (misc-man-completion-cache) (current-time))))
+  (let ((case-fold-search nil))
+    (when (cond ((not misc-man-completion-cache))
+                ((and word (listp word)) (setq word nil) t)
+                (t (> (time-to-seconds (time-since (cdr misc-man-completion-cache))) (* 24 60 60))))
+      (setq misc-man-completion-cache (cons (misc-man-completion-cache) (current-time))))
 
-  (let* ((sym (thing-at-point 'symbol)) ;; completion
-         (prompt (format "Man page%s: "
-                         (or (and sym (format " (default \"%s\")" sym)) "")))
-         (page (misc-trim-string (or word (completing-read-default prompt (car misc-man-completion-cache) nil nil nil nil sym)))))
-    (unless (> (length page) 0)
-      (setq page sym))
-    (unless page
-      (error "No page?"))
-    (when (string-match "^[^(]*([0-9]+[^)]*$" page)
-      (setq page (concat page ")")))
-    (when (string-match "^\\(.*\\)($" page)
-      (setq page (match-string 1 page)))
-    (when (string-match "()$" page)
-      (setq page (substring page 0 -2)))
-    (unless (string-match "(" page)
-      (let ((all (car misc-man-completion-cache))
-            (rx (concat "^" page "(")))
-        (while all
-          (if (string-match rx (car all))
-              (setq page (car all) all nil)
-            (setq all (cdr all))))))
-    (when (and (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
-               (string= (match-string 2 page) "-a"))
-      (setq page (concat "-a " (match-string 1 page))))
-    (man page)))
+    (let* ((sym (thing-at-point 'symbol)) ;; completion
+           (prompt (format "Man page%s: "
+                           (or (and sym (format " (default \"%s\")" sym)) "")))
+           (page (misc-trim-string (or word (completing-read-default prompt (car misc-man-completion-cache) nil nil nil nil sym)))))
+      (unless (> (length page) 0)
+        (setq page sym))
+      (unless page
+        (error "No page?"))
+      (when (string-match "^[^(]*([0-9]+[^)]*$" page)
+        (setq page (concat page ")")))
+      (when (string-match "^\\(.*\\)($" page)
+        (setq page (match-string 1 page)))
+      (when (string-match "()$" page)
+        (setq page (substring page 0 -2)))
+      (unless (string-match "(" page)
+        (let ((all (car misc-man-completion-cache))
+              (rx (concat "^" page "(")))
+          (while all
+            (if (string-match rx (car all))
+                (setq page (car all) all nil)
+              (setq all (cdr all))))))
+      (when (and (string-match "\\([^ ]*\\)(\\([^ ]*\\))" page)
+                 (string= (match-string 2 page) "-a"))
+        (setq page (concat "-a " (match-string 1 page))))
+      (man page))))
 
 
 (defun misc-liberal-file-exists (arg)
