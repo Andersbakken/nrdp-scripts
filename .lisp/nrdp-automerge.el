@@ -118,19 +118,21 @@
 
 (defun nrdp-automerge-process-filter (process output)
   (when (eq process nrdp-automerge-current-shell-process)
-    (with-current-buffer (nrdp-automerge-buffer)
-      (let ((atend (= (point) (point-max))))
-        (save-excursion
-          (goto-char (point-max))
-          (setq buffer-read-only nil)
-          (let ((start (point)))
-            (insert output)
-            (goto-char start)
-            (while (search-forward "" nil t)
-              (delete-region (point-at-bol) (point))))
-          (setq buffer-read-only t))
-        (when atend
-          (goto-char (point-max)))))))
+    (let ((buf (nrdp-automerge-buffer)))
+      (when buf
+        (with-current-buffer buf
+          (let ((atend (= (point) (point-max))))
+            (save-excursion
+              (goto-char (point-max))
+              (setq buffer-read-only nil)
+              (let ((start (point)))
+                (insert output)
+                (goto-char start)
+                (while (search-forward "" nil t)
+                  (delete-region (point-at-bol) (point))))
+              (setq buffer-read-only t))
+            (when atend
+              (goto-char (point-max)))))))))
 
 (defun nrdp-automerge-run-next-command ()
   ;; (message "nrdp-automerge-run-next-command %d" (length nrdp-automerge-pending-shell-commands))
