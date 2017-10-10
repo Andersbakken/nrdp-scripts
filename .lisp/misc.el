@@ -1820,4 +1820,17 @@ there's a region, all lines that region covers will be duplicated."
     (--misc-replace-string-helper "“" "\"" (min start end) (max start end))
     (--misc-replace-string-helper "”" "\"" (min start end) (max start end))))
 
+(defvar misc-other-window-transient-map (make-sparse-keymap))
+(define-key misc-other-window-transient-map (kbd "o") (function misc-other-window))
+(define-key misc-other-window-transient-map (kbd "O") (function misc-other-window-reverse))
+
+(defun misc-other-window (count &optional all-frames)
+  (interactive "p")
+  (other-window count all-frames)
+  (set-transient-map misc-other-window-transient-map))
+
+(defun misc-other-window-reverse (count &optional all-frames)
+  (interactive "p")
+  (misc-other-window (or count -1) all-frames))
+
 (provide 'nrdp-misc)
