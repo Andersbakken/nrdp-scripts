@@ -7,7 +7,6 @@
 ;; (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer)
 
 (message "initializing desktop")
-(desktop-aids-mode t)
 
 (defvar-local --desktop-aids-pending nil)
 (defun desktop-aids-sync-buffer ()
@@ -71,7 +70,8 @@
         (dolist (mode desktop-aids-modes)
           (add-to-list 'desktop-buffer-mode-handlers `(,mode . desktop-aids-lazy-handler)))
         (desktop-read)
-        (desktop-save-mode 1))
+        (desktop-save-mode 1)
+        (desktop-aids-sync-buffer))
         ;; (add-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook))
     ;; (remove-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook)
     (desktop-save-mode nil)))
