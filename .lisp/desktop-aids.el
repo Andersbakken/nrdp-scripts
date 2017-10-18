@@ -1,24 +1,46 @@
 ;; ;; To enable:
 ;; (require 'desktop-aids)
-;; (add-to-list 'desktop-buffer-mode-handlers '(c-mode . desktop-aids-lazy-handler))
-;; (add-to-list 'desktop-buffer-mode-handlers '(c++-mode . desktop-aids-lazy-handler))
-;; (add-to-list 'desktop-buffer-mode-handlers '(js2-mode . desktop-aids-lazy-handler))
-;; (add-to-list 'desktop-buffer-mode-handlers '(js3-mode . desktop-aids-lazy-handler))
-;; (desktop-read)
-;; (desktop-save-mode 1)
+;; (add-to-list 'desktop-aids-modes 'c-mode)
+;; (add-to-list 'desktop-aids-modes 'c++-mode)
+;; (add-to-list 'desktop-aids-modes 'js2-mode)
+;; (add-to-list 'desktop-aids-modes 'js3-mode)
+;; (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer)
+
+(message "initializing desktop")
+(desktop-aids-mode t)
 
 (defvar-local --desktop-aids-pending nil)
-(defun --desktop-aids-post-command-hook ()
+(defun desktop-aids-sync-buffer ()
   (when (buffer-local-value '--desktop-aids-pending (current-buffer))
     ;; (message "hook called")
     (kill-local-variable '--desktop-aids-pending)
-    (remove-hook 'post-command-hook '--desktop-aids-post-command-hook t)
+    (remove-hook 'post-command-hook 'desktop-aids-sync-buffer t)
     (set-auto-mode)))
 
 (define-derived-mode desktop-aids-lazy-mode nil "desktop-aids-lazy"
   "Good mode"
   (setq --desktop-aids-pending t)
-  (add-hook 'post-command-hook '--desktop-aids-post-command-hook nil t))
+  (add-hook 'post-command-hook 'desktop-aids-sync-buffer nil t))
+
+(defvar --desktop-aids-buffer-list-updated-timer nil)
+(defun --desktop-aids-on-buffer-list-updated-timer (&optional arg1 arg2)
+  (setq --desktop-aids-buffer-list-updated-timer nil)
+  (desktop-aids-sync-buffer))
+  ;; (kill-local-variable '--desktop-aids-pending)
+  ;; (remove-hook 'post-command-hook 'desktop-aids-post-command-hook t)
+  ;; (set-auto-mode))
+  ;; (message "timer fired %s" (buffer-name)))
+
+(defun --desktop-aids-buffer-list-update-hook ()
+  ;; (message "Called %s" (buffer-name)))
+  (unless --desktop-aids-buffer-list-updated-timer
+    (setq --desktop-aids-buffer-list-updated-timer
+          (run-with-idle-timer .5 t '--desktop-aids-on-buffer-list-updated-timer nil t))))
+
+  ;; (message "hook called %s" (buffer-name))
+  ;; (when (buffer-local-value '--desktop-aids-pending (current-buffer))
+  ;;   (kill-local-variable '--desktop-aids-pending)
+  ;;   (set-auto-mode)))
 
 (defun desktop-aids-lazy-handler (filename buffername misc-data)
 ;;  (message "got called %s %s" filename buffername)
@@ -49,8 +71,9 @@
         (dolist (mode desktop-aids-modes)
           (add-to-list 'desktop-buffer-mode-handlers `(,mode . desktop-aids-lazy-handler)))
         (desktop-read)
-        (desktop-save-mode 1)
-        (--desktop-aids-post-command-hook))
+        (desktop-save-mode 1))
+        ;; (add-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook))
+    ;; (remove-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook)
     (desktop-save-mode nil)))
 
 (provide 'desktop-aids)
