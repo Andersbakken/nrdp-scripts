@@ -15,8 +15,13 @@
     (remove-hook 'post-command-hook '--desktop-aids-post-command-hook t)
     (set-auto-mode)))
 
+(define-derived-mode desktop-aids-lazy-mode nil "desktop-aids-lazy"
+  "Good mode"
+  (setq --desktop-aids-pending t)
+  (add-hook 'post-command-hook '--desktop-aids-post-command-hook nil t))
+
 (defun desktop-aids-lazy-handler (filename buffername misc-data)
-  ;; (message "got called %s %s" filename buffername)
+;;  (message "got called %s %s" filename buffername)
   (when filename
     (if (not (file-exists-p filename))
         (message "desktop-aids: \"%s\" no longer exists" filename)
@@ -32,8 +37,20 @@
             (setq buffer-file-name filename)
             (setq default-directory (file-name-directory filename))
             (set-buffer-modified-p nil))
-          (setq --desktop-aids-pending t)
-          (add-hook 'post-command-hook '--desktop-aids-post-command-hook nil t)
+          (desktop-aids-lazy-mode)
           (current-buffer))))))
+
+(defvar desktop-aids-modes nil)
+(define-minor-mode desktop-aids-mode "Good minor mode"
+  :init-value nil
+  (if desktop-aids-mode
+      (progn
+        (add-to-list 'desktop-buffer-mode-handlers '(desktop-aids-lazy-mode . desktop-aids-lazy-handler))
+        (dolist (mode desktop-aids-modes)
+          (add-to-list 'desktop-buffer-mode-handlers `(,mode . desktop-aids-lazy-handler)))
+        (desktop-read)
+        (desktop-save-mode 1)
+        (--desktop-aids-post-command-hook))
+    (desktop-save-mode nil)))
 
 (provide 'desktop-aids)
