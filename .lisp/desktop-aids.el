@@ -5,8 +5,10 @@
 ;; (add-to-list 'desktop-aids-modes 'js2-mode)
 ;; (add-to-list 'desktop-aids-modes 'js3-mode)
 ;; (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer)
+;; (add-hook 'next-error-hook 'desktop-aids-sync-buffer)
+;; (desktop-aids-mode t)
 
-(message "initializing desktop")
+;; (message "initializing desktop")
 
 (defvar-local --desktop-aids-pending nil)
 (defun desktop-aids-sync-buffer ()
