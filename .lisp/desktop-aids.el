@@ -4,8 +4,6 @@
 ;; (add-to-list 'desktop-aids-modes 'c++-mode)
 ;; (add-to-list 'desktop-aids-modes 'js2-mode)
 ;; (add-to-list 'desktop-aids-modes 'js3-mode)
-;; (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer)
-;; (add-hook 'next-error-hook 'desktop-aids-sync-buffer)
 ;; (desktop-aids-mode t)
 
 ;; (message "initializing desktop")
@@ -73,9 +71,16 @@
           (add-to-list 'desktop-buffer-mode-handlers `(,mode . desktop-aids-lazy-handler)))
         (desktop-read)
         (desktop-save-mode 1)
+        (add-hook 'next-error-hook 'desktop-aids-sync-buffer)
+        (when (boundp 'rtags-after-find-file-hook)
+          (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer))
+
         (desktop-aids-sync-buffer))
         ;; (add-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook))
     ;; (remove-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook)
+    (remove-hook 'next-error-hook 'desktop-aids-sync-buffer)
+    (when (boundp 'rtags-after-find-file-hook)
+      (remove-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer))
     (desktop-save-mode nil)))
 
 (provide 'desktop-aids)
