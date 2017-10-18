@@ -16,15 +16,22 @@
     (set-auto-mode)))
 
 (defun desktop-aids-lazy-handler (filename buffername misc-data)
+  ;; (message "got called %s %s" filename buffername)
   (when filename
     (if (not (file-exists-p filename))
         (message "desktop-aids: \"%s\" no longer exists" filename)
-      (let ((buffer (get-buffer-create buffername)))
+      (let* ((existing (get-buffer buffername))
+             (buffer (or existing (get-buffer-create buffername))))
+        ;; (message "balls %s %s %s" filename existing buffer)
         (with-current-buffer buffer
-          (insert-file-contents-literally filename)
-          (setq buffer-file-name filename)
-          (setq default-directory (file-name-directory filename))
-          (set-buffer-modified-p nil)
+          ;; (when existing
+          ;;   (message "had existing %s %s %d %s" buffername filename (point-max) major-mode))
+          (when (not existing)
+            ;; (message "recreated %s %s" buffername filename)
+            (insert-file-contents-literally filename)
+            (setq buffer-file-name filename)
+            (setq default-directory (file-name-directory filename))
+            (set-buffer-modified-p nil))
           (setq --desktop-aids-pending t)
           (add-hook 'post-command-hook '--desktop-aids-post-command-hook nil t)
           (current-buffer))))))
