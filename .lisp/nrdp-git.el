@@ -262,12 +262,12 @@
 
 (defun nrdp-git-show-revision (&optional file sha)
   (interactive "P")
-  (cond ((stringp file))
-        ((bufferp file) (setq file (buffer-file-name)))
-        ((null file) (setq file (buffer-file-name)))
-        (t (setq file (read-file-name "File: "))))
-  (unless file
-    (error "You have to select a file!"))
+  (setq file (expand-file-name (cond ((stringp file) file)
+                                     ((bufferp file) (buffer-file-name file))
+                                     ((null file) (buffer-file-name))
+                                     (t (setq file (read-file-name "File: "))))))
+  (unless (file-exists-p file)
+    (error "You have to select a file! (%s)" file))
   (setq file (file-truename file))
   (let ((default-directory (nrdp-git-dir-for-file file)))
     (unless sha
@@ -408,7 +408,7 @@
     (goto-char (point-min))
     (let ((file (cond ((looking-at "Commits for file \\(.*\\) in [^ ]+$")
                        (buffer-substring-no-properties (match-beginning 1) (match-end 1)))
-                      ((string-match "Commits in [^ ]* touching \\(.*\\)" header-line-format)
+                      ((string-match "Commits in [^ ]* touching \\(.*[^ ]\\) *$" header-line-format)
                        (match-string 1 header-line-format))
                       (t
                        (error "Not in approriate magit-log buffer it seems")))))
