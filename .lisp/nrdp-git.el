@@ -5,6 +5,7 @@
 ;; 1.4.2 compatibility
 (require 'buffer-local-mode)
 (require 'magit)
+(require 's)
 
 (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
 (define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
@@ -161,6 +162,7 @@
         search
       (or default ""))))
 
+
 (defun nrdp-git-grep (&optional dir)
   "git-grep the entire current repo"
   (interactive)
@@ -188,6 +190,7 @@
       (when pipeidx
         (setq pipe (substring search pipeidx))
         (setq search (substring search 0 pipeidx))))
+    (setq search (s-chop-suffix " " search))
     (when (string-match "^[^\"-]* [^\"-]*$" search)
       (setq search (concat "\"" search "\"")))
 
@@ -210,9 +213,20 @@
                  (not hasarg))
         (push "--" args))
 
+      ;; (message "%s" (concat "git --no-pager grep -I -n "
+      ;;                  (mapconcat 'identity args " ")
+      ;;                  (if hasdashdash
+      ;;                      " "
+      ;;                    " -- ")
+      ;;                  dir
+      ;;                  " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
+      ;;                  pipe)))))
+
       (grep-find (concat "git --no-pager grep -I -n "
                          (mapconcat 'identity args " ")
-                         (if hasdashdash " " " -- ")
+                         (if hasdashdash
+                             " "
+                           " -- ")
                          dir
                          " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
                          pipe)))))
