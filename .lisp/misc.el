@@ -1833,4 +1833,19 @@ there's a region, all lines that region covers will be duplicated."
   (interactive "p")
   (misc-other-window (or count -1) all-frames))
 
+(defvar misc-next-error-map nil)
+(setq misc-next-error-map (make-sparse-keymap))
+(define-key misc-next-error-map (kbd "`") (function misc-next-error))
+(define-key misc-next-error-map (kbd "~") (function misc-previous-error))
+
+(defun misc-next-error (&optional arg reset)
+  (interactive "P")
+  (next-error arg reset)
+  (set-transient-map misc-next-error-map))
+
+(defun misc-previous-error (&optional n)
+  (interactive "p")
+  (previous-error n)
+  (set-transient-map misc-next-error-map))
+
 (provide 'nrdp-misc)
