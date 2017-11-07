@@ -18,6 +18,7 @@ while [ "$#" -gt 0 ]; do
     shift
     case $OPT in
         -r) SUBCOMMAND="reflog" ;;
+        -c) SUBCOMMAND="cherry" ;;
         -a) MERGES="1" ;;
         -b) BRANCHES="1" ;;
         -) COUNT_MERGES="1" ;;
@@ -44,11 +45,6 @@ while [ "$#" -gt 0 ]; do
         *) UNKNOWN_OPTS="$UNKNOWN_OPTS $OPT";;
     esac
 done
-if [ "$COUNT_MERGES" = "1" ]; then
-    OPTS="$OPTS --merges"
-elif [ "$MERGES" = "0" ]; then
-    OPTS="$OPTS --no-merges"
-fi
 OPTS="$OPTS $UNKNOWN_OPTS"
 PRETTY_OPTS="--oneline --abbrev-commit"
 if [ "$NO_COLOR" = "1" ]; then
@@ -60,7 +56,16 @@ fi
 if false; then
     eval git $SUBCOMMAND $PRETTY_OPTS $OPTS
 else
-    CHANGES=`eval git $SUBCOMMAND --no-color --pretty='%h' $OPTS`
+    if [ "$SUBCOMMAND" = "cherry" ]; then
+        CHANGES=`eval git $SUBCOMMAND $(echo $OPTS | sed 's,\.\., ,g') | sed 's,^[\+-] ,,g'`
+    else
+        if [ "$COUNT_MERGES" = "1" ]; then
+            OPTS="$OPTS --merges"
+        elif [ "$MERGES" = "0" ]; then
+            OPTS="$OPTS --no-merges"
+        fi
+        CHANGES=`eval git $SUBCOMMAND --no-color --pretty='%h' $OPTS`
+    fi
     for change in $CHANGES; do
         line=`eval git show --no-patch ${PRETTY_OPTS} ${change}`
         if [ "$COUNT_MERGES" = "1" ]; then
