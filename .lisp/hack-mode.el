@@ -139,6 +139,8 @@
 (defun netflix-c-mode-hook () (setq
                                tab-width 4
                                c-basic-offset 4
+                               cmake-tab-width 4
+                               indent-tabs-mode nil
                                ))
 (defun netflix-find-file-hook ()
   (setq
