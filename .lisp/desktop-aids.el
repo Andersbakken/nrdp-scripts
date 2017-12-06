@@ -16,7 +16,7 @@
     (remove-hook 'post-command-hook 'desktop-aids-sync-buffer t)
     (if (file-exists-p (buffer-file-name))
         (find-alternate-file (buffer-file-name))
-      (message "File has disappeared: %s" (buffer-file-name)_)
+      (message "File has disappeared: %s" (buffer-file-name))
       (kill-buffer (current-buffer)))))
 
 (define-derived-mode desktop-aids-lazy-mode nil "desktop-aids-lazy"
