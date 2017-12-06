@@ -76,6 +76,8 @@
         (add-hook 'next-error-hook 'desktop-aids-sync-buffer)
         (when (boundp 'rtags-after-find-file-hook)
           (add-hook 'rtags-after-find-file-hook 'desktop-aids-sync-buffer))
+        (when (boundp 'rtags-switch-to-buffer-hook)
+          (add-hook 'rtags-switch-to-buffer-hook 'desktop-aids-sync-buffer))
 
         (desktop-aids-sync-buffer))
         ;; (add-hook 'buffer-list-update-hook '--desktop-aids-buffer-list-update-hook))
