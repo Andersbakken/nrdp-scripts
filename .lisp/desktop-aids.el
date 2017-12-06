@@ -14,7 +14,10 @@
     ;; (message "hook called")
     (kill-local-variable '--desktop-aids-pending)
     (remove-hook 'post-command-hook 'desktop-aids-sync-buffer t)
-    (set-auto-mode)))
+    (if (file-exists-p (buffer-file-name))
+        (find-alternate-file (buffer-file-name))
+      (message "File has disappeared: %s" (buffer-file-name)_)
+      (kill-buffer (current-buffer)))))
 
 (define-derived-mode desktop-aids-lazy-mode nil "desktop-aids-lazy"
   "Good mode"
@@ -54,7 +57,6 @@
           ;;   (message "had existing %s %s %d %s" buffername filename (point-max) major-mode))
           (when (not existing)
             ;; (message "recreated %s %s" buffername filename)
-            (insert-file-contents-literally filename)
             (setq buffer-file-name filename)
             (setq default-directory (file-name-directory filename))
             (set-buffer-modified-p nil))
