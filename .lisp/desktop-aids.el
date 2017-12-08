@@ -56,6 +56,7 @@
           ;; (when existing
           ;;   (message "had existing %s %s %d %s" buffername filename (point-max) major-mode))
           (when (not existing)
+            (insert-file-contents-literally filename)
             ;; (message "recreated %s %s" buffername filename)
             (setq buffer-file-name filename)
             (setq default-directory (file-name-directory filename))
