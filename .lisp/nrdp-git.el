@@ -320,7 +320,7 @@
       (setq buffer-file-name git-file)
       (set-auto-mode)
       (setq buffer-file-name nil)
-      (font-lock-fontify-buffer)
+      (font-lock-flush)
       (setq buffer-read-only t)
       (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
