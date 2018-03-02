@@ -15,7 +15,8 @@
           (decf count)
           (puthash name t desktop-aids-save-buffers)))
       (setq buffers (cdr buffers))))
-  (apply orig-fun args))
+  (apply orig-fun args)
+  (setq desktop-aids-save-buffers nil))
 
 (defun desktop-aids-save-buffer-p (orig-fun &rest args)
   (and (gethash (car args) desktop-aids-save-buffers)
