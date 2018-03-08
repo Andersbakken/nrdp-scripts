@@ -2,12 +2,12 @@
 RESULT=`uptime | sed 's/.*load average: \([0-9.]*\), \([0-9.]*\), \([0-9.]*\)/Load: \1 \2 \3/'`
 
 JOBS_TOTAL=0
-for jobs in `/bin/echo -e "listcs\nquit\n" | nc nrdp.corp.netflix.com 8766 | grep jobs= | sed 's,.*jobs=\([0-9]*/[0-9]*\).*,\1,'`; do
-    JOBS_USE=`echo $jobs | cut -d/ -f1`
-    JOBS_COUNT=`echo $jobs | cut -d/ -f2`
-    JOBS_COUNT=$((JOBS_COUNT-$JOBS_USE))
-    JOBS_TOTAL=$((JOBS_TOTAL+$JOBS_COUNT))
-done
+#for jobs in `/bin/echo -e "listcs\nquit\n" | nc nrdp.corp.netflix.com 8766 | grep jobs= | sed 's,.*jobs=\([0-9]*/[0-9]*\).*,\1,'`; do
+#    JOBS_USE=`echo $jobs | cut -d/ -f1`
+#    JOBS_COUNT=`echo $jobs | cut -d/ -f2`
+#    JOBS_COUNT=$((JOBS_COUNT-$JOBS_USE))
+#    JOBS_TOTAL=$((JOBS_TOTAL+$JOBS_COUNT))
+#done
 
 if [ "$JOBS_TOTAL" != 0 ]; then
     JOBS_COMP=0
