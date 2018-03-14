@@ -71,7 +71,7 @@
 (add-hook 'post-command-hook (function agb-git-blame-post-command-hook))
 
 (defun agb-git-blame (&optional revision file)
-  (interactive)
+  (interactive "P")
   (let* ((buffer-name (cond (file)
                             ((buffer-file-name))
                             ((agb-git-blame-filename))))
@@ -80,7 +80,9 @@
          (lineno (line-number-at-pos)))
     (unless buffer-name
       (error "Can't blame this file"))
-    (unless revision (setq revision "HEAD"))
+    (cond ((null revision) (setq revision "HEAD"))
+          ((listp revision) (setq revision (read-from-minibuffer "Committish: ")))
+          (t))
     (when (and agb-git-blame-reuse-buffers
                agb-git-blame-last-blame-buffer
                (not (eq buf agb-git-blame-last-blame-buffer)))
