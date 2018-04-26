@@ -93,7 +93,7 @@ if [ -n "$CONFIGURE" ]; then
                 y|yes)
                     rm -f "/tmp/config.status"
                     cp "config.status" "/tmp/config.status"
-                    rm -rf * .ninja_*
+                    rm -rf * .ninja_* .configure.*
                     cp "/tmp/config.status" "config.status"
                     break
                     ;;
