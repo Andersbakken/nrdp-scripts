@@ -16,12 +16,14 @@ git() #make git checkout commands usable with submodules
     command git "$@"
     elif [ "$1" == "pull" ]; then
         command git "$@" && git submodule update --init --recursive
+    elif [ "$1" == "fetch" ]; then
+        command git "$@" && git submodule foreach git fetch --tags
     elif [ "$1" == "checkout" ]; then
-    if echo "$@" | grep -e "--force" >/dev/null || echo "$@" | grep -e "-f" >/dev/null; then
+        if echo "$@" | grep -e "--force" >/dev/null || echo "$@" | grep -e "-f" >/dev/null; then
             command git "$@" && git submodule update --init --recursive --force
-    else
-        command git "$@" && git submodule update --init --recursive
-    fi
+        else
+            command git "$@" && git submodule update --init --recursive
+        fi
     elif [ "$1" == "reset" ]; then
         if echo "$@" | grep -e "--hard" >/dev/null; then
             command git "$@" && git submodule update --init --recursive --force
@@ -31,7 +33,6 @@ git() #make git checkout commands usable with submodules
     else
         command git "$@"
     fi
-
 }
 
 update_current_pwd()

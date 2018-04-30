@@ -2,8 +2,7 @@
   (interactive "p")
   (let ((opts nil))
     (with-temp-buffer
-      (call-process "pvm" nil t nil "ls")
-      ;; (message "GOT SHIT:\n%s" (buffer-string))
+      (call-process "pvm" nil t nil "--no-color" "--no-autoupdate" "ls")
       (goto-char (point-min))
       (while (re-search-forward "\\([^ ]+@[0-9]+\\) *-" nil t)
         ;; (message "Got line %s" (buffer-substring-no-properties (point-at-bol) (match-end 1)))
