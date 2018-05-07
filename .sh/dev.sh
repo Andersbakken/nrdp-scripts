@@ -124,7 +124,6 @@ function findcmake()
 
 block-icecream() {
     [ -e "/etc/icecc/icecc.conf" ] && . /etc/icecc/icecc.conf
-    [ -z "$ICECC_SCHEDULER_HOST" ] && ICECC_SCHEDULER_HOST="lgux-pnavarro3.corp.netflix.com"
     echo blockcs "$1" | nc "$ICECC_SCHEDULER_HOST" 8766
 }
 
