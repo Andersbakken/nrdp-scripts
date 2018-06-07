@@ -122,7 +122,7 @@ build() {
                             i="$RESOLVED"
                         fi
                         case "$i" in
-                            *icecc|*plastc)
+                            *icecc|*plastc|*fiskc)
                             # echo "It's icecream $f $i"
                             ;;
                             *) ### no build farm, lets reduce jobs
