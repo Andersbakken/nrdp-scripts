@@ -228,7 +228,7 @@
                              " "
                            " -- ")
                          dir
-                         " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js'"
                          pipe)))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
