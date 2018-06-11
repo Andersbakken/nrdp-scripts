@@ -15,7 +15,7 @@
 
     (cons (concat "[" name ":%d]") ", __LINE__")))
 
-(defvar hack-mode-templatize-header-format "__%s_H__")
+(defvar hack-mode-templatize-header-format "%s_H_")
 ;;====================
 ;; Licensing fu
 ;;====================
