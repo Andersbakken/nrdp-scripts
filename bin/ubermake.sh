@@ -19,6 +19,20 @@ findancestor() {
 SUCCESS_POST_COMMAND=
 ERROR_POST_COMMAND=
 
+# TRAP SIGNALS
+trap 'cleanup' QUIT EXIT
+
+if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ]; then
+    rc -j 1 --silent
+fi
+
+cleanup()
+{
+    if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ]; then
+        rc -j default --silent
+    fi
+}
+
 findmake() {
     which -a make | while read i; do
         if [ -L "$i" ] && readlink "$i" | grep --quiet ubermake.sh; then
