@@ -936,10 +936,48 @@ to case differences."
         (funcall mode 1)))))
 
 ;; ================================================================================
-;; agb-occur
+;; misc-git-gutter+
 ;; ================================================================================
+;; (define-key global-map (kbd "C-x g =") (function misc-git-gutter+-show-hunk))
+;; (define-key global-map (kbd "C-x g d") (function misc-git-gutter+-show-hunk))
+;; (define-key global-map (kbd "C-x g n") (function misc-git-gutter+-next-hunk))
+;; (define-key global-map (kbd "C-x g p") (function misc-git-gutter+-previous-hunk))
+;; (define-key global-map (kbd "C-x g r") (function misc-git-gutter+-revert-hunk))
+(defvar misc-git-gutter+-transient-map (make-sparse-keymap))
+(define-key misc-git-gutter+-transient-map (kbd "n") (function misc-git-gutter+-next-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "N") (function misc-git-gutter+-previous-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "p") (function misc-git-gutter+-previous-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "P") (function misc-git-gutter+-next-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "=") (function misc-git-gutter+-show-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "d") (function misc-git-gutter+-show-hunk))
+(define-key misc-git-gutter+-transient-map (kbd "r") (function misc-git-gutter+-revert-hunk))
 
-(defun agb-occur-data ()
+(defun misc-git-gutter+-next-hunk (arg)
+  (interactive "p")
+  (git-gutter+-next-hunk arg)
+  (set-transient-map misc-git-gutter+-transient-map))
+
+(defun misc-git-gutter+-previous-hunk (arg)
+  (interactive "p")
+  (git-gutter+-previous-hunk arg)
+  (set-transient-map misc-git-gutter+-transient-map))
+
+(defun misc-git-gutter+-show-hunk ()
+  (interactive)
+  (call-interactively 'git-gutter+-show-hunk)
+  (set-transient-map misc-git-gutter+-transient-map))
+
+(defun misc-git-gutter+-revert-hunk ()
+  (interactive)
+  (git-gutter+-revert-hunks)
+  (set-transient-map misc-git-gutter+-transient-map))
+
+;; ================================================================================
+;; misc-occur
+;; ================================================================================
+;; (define-key global-map (kbd "C-M-o") (function misc-occur))
+
+(defun misc-occur-data ()
   (save-excursion
     (goto-char (point-min))
     (if (looking-at "^[0-9]+ match\\(es\\)\? for \"\\(.*\\)\" in buffer: \\(.*\\)")
@@ -947,9 +985,9 @@ to case differences."
               (buffer-substring-no-properties (match-beginning 3) (match-end 3)))))
   )
 
-(defun agb-is-occur-buffer () (string-match (buffer-name) "*Occur*"))
+(defun misc-is-occur-buffer () (string-match (buffer-name) "*Occur*"))
 
-(defun agb-occur-read-from-minibuffer ()
+(defun misc-occur-read-from-minibuffer ()
   (let* ((word (current-word))
          (pattern
           (read-from-minibuffer
@@ -960,11 +998,11 @@ to case differences."
         word
       pattern)))
 
-(defun agb-occur (&optional dont-reoccur)
+(defun misc-occur (&optional dont-reoccur)
   (interactive "P")
-  (if (and (not dont-reoccur) (agb-is-occur-buffer))
-      (let* ((pattern (agb-occur-read-from-minibuffer))
-             (data (and pattern (agb-occur-data)))
+  (if (and (not dont-reoccur) (misc-is-occur-buffer))
+      (let* ((pattern (misc-occur-read-from-minibuffer))
+             (data (and pattern (misc-occur-data)))
              (phrase (car data))
              (buffer (cdr data)))
         (delete-window)
@@ -1028,7 +1066,7 @@ to case differences."
     ret))
 
 ;; ================================================================================
-;; agb-isearch
+;; misc-isearch
 ;; ================================================================================
 ;; (define-key isearch-mode-map (kbd "C-w") (function misc-isearch-yank-word-or-char-from-beginning-of-symbol))
 ;; (define-key isearch-mode-map (kbd "M-w") (function isearch-yank-word-or-char))
