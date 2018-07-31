@@ -3,7 +3,6 @@
 if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
     # Modify the pick line to an edit line and just exit.
-    cat $1 > /tmp/fask
     rm -f /tmp/preeditcommit$$
     touch /tmp/preeditcommit$$
     rm -f /tmp/posteditcommit$$
@@ -24,8 +23,7 @@ if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
         fi
     done
     cat /tmp/preeditcommit$$ /tmp/posteditcommit$$ > "$1"
-    cat "$1" > /tmp/foobar
-    # rm -f /tmp/preeditcommit$$ /tmp/posteditcommit$$
+    rm -f /tmp/preeditcommit$$ /tmp/posteditcommit$$
     exit 0
 fi
 
