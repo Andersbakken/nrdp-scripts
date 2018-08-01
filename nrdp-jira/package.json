@@ -7,5 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "gpg": "^0.6.0",
+    "jira-client": "^6.4.1",
+    "minimist": "^1.2.0",
+    "ws": "^6.0.0"
+  }
 }
