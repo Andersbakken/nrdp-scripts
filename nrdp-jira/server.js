@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require("fs");
 const WebSocket = require("ws");
 const argv = require("minimist")(process.argv.slice(2));
