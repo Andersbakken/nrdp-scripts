@@ -22,13 +22,13 @@ ERROR_POST_COMMAND=
 # TRAP SIGNALS
 trap 'cleanup' QUIT EXIT
 
-if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ]; then
+if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
     rc -j 1 --silent
 fi
 
 cleanup()
 {
-    if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ]; then
+    if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
         rc -j default --silent
     fi
 }
