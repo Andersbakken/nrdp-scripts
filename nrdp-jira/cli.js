@@ -82,20 +82,26 @@ function connect()
         }
 
         if (msg.needsPassword) {
-            console.log("gotta send stuff");
+            //console.log("gotta send stuff");
             if (process.env["JIRA_PASSWORD_FILE"]) {
-                console.log("hehhh");
+                //console.log("hehhh");
                 gpg.decryptFile(process.env["JIRA_PASSWORD_FILE"], (err, contents) => {
-                    console.log("hehhh2");
+                    if (!contents) {
+                        console.error("gpg error", err);
+                        process.exit(1);
+                        return;
+                    }
+
+                    //console.log("hehhh2");
                     ws.send(JSON.stringify({
                         username: process.env.USER,
                         password: contents.toString("utf8").trim()
                     }));
                 });
-                console.log("hehhh3");
+                //console.log("hehhh3");
             } else {
                 readPassword().then(pwd => {
-                    console.log("hohhh2");
+                    //console.log("hohhh2");
                     ws.send(JSON.stringify({
                         username: process.env.USER,
                         password: pwd
@@ -104,13 +110,12 @@ function connect()
             }
         }
         if ("success" in msg) {
-            console.log("got final response", msg);
+            console.log(msg);
             process.exit(msg.success ? 0 : 1);
         }
     });
 
     ws.on("error", error => {
-        console.log("Got error", error);
         if (error.code == 'ECONNREFUSED') {
             if (!spawned) {
                 console.log("ECONNREFUSED starting daemon");
@@ -118,11 +123,12 @@ function connect()
                 daemon.unref();
 
                 spawned = true;
+
+                console.log("Waiting for daemon");
             }
-            console.log("Waiting for daemon");
             setTimeout(connect, 100);
         } else {
-            console.log("Unknown error", error);
+            console.error("websocket error", error);
         }
     });
 }
