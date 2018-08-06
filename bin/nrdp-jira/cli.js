@@ -119,13 +119,13 @@ function connect()
     ws.on("error", error => {
         if (error.code == 'ECONNREFUSED') {
             if (!spawned) {
-                console.log("ECONNREFUSED starting daemon");
+                console.log("Starting daemon");
                 const daemon = child_process.spawn("node", [`${__dirname}/server.js`, "--port", port], { detached: true });
                 daemon.unref();
 
                 spawned = true;
 
-                console.log("Waiting for daemon");
+                //console.log("Waiting for daemon");
             }
             setTimeout(connect, 100);
         } else {
