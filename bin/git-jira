@@ -249,11 +249,11 @@ if [ -n "$JIRA" ]; then
     if [ -z "$MESSAGE" ]; then
         MESSAGE="[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
     fi
-    if [ "$RESOLVE" = "yes" ]; then
-        $SCRIPT_DIR/nrdp-jira/cli.js --issue "$JIRA" --resolve
-    fi
     if [ "$COMMENT" = "yes" ]; then
         $SCRIPT_DIR/nrdp-jira/cli.js --issue "$JIRA" --comment "$MESSAGE"
+    fi
+    if [ "$RESOLVE" = "yes" ]; then
+        $SCRIPT_DIR/nrdp-jira/cli.js --issue "$JIRA" --resolve
     fi
 
     if [ "$TAG" = "yes" ]; then

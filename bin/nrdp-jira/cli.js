@@ -110,7 +110,8 @@ function connect()
             }
         }
         if ("success" in msg) {
-            console.log(msg);
+            if(!msg.success)
+                console.error(msg.error.message);
             process.exit(msg.success ? 0 : 1);
         }
     });

@@ -49,8 +49,8 @@ wss.on("connection", ws => {
                 } catch (err) {
                     log("Failed to error message to client", JSON.stringify(msg));
                 }
-
-                opts.jira = undefined;
+                if(err.statusCode == 500)
+                    opts.jira = undefined;
             };
 
             if (msg.issue) {
