@@ -12,6 +12,8 @@
 (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
 (define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
 
+(define-key magit-file-mode-map "\C-xg" nil)
+
 (define-key magit-mode-map (kbd "M-w") 'kill-ring-save)
 (defun nrdp-git-magit-buffer-file-name ()
   (and (stringp header-line-format)
