@@ -41,12 +41,13 @@ update_current_pwd()
 }
 add_prompt_command "update_current_pwd"
 
-gs() #sync a tree
+lsdev_git_sync() #sync a tree
 {
-    ACTION="sync -r"
+    ACTION="sync"
     LSDEV_FLAGS="src "
     while [ "$#" -gt 0 ]; do
       case "$1" in
+      --sync-recursive) ACTION="sync -r" ;;
       --status) ACTION="status" ;;
       --push) shift; ACTION="push $1" ;;
       --pushf) shift; ACTION="push -f $1" ;;
@@ -61,7 +62,7 @@ gs() #sync a tree
     fi
 }
 
-gss()
+lsdev_git_status()
 {
-    gs --status "$@"
+    git_sync --status "$@"
 }
