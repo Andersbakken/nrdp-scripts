@@ -1886,4 +1886,27 @@ there's a region, all lines that region covers will be duplicated."
   (previous-error n)
   (set-transient-map misc-next-error-map))
 
+(defun misc-killall-buffers (&optional pattern)
+  (interactive)
+  (unless pattern
+    (setq pattern (read-from-minibuffer "Kill buffers matching: ")))
+  (let ((buffers (buffer-list))
+        (count 0))
+    (while buffers
+      ;; (message "Checking %s against %s => %s"
+      ;;          (or (buffer-file-name (car buffers))
+      ;;              (buffer-name (car buffers)))
+      ;;          pattern
+      ;;          (if (string-match pattern (or (buffer-file-name (car buffers))
+      ;;                                        (buffer-name (car buffers))))
+      ;;              "yes" "no"))
+
+      (when (string-match pattern (or (buffer-file-name (car buffers))
+                                      (buffer-name (car buffers))))
+        (incf count)
+        (kill-buffer (car buffers)))
+      (setq buffers (cdr buffers)))
+    (message "Killed %d buffers matching %s" count pattern)))
+
+
 (provide 'nrdp-misc)

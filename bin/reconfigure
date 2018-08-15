@@ -1,42 +1,38 @@
 #!/bin/bash
 
-IDX=1
 RECONFIG_RM=
 RECONFIG_CAT=
 RECONFIG_RESET=
 RECONFIG_EDIT=
 BUILD=
-while [ $IDX -le $# ]; do
-    case ${!IDX} in
+for ARG
+do
+    shift
+    case $ARG in
         -rm)
             RECONFIG_RM=1
-            shift
             ;;
         -cat)
             RECONFIG_CAT=1
-            shift
             ;;
         -reset)
             RECONFIG_RESET=1
-            shift
             ;;
-        -editor|-edit)
+        -editor|-edit|-e)
             RECONFIG_EDIT=1
-            shift
             ;;
         -build=*)
             BUILD=`echo ${!IDX} | sed -e 's,^-build=,,'`
-            shift
             ;;
         -b|-build)
             shift
-            BUILD=${!IDX}
+            BUILD="$1"
             shift
             ;;
         *)
+            set -- "$@" "$ARG"
             ;;
     esac
-    IDX=$((IDX+1))
 done
 
 if [ "$RESET" -a "$EDIT" ] || [ "$RESET" -a "$CAT" ]; then

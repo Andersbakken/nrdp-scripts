@@ -12,6 +12,18 @@
 (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
 (define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
 
+(define-key magit-file-mode-map "\C-xg" nil)
+
+(defun nrdp-magit-section-type (object)
+    (if (fboundp 'magit-section-type)
+        (magit-section-type object)
+      (oref object type)))
+
+(defun nrdp-magit-section-value (object)
+  (if (fboundp 'magit-section-value)
+      (magit-section-value object)
+    (oref object value)))
+
 (define-key magit-mode-map (kbd "M-w") 'kill-ring-save)
 (defun nrdp-git-magit-buffer-file-name ()
   (and (stringp header-line-format)
@@ -40,12 +52,12 @@
     (unless ret
       (let ((current (magit-current-section)))
         (when current
-          (setq matchedtype (car (member (magit-section-type current) types))
+          (setq matchedtype (car (member (nrdp-magit-section-type current) types))
                 ret (list current)))))
     (cond ((eq matchedtype 'file)
            (let ((root (magit-toplevel)))
-             (cons (mapcar (lambda (item) (concat root (magit-section-value item))) ret) 'file)))
-          (matchedtype (cons (mapcar #'magit-section-value ret) matchedtype))
+             (cons (mapcar (lambda (item) (concat root (nrdp-magit-section-value item))) ret) 'file)))
+          (matchedtype (cons (mapcar #'nrdp-magit-section-value ret) matchedtype))
           (t nil))))
 
 (defun nrdp-git-magit-current-things-filtered (filter)
