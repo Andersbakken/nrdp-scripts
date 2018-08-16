@@ -95,6 +95,7 @@ build() {
         NINJA=`findancestor build.ninja $NINJA_DIR`
         if [ -e "$NINJA" ]; then
             cd `dirname $NINJA`
+            rm -f .ninja_log
             if [ -n "$RTAGS" ]; then
                 ninja -t commands | rc --compile
                 return 0
