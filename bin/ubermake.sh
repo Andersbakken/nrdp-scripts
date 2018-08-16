@@ -89,6 +89,16 @@ build() {
         fi
     fi
 
+    CONFIG_STATUS=`findancestor config.status $BUILD_DIR`
+    if [ -e "$CONFIG_STATUS" ]; then
+        TOOLCHAIN=`grep "Toolchain used: " "$CONFIG_STATUS" | sed -e 's,^.*Toolchain used: \(.*\),\1,'`
+        if [ -n "$TOOLCHAIN" ] && [ ! -d "$TOOLCHAIN" ]; then
+            echo "Toolchain has been upgraded, rerunning config.status"
+            echo "===================================================="
+            ( cd `dirname $CONFIG_STATUS` && $CONFIG_STATUS )
+        fi
+    fi
+
     if which ninja >/dev/null 2>&1; then
         NINJA_DIR=$BUILD_DIR
         [ -z "$NINJA_DIR" ] && NINJA_DIR=.
