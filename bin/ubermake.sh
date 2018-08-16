@@ -106,7 +106,7 @@ build() {
         if [ -e "$NINJA" ]; then
             cd `dirname $NINJA`
             if [ build.ninja -nt CMakeCache.txt ] && [ CMakeCache.txt -nt .ninja_log ]; then
-                BUILD_NINJA_TIMESTAMP=`stat -c %Y`
+                BUILD_NINJA_TIMESTAMP=`stat -c %Y build.ninja`
                 echo "Repairing .ninja_log..."
                 touch -d "$BUILD_NINJA_TIMESTAMP" .ninja_log
             fi
