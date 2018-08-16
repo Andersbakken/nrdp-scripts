@@ -105,7 +105,11 @@ build() {
         NINJA=`findancestor build.ninja $NINJA_DIR`
         if [ -e "$NINJA" ]; then
             cd `dirname $NINJA`
-            rm -f .ninja_log
+            if [ build.ninja -nt CMakeCache.txt ] && [ CMakeCache.txt -nt .ninja_log ]; then
+                BUILD_NINJA_TIMESTAMP=`stat -c %Y`
+                echo "Repairing .ninja_log..."
+                touch -d "$BUILD_NINJA_TIMESTAMP" .ninja_log
+            fi
             if [ -n "$RTAGS" ]; then
                 ninja -t commands | rc --compile
                 return 0
