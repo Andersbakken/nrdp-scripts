@@ -234,7 +234,7 @@
       ;;                  " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
       ;;                  pipe)))))
 
-      (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
+      (grep-find (concat "git --no-pager grep --untracked --recurse-submodules -I -n "
                          (mapconcat 'identity args " ")
                          (if hasdashdash
                              " "
