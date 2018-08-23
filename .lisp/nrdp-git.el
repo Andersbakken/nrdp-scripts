@@ -247,7 +247,11 @@
   (interactive "P")
   (let ((dir (magit-toplevel)))
     (unless dir
-      (error "No git dir"))
+      (let ((srcdir (cadar (lsdev-dirs-internal default-directory))))
+        (when srcdir
+          (setq dir (magit-toplevel srcdir))))
+      (unless dir
+        (error "No git dir")))
     (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
                           (concat dir "src"))
                          ((null prefix) dir)
