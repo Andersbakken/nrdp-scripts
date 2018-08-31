@@ -245,13 +245,9 @@
 
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
-  (let ((dir (magit-toplevel)))
+  (let ((dir (magit-toplevel (cadar (lsdev-dirs-internal default-directory "src")))))
     (unless dir
-      (let ((srcdir (cadar (lsdev-dirs-internal default-directory))))
-        (when srcdir
-          (setq dir (magit-toplevel srcdir))))
-      (unless dir
-        (error "No git dir")))
+      (error "No git dir"))
     (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
                           (concat dir "src"))
                          ((null prefix) dir)
