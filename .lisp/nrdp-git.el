@@ -234,7 +234,7 @@
       ;;                  " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
       ;;                  pipe)))))
 
-      (grep-find (concat "git --no-pager grep -I -n "
+      (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
                          (mapconcat 'identity args " ")
                          (if hasdashdash
                              " "
@@ -245,7 +245,7 @@
 
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
-  (let ((dir (magit-toplevel)))
+  (let ((dir (magit-toplevel (cadar (lsdev-dirs-internal default-directory "src")))))
     (unless dir
       (error "No git dir"))
     (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
