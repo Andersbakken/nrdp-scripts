@@ -1189,7 +1189,7 @@ to case differences."
       (with-temp-buffer
         (insert "cmake_minimum_required(VERSION 2.8)\n"
                 "include_directories(${CMAKE_CURRENT_LIST_DIR})\n"
-                "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++0x\")\n"
+                "set(CMAKE_CXX_FLAGS \"${CMAKE_CXX_FLAGS} -std=c++11\")\n"
                 "set(CMAKE_C_FLAGS \"${CMAKE_C_FLAGS}\")\n"
                 "add_executable(" name " main.cpp)\n")
         (write-region (point-min) (point-max) CMakeLists.txt))
