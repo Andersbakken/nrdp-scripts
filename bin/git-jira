@@ -249,17 +249,20 @@ if [ -n "$JIRA" ]; then
     if [ -z "$MESSAGE" ]; then
         MESSAGE="[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
     fi
+
+    JIRA_CLI="$SCRIPT_DIR/nrdp-jira/cli.js --issue $JIRA"
+    [ -n "$JIRA_USERNAME" ] && JIRA_CLI="$JIRA_CLI --username ${JIRA_USERNAME}"
+
     if [ "$COMMENT" = "yes" ]; then
-        $SCRIPT_DIR/nrdp-jira/cli.js --issue "$JIRA" --comment "$MESSAGE"
+        ${JIRA_CLI} --comment "$MESSAGE"
     fi
     if [ "$RESOLVE" = "yes" ]; then
-        $SCRIPT_DIR/nrdp-jira/cli.js --issue "$JIRA" --resolve
+        ${JIRA_CLI} --resolve
     fi
 
     if [ "$TAG" = "yes" ]; then
         echo "THIS IS NOT IMPLEMENTED..."
-        exit 1
-        exec_jira --action addLabels --issue "$JIRA" --labels "$TAGS"
+        #${JIRA_CLI} --LABELS "$TAGS"
     fi
 fi
 exit 0

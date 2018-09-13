@@ -46,6 +46,9 @@ function connect()
     if (argv.comment) {
         action = { comment: argv.comment };
     }
+    let username = argv.username;
+    if(!username)
+        username = process.env.USER;
     if (argv.resolve) {
         if (!action)
             action = {};
@@ -94,7 +97,7 @@ function connect()
 
                     //console.log("hehhh2");
                     ws.send(JSON.stringify({
-                        username: process.env.USER,
+                        username: username,
                         password: contents.toString("utf8").trim()
                     }));
                 });
@@ -103,7 +106,7 @@ function connect()
                 readPassword().then(pwd => {
                     //console.log("hohhh2");
                     ws.send(JSON.stringify({
-                        username: process.env.USER,
+                        username: username,
                         password: pwd
                     }));
                 });
