@@ -23,7 +23,11 @@ ERROR_POST_COMMAND=
 trap 'cleanup' QUIT EXIT
 
 if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
-    rc -j 1 --silent
+    NUM=$UBERMAKE_REDUCE_RTAGS_LOAD
+    if ! echo $NUM | grep --quiet "^[0-9]\+$"; then
+        NUM=1
+    fi
+    rc -j $NUM --silent
 fi
 
 cleanup()
