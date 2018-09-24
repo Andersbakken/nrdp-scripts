@@ -25,8 +25,25 @@ else
     done
 fi
 
+ARGS=()
+while [ -n "$1" ]; do
+    case "$1" in
+        -Wa,--32|--Wa,--64|-fno-var-tracking-assignments|-fno-delete-null-pointer-checks|*ccache)
+        ;;
+        *)
+            ARGS+=("$1")
+            ;;
+    esac
+    shift
+done
+
+ARGS+=("-Wno-ignored-optimization-argument")
+ARGS+=("-Wno-ignored-optimization-argument")
+
 if [ -x "$SCAN_BUILD" ]; then
-    "$SCAN_BUILD" "$@"
+    echo "${ARGS[@]}"
+    echo
+    "$SCAN_BUILD" "${ARGS[@]}"
 else
      echo "Can't find scan-build" >&2
 fi
