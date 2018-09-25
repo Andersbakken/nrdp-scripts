@@ -29,15 +29,30 @@ else
     done
 fi
 
+if [ ! -x "$CLANG_CHECK" ] && [ `uname` = "Darwin" ]; then
+   if [ -x `which brew` ]; then
+       CLANG_CHECK=`brew list llvm | sort -r | head -n1`
+   fi
+   if [ ! -x "$CLANG_CHECK" ] && [ -d /usr/local/Cellar ]; then
+       CLANG_CHECK=`find /usr/local/Cellar -name 'clang-check*' | sort -r | head -n1`
+       ### won't be right for clang >=10
+   fi
+fi
+
 if [ -x "$CLANG_CHECK" ]; then
+    if [ ! -n "$1" ]; then
+        set -- "$@" "."
+    fi
     while [ -n "$1" ]; do
-        FILE=`grep "^ *\"file\" *: *\"[^\"]*$1\"" $DIR/compile_commands.json | head -n1 | sed -e 's/^[^:]*: *"\(.*\)\",\?/\1/'`
-        echo "$CLANG_CHECK" "$FILE"
-        echo
-        "$CLANG_CHECK" "$FILE" -p $DIR
+        for FILE in `grep "^ *\"file\" *: *\"[^\"]*$1" $DIR/compile_commands.json | awk -F\" '{print $4}' | sort -u`; do
+            echo "$CLANG_CHECK" "$FILE"
+            # echo
+            "$CLANG_CHECK" "$FILE" -p $DIR
+        done
         shift
     done
 else
     echo "Can't find clang-check" >&2
 fi
 
+rm -rf "$DIR"
