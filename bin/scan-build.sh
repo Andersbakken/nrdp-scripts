@@ -38,10 +38,9 @@ while [ -n "$1" ]; do
 done
 
 ARGS+=("-Wno-ignored-optimization-argument")
-ARGS+=("-Wno-ignored-optimization-argument")
 
 if [ -x "$SCAN_BUILD" ]; then
-    echo "${ARGS[@]}"
+    echo "$SCAN_BUILD" "${ARGS[@]}"
     echo
     "$SCAN_BUILD" "${ARGS[@]}"
 else
