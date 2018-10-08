@@ -47,7 +47,7 @@ if [ -x "$CLANG_CHECK" ]; then
         for FILE in `grep "^ *\"file\" *: *\"[^\"]*$1" $DIR/compile_commands.json | awk -F\" '{print $4}' | sort -u`; do
             echo "$CLANG_CHECK" "$FILE"
             # echo
-            "$CLANG_CHECK" "$FILE" -p $DIR
+            "$CLANG_CHECK" -analyze "$FILE" -p $DIR
         done
         shift
     done

@@ -115,7 +115,8 @@
       (goto-char (point-min))
       (diff-mode)
       (setq buffer-read-only t)
-      (buffer-local-set-key (kbd "q") 'bury-buffer))))
+      (use-local-map (copy-keymap diff-mode-map))
+      (local-set-key (kbd "q") 'bury-buffer))))
 
 (defun nrdp-git-magit-log (&optional prefix)
   (interactive "P")
