@@ -47,7 +47,7 @@ function connect()
         action = { comment: argv.comment };
     }
     let username = argv.username;
-    if(!username)
+    if (!username)
         username = process.env.USER;
     if (argv.resolve) {
         if (!action)
@@ -113,7 +113,7 @@ function connect()
             }
         }
         if ("success" in msg) {
-            if(!msg.success)
+            if (!msg.success)
                 console.error(msg.error.message);
             process.exit(msg.success ? 0 : 1);
         }

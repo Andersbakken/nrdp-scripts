@@ -49,7 +49,7 @@ wss.on("connection", ws => {
                 } catch (err) {
                     log("Failed to error message to client", JSON.stringify(msg));
                 }
-                if(err.statusCode == 500)
+                if (err.statusCode == 500)
                     opts.jira = undefined;
             };
 
