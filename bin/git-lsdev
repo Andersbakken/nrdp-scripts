@@ -39,7 +39,6 @@ if [ -z "$COMMAND" ]; then
    exit 1
 fi
 
-FIRST=yes
 ROOTDIRS=`lsdev.pl $LSDEV_OPTS -tp $LSDEV_DIRS`
 for ROOTDIR in $ROOTDIRS; do
    if [ -d "$ROOTDIR" ]; then
@@ -48,14 +47,6 @@ for ROOTDIR in $ROOTDIRS; do
        ROOT=$(git rev-parse --show-toplevel) 2>/dev/null
        if [ -d "$ROOT" ]; then
            cd "$ROOT"
-           if [ "$FIRST" = "yes" ]; then
-               FIRST=no
-               echo
-               echo
-           fi
-           echo "============================================================="
-           echo "Processing: $ROOTDIR ($COMMAND)"
-           echo "============================================================="
            $TEST git $COMMAND || ERROR=1
            if [ "$RECURSIVE" = "yes" ]; then
                find -L "$ROOTDIR" -maxdepth 4 -name ".git" | while read i; do

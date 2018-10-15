@@ -1,37 +1,48 @@
 
+run_git()
+{
+    if $(command git rev-parse --git-dir &> /dev/null); then
+        command git "$@"
+    elif [ `lsdev.pl -r -l | wc -l` = "1" ]; then
+        command git lsdev -- "$@"
+    else
+        echo "Unable to run git:$PWD: $@"
+    fi
+}
+
 git() #make git checkout commands usable with submodules
 {
     if [ "$1" == "--skip-submodule" ]; then
         shift
-        command git "$@"
+        run_git "$@"
     elif [ "$1" == "clone" ]; then
-        command git "$@" --recursive
+        run_git "$@" --recursive
     elif [ "$1" == "clean" ]; then
-        command git "$@" && git submodule foreach --recursive git "$@"
+        run_git "$@" && run_git submodule foreach --recursive git "$@"
     elif [ "$1" == "status" ]; then
-        git submodule foreach --quiet --recursive git "$@" --porcelain
-        command git "$@"
+        run_git submodule foreach --quiet --recursive git "$@" --porcelain
+        run_git "$@"
     elif [ "$1" == "describe" ]; then
-        git submodule status
-    command git "$@"
+        run_git submodule status
+        run_git "$@"
     elif [ "$1" == "pull" ]; then
-        command git "$@" && git submodule update --init --recursive
+        run_git "$@" && run_git submodule update --init --recursive
     elif [ "$1" == "fetch" ]; then
-        command git "$@" && git submodule foreach git fetch --tags
+        run_git "$@" && run_git submodule foreach git fetch --tags
     elif [ "$1" == "checkout" ]; then
         if echo "$@" | grep -e "--force" >/dev/null || echo "$@" | grep -e "-f" >/dev/null; then
-            command git "$@" && git submodule update --init --recursive --force
+            run_git "$@" && run_git submodule update --init --recursive --force
         else
-            command git "$@" && git submodule update --init --recursive
+            run_git "$@" && run_git submodule update --init --recursive
         fi
     elif [ "$1" == "reset" ]; then
         if echo "$@" | grep -e "--hard" >/dev/null; then
-            command git "$@" && git submodule update --init --recursive --force
+            run_git "$@" && run_git submodule update --init --recursive --force
         else
-            command git "$@" && git submodule update --init --recursive
+            run_git "$@" && run_git submodule update --init --recursive
         fi
     else
-        command git "$@"
+        run_git "$@"
     fi
 }
 
@@ -56,13 +67,8 @@ lsdev_git_sync() #sync a tree
       shift
     done
     if [ `lsdev.pl -r -l $LSDEV_FLAGS | wc -l` = "1" ]; then
-        git lsdev $LSDEV_FLAGS -- $ACTION
+        command git lsdev $LSDEV_FLAGS -- $ACTION
     elif $(git rev-parse --git-dir &> /dev/null); then
-        git $ACTION
+        command git $ACTION
     fi
-}
-
-lsdev_git_status()
-{
-    git_sync --status "$@"
 }
