@@ -3,9 +3,22 @@
 ;;===================
 
 ;; 1.4.2 compatibility
-(require 'buffer-local-mode)
 (require 'magit)
 (require 's)
+
+(defun buffer-local-set-key (key func)
+  (interactive "KSet key on this buffer: \naCommand: ")
+  (let ((name (format "%s-magic" (buffer-name))))
+    (eval
+      `(define-minor-mode ,(intern name)
+                          "Automagically built minor mode to define buffer-local keys."))
+    (let* ((mapname (format "%s-map" name))
+           (map (intern mapname)))
+      (unless (boundp (intern mapname))
+        (set map (make-sparse-keymap)))
+      (eval
+        `(define-key ,map ,key func)))
+    (funcall (intern name) t)))
 
 (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
 (define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
@@ -102,7 +115,8 @@
       (goto-char (point-min))
       (diff-mode)
       (setq buffer-read-only t)
-      (buffer-local-set-key (kbd "q") 'bury-buffer))))
+      (use-local-map (copy-keymap diff-mode-map))
+      (local-set-key (kbd "q") 'bury-buffer))))
 
 (defun nrdp-git-magit-log (&optional prefix)
   (interactive "P")
@@ -245,7 +259,8 @@
 
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
-  (let ((dir (magit-toplevel (cadar (lsdev-dirs-internal default-directory "src")))))
+  (let* ((devs (lsdev-dirs-internal default-directory "src"))
+         (dir (magit-toplevel (and (= (length devs) 1) (cadar devs)))))
     (unless dir
       (error "No git dir"))
     (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
