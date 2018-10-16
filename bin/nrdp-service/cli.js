@@ -42,29 +42,34 @@ const port = argv.port || 58910;
 let spawned = false;
 function connect()
 {
-    let action;
-    if (argv.comment) {
-        action = { comment: argv.comment };
-    }
     let username = argv.username;
     if(!username)
         username = process.env.USER;
-    if (argv.resolve) {
-        if (!action)
-            action = {};
+
+    let action = { mode: argv.mode }
+    if(action.mode == "stash") {
+        if(!argv.from || !argv.to) {
+            console.error("need an from/to");
+            return;
+        }
+        action.project = argv.project;
+        action.repo = argv.repo;
+        action.from = argv.from;
+        action.to = argv.to;
+    } else if(action.mode == "jira") {
+        if (!argv.issue) {
+            console.error("need an issue");
+            return;
+        }
+
+        action.comment = argv.comment;
         action.resolve = argv.resolve;
+        if (!action.resolve || !action.comment) {
+            console.error("need comment or resolve");
+            return;
+        }
+        action.issue = argv.issue;
     }
-
-    if (!action) {
-        console.error("need comment or resolve");
-        return;
-    }
-    if (!argv.issue) {
-        console.error("need an issue");
-        return;
-    }
-
-    action.issue = argv.issue;
 
     const ws = new WebSocket(`ws://localhost:${port}`);
 

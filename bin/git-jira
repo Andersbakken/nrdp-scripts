@@ -250,7 +250,7 @@ if [ -n "$JIRA" ]; then
         MESSAGE="[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
     fi
 
-    JIRA_CLI="$SCRIPT_DIR/nrdp-jira/cli.js --issue $JIRA"
+    JIRA_CLI="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $JIRA"
     [ -n "$JIRA_USERNAME" ] && JIRA_CLI="$JIRA_CLI --username ${JIRA_USERNAME}"
 
     if [ "$COMMENT" = "yes" ]; then
