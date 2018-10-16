@@ -43,7 +43,7 @@ let spawned = false;
 function connect()
 {
     let username = argv.username;
-    if(!username)
+    if (!username)
         username = process.env.USER;
 
     let action = { mode: argv.mode }
@@ -118,7 +118,7 @@ function connect()
             }
         }
         if ("success" in msg) {
-            if(!msg.success)
+            if (!msg.success)
                 console.error(msg.error.message);
             process.exit(msg.success ? 0 : 1);
         }
