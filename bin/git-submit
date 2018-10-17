@@ -90,18 +90,19 @@ else
         exit 1
     fi
 
-    SRC_BRANCH="$BRANCH"
-    git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 || SRC_BRANCH="$TRACKING"
-
+    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
     if [ -z "$BRANCH" ]; then
         echo "No tracking branch!"
         exit 1
     fi
 
+    SRC_BRANCH="$BRANCH"
+    git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 || SRC_BRANCH="$TRACKING"
+
     if [ -z "$IN_CHANGES" ]; then
         SUBMIT_ARGS=""
-        [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
         [ "$FORCE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -f"
+        [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit ${SUBMIT_ARGS} $TRACKING" "${SRC_BRANCH}..HEAD"
         exit 0
     else
@@ -113,7 +114,6 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
-    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
     HEAD=`git rev-parse HEAD`
 
     stashed=no
