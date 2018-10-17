@@ -59,38 +59,40 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
 else
     BRANCH=
     IN_CHANGES=
+    FORCE=no
     PUSH=yes
     AUTOSTASH=
-    ORIGIN="$TRACKING"
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ]; then
             PUSH=no
+        elif [ "$1" = "-f" ]; then
+            FORCE=yes
         elif [ "$1" = "--branch" ]; then
             shift
             BRANCH="$1"
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "-a" ]; then
-            for change in `git cherry $ORIGIN | grep '^+ ' | sed 's,^+,,g'`; do
+            for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
         elif echo "$1" | grep -q / || '!' git rev-parse "$1" >/dev/null 2>&1; then
-            ORIGIN="$1"
+            TRACKING="$1"
         else
             IN_CHANGES="$IN_CHANGES $1"
         fi
         shift
     done
 
-    if ! git sync --check "$ORIGIN" >/dev/null 2>&1; then
-        echo "Make sure you sync first! [$ORIGIN]" >&2
+    if ! git sync --check "$TRACKING" >/dev/null 2>&1; then
+        echo "Make sure you sync first! [$TRACKING]" >&2
         exit 1
     fi
 
-    [ -z "$BRANCH" ] && BRANCH="$ORIGIN"
+    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
     SRC_BRANCH="$BRANCH"
-    git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 || SRC_BRANCH="$ORIGIN"
+    git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 || SRC_BRANCH="$TRACKING"
 
     if [ -z "$BRANCH" ]; then
         echo "No tracking branch!"
@@ -98,7 +100,7 @@ else
     fi
 
     if [ -z "$IN_CHANGES" ]; then
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit --branch $BRANCH $ORIGIN" "${SRC_BRANCH}..HEAD"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit --branch $BRANCH $TRACKING" "${SRC_BRANCH}..HEAD"
         exit 0
     else
         RESOLVED_CHANGES=""
@@ -109,11 +111,12 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
-    stashed=
+    HEAD=`git rev-parse HEAD`
+    stashed=no
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         ignore_marker=`git ignore-commit marker 2>/dev/null`
         git commit -a -m "${ignore_marker}git-submit" --allow-empty
-        stashed=`git rev-parse HEAD`
+        stashed=yes
     fi
 
     COMMON_SHA1=`git merge-base HEAD $SRC_BRANCH`
@@ -144,14 +147,16 @@ else
             PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
         fi
         if [ ! -x "$GITROOT/hooks/pre-submit" ] || "$GITROOT/hooks/pre-submit" "$NEW_SHA1" "$BRANCH"; then
-            echo "Push: $NEW_SHA1 -> $PUSH_BRANCH($PUSH_ORIGIN)"
-            if git push $PUSH_ORIGIN "$NEW_SHA1:refs/heads/$PUSH_BRANCH"; then
-                [ -x "$GITROOT/hooks/post-submit" ] && "$GITROOT/hooks/post-submit" "$COMMON_SHA1" "$BRANCH" "$ORIGIN"
+            PUSH_ARGS="$PUSH_ORIGIN $NEW_SHA1:refs/heads/$PUSH_BRANCH"
+            [ "$FORCE" = "yes" ] && PUSH_ARGS="-f ${PUSH_ARGS}"
+            echo "Push: $PUSH_ARGS"
+            if git push ${PUSH_ARGS}; then
+                [ -x "$GITROOT/hooks/post-submit" ] && "$GITROOT/hooks/post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
             fi
         fi
     fi
-    if [ -n "$stashed" ]; then
-        git reset HEAD~
+    if [ "$stashed" = "yes" ] || [ "$BRANCH" != "$TRACKING" ]; then
+        git reset "$HEAD"
     fi
 fi
 exit 0
