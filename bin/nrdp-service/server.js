@@ -4,7 +4,7 @@ const fs = require("fs");
 const WebSocket = require("ws");
 const argv = require("minimist")(process.argv.slice(2));
 const Jira = require("jira-client");
-const request = require("request");
+const url_request = require("request");
 const querystring = require('querystring');
 
 const port = argv.port || 58910;
@@ -34,30 +34,30 @@ wss.on("connection", ws => {
 
     const processPending = () => {
         for (let i = 0; i < pending.length; ++i) {
-            let msg = pending[i];
+            let request = pending[i];
 
-            const ok = (msg, data) => {
+            const ok = (request, data, message) => {
                 try {
                     ws.send(JSON.stringify({ success: true,
-                                             msg: msg,
+                                             request: request,
                                              data: data }));
                 } catch (err) {
-                    log("Failed to ok message to client", JSON.stringify(msg));
+                    log("Failed to ok message to client", JSON.stringify(request));
                 }
             };
-            const error = (msg, err) => {
+            const error = (request, err) => {
                 try {
                     ws.send(JSON.stringify({ success: false,
-                                             msg: msg,
+                                             request: request,
                                              error: err }));
-                } catch (err) {
-                    log("Failed to error message to client", JSON.stringify(msg));
+                } catch (e) {
+                    log("Failed to error message to client", JSON.stringify(request));
                 }
                 if(err.statusCode == 500)
                     opts.password = undefined;
             };
 
-            if (msg.mode == "jira") {
+            if (request.mode == "jira") {
                 if (!opts.jira) {
                     const jiraopts = {
                         protocol: "https",
@@ -71,53 +71,53 @@ wss.on("connection", ws => {
 
                     opts.jira = new Jira(jiraopts);
                 }
-                if (msg.issue) {
-                    if (msg.resolve) {
+                if (request.issue) {
+                    if (request.resolve) {
                         let cmd = { transition: { id: 5 } };
-                        if (msg.comment)
-                            cmd.update = { comment: [ { add: { body: msg.comment } } ] };
-                        opts.jira.transitionIssue(msg.issue, cmd).then(transition => {
-                            ok(msg, transition);
+                        if (request.comment)
+                            cmd.update = { comment: [ { add: { body: request.comment } } ] };
+                        opts.jira.transitionIssue(request.issue, cmd).then(transition => {
+                            ok(request, transition);
                         }).catch(err => {
-                            error(msg, err);
+                            error(request, err);
                         });
-                    } else if (msg.comment) {
-                        console.log("about to comment", msg.issue, msg.comment);
-                        opts.jira.addComment(msg.issue, msg.comment).then(comment => {
-                            ok(msg, comment);
+                    } else if (request.comment) {
+                        console.log("about to comment", request.issue, request.comment);
+                        opts.jira.addComment(request.issue, request.comment).then(comment => {
+                            ok(request, comment);
                         }).catch(err => {
-                            error(msg, err);
+                            error(request, err);
                         });
                     }
                     /*
-                      opts.jira.findIssue(msg.issue).then(issue => {
-                      ok(msg, issue);
+                      opts.jira.findIssue(request.issue).then(issue => {
+                      ok(request, issue);
                       }).catch(err => {
-                      error(msg, err);
+                      error(request, err);
                       });
                     */
                 }
-            } else if(msg.mode == "stash") {
-                var project = msg.project || "NRDP", repo = msg.repo || "nrdp"
-                if(msg.from && msg.to) {
+            } else if(request.mode == "stash") {
+                var project = request.project || "NRDP", repo = request.repo || "nrdp"
+                if(request.from && request.to) {
                     var form = {
-                        title: project + '(' + repo + '): auto pull-request ' + msg.from + '->' + msg.to,
+                        title: project + '(' + repo + '): auto pull-request ' + request.from + '->' + request.to,
                         fromRef: {
-                            id: "refs/heads/" + msg.from,
+                            id: "refs/heads/" + request.from,
                             repository: {
                                 slug: repo,
                                 project: { key: project }
                             }
                         },
                         toRef: {
-                            id: "refs/heads/" + msg.to,
+                            id: "refs/heads/" + request.to,
                             repository: {
                                 slug: repo,
                                 project: { key: project }
                             }
                         }
                     };
-                    request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', {
+                    url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', {
                         body: JSON.stringify(form),
                         headers: {
                             'Content-Type': 'application/json'
@@ -129,17 +129,30 @@ wss.on("connection", ws => {
                         }
                     }, function(err, response, body) {
                         var data = { statusCode: response.statusCode, body: body };
-                        if(err || data.statusCode != 200) {
-                            var error_msg = data.body;
-                            try {
-                                var e = JSON.parse(data.body);
-                                error_msg = e.errors[0].message;
-                            } catch(v) {
-                                error_msg = data.body;
+                        try {
+                            var pr;
+                            var obj = JSON.parse(data.body);
+                            if(obj.errors) {
+                                var e = obj.errors[0];
+                                data.message = e.message;
+                                pr = e.existingPullRequest;
+                            } else {
+                                pr = obj;
                             }
-                            error(msg, { message: error_msg });
+                            if(pr.links) {
+                                const href = pr.links.self[0].href;
+                                if(href)
+                                    data.message = (data.message ? (data.message + ": ") : "Status: ") + href;
+                            }
+                        } catch(v) {
+                        }
+                        if(err || data.statusCode >= 300) {
+                            if(!data.message)
+                                data.message = data.body;
+                            var error_msg = data.body;
+                            error(request, { message: data.message });
                         } else {
-                            ok(msg, data);
+                            ok(request, data);
                         }
                     });
                 }
@@ -149,17 +162,17 @@ wss.on("connection", ws => {
     };
 
     ws.on("message", json => {
-        let msg;
+        let request;
         try {
-            msg = JSON.parse(json);
+            request = JSON.parse(json);
         } catch (err) {
         }
 
-        if (msg.username) {
-            opts.username = msg.username;
-            opts.password = msg.password;
+        if (request.username) {
+            opts.username = request.username;
+            opts.password = request.password;
         } else {
-            pending.push(msg);
+            pending.push(request);
         }
         if (opts.password) {
             try {

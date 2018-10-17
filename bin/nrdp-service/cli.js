@@ -83,13 +83,13 @@ function connect()
     });
 
     ws.on("message", json => {
-        let msg;
+        let response;
         try {
-            msg = JSON.parse(json);
+            response = JSON.parse(json);
         } catch (err) {
         }
 
-        if (msg.needsPassword) {
+        if (response.needsPassword) {
             //console.log("gotta send stuff");
             if (process.env["JIRA_PASSWORD_FILE"]) {
                 //console.log("hehhh");
@@ -117,10 +117,11 @@ function connect()
                 });
             }
         }
-        if ("success" in msg) {
-            if (!msg.success)
-                console.error(msg.error.message);
-            process.exit(msg.success ? 0 : 1);
+        if ("success" in response) {
+            const message = response.success ? response.data.message : response.error.message;
+            if(message)
+                console.error(message);
+            process.exit(!response.success);
         }
     });
 
