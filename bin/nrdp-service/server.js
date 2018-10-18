@@ -40,7 +40,7 @@ wss.on("connection", ws => {
                 try {
                     ws.send(JSON.stringify({ success: true,
                                              request: request,
-                                             data: data }));
+                                             data: data || {} }));
                 } catch (err) {
                     log("Failed to ok message to client", JSON.stringify(request));
                 }

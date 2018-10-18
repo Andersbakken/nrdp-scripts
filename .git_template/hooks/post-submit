@@ -5,19 +5,21 @@ if [ -n "$GIT_POST_SUBMIT_FLAGS" ]; then
     INTERACTIVE="$GIT_POST_SUBMIT_FLAGS"
 fi
 if echo "$2" | grep -q "/"; then
+    JIRA="yes"
     ORIGIN=`echo $2 | cut -d/ -f1`
 
-    #jira
-    REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
-    for sha in `git log --pretty="%h" "$1..$2"`; do
-        echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --no-create --comment $INTERACTIVE "$sha"
-    done
-
-    #pull request
-    if [ "$2" != "$3" ] && echo "$2" | grep -q "/pull-requests/"; then
+    if [ "$2" != "$3" ] && echo "$2" | grep -q "/pull-requests/"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
         if [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             $HOME/bin/nrdp-service/cli.js --mode stash --from `echo $2 | cut -d/ -f2-` --to `echo $3 | cut -d/ -f2-`
+            JIRA="no"
         fi
+    fi
+
+    if [ "$JIRA" = "yes" ]; then #jira
+        REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
+        for sha in `git log --pretty="%h" "$1..$2"`; do
+            echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --comment $INTERACTIVE "$sha"
+        done
     fi
 fi

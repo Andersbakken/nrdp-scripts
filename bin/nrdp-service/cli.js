@@ -64,7 +64,7 @@ function connect()
 
         action.comment = argv.comment;
         action.resolve = argv.resolve;
-        if (!action.resolve || !action.comment) {
+        if (!action.resolve && !action.comment) {
             console.error("need comment or resolve");
             return;
         }

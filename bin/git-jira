@@ -8,261 +8,95 @@ if test "x$EDITOR" = "x$0" ; then
     exit 0
 fi
 
-GITCOMMIT=
-P4COMMIT=
-MESSAGE=
-TAGS=
-TEST=
-JIRA=
+COMMITS=
 
 INTERACTIVE=yes
 COMMENT=maybe
 RESOLVE=maybe
-CREATE=maybe
-REWORD=maybe
-TAG=no
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
 
 usage() {
-    echo "Usage: $1 [args] [git-commit]"
+    echo "Usage: $1 [args] [commits]"
     echo
     echo "Args:"
-    echo " --create            : Create a bug for a change"
-    echo " --comment, -c <msg> : Send <msg> instead of calculated from commit message"
+    echo " --comment, -c       : Comment <msg> instead of calculated from commit message"
     echo " --interactive, -i   : Ask before commenting/resolving (default yes)"
-    echo " --no-interactive    : Don't before commenting/resolving"
-    echo " --tag, -c <tag>     : Mark JIRA ticket with tag"
-    echo " --resolve, -r       : Resolve JIRA ticket as well as commenting"
-    echo " --jira, -j <ticket> : Use <ticket> instead of calculated from commit message"
-    echo " --p4 <p4-commit>    : Use <p4-commit> instead of calculating from commit message"
+    echo " --no-interactive    : Don't ask before commenting/resolving"
+    echo " --resolve, -r       : Resolve"
     echo
-    echo "If no [git-commit] is provided then the last commit from $(whoami) will be used instead"
+    echo "If no [commits] are provided then the last commit from $(whoami) will be used instead"
     exit 3
 }
 
 while [ "$#" -gt 0 ]; do
     OPT="$1"
     case $OPT in
-        --test|-test) TEST="echo" ;;
-        --no-create|-no-create) CREATE=no; REWORD=no ;;
-        --create|-create) CREATE=yes; REWORD=yes ;;
-        --no-move|-no-move|--no-reword|-no-reword) REWORD=no ;;
-        --move|-move|--reword|-reword) REWORD=yes ;;
         --no-comment|-no-comment) COMMENT=no ;;
         --comment|-c|-comment) COMMENT=yes ;;
         --no-interactive) INTERACTIVE=no ;;
         --interactive|-i) INTERACTIVE=yes ;;
         --no-resolve|-no-resolve) RESOLVE=no; COMMENT=no ;;
         --resolve|-r|-resolve) RESOLVE=yes; COMMENT=yes ;;
-        --tag|-t) shift; TAGS="$TAGS $1"; TAG=yes ;;
-        --message|-m) shift; MESSAGE="$1"; COMMENT=yes ;;
-        --jira|-j) shift; JIRA="$1" ;;
-        --p4|-p4) shift; P4COMMIT="$1" ;;
         --help|-help|-h) usage $0 ;;
         *)
-            if [ -z "$GITCOMMIT" ]; then
-                GITCOMMIT="$1"
-            elif [ -z "$P4COMMIT" ]; then
-                P4COMMIT="$1"
+            if echo $1 | grep -q '\.\.'; then
+                COMMITS=`git log --pretty=format:%h $1`
             else
-                usage $0
-            fi ;;
+                COMMITS="$COMMITS $1"
+            fi
+            ;;
     esac
     shift
 done
 
-[ -z "$GITCOMMIT" ] && GITCOMMIT=`git log --author=$(whoami) -n1 --pretty=format:"%h"`
-[ -z "$GITCOMMIT" ] && GITCOMMIT="HEAD"
-GITCOMMIT=`git rev-parse --short $GITCOMMIT`
+[ -z "$COMMITS" ] && COMMITS=`git log --author=$(whoami) -n1 --pretty=format:%h`
+[ -z "$COMMITS" ] && COMMITS="HEAD"
+for COMMIT in $COMMITS; do
+    COMMIT=`git rev-parse --short $COMMIT`
 
-[ -z "$P4COMMIT" ] && [ -x "`which p4`" ]  && P4COMMIT=`git p4 change --git "$GITCOMMIT" 2>/dev/null | awk '{print $4}'`
-
-DESCRIPTION=
-[ -n "$P4COMMIT" ] && DESCRIPTION=`p4 describe -s $P4COMMIT | grep $'^\t' | sed "s,^\s*,,g"`
-[ -z "$DESCRIPTION" ] && DESCRIPTION=`git log -1 --pretty=format':%s' "$GITCOMMIT"`
-echo "Git: $GITCOMMIT ($P4COMMIT)"
-
-if [ -z "$JIRA" ]; then
-    if [ -z "$DESCRIPTION" ]; then
-        echo "Description not found!"
-    else
-        JIRA=`git notes --ref git-jira show "$GITCOMMIT" 2>/dev/null`
+    JIRA=""
+    DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
+    if [ -n "$DESCRIPTION" ]; then
+        JIRA=`git notes --ref git-jira show "$COMMIT" 2>/dev/null`
         [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
         [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
-        [ -n "$JIRA" ] && JIRA=`echo $JIRA | sed "s,[^a-zA-Z0-9-],,g"`
     fi
-fi
-
-if [ -n "$TEST" ] || true; then
-    echo "Description: $DESCRIPTION"
-    echo "Jira: $JIRA"
-fi
-
-if [ "$CREATE" = "maybe" ]; then
-    CREATE=no
-    if [ -z "$JIRA" ] && [ "$INTERACTIVE" = "yes" ]; then
-        echo -n "Create JIRA? "
-        read input
-        if [ "$input" = "r" ]; then
-            CREATE=yes
-            [ "$REWORD" = "maybe" ] && REWORD=yes
-        elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-            CREATE=yes
-        fi
-    fi
-fi
-
-if [ "$CREATE" = "yes" ]; then
-    #project
-    PROJECT=""
     if [ -n "$JIRA" ]; then
-        PROJECT=`echo $JIRA | cut -d'-' -f1`
-    else #find the most likely :)
-        PROJECT=`git log --pretty=format':%s' -100 | sed -e 's,^\[\([^-]*\)-[0-9]*\].*$,\1,' -e 's,^\([^-]*\)-[0-9]*:.*$,\1,' -e 's,^.* .*$,EMPTY,' | sort | uniq -c | sort -r | grep -v EMPTY | head -1 | awk '{print $2}'`
-    fi
-    echo "=================================================="
-    echo "Default Project: $PROJECT"
-    echo -n "Project: "
-    read JIRA_PROJECT
-    [ -z "$JIRA_PROJECT" ] && JIRA_PROJECT="$PROJECT"
-    if [ -z "$JIRA_PROJECT" ]; then
-        echo "Must supply a PROJECT!"
-        exit 1
-    fi
-    #summary
-    echo "=================================================="
-    echo "Default Summary: $DESCRIPTION"
-    echo -n "Summary: "
-    read JIRA_SUMMARY
-    [ -z "$JIRA_SUMMARY" ] && JIRA_SUMMARY="$DESCRIPTION"
-    #description
-    echo "=================================================="
-    echo -n "Description: "
-    read JIRA_DESCRIPTION
-    #version
-    echo "=================================================="
-    echo -n "Versions: "
-    echo "THIS IS NOT IMPLEMENTED..."
-    exit 1
-    exec_jira --action getVersionList --project NRDAPP --outputFormat 2 | awk -F, '{print $2 $4}' | grep '\"No\"$' | sed "s,^\"\([^\"]*\)\".*$,\1,"
-    echo -n "Version: "
-    read JIRA_VERSION
-
-    JIRA=
-    if [ -n "$TEST" ]; then
-        exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION"
-    else
-        CREATED_JIRA_FILE=`mktemp -t gitjiraXXXX`
-        exec_jira --action createIssue --project "$JIRA_PROJECT" --type "bug" --summary "$JIRA_SUMMARY" --description "$JIRA_DESCRIPTION" --fixVersions "$JIRA_VERSION" >$CREATED_JIRA_FILE
-        JIRA_CREATED=`tail -1 $CREATED_JIRA_FILE`
-        if echo "$JIRA_CREATED" | grep 'created with id' >/dev/null 2>&1; then
-            JIRA=`echo $JIRA_CREATED | sed "s,^Issue \(.*\) created with id.*$,\1,"`
-        fi
-    fi
-    git notes --ref git-jira add -f -m "$JIRA" "$GITCOMMIT"
-    echo "Created JIRA: $JIRA"
-else
-    REWORD=no
-fi
-
-if [ "$REWORD" = "maybe" ]; then
-    REWORD=no
-    if [ -n "$JIRA" ] && [ "$CREATE" = "yes" ] && [ "$INTERACTIVE" = "yes" ]; then
-        echo -n "Reword GIT? "
-        read input
-        if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-            REWORD=yes
-        fi
-    fi
-fi
-
-if [ "$REWORD" = "yes" ] && [ -n "$P4COMMIT" ]; then
-    echo "Cannot reword as this commit has been pushed into P4!"
-elif [ "$REWORD" = "yes" ]; then
-    DESCRIPTION_FILE=`mktemp -t gitjiraXXXX`
-    if [ -z "$JIRA" ] || echo "$DESCRIPTION" | grep "$JIRA" >/dev/null 2>&1; then
-        DESCRIPTION_FILE=
-    elif echo "$DESCRIPTION" | grep '^\[[^ ]\+-[0-9]\+\] ' >/dev/null 2>&1; then
-        echo "$DESCRIPTION" | sed "s,^\[\([^ ]\+-[0-9]\+\)\],[$JIRA],g" >"$DESCRIPTION_FILE"
-    elif echo "$DESCRIPTION" | grep '^[^ ]\+-[0-9]\+: ' >/dev/null 2>&1; then
-        echo "$DESCRIPTION" | sed "s,^\([^ ]\+-[0-9]\+\): ,$JIRA: ,g" >"$DESCRIPTION_FILE"
-    else
-        echo "[$JIRA] $DESCRIPTION" | sed -e "s,^ *,,g" >"$DESCRIPTION_FILE"
-    fi
-    if [ -n "$DESCRIPTION_FILE" ]; then
-        [ -n "$TEST" ] && cat "$DESCRIPTION_FILE"
-        (git stash
-
-            OLDEDITOR="$EDITOR"
-            export EDITOR="$0"
-            export SHORT_SHA1=`git rev-parse --short "$GITCOMMIT"`
-            if ! $TEST git rebase --preserve-merges -i "${GITCOMMIT}^"; then
-                echo "Unable to rebase for reword!"
-                return 1
+        [ -n "$JIRA" ] && JIRA=`echo $JIRA | sed "s,[^a-zA-Z0-9-],,g"`
+        if [ "$INTERACTIVE" = "yes" ]; then
+            if [ "$COMMENT" = "maybe" ]; then
+                echo -n "Comment JIRA? "
+                read input
+                if [ "$input" = "r" ]; then
+                    COMMENT=yes
+                    [ "$RESOLVE" = "maybe" ] && RESOLVE=yes
+                elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+                    COMMENT=yes
+                fi
             fi
-            export EDITOR="$OLDEDITOR"
-
-            DESCRIPTION=`cat "$DESCRIPTION_FILE"`
-            $TEST git commit --amend -F "$DESCRIPTION_FILE"
-            $TEST git rebase --continue
-            git stash apply) >/dev/null 2>&1
-    fi
-fi
-
-if [ -n "$JIRA" ]; then
-    if [ "$INTERACTIVE" = "yes" ]; then
-        if [ "$COMMENT" = "maybe" ]; then
-            COMMENT=no
-            echo -n "Comment JIRA? "
-            read input
-            if [ "$input" = "r" ]; then
-                COMMENT=yes
-                [ "$RESOLVE" = "maybe" ] && RESOLVE=yes
-            elif [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-                COMMENT=yes
-            fi
-        fi
-        if [ "$RESOLVE" = "maybe" ]; then
-            RESOLVE=no
-            echo -n "Resolve JIRA? "
-            read input
-            if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
-                RESOLVE=yes
-            elif [ "$input" = "n" ] || [ "$input" = "no" ]; then
+            if [ "$RESOLVE" = "maybe" ]; then
                 RESOLVE=no
-            else
-                RESOLVE=yes
-                DESCRIPTION="$input"
+                echo -n "Resolve JIRA? "
+                read input
+                if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
+                    RESOLVE=yes
+                elif [ "$input" = "n" ] || [ "$input" = "no" ]; then
+                    RESOLVE=no
+                else
+                    RESOLVE=yes
+                    DESCRIPTION="$input"
+                fi
             fi
         fi
-        if [ "$TAG" = "maybe" ]; then
-            TAG=no
-            echo -n "Tags? "
-            read input
-            if [ -n "$input" ]; then
-                TAGS="$TAGS $input"
-                TAG=yes
-            fi
-        fi
-    fi
 
-    if [ -z "$MESSAGE" ]; then
-        MESSAGE="[Commit: $GITCOMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$GITCOMMIT] $DESCRIPTION"
+        echo "Git: $COMMIT($JIRA)"
+        MESSAGE="[Commit: $COMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$COMMIT] $DESCRIPTION"
+        JIRA_CMD="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $JIRA"
+        [ -n "$JIRA_USERNAME" ] && JIRA_CMD="$JIRA_CMD --username ${JIRA_USERNAME}"
+        [ "$COMMENT" = "yes" ] && JIRA_CMD="$JIRA_CMD --comment \"$MESSAGE\""
+        [ "$RESOLVE" = "yes" ] && JIRA_CMD="$JIRA_CMD --resolve"
+        #echo "${JIRA_CMD}"
+        eval ${JIRA_CMD}
     fi
-
-    JIRA_CLI="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $JIRA"
-    [ -n "$JIRA_USERNAME" ] && JIRA_CLI="$JIRA_CLI --username ${JIRA_USERNAME}"
-
-    if [ "$COMMENT" = "yes" ]; then
-        ${JIRA_CLI} --comment "$MESSAGE"
-    fi
-    if [ "$RESOLVE" = "yes" ]; then
-        ${JIRA_CLI} --resolve
-    fi
-
-    if [ "$TAG" = "yes" ]; then
-        echo "THIS IS NOT IMPLEMENTED..."
-        #${JIRA_CLI} --LABELS "$TAGS"
-    fi
-fi
+done
 exit 0
