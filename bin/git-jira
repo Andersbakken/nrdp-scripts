@@ -1,13 +1,5 @@
 #!/bin/bash
 
-if test "x$EDITOR" = "x$0" ; then
-    # The script was launched as an $EDITOR from git rebase -i.
-    # Modify the pick line to an edit line and just exit.
-    sed -e '1,$s/^pick '"$SHORT_SHA1 /edit $SHORT_SHA1 /" < "$1" >/tmp/editcommit$$
-    mv /tmp/editcommit$$ "$1"
-    exit 0
-fi
-
 COMMITS=
 
 INTERACTIVE=yes

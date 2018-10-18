@@ -11,7 +11,7 @@ if echo "$2" | grep -q "/"; then
     if [ "$2" != "$3" ] && echo "$2" | grep -q "/pull-requests/"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
         if [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
-            $HOME/bin/nrdp-service/cli.js --mode stash --from `echo $2 | cut -d/ -f2-` --to `echo $3 | cut -d/ -f2-`
+            git pullrequest `echo $2 | cut -d/ -f2-` `echo $3 | cut -d/ -f2-`
             JIRA="no"
         fi
     fi

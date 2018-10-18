@@ -1,0 +1,14 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
+
+FROM="$1"
+if [ -z "$FROM" ]; then
+    echo "Usage: $1 from [to]"
+    echo
+    echo "If no [commits] are provided then the last commit from $(whoami) will be used instead"
+    exit 3
+fi
+TO="$2"
+[ -z "$TO" ] && TO=`git tracking`
+$SCRIPT_DIR/nrdp-service/cli.js --mode stash --from "${FROM}" --to "${TO}"
