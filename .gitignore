@@ -1,4 +1,5 @@
 *.pyc
+bin/nrdp-service/node_modules/
 /bin/tmux/tmux
 /.gdb/init_host_end.gdb
 /.gdb/init_host_start.gdb
