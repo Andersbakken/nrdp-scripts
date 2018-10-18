@@ -53,8 +53,6 @@ wss.on("connection", ws => {
                 } catch (e) {
                     log("Failed to error message to client", JSON.stringify(request));
                 }
-                if(err.statusCode == 500)
-                    opts.password = undefined;
             };
 
             if (request.mode == "jira") {
@@ -80,6 +78,8 @@ wss.on("connection", ws => {
                             ok(request, transition);
                         }).catch(err => {
                             error(request, err);
+                            if(err.statusCode == 500)
+                                opts.password = undefined;
                         });
                     } else if (request.comment) {
                         console.log("about to comment", request.issue, request.comment);
@@ -87,6 +87,8 @@ wss.on("connection", ws => {
                             ok(request, comment);
                         }).catch(err => {
                             error(request, err);
+                            if(err.statusCode == 500)
+                                opts.password = undefined;
                         });
                     }
                     /*
@@ -151,6 +153,8 @@ wss.on("connection", ws => {
                                 data.message = data.body;
                             var error_msg = data.body;
                             error(request, { message: data.message });
+                            if(data.statusCode == 401)
+                                opts.password = undefined;
                         } else {
                             ok(request, data);
                         }
