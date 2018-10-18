@@ -54,15 +54,15 @@ done
 for COMMIT in $COMMITS; do
     COMMIT=`git rev-parse --short $COMMIT`
 
-    JIRA=""
+    ISSUES=""
     DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
     if [ -n "$DESCRIPTION" ]; then
-        JIRA=`git notes --ref git-jira show "$COMMIT" 2>/dev/null`
-        [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
-        [ -z "$JIRA" ] && JIRA=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
+        ISSUES=`git notes --ref git-jira show "$COMMIT" 2>/dev/null`
+        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
+        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
     fi
-    if [ -n "$JIRA" ]; then
-        [ -n "$JIRA" ] && JIRA=`echo $JIRA | sed "s,[^a-zA-Z0-9-],,g"`
+    for ISSUE in $ISSUES; do
+        ISSUE=`echo $ISSUE | sed "s,[^a-zA-Z0-9-],,g"`
         if [ "$INTERACTIVE" = "yes" ]; then
             if [ "$COMMENT" = "maybe" ]; then
                 echo -n "Comment JIRA? "
@@ -89,14 +89,14 @@ for COMMIT in $COMMITS; do
             fi
         fi
 
-        echo "Git: $COMMIT($JIRA)"
+        echo "Git: $COMMIT($ISSUE)"
         MESSAGE="[Commit: $COMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$COMMIT] $DESCRIPTION"
-        JIRA_CMD="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $JIRA"
+        JIRA_CMD="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $ISSUE"
         [ -n "$JIRA_USERNAME" ] && JIRA_CMD="$JIRA_CMD --username ${JIRA_USERNAME}"
         [ "$COMMENT" = "yes" ] && JIRA_CMD="$JIRA_CMD --comment \"$MESSAGE\""
         [ "$RESOLVE" = "yes" ] && JIRA_CMD="$JIRA_CMD --resolve"
         #echo "${JIRA_CMD}"
         eval ${JIRA_CMD}
-    fi
+    done
 done
 exit 0

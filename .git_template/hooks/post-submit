@@ -1,8 +1,8 @@
 #!/bin/bash
 
-INTERACTIVE="--interactive"
+SUBMIT_FLAGS="--interactive"
 if [ -n "$GIT_POST_SUBMIT_FLAGS" ]; then
-    INTERACTIVE="$GIT_POST_SUBMIT_FLAGS"
+    SUBMIT_FLAGS="$GIT_POST_SUBMIT_FLAGS"
 fi
 if echo "$2" | grep -q "/"; then
     JIRA="yes"
@@ -18,8 +18,6 @@ if echo "$2" | grep -q "/"; then
 
     if [ "$JIRA" = "yes" ]; then #jira
         REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
-        for sha in `git log --pretty="%h" "$1..$2"`; do
-            echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --comment $INTERACTIVE "$sha"
-        done
+        echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --comment $SUBMIT_FLAGS "$1..$2"
     fi
 fi
