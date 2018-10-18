@@ -2,6 +2,7 @@
 
 COMMITS=
 
+JIRA=
 INTERACTIVE=yes
 COMMENT=maybe
 RESOLVE=maybe
@@ -11,9 +12,10 @@ usage() {
     echo "Usage: $1 [args] [commits]"
     echo
     echo "Args:"
-    echo " --comment, -c       : Comment <msg> instead of calculated from commit message"
+    echo " --jira, -j          : Jira to use"
     echo " --interactive, -i   : Ask before commenting/resolving (default yes)"
     echo " --no-interactive    : Don't ask before commenting/resolving"
+    echo " --comment, -c       : Add comment"
     echo " --resolve, -r       : Resolve"
     echo
     echo "If no [commits] are provided then the last commit from $(whoami) will be used instead"
@@ -23,6 +25,7 @@ usage() {
 while [ "$#" -gt 0 ]; do
     OPT="$1"
     case $OPT in
+        --jira|-j) shift; JIRA="$1" ;;
         --no-comment|-no-comment) COMMENT=no ;;
         --comment|-c|-comment) COMMENT=yes ;;
         --no-interactive) INTERACTIVE=no ;;
@@ -47,10 +50,14 @@ for COMMIT in $COMMITS; do
     COMMIT=`git rev-parse --short $COMMIT`
 
     ISSUES=""
-    DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
-    if [ -n "$DESCRIPTION" ]; then
-        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,\[\(.*\)\] ,\1,'`
-        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,'`
+    if [ -n "$JIRA" ]; then
+        ISSUES="$JIRA"
+    else
+        DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
+        if [ -n "$DESCRIPTION" ]; then
+            [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,\[\(.*\)\] ,\1,'`
+            [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,'`
+        fi
     fi
     for ISSUE in $ISSUES; do
         echo $ISSUE | grep -q '^[A-Z]\+-[0-9]\+$' || continue
