@@ -57,12 +57,11 @@ for COMMIT in $COMMITS; do
     ISSUES=""
     DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
     if [ -n "$DESCRIPTION" ]; then
-        ISSUES=`git notes --ref git-jira show "$COMMIT" 2>/dev/null`
-        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[[^ ]\+-[0-9]\+\] '`
-        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: '`
+        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,\[\(.*\)\] ,\1,'`
+        [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,'`
     fi
     for ISSUE in $ISSUES; do
-        ISSUE=`echo $ISSUE | sed "s,[^a-zA-Z0-9-],,g"`
+        echo $ISSUE | grep -q '^[A-Z]\+-[0-9]\+$' || continue
         if [ "$INTERACTIVE" = "yes" ]; then
             if [ "$COMMENT" = "maybe" ]; then
                 echo -n "Comment JIRA? "
