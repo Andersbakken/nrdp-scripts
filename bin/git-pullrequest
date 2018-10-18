@@ -4,9 +4,7 @@ SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
 
 FROM="$1"
 if [ -z "$FROM" ]; then
-    echo "Usage: $1 from [to]"
-    echo
-    echo "If no [commits] are provided then the last commit from $(whoami) will be used instead"
+    echo "Usage: $0 from [to]"
     exit 3
 fi
 TO="$2"
