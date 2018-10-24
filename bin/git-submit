@@ -61,6 +61,7 @@ else
     IN_CHANGES=
     FORCE=no
     PUSH=yes
+    CLEAR=no
     AUTOSTASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
@@ -68,6 +69,8 @@ else
             PUSH=no
         elif [ "$1" = "-f" ]; then
             FORCE=yes
+        elif [ "$1" = "-c" ]; then
+            CLEAR=yes
         elif [ "$1" = "--branch" ]; then
             shift
             BRANCH="$1"
@@ -90,20 +93,31 @@ else
         exit 1
     fi
 
-    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
+    if [ -n "$BRANCH" ]; then
+        git rev-parse "$BRANCH" >/dev/null 2>&1 || CLEAR="yes"
+        if [ "$CLEAR" = "yes" ]; then
+            PUSH_ORIGIN="."
+            PUSH_BRANCH="$BRANCH"
+            if echo "$PUSH_BRANCH" | grep -q "/"; then
+                PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+                PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
+            fi
+            git push -f $PUSH_ORIGIN $TRACKING:refs/heads/$PUSH_BRANCH
+        fi
+
+    else
+        BRANCH="$TRACKING"
+    fi
     if [ -z "$BRANCH" ]; then
-        echo "No tracking branch!"
+        echo "No branch to push to!"
         exit 1
     fi
-
-    SRC_BRANCH="$BRANCH"
-    git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 || SRC_BRANCH="$TRACKING"
 
     if [ -z "$IN_CHANGES" ]; then
         SUBMIT_ARGS=""
         [ "$FORCE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -f"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit ${SUBMIT_ARGS} $TRACKING" "${SRC_BRANCH}..HEAD"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --reverse -command "submit ${SUBMIT_ARGS} $TRACKING" "${BRANCH}..HEAD"
         exit 0
     else
         RESOLVED_CHANGES=""
@@ -114,16 +128,16 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
-    HEAD=`git rev-parse HEAD`
-
-    stashed=no
+    RESET_HEAD=
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         ignore_marker=`git ignore-commit marker 2>/dev/null`
         git commit -a -m "${ignore_marker}git-submit" --allow-empty
-        stashed=yes
+        RESET_HEAD=`git rev-parse HEAD`
+    elif [ "$BRANCH" != "$TRACKING" ]; then
+        RESET_HEAD=`git rev-parse HEAD`
     fi
 
-    COMMON_SHA1=`git merge-base HEAD $SRC_BRANCH`
+    COMMON_SHA1=`git merge-base HEAD $BRANCH`
     CHANGES=""
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
@@ -159,8 +173,6 @@ else
             fi
         fi
     fi
-    if [ "$stashed" = "yes" ] || [ "$BRANCH" != "$TRACKING" ]; then
-        git reset "$HEAD"
-    fi
+    [ -n "$RESET_HEAD" ] && git reset "${RESET_HEAD}"
 fi
 exit 0
