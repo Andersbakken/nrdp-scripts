@@ -1,7 +1,9 @@
 #!/bin/bash
 
 file=
-number=20
+number=80
+filter=""
+command=""
 mode="changes"
 mode_args=""
 while [ "$#" -ge 1 ]; do
@@ -27,6 +29,9 @@ while [ "$#" -ge 1 ]; do
     elif [ "$1" = "-command" ]; then
         shift
         command="$1"
+    elif [ "$1" = "-filter" ]; then
+        shift
+        filter="$1"
     elif [ "$1" = "reflog" ]; then
         mode="changes -r"
     elif [ "$1" = "tracking" ] || [ "$1" = "submit" ]; then
@@ -64,6 +69,15 @@ while [ "$#" -ge 1 ]; do
     shift
 done
 
+git_choose_options()
+{
+    git $mode $mode_args | while read line; do
+        line_change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
+        [ -n "$filter" ] && git merge-base --is-ancestor "${line_change}" $filter 2>/dev/null && continue
+        echo "-r '$line' '$line_change'"
+    done
+}
+
 choose=
 head=0
 while true; do
@@ -76,8 +90,8 @@ while true; do
     elif [ -n "$choose" ] && echo "$choose" | grep '[0-9]'; then
         choose_args="$choose_args -c $choose"
     fi
-    choose_args="$choose_args -+$head -$number -n -a "
-    change=`choose.pl $choose_args -x "git $mode $mode_args" | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
+    choose_args="$choose_args -+$head -$number -n -a $(git_choose_options)"
+    change=`eval choose.pl $choose_args`
     if [ "$change" = "n" ] || [ "$change" = "p" ]; then
         choose="$change"
     elif [ -n "$change" ]; then
