@@ -91,32 +91,12 @@ while true; do
         choose_args="$choose_args -c $choose"
     fi
     choose_args="$choose_args -+$head -$number -n -a $(git_choose_options)"
-    echo "foo: $choose_args"
     change=`eval choose.pl $choose_args`
     if [ "$change" = "n" ] || [ "$change" = "p" ]; then
         choose="$change"
     elif [ -n "$change" ]; then
-        if [ "$command" = "submit" ]; then
-            while true; do
-                do_submit=y
-                /bin/echo -n "Submit $change? "
-                read do_submit
-                if [ "$do_submit" = "d" ]; then
-                    git show "$change"
-                elif [ "$do_submit" = "a" ]; then
-                    git submit -a "$change"
-                    break
-                elif [ "$do_submit" = "y" ]; then
-                    git submit "$change"
-                    break
-                fi
-            done
-        elif [ -n "$command" ]; then
-            do_exec=y
-            exec="git $command $change"
-            #/bin/echo -n "Run '$exec'? "
-            #read do_exec
-            [ "$do_exec" = "y" ] && $exec
+        if [ -n "$command" ]; then
+            git $command $change || exit 1
         else
             echo "$change"
             git show "$change"
