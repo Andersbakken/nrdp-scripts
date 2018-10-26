@@ -74,7 +74,7 @@ git_choose_options()
     git $mode $mode_args | while read line; do
         line_change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
         [ -n "$filter" ] && git merge-base --is-ancestor "${line_change}" $filter 2>/dev/null && continue
-        echo "-r '$line' '$line_change'"
+        echo "-r '$(echo $line | sed "s,\([\']\),\\\\1,g")' '$line_change'"
     done
 }
 
@@ -95,27 +95,8 @@ while true; do
     if [ "$change" = "n" ] || [ "$change" = "p" ]; then
         choose="$change"
     elif [ -n "$change" ]; then
-        if [ "$command" = "submit" ]; then
-            while true; do
-                do_submit=y
-                /bin/echo -n "Submit $change? "
-                read do_submit
-                if [ "$do_submit" = "d" ]; then
-                    git show "$change"
-                elif [ "$do_submit" = "a" ]; then
-                    git submit -a "$change"
-                    break
-                elif [ "$do_submit" = "y" ]; then
-                    git submit "$change"
-                    break
-                fi
-            done
-        elif [ -n "$command" ]; then
-            do_exec=y
-            exec="git $command $change"
-            #/bin/echo -n "Run '$exec'? "
-            #read do_exec
-            [ "$do_exec" = "y" ] && $exec
+        if [ -n "$command" ]; then
+            git $command $change || exit 1
         else
             echo "$change"
             git show "$change"

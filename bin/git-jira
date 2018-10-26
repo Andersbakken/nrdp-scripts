@@ -49,13 +49,13 @@ done
 for COMMIT in $COMMITS; do
     COMMIT=`git rev-parse --short $COMMIT`
 
-    ISSUES=""
     if [ -n "$JIRA" ]; then
         ISSUES="$JIRA"
     else
         DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
         if [ -n "$DESCRIPTION" ]; then
-            [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,\[\(.*\)\] ,\1,'`
+            ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
+            ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
             [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,'`
         fi
     fi
