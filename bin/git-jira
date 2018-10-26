@@ -63,7 +63,7 @@ for COMMIT in $COMMITS; do
         echo $ISSUE | grep -q '^[A-Z]\+-[0-9]\+$' || continue
         if [ "$INTERACTIVE" = "yes" ]; then
             if [ "$COMMENT" = "maybe" ]; then
-                echo -n "Comment JIRA? "
+                echo -n "Comment $ISSUE? "
                 read input
                 if [ "$input" = "r" ]; then
                     COMMENT=yes
@@ -74,7 +74,7 @@ for COMMIT in $COMMITS; do
             fi
             if [ "$RESOLVE" = "maybe" ]; then
                 RESOLVE=no
-                echo -n "Resolve JIRA? "
+                echo -n "Resolve $ISSUE? "
                 read input
                 if [ "$input" = "y" ] || [ "$input" = "yes" ]; then
                     RESOLVE=yes
