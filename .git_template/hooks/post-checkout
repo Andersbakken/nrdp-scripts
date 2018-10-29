@@ -26,7 +26,8 @@ syncdir()
 
 git_template=`git config init.templatedir`
 git_template=`eval "echo $git_template"`
-syncdir "$root" "$git_template"
-
-gitroot=`git rev-parse --git-dir 2>/dev/null`
-[ -n "$gitroot" ] && syncdir "$git_template" "$gitroot"
+if [ -n "$git_template" ]; then
+    syncdir "$root" "$git_template"
+    gitroot=`git rev-parse --git-dir 2>/dev/null`
+    [ -n "$gitroot" ] && syncdir "$git_template" "$gitroot"
+fi
