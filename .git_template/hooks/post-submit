@@ -8,7 +8,10 @@ if echo "$2" | grep -q "/"; then
     JIRA="yes"
     ORIGIN=`echo $2 | cut -d/ -f1`
 
-    if [ "$2" != "$3" ] && echo "$2" | grep -q "/pull-requests/"; then #pull request
+    PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
+    [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="dev/`whoami`/pull-requests/"
+
+    if [ "$2" != "$3" ] && echo "$2" | grep -q "${PULL_REQUEST_PREFIX}"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
         if [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             git pullrequest `echo $2 | cut -d/ -f2-` `echo $3 | cut -d/ -f2-`
