@@ -648,7 +648,7 @@
       (cond ((null pr))
             ((stringp pr) (setq args (append args (list "--pull-request" pr))))
             (t (setq args (append args (list "--pull-request" (read-from-minibuffer "Name: "))))))
-      (magit-run-git-async (list "submit" "--no-autodetach" "-a")))
+      (magit-run-git-async args))
     (setenv "GIT_POST_SUBMIT_FLAGS" prev)))
 
 (defun magit-submit-all-pull-request (&optional commit)
