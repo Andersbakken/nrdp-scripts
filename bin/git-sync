@@ -68,6 +68,7 @@ function syncdir
             fi
         fi
     fi
+    git remote prune $(git tracking | cut -d/ -f1)
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
