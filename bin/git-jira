@@ -56,7 +56,7 @@ for COMMIT in $COMMITS; do
         if [ -n "$DESCRIPTION" ]; then
             ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
             ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
-            [ -z "$ISSUES" ] && ISSUES=`echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,'`
+            ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
         fi
     fi
     for ISSUE in $ISSUES; do
