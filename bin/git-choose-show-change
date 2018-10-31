@@ -73,7 +73,7 @@ git_choose_options()
 {
     git $mode $mode_args | while read line; do
         line_change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
-        [ -n "$filter" ] && git merge-base --is-ancestor "${line_change}" $filter 2>/dev/null && continue
+        [ -n "$filter" ] && git cherry $filter "${line_change}" "${line_change}~" | grep -q '^-' && continue
         echo "-r '$(echo $line | sed "s,\([\']\),\\\\1,g")' '$line_change'"
     done
 }
