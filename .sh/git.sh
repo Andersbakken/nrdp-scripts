@@ -6,7 +6,7 @@ run_git()
     elif [ `lsdev.pl -r -l | wc -l` = "1" ]; then
         command git lsdev -- "$@"
     else
-        echo "Unable to run git:$PWD: $@"
+        command git "$@"
     fi
 }
 
