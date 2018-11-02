@@ -86,7 +86,7 @@ else
     AUTOSTASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
-        if [ "$1" = "-n" ]; then
+        if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
             PUSH=no
         elif [ "$1" = "-f" ]; then
             FORCE=yes
@@ -105,7 +105,7 @@ else
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
         elif [ "$1" = "-a" ]; then
-            for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
+            for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
         else
@@ -197,7 +197,7 @@ else
         fi
     fi
     [ -n "$RESET_HEAD" ] && git reset "${RESET_HEAD}"
-    if [ "$DELETE" = "yes" ]; then
+    if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
         AUTOSTASHED=0
         export CHANGES_MODE="#delete"
         autostash && AUTOSTASHED=1
