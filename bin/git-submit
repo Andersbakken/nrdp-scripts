@@ -88,7 +88,7 @@ else
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
             PUSH=no
-        elif [ "$1" = "-f" ]; then
+        elif [ "$1" = "-f" ] || [ "$1" = "--force" ];  then
             FORCE=yes
         elif [ "$1" = "-d" ]; then
             DELETE=yes
