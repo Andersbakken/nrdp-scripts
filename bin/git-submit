@@ -194,7 +194,7 @@ else
 
         if [ "$PUSH" = "yes" ] && run_hook "pre-submit" "$NEW_SHA1" "$BRANCH"; then
             if git push ${PUSH_ARGS}; then
-                run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"e
+                run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
             else
                 DELETE="no"
             fi
