@@ -81,15 +81,17 @@ else
     BRANCH=""
     IN_CHANGES=
     DELETE=no
-    FORCE=no
+    FORCE=
     PUSH=yes
     AUTOSTASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
-        if [ "$1" = "-n" ]; then
+        if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
             PUSH=no
-        elif [ "$1" = "-f" ]; then
-            FORCE=yes
+        elif [ "$1" = "-f" ] || [ "$1" = "--force" ];  then
+            FORCE="-f"
+        elif [ "$1" = "--force-with-lease" ];  then
+            FORCE="--force-with-lease"
         elif [ "$1" = "-d" ]; then
             DELETE=yes
         elif [ "$1" = "--branch" ]; then
@@ -105,7 +107,7 @@ else
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
         elif [ "$1" = "-a" ]; then
-            for change in `git cherry $TRACKING | grep '^+ ' | sed 's,^+,,g'`; do
+            for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
         else
@@ -138,7 +140,7 @@ else
     if [ -z "$IN_CHANGES" ]; then
         SUBMIT_ARGS=""
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
-        [ "$FORCE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -f"
+        [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS} $TRACKING" "${TRACKING}..HEAD"
@@ -187,17 +189,19 @@ else
         fi
 
         PUSH_ARGS="$PUSH_ORIGIN $NEW_SHA1:refs/heads/$PUSH_BRANCH"
-        [ "$FORCE" = "yes" ] && PUSH_ARGS="-f ${PUSH_ARGS}"
+        [ -n "$FORCE" ] && PUSH_ARGS="$FORCE ${PUSH_ARGS}"
         echo "Push: git push $PUSH_ARGS"
 
         if [ "$PUSH" = "yes" ] && run_hook "pre-submit" "$NEW_SHA1" "$BRANCH"; then
             if git push ${PUSH_ARGS}; then
-                run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
+                run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"e
+            else
+                DELETE="no"
             fi
         fi
     fi
     [ -n "$RESET_HEAD" ] && git reset "${RESET_HEAD}"
-    if [ "$DELETE" = "yes" ]; then
+    if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
         AUTOSTASHED=0
         export CHANGES_MODE="#delete"
         autostash && AUTOSTASHED=1
