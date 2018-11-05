@@ -122,6 +122,11 @@ function connect()
         }
         if ("success" in response) {
             const message = response.success ? response.data.message : response.error.message;
+            if(response.success) {
+                if(message)
+                    console.log(message);
+                process.exit(0);
+            }
             if(message)
                 console.error(message);
             process.exit(!response.success);

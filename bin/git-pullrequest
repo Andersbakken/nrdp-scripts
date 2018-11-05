@@ -2,11 +2,54 @@
 
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
 
-FROM="$1"
-if [ -z "$FROM" ]; then
-    echo "Usage: $0 from [to]"
-    exit 3
+MODE="create"
+if [ "$1" = "create" ]; then
+    MODE="create"
+    shift
+elif [ "$1" = "list" ]; then
+    MODE="list"
+    shift
 fi
-TO="$2"
-[ -z "$TO" ] && TO=`git tracking`
-$SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
+
+if [ "$MODE" = "create" ]; then
+    FROM="$1"
+    if [ -z "$FROM" ]; then
+        echo "Usage: $0 from [to]"
+        exit 3
+    fi
+    TO="$2"
+    [ -z "$TO" ] && TO=`git tracking`
+    $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
+elif [ "$MODE" = "list" ]; then
+    AUTHOR=$(git config user.email)
+    while [ "$#" -ge 1 ]; do
+        if [ "$1" = "-a" ]; then
+            AUTHOR=""
+        else
+            echo "Unknown option: $1"
+        fi
+        shift
+    done
+
+    PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
+    PULLREQUESTS="${PR_DIR}/pullrequests"
+    $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.list >"${PULLREQUESTS}"
+    COUNT=$(jq '.size' "${PULLREQUESTS}")
+    for ((p=0; p<$COUNT; p++ )); do
+        jq ".values[$p]" "$PULLREQUESTS" >"${PR_DIR}/pullrequest"
+        [ -n "$AUTHOR" ] && [ "$(jq -r '.author.user.emailAddress' ${PR_DIR}/pullrequest)" != "$AUTHOR" ] && continue
+        #cat "${PR_DIR}/pullrequest" | json_pp
+        echo "$(jq -r '.author.user.displayName' ${PR_DIR}/pullrequest):$(jq '.id' ${PR_DIR}/pullrequest): $(jq -r '.links.self[0].href' ${PR_DIR}/pullrequest) [$(jq -r '.state' ${PR_DIR}/pullrequest)]"
+
+        REVIEWERS=$(jq -r '.reviewers | length' "${PR_DIR}/pullrequest")
+        for ((r=0; r<$REVIEWERS; r++ )); do
+            jq ".reviewers[$r]" "${PR_DIR}/pullrequest" >"${PR_DIR}/reviewer"
+            if [ $(jq -r '.role' "${PR_DIR}/reviewer") == "REVIEWER" ]; then
+                echo "   $(jq -r '.user.displayName' ${PR_DIR}/reviewer) [$(jq -r '.status' ${PR_DIR}/reviewer)]"
+            fi
+        done
+    done
+    rm -rf "$PR_DIR"
+else
+    echo "Unable to run in mode $MODE"
+fi

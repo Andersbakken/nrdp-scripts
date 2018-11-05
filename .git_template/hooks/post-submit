@@ -14,7 +14,7 @@ if echo "$2" | grep -q "/"; then
     if [ "$2" != "$3" ] && echo "$2" | grep -q "${PULL_REQUEST_PREFIX}"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
         if [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
-            git pullrequest `echo $2 | cut -d/ -f2-` `echo $3 | cut -d/ -f2-`
+            git pullrequest create `echo $2 | cut -d/ -f2-` `echo $3 | cut -d/ -f2-`
             JIRA="no"
         fi
     fi
