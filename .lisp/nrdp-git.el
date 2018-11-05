@@ -628,7 +628,6 @@
     (when pr
       (push (read-from-minibuffer "Name: ") args)
       (push "--pull-request" args))
-    (push "--no-autodetach" args)
     (push "submit" args)
     (if (member "-a" args)
         (magit-run-git-async args)
