@@ -55,7 +55,7 @@ wss.on("connection", ws => {
                 }
             };
 
-            if (request.mode == "jira") {
+            if (request.mode.startsWith("jira.")) {
                 if (!opts.jira) {
                     const jiraopts = {
                         protocol: "https",
@@ -99,9 +99,9 @@ wss.on("connection", ws => {
                       });
                     */
                 }
-            } else if(request.mode == "stash") {
+            } else if(request.mode.startsWith("stash.pr.")) {
                 var project = request.project || "NRDP", repo = request.repo || "nrdp"
-                if(request.from && request.to) {
+                if(request.mode == "stash.pr.create" && request.from && request.to) {
                     var form = {
                         title: project + '(' + repo + '): auto pull-request ' + request.from + '->' + request.to,
                         fromRef: {
@@ -148,6 +148,27 @@ wss.on("connection", ws => {
                             }
                         } catch(v) {
                         }
+                        if(err || data.statusCode >= 300) {
+                            if(!data.message)
+                                data.message = data.body;
+                            var error_msg = data.body;
+                            error(request, { message: data.message });
+                            if(data.statusCode == 401)
+                                opts.password = undefined;
+                        } else {
+                            ok(request, data);
+                        }
+                    });
+                } else if(request.mode == "stash.pr.list") {
+                    url_request.get('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', {
+                        auth: {
+                            user: opts.username,
+                            pass: opts.password,
+                            sendImmediately: true
+                        }
+                    }, function(err, response, body) {
+                        var data = { statusCode: response.statusCode, body: body };
+                        data.message = body;
                         if(err || data.statusCode >= 300) {
                             if(!data.message)
                                 data.message = data.body;

@@ -89,7 +89,7 @@ for COMMIT in $COMMITS; do
 
         echo "Git: $COMMIT($ISSUE)"
         MESSAGE="[Commit: $COMMIT|https://stash.corp.netflix.com/projects/NRDP/repos/nrdp/commits/$COMMIT] $DESCRIPTION"
-        JIRA_CMD="$SCRIPT_DIR/nrdp-service/cli.js --mode jira --issue $ISSUE"
+        JIRA_CMD="$SCRIPT_DIR/nrdp-service/cli.js --mode jira.edit --issue $ISSUE"
         [ -n "$JIRA_USERNAME" ] && JIRA_CMD="$JIRA_CMD --username ${JIRA_USERNAME}"
         [ "$COMMENT" = "yes" ] && JIRA_CMD="$JIRA_CMD --comment \"$MESSAGE\""
         [ "$RESOLVE" = "yes" ] && JIRA_CMD="$JIRA_CMD --resolve"

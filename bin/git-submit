@@ -174,7 +174,7 @@ else
     export CHANGES
     export CHANGES_MODE="pick"
     export GIT_SEQUENCE_EDITOR="$0"
-    SKIPPED=`git rebase -i "${COMMON_SHA1}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
+    SKIPPED=`git rebase -i "${COMMON_SHA1_BRANCH}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
     NEW_SHA1=`git rev-parse HEAD~$SKIPPED`
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push($SKIPPED)"

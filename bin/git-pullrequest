@@ -9,4 +9,4 @@ if [ -z "$FROM" ]; then
 fi
 TO="$2"
 [ -z "$TO" ] && TO=`git tracking`
-$SCRIPT_DIR/nrdp-service/cli.js --mode stash --from "${FROM}" --to "${TO}"
+$SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"

@@ -47,7 +47,7 @@ function connect()
         username = process.env.USER;
 
     let action = { mode: argv.mode }
-    if(action.mode == "stash") {
+    if(action.mode == "stash.pr.create") {
         if(!argv.from || !argv.to) {
             console.error("need an from/to");
             return;
@@ -56,7 +56,10 @@ function connect()
         action.repo = argv.repo;
         action.from = argv.from;
         action.to = argv.to;
-    } else if(action.mode == "jira") {
+    } else if(action.mode == "stash.pr.list") {
+        action.project = argv.project;
+        action.repo = argv.repo;
+    } else if(action.mode == "jira.edit") {
         if (!argv.issue) {
             console.error("need an issue");
             return;
