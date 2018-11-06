@@ -42,12 +42,16 @@ elif [ "$MODE" = "list" ]; then
         echo "$(jq -r '.author.user.displayName' ${PR_DIR}/pullrequest):$(jq '.id' ${PR_DIR}/pullrequest): $(jq -r '.links.self[0].href' ${PR_DIR}/pullrequest) [$(jq -r '.state' ${PR_DIR}/pullrequest)]"
 
         REVIEWERS=$(jq -r '.reviewers | length' "${PR_DIR}/pullrequest")
-        for ((r=0; r<$REVIEWERS; r++ )); do
-            jq ".reviewers[$r]" "${PR_DIR}/pullrequest" >"${PR_DIR}/reviewer"
-            if [ $(jq -r '.role' "${PR_DIR}/reviewer") == "REVIEWER" ]; then
-                echo "   $(jq -r '.user.displayName' ${PR_DIR}/reviewer) [$(jq -r '.status' ${PR_DIR}/reviewer)]"
-            fi
-        done
+        if [ -n "$REVIEWERS" ] && [ "$REVIEWERS" -gt 0 ]; then
+            echo -n "    "
+            for ((r=0; r<$REVIEWERS; r++ )); do
+                jq ".reviewers[$r]" "${PR_DIR}/pullrequest" >"${PR_DIR}/reviewer"
+                if [ $(jq -r '.role' "${PR_DIR}/reviewer") == "REVIEWER" ]; then
+                    echo -n "$(jq -r '.user.displayName' ${PR_DIR}/reviewer)($(jq -r '.status' ${PR_DIR}/reviewer)) "
+                fi
+            done
+            echo
+        fi
     done
     rm -rf "$PR_DIR"
 else
