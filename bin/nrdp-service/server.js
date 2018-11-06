@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const WebSocket = require("ws");
+const crypto = require('crypto');
 const argv = require("minimist")(process.argv.slice(2));
 const Jira = require("jira-client");
 const url_request = require("request");
@@ -9,6 +10,15 @@ const querystring = require('querystring');
 
 const port = argv.port || 58910;
 
+function hash()
+{
+    const hash = crypto.createHash('md5');
+    const data = fs.readFileSync(__filename);
+    hash.update(data, 'utf8');
+    return hash.digest('hex');
+}
+
+const originalHash = hash();
 const opts = {};
 
 const original_console_log = console.log;
@@ -210,8 +220,14 @@ wss.on("connection", ws => {
             }
         }
     });
+    if (hash() != originalHash) {
+        ws.send(JSON.stringify({ relaunch: true }));
+        process.exit();
+    }
+
     if (!opts.password) {
         ws.send(JSON.stringify({ needsPassword: true }));
         return;
     }
 });
+

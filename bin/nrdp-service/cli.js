@@ -121,6 +121,12 @@ function connect()
                 });
             }
         }
+
+        if (response.relaunch) {
+            spawned = false;
+            reconnect();
+        }
+
         if ("success" in response) {
             const message = response.success ? response.data.message : response.error.message;
             if(response.success) {
@@ -134,18 +140,23 @@ function connect()
         }
     });
 
+    function reconnect()
+    {
+        if (!spawned) {
+            console.log("Starting daemon");
+            const daemon = child_process.spawn("node", [`${__dirname}/server.js`, "--port", port], { detached: true });
+            daemon.unref();
+
+            spawned = true;
+
+            //console.log("Waiting for daemon");
+        }
+        setTimeout(connect, 100);
+    }
+
     ws.on("error", error => {
         if (error.code == 'ECONNREFUSED') {
-            if (!spawned) {
-                console.log("Starting daemon");
-                const daemon = child_process.spawn("node", [`${__dirname}/server.js`, "--port", port], { detached: true });
-                daemon.unref();
-
-                spawned = true;
-
-                //console.log("Waiting for daemon");
-            }
-            setTimeout(connect, 100);
+            reconnect();
         } else {
             console.error("websocket error", error);
         }
