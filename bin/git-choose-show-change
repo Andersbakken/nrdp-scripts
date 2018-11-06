@@ -73,7 +73,14 @@ git_choose_options()
 {
     git $mode $mode_args | while read line; do
         line_change=`echo $line | cut -d' ' -f1 | sed -e 's,:,,g' | perl -pe 's/\x1b\[[0-9;]*[mG]//g'`
-        [ -n "$filter" ] && git cherry $filter "${line_change}" "${line_change}~" 2>/dev/null | grep -q '^-' && continue
+        if [ -n "$filter" ] && git rev-parse "${filter}" >/dev/null 2>&1; then
+            FILTER_CHERRY=$(git cherry $filter "${line_change}" "${line_change}~" 2>/dev/null)
+            #echo "Filter:${filter}: ${line_change}: '${FILTER_CHERRY}'" >&2
+            if [ -z "${FILTER_CHERRY}" ] || echo "$FILTER_CHERRY" | grep -q '^-'; then
+                echo "Filtered: ${line_change}" >&2
+                continue;
+            fi
+        fi
         echo "-r '$(echo $line | sed "s,\([\']\),\\\\1,g")' '$line_change'"
     done
 }

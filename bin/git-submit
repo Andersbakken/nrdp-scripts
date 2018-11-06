@@ -3,27 +3,30 @@
 if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
     # Modify the pick line to an edit line and just exit.
-    rm -f /tmp/preeditcommit$$
-    touch /tmp/preeditcommit$$
-    rm -f /tmp/posteditcommit$$
-    touch /tmp/posteditcommit$$
-    grep "^pick " "$1" | while read line; do
-        found=
-        for change in $CHANGES; do
-            if echo $line | grep --quiet "^pick $change"; then
-                echo $line | sed "s,^pick ,${CHANGES_MODE} ,g" >> /tmp/preeditcommit$$
-                # >&2 echo "$change"
-                found=1
-                break
+    rm -f /tmp/commits$$
+    touch /tmp/commits$$
+    if [ "$SUBMIT_CHANGES_MODE" = "keep" ]; then
+        for change in $SUBMIT_CHANGES; do
+            echo "pick $change" >> /tmp/commits$$
+        done
+    elif [ "$SUBMIT_CHANGES_MODE" = "delete" ]; then
+        grep "^pick " "$1" | while read line; do
+            found=
+            for change in $SUBMIT_CHANGES; do
+                if echo $line | grep --quiet "^pick $change"; then
+                    [ "$SUBMIT_CHANGES_MODE" = "delete" ] && echo "drop $change" >> /tmp/commits$$
+                    found=1
+                    break
+                fi
+            done
+            if [ -z "$found" ]; then
+                echo $line >> /tmp/commits$$
             fi
         done
-        if [ -z "$found" ]; then
-            echo $line >> /tmp/posteditcommit$$
-            echo "---git-submit skipped line--"
-        fi
-    done
-    cat /tmp/preeditcommit$$ /tmp/posteditcommit$$ > "$1"
-    rm -f /tmp/preeditcommit$$ /tmp/posteditcommit$$
+    fi
+    cat /tmp/commits$$ > "$1"
+    cat "$1" > /tmp/fuck
+    rm -f /tmp/commits$$
     exit 0
 fi
 
@@ -124,7 +127,7 @@ else
         return 1
     }
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
-    if [ -n "$TRACKING" ] && ! git sync --check "$TRACKING" >/dev/null 2>&1; then
+    if false && [ -n "$TRACKING" ] && ! git sync --check "$TRACKING" >/dev/null 2>&1; then
         echo "Make sure you sync first! [$TRACKING]" >&2
         exit 1
     fi
@@ -143,7 +146,7 @@ else
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS} $TRACKING" "${TRACKING}..HEAD"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         echo "$SUBMIT_ARGS" | grep -q "no-hooks" && run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
         exit 0
     else
@@ -173,13 +176,19 @@ else
         CHANGES="$CHANGES $SHA1"
     done
 
-    export CHANGES
-    export CHANGES_MODE="pick"
+    export SUBMIT_CHANGES="$CHANGES"
+    if [ -z "$FORCE" ] && git rev-parse "$BRANCH" >/dev/null 2>&1; then
+        export SUBMIT_CHANGES="$(git log --pretty='%h' ${COMMON_SHA1}..${BRANCH}) $SUBMIT_CHANGES"
+    fi
+    export SUBMIT_CHANGES_MODE="keep"
     export GIT_SEQUENCE_EDITOR="$0"
-    SKIPPED=`git rebase -i "${COMMON_SHA1_BRANCH}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
+    echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
+    #exit 0
+    SKIPPED=`git rebase --keep-empty -i "${COMMON_SHA1}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
     NEW_SHA1=`git rev-parse HEAD~$SKIPPED`
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push($SKIPPED)"
+        DELETE="no"
     else
         PUSH_ORIGIN="."
         PUSH_BRANCH="$BRANCH"
@@ -200,11 +209,13 @@ else
             fi
         fi
     fi
-    [ -n "$RESET_HEAD" ] && git reset "${RESET_HEAD}"
+    [ -n "$RESET_HEAD" ] && git reset --hard "${RESET_HEAD}"
     if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
         AUTOSTASHED=0
-        export CHANGES_MODE="#delete"
+        export SUBMIT_CHANGES="$CHANGES"
+        export SUBMIT_CHANGES_MODE="delete"
         autostash && AUTOSTASHED=1
+        echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
         git rebase -i "${COMMON_SHA1}" >/dev/null
         [ "$AUTOSTASHED" = "1" ] && git reset HEAD~
     fi
