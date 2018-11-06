@@ -21,6 +21,7 @@ if [ "$MODE" = "create" ]; then
     [ -z "$TO" ] && TO=`git tracking`
     $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
 elif [ "$MODE" = "list" ]; then
+    PR_MAX=5
     PR_STATE=
     PR_AUTHOR=$(git config user.email)
     while [ "$#" -ge 1 ]; do
@@ -28,6 +29,9 @@ elif [ "$MODE" = "list" ]; then
             PR_AUTHOR=""
         elif [ "$1" = "-o" ]; then
             PR_STATE="OPEN"
+        elif [ "$1" = "-n" ]; then
+            shift
+            PR_MAX="$1"
         else
             echo "Unknown option: $1"
         fi
@@ -42,6 +46,8 @@ elif [ "$MODE" = "list" ]; then
         jq ".values[$p]" "$PULLREQUESTS" >"${PR_DIR}/pullrequest"
         [ -n "$PR_STATE" ] && [ "$(jq -r '.state' ${PR_DIR}/pullrequest)" != "$PR_STATE" ] && continue
         [ -n "$PR_AUTHOR" ] && [ "$(jq -r '.author.user.emailAddress' ${PR_DIR}/pullrequest)" != "$PR_AUTHOR" ] && continue
+        [ "$PR_MAX" = "0" ] && break
+        PR_MAX=$((PR_MAX-1))
         #cat "${PR_DIR}/pullrequest" | json_pp
         echo "$(jq -r '.author.user.displayName' ${PR_DIR}/pullrequest):$(jq '.id' ${PR_DIR}/pullrequest): $(jq -r '.links.self[0].href' ${PR_DIR}/pullrequest) [$(jq -r '.state' ${PR_DIR}/pullrequest)]"
 
