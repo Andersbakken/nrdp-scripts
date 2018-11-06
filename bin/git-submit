@@ -127,8 +127,8 @@ else
         return 1
     }
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
-    if false && [ -n "$TRACKING" ] && ! git sync --check "$TRACKING" >/dev/null 2>&1; then
-        echo "Make sure you sync first! [$TRACKING]" >&2
+    if [ -n "$TRACKING" ] && ! git sync --check "$TRACKING" >/dev/null 2>&1; then
+        echo "You need to sync first! [$TRACKING]" >&2
         exit 1
     fi
 
@@ -184,10 +184,10 @@ else
     export GIT_SEQUENCE_EDITOR="$0"
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
-    SKIPPED=`git rebase --keep-empty -i "${COMMON_SHA1}" | grep "skipped line" | wc -l | awk '{print $1}'` || exit 1
-    NEW_SHA1=`git rev-parse HEAD~$SKIPPED`
+    git rebase --keep-empty -i "${COMMON_SHA1}" || exit 1
+    NEW_SHA1=`git rev-parse HEAD`
     if [ -z "$NEW_SHA1" ]; then
-        echo "Nothing to push($SKIPPED)"
+        echo "Nothing to push"
         DELETE="no"
     else
         PUSH_ORIGIN="."
