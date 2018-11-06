@@ -59,6 +59,7 @@ function connect()
     } else if(action.mode == "stash.pr.list") {
         action.project = argv.project;
         action.repo = argv.repo;
+        action.state = argv.state;
     } else if(action.mode == "jira.edit") {
         if (!argv.issue) {
             console.error("need an issue");

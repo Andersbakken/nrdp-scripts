@@ -160,7 +160,10 @@ wss.on("connection", ws => {
                         }
                     });
                 } else if(request.mode == "stash.pr.list") {
-                    url_request.get('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests?state=ALL&order=NEWEST', {
+                    var state = "ALL";
+                    if(request.state && request.state.length !== "")
+                        state = request.state;
+                    url_request.get('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests?state=' + state + '&order=NEWEST', {
                         auth: {
                             user: opts.username,
                             pass: opts.password,
