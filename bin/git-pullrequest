@@ -23,7 +23,7 @@ if [ "$MODE" = "create" ]; then
 elif [ "$MODE" = "list" ]; then
     PR_MAX=5
     PR_STATE=
-    PR_AUTHOR=$(git config user.email)
+    PR_AUTHOR=`whoami`
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-a" ]; then
             PR_AUTHOR=""
@@ -45,7 +45,7 @@ elif [ "$MODE" = "list" ]; then
     for ((p=0; p<$COUNT; p++ )); do
         jq ".values[$p]" "$PULLREQUESTS" >"${PR_DIR}/pullrequest"
         [ -n "$PR_STATE" ] && [ "$(jq -r '.state' ${PR_DIR}/pullrequest)" != "$PR_STATE" ] && continue
-        [ -n "$PR_AUTHOR" ] && [ "$(jq -r '.author.user.emailAddress' ${PR_DIR}/pullrequest)" != "$PR_AUTHOR" ] && continue
+        [ -n "$PR_AUTHOR" ] && jq -r '.author.user.emailAddress' "${PR_DIR}/pullrequest" | grep -q "$PR_AUTHOR" && continue
         [ "$PR_MAX" = "0" ] && break
         PR_MAX=$((PR_MAX-1))
         #cat "${PR_DIR}/pullrequest" | json_pp
