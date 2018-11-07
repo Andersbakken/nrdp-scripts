@@ -156,12 +156,8 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
-    RESET_HEAD=
-    if autostash || [ "$BRANCH" != "$TRACKING" ]; then
-        RESET_HEAD=`git rev-parse HEAD`
-    fi
-
     CHANGES=""
+    RESET_HEAD=`git rev-parse HEAD`
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
@@ -216,7 +212,7 @@ else
             fi
         fi
     fi
-    [ -n "$RESET_HEAD" ] && git reset --hard "${RESET_HEAD}"
+    git reset --hard "${RESET_HEAD}"
     if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
         AUTOSTASHED=0
         export SUBMIT_CHANGES="$CHANGES"
