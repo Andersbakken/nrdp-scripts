@@ -101,10 +101,8 @@ else
             shift
             BRANCH="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
-            PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
-            [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="dev/`whoami`/pull-requests/"
             shift
-            BRANCH="`echo $TRACKING | cut -d/ -f1`/${PULL_REQUEST_PREFIX}${1}"
+            BRANCH="$(echo $TRACKING | cut -d/ -f1)/$(git pullrequest branch $1)"
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "--no-hooks" ]; then

@@ -9,6 +9,9 @@ if [ "$1" = "create" ]; then
 elif [ "$1" = "list" ]; then
     MODE="list"
     shift
+elif [ "$1" = "branch" ]; then
+    MODE="branch"
+    shift
 fi
 
 if [ "$MODE" = "create" ]; then
@@ -20,6 +23,12 @@ if [ "$MODE" = "create" ]; then
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
     $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
+elif [ "$MODE" = "branch" ]; then
+    PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
+    [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
+    PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
+    [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="dev/${PULL_REQUEST_USER}/pull-requests"
+    echo "${PULL_REQUEST_PREFIX}/${1}"
 elif [ "$MODE" = "list" ]; then
     PR_MAX=5
     PR_STATE=
