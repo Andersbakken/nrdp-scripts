@@ -156,6 +156,7 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
+    autostash
     CHANGES=""
     RESET_HEAD=`git rev-parse HEAD`
     for change in $IN_CHANGES; do
