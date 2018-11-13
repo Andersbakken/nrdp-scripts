@@ -156,10 +156,11 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
+    AUTOSTASHED=0
+    autostash && AUTOSTASHED=$((AUTOSTASHED+1))
+
     CHANGES=""
     RESET_HEAD=`git rev-parse HEAD`
-    autostash
-
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
@@ -189,7 +190,7 @@ else
     export GIT_SEQUENCE_EDITOR="$0"
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
-    git rebase --keep-empty -i "${COMMON_SHA1}" || exit 1
+    git rebase --keep-empty -i "${COMMON_SHA1}"
     NEW_SHA1=`git rev-parse HEAD`
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push"
@@ -216,13 +217,12 @@ else
     fi
     git reset --hard "${RESET_HEAD}"
     if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
-        AUTOSTASHED=0
-        export SUBMIT_CHANGES="$CHANGES"
+       export SUBMIT_CHANGES="$CHANGES"
         export SUBMIT_CHANGES_MODE="delete"
-        autostash && AUTOSTASHED=1
         echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
         git rebase -i "${COMMON_SHA1}" >/dev/null
-        [ "$AUTOSTASHED" = "1" ] && git reset HEAD~
     fi
+    echo "Huh: $AUTOSTASHED"
+    [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
 fi
 exit 0
