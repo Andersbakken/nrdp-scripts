@@ -156,9 +156,10 @@ else
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
 
-    autostash
     CHANGES=""
     RESET_HEAD=`git rev-parse HEAD`
+    autostash
+
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
