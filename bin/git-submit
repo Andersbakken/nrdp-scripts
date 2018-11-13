@@ -222,7 +222,6 @@ else
         echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
         git rebase -i "${COMMON_SHA1}" >/dev/null
     fi
-    echo "Huh: $AUTOSTASHED"
     [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
 fi
 exit 0
