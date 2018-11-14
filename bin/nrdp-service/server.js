@@ -169,6 +169,28 @@ wss.on("connection", ws => {
                             ok(request, data);
                         }
                     });
+                } else if(request.mode == "stash.pr.issues") {
+                    console.log('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues');
+                    url_request.get('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues', {
+                        auth: {
+                            user: opts.username,
+                            pass: opts.password,
+                            sendImmediately: true
+                        }
+                    }, function(err, response, body) {
+                        var data = { statusCode: response.statusCode, body: body };
+                        data.message = body;
+                        if(err || data.statusCode >= 300) {
+                            if(!data.message)
+                                data.message = data.body;
+                            var error_msg = data.body;
+                            error(request, { message: data.message });
+                            if(data.statusCode == 401)
+                                opts.password = undefined;
+                        } else {
+                            ok(request, data);
+                        }
+                    });
                 } else if(request.mode == "stash.pr.list") {
                     var state = "ALL";
                     if(request.state && request.state.length !== "")

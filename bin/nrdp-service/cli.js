@@ -60,6 +60,14 @@ function connect()
         action.project = argv.project;
         action.repo = argv.repo;
         action.state = argv.state;
+    } else if(action.mode == "stash.pr.issues") {
+        if (!argv.pullRequest) {
+            console.error("need an pullrequest");
+            return;
+        }
+        action.project = argv.project;
+        action.repo = argv.repo;
+        action.pullRequest = argv.pullRequest;
     } else if(action.mode == "jira.edit") {
         if (!argv.issue) {
             console.error("need an issue");
