@@ -196,7 +196,8 @@
         (cond
          ((and (char-equal current ?\ )
                (not quotep))
-          (when word (push word result))
+          (when word
+            (push word result))
           (setq word nil escapedp nil))
          ((and (or (char-equal current ?\')
                    (char-equal current ?\"))
@@ -221,7 +222,9 @@
       (when quotep
         (error (format "Unbalanced quotes at %d"
                        (- (length string) (length word)))))
-      (when word (push result word))
+      (when word
+        (push word result))
+
       (mapcar (lambda (x) (coerce (reverse x) 'string))
               (reverse result))))
 
