@@ -120,7 +120,7 @@
 
 (defun nrdp-git-magit-log (&optional prefix)
   (interactive "P")
-  (magit-log (list (magit-get-current-branch)) (nrdp-git-magit-log-args prefix)))
+  (magit-log-other (list (magit-get-current-branch)) (nrdp-git-magit-log-args prefix)))
 
 (fset 'magit-toggle-whitespace
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
@@ -189,6 +189,41 @@
         search
       (or default ""))))
 
+(defun nrdp-git-grep-split-arguments (string)
+  (let ((i 0) result current quotep escapedp word)
+      (while (< i (length string))
+        (setq current (aref string i))
+        (cond
+         ((and (char-equal current ?\ )
+               (not quotep))
+          (when word (push word result))
+          (setq word nil escapedp nil))
+         ((and (or (char-equal current ?\')
+                   (char-equal current ?\"))
+               (not escapedp)
+               (not quotep))
+          (setq quotep current
+                escapedp nil))
+         ((and (or (char-equal current ?\')
+                   (char-equal current ?\"))
+               (char-equal current quotep)
+               (not escapedp))
+          (push word result)
+          (setq quotep nil
+                word nil
+                escapedp nil))
+         ((char-equal current ?\\)
+          (when escapedp (push current word))
+          (setq escapedp (not escapedp)))
+         (t (setq escapedp nil)
+            (push current word)))
+        (incf i))
+      (when quotep
+        (error (format "Unbalanced quotes at %d"
+                       (- (length string) (length word)))))
+      (when word (push result word))
+      (mapcar (lambda (x) (coerce (reverse x) 'string))
+              (reverse result))))
 
 (defun nrdp-git-grep (&optional dir)
   "git-grep the entire current repo"
@@ -218,7 +253,7 @@
         (setq pipe (substring search pipeidx))
         (setq search (substring search 0 pipeidx))))
     (setq search (s-chop-suffix " " search))
-    (when (string-match "^[^\"-]* [^\"-]*$" search)
+    (when (string-match "^[^\"'-]* [^\"'-]*$" search)
       (setq search (concat "\"" search "\"")))
 
     (let* ((hasdashdash)
@@ -233,9 +268,7 @@
                                       (not (string= "-" (substring arg 0 1))))
                              (setq hasarg t))
                            (nrdp-git-grep-shell-quote-argument arg))
-                         (if (string-match " " search)
-                             (split-string-and-unquote search)
-                           (list search)))))
+                         (nrdp-git-grep-split-arguments search))))
       (when (and (not hasdashdash)
                  (not hasarg))
         (push "--" args))
