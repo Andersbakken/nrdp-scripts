@@ -216,8 +216,11 @@
          ((char-equal current ?\\)
           (when escapedp (push current word))
           (setq escapedp (not escapedp)))
-         (t (setq escapedp nil)
-            (push current word)))
+         (t
+          (when escapedp
+            (push ?\\ word))
+          (setq escapedp nil)
+          (push current word)))
         (incf i))
       (when quotep
         (error (format "Unbalanced quotes at %d"
