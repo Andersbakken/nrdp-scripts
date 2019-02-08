@@ -113,7 +113,7 @@ build() {
                 ninja -t commands | rc --compile
                 return 0
             fi
-            NINJA_OPTIONS=""
+            NINJA_OPTIONS="-l 1000"
             #NINJA_OPTIONS="$NINJA_OPTIONS -d keeprsp"
             [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
             [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
@@ -134,6 +134,7 @@ build() {
                 if [ "$NUM" -gt "$MAX" ]; then
                     # echo "max is $max num is $num"
                     LINE=`ninja -t commands | grep " -c\>" 2>/dev/null | grep "\.o\>" 2>/dev/null | head -n1`
+                    echo "shit: $LINE"
                     for i in $LINE; do
                         [ ! -e "$i" ] && continue
                         echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
@@ -149,8 +150,9 @@ build() {
                             fi
                             i="$RESOLVED"
                         fi
+                        echo "$i"
                         case "$i" in
-                            *icecc|*plastc|*fiskc)
+                            *icecc|*plastc|*fisk)
                             # echo "It's icecream $f $i"
                             ;;
                             *) ### no build farm, lets reduce jobs
