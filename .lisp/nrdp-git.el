@@ -191,45 +191,54 @@
 
 (defun nrdp-git-grep-split-arguments (string)
   (let ((i 0) result current quotep escapedp word)
-      (while (< i (length string))
-        (setq current (aref string i))
-        (cond
-         ((and (char-equal current ?\ )
-               (not quotep))
-          (when word
-            (push word result))
-          (setq word nil escapedp nil))
-         ((and (or (char-equal current ?\')
-                   (char-equal current ?\"))
-               (not escapedp)
-               (not quotep))
-          (setq quotep current
-                escapedp nil))
-         ((and (or (char-equal current ?\')
-                   (char-equal current ?\"))
-               (char-equal current quotep)
-               (not escapedp))
-          (push word result)
-          (setq quotep nil
-                word nil
-                escapedp nil))
-         ((char-equal current ?\\)
-          (when escapedp (push current word))
-          (setq escapedp (not escapedp)))
-         (t
-          (when escapedp
-            (push ?\\ word))
-          (setq escapedp nil)
-          (push current word)))
-        (incf i))
-      (when quotep
-        (error (format "Unbalanced quotes at %d"
-                       (- (length string) (length word)))))
-      (when word
-        (push word result))
+    (while (< i (length string))
+      (setq current (aref string i))
+      ;; (message "Looking at %d/%d [%c]"
+      ;;          ;;quotep %d escapedp %s"
+      ;;          i (length string) current)
+      ;; (when quotep
+      ;;   (message "quotep %c" quotep))
+      ;; (when escapedp
+      ;;   (message "escapedp"))
+      ;;quotep  (if escapedp "yes" "no"))
+      (cond
+       ((and (char-equal current ?\ )
+             (not quotep))
+        (when word
+          (push word result))
+        (setq word nil escapedp nil))
+       ((and (or (char-equal current ?\')
+                 (char-equal current ?\"))
+             (not escapedp)
+             (not quotep))
+        (setq quotep current
+              escapedp nil))
+       ((and (or (char-equal current ?\')
+                 (char-equal current ?\"))
+             quotep
+             (char-equal current quotep)
+             (not escapedp))
+        (push word result)
+        (setq quotep nil
+              word nil
+              escapedp nil))
+       ((char-equal current ?\\)
+        (when escapedp (push current word))
+        (setq escapedp (not escapedp)))
+       (t
+        (when escapedp
+          (push ?\\ word))
+        (setq escapedp nil)
+        (push current word)))
+      (incf i))
+    (when quotep
+      (error (format "Unbalanced quotes at %d"
+                     (- (length string) (length word)))))
+    (when word
+      (push word result))
 
-      (mapcar (lambda (x) (coerce (reverse x) 'string))
-              (reverse result))))
+    (mapcar (lambda (x) (coerce (reverse x) 'string))
+            (reverse result))))
 
 (defun nrdp-git-grep (&optional dir)
   "git-grep the entire current repo"
