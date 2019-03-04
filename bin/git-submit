@@ -190,7 +190,10 @@ else
     export GIT_SEQUENCE_EDITOR="$0"
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
-    git rebase --keep-empty -i "${COMMON_SHA1}"
+    if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
+	echo "Git failed"
+	exit 1
+    fi
     NEW_SHA1=`git rev-parse HEAD`
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push"
