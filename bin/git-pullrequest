@@ -33,9 +33,13 @@ elif [ "$MODE" = "branch" ]; then
     [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
     PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
     [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="dev/${PULL_REQUEST_USER}/pull-requests"
-    BRANCH_NAME="${PULL_REQUEST_PREFIX}/${PR_NAME}"
-    echo "${BRANCH_NAME}"
-    [ "$1" = "delete" ] && git push origin ":${BRANCH_NAME}"
+    if [ -z "$PR_NAME" ]; then
+        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
+    else
+        BRANCH_NAME="${PULL_REQUEST_PREFIX}/${PR_NAME}"
+        echo "${BRANCH_NAME}"
+        [ "$1" = "delete" ] && git push origin ":${BRANCH_NAME}"
+    fi
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     ISSUES_FILE="${PR_DIR}/pr-issues"
