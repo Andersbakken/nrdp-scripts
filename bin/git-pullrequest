@@ -15,6 +15,9 @@ elif [ "$1" = "branch" ]; then
 elif [ "$1" = "issues" ]; then
     MODE="issues"
     shift
+elif [ "$1" = "fetch" ]; then
+    MODE="fetch"
+    shift
 fi
 
 if [ "$MODE" = "create" ]; then
@@ -26,6 +29,8 @@ if [ "$MODE" = "create" ]; then
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
     $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
+elif [ "$MODE" = "fetch" ]; then
+    git fetch origin "+refs/pull-requests/*:refs/remotes/origin/heads/pull-requests/*"
 elif [ "$MODE" = "branch" ]; then
     PR_NAME="$1"
     [ "$PR_NAME" = "delete" ] && PR_NAME="$2"
