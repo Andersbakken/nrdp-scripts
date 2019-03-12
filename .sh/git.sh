@@ -12,7 +12,10 @@ run_git()
 
 git() #make git checkout commands usable with submodules
 {
-    if [ "$1" == "--skip-submodule" ]; then
+    if [ "$1" == "--version" ] || [ "$1" == "--help" ] || [ "$1" == "init" ]; then
+        command git $1
+        shift
+    elif [ "$1" == "--skip-submodule" ]; then
         shift
         run_git "$@"
     elif [ "$1" == "clone" ]; then
