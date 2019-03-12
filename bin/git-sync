@@ -1,5 +1,8 @@
 #!/bin/bash
 
+GIT_TRACKING=
+which git-tracking >/dev/null 2>&1 && GIT_TRACKING=`git-tracking`
+
 [ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager --no-ignores "
 function syncdir
 {
@@ -59,8 +62,8 @@ function syncdir
         git svn update
     else
         git pull $PULLARGS
-        if which git-tracking >/dev/null 2>&1; then
-            SYNC_SUMMARY_END=`git tracking`
+        if [ -n "$GIT_TRACKING" ]; then
+            SYNC_SUMMARY_END="${GIT_TRACKING}"
             if [ -z "$SYNC_SUMMARY_END" ]; then
                 GIT_SYNC_SUMMARY=
             else
@@ -68,7 +71,7 @@ function syncdir
             fi
         fi
     fi
-    git remote prune $(git tracking | cut -d/ -f1)
+    git remote prune $(echo ${GIT_TRACKING} | cut -d/ -f1)
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
@@ -96,9 +99,6 @@ while [ -n "$1" ]; do
             check="$1"
             [ -z "$check" ] && check=$(git rev-parse --abbrev-ref @{u})
             echo "$check" | grep -vq '/' && check="$check/`git name-rev HEAD | cut -d' ' -f2`"
-            ;;
-        -r|--recursive)
-            recursive=1
             ;;
         --no-log)
             GIT_SYNC_SUMMARY=""
@@ -139,14 +139,6 @@ rc=0
 while [ $i -lt $idx ]; do
     root="${dirs[$i]}"
     syncdir "$root" || rc=1
-    if [ -n "$recursive" ]; then
-        find -L "$root" -mindepth 1 -maxdepth 4 -type d -name ".git" 2>/dev/null | while read i; do
-            sub=`cd $i/.. && pwd`
-            if [ "$root" != "$sub" ]; then
-                syncdir "$sub" || rc=1
-            fi
-        done
-    fi
     i=`expr $i + 1`
 done
 exit $rc

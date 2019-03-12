@@ -58,7 +58,6 @@ lsdev_git_sync() #sync a tree
     LSDEV_FLAGS="src "
     while [ "$#" -gt 0 ]; do
       case "$1" in
-      --sync-recursive) ACTION="sync -r" ;;
       --status) ACTION="status" ;;
       --push) shift; ACTION="push $1" ;;
       --pushf) shift; ACTION="push -f $1" ;;
