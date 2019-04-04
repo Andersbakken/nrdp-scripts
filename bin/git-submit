@@ -125,8 +125,8 @@ else
         return 1
     }
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
-    if [ -n "$TRACKING" ] && ! git sync --check "$TRACKING" >/dev/null 2>&1; then
-        echo "You need to sync first! [$TRACKING]" >&2
+    if [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
+        echo "You need to sync first! [$BRANCH]" >&2
         exit 1
     fi
 
@@ -191,8 +191,8 @@ else
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
     if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
-	echo "Git failed"
-	exit 1
+    echo "Git failed"
+    exit 1
     fi
     NEW_SHA1=`git rev-parse HEAD`
     if [ -z "$NEW_SHA1" ]; then
