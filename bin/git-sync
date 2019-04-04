@@ -43,7 +43,7 @@ function syncdir
     if [ -n "$check" ]; then
         local_sha=`git rev-parse HEAD`
         check_origin=`echo "$check" | cut -d'/' -f1`
-        check_branch=`echo "$check" | cut -d'/' -f2`
+        check_branch=`echo "$check" | cut -d'/' -f2-`
         for remote_sha in $(git ls-remote $check_origin | grep "refs/heads/${check_branch}$" | cut -f1); do
             echo "Trying: $remote_sha :: $local_sha"
             if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" >/dev/null 2>&1; then
