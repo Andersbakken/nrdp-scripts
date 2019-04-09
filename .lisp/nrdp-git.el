@@ -312,10 +312,13 @@
          (dir (magit-toplevel (and (= (length devs) 1) (cadar devs)))))
     (unless dir
       (error "No git dir"))
-    (nrdp-git-grep (cond ((and prefix (file-directory-p (concat dir "src")))
+    (nrdp-git-grep (cond ((and (numberp prefix) (file-directory-p (concat dir "src")))
                           (concat dir "src"))
                          ((null prefix) dir)
-                         ((stringp prefix) (concat dir prefix))
+                         ((listp prefix) default-directory)
+                         ((stringp prefix) (if (file-directory-p (concat dir prefix))
+                                               (file-directory-p (concat dir prefix))
+                                             prefix))
                          (t default-directory)))))
 
 (defun nrdp-git-config-value (conf)
