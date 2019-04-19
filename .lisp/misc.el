@@ -1029,6 +1029,15 @@ to case differences."
                   (t nil))
             (insert "\n" ins))))))
 
+(defun nrdp-compiled-bridge (&optional prefix srcdir)
+  (interactive "p")
+  (lsdev-open-build-file (concat "src/platform/gibbon/data/resources/js/"
+                                 (cond ((stringp prefix)
+                                        prefix)
+                                       ((and prefix (listp prefix))
+                                        (read-from-minibuffer "File: " (file-name-nondirectory (buffer-file-name))))
+                                       (t (file-name-nondirectory (buffer-file-name)))))))
+
 (defun NetflixBridge.js (&optional srcdir)
   (interactive)
   (lsdev-open-build-file "src/platform/gibbon/data/resources/js/NetflixBridge.js" srcdir))
