@@ -37,7 +37,7 @@ elif [ "$MODE" = "branch" ]; then
     PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
     [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
     PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
-    [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="dev/${PULL_REQUEST_USER}/pull-requests"
+    [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
     if [ -z "$PR_NAME" ]; then
         git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
     else
