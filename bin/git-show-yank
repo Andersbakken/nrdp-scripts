@@ -1,13 +1,13 @@
 #!/bin/bash
 
 if [ -z $@ ]; then
-    arg=`yank | head -n 1`
+    arg=`xclip -o -selection primary`
 else
     arg=$1
 fi
 arg=`echo $arg | sed -e 's,[^A-Za-z0-9],,g'`
 
-for i in `find $HOME/dev -maxdepth 2 -name .git -type d | sed -e 's,\.git$,,'`; do
+for i in `lsdev.pl -l -a  src -tp`; do
     if [ -d $i ]; then
         cd $i
         if git show $arg &>/dev/null; then
