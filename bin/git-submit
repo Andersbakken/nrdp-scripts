@@ -125,7 +125,7 @@ else
         return 1
     }
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
-    if [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
+    if [ -z "$PULL_REQUEST_PREFIX" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
         echo "You need to sync first! [$BRANCH]" >&2
         exit 1
     fi
