@@ -303,7 +303,7 @@
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js' ':!*/jquery*.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js'"
                          pipe)))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
