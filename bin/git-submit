@@ -81,6 +81,7 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
         echo "$(git changes --no-ignores --max-count=1 $change)$NOTES"
     done
 else
+    PR=""
     BRANCH=""
     IN_CHANGES=
     DELETE=no
@@ -102,7 +103,7 @@ else
             BRANCH="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
             shift
-            BRANCH="$(echo $TRACKING | cut -d/ -f1)/$(git pullrequest branch $1)"
+            PR="$1"
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "--no-hooks" ]; then
@@ -124,12 +125,16 @@ else
         fi
         return 1
     }
-    [ -z "$BRANCH" ] && BRANCH="$TRACKING"
-    if [ -z "$PULL_REQUEST_PREFIX" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
+    if [ -z "$PR" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
         echo "You need to sync first! [$BRANCH]" >&2
         exit 1
     fi
 
+    if [ -n "$PR" ]; then
+        BRANCH="$(echo $TRACKING | cut -d/ -f1)/$(git pullrequest branch $PR)"
+    elif [ -z "$BRANCH" ]; then
+        BRANCH="$TRACKING"
+    fi
     if [ -z "$BRANCH" ]; then
         echo "No branch to push to!"
         exit 1
@@ -143,7 +148,11 @@ else
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
-        [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
+        if [ -n "$PR" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --pr ${PR}"
+        elif [ -n "$BRANCH" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
+        fi
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         echo "$SUBMIT_ARGS" | grep -q "no-hooks" && run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
         exit 0
