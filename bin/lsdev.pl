@@ -504,9 +504,17 @@ sub sortRootPredicate {
     my $path2 = $root2->{path};
     my $default1 = getPathConfig($path1, "default");
     my $default2 = getPathConfig($path2, "default");
-    return -1 if($default1 && !$default2);
-    return 1 if($default2 && !$default1);
-    return (cstat($path2))[9] <=> (cstat($path1))[9];
+    my $result;
+    if($default1 && !$default2) {
+        $result = -1;
+    } elsif($default2 && !$default1) {
+        $result = 1;
+    } else {
+        $result = ($path2 cmp $path1);
+        #$result = (cstat($path2))[9] <=> (cstat($path1))[9];
+    }
+    #display "Huh: $path1 vs $path2 :: $result\n";
+    return $result;
 }
 
 sub sortRootPathPredicate {
@@ -721,7 +729,6 @@ sub filterMatches_internal {
             push @result, $root->{path} if(defined($root));
         }
     }
-    @result = sort { sortRootPathPredicate($a, $b) } @result;
     return @result;
 }
 
@@ -1021,6 +1028,7 @@ if($display_only eq "default") { #display the currently mapped default
             @choices = @uniq_choices;
         }
     }
+    @choices = sort { sortRootPathPredicate($a, $b) } @choices;
 
     my $index;
     if($display_only eq "list") {
