@@ -88,6 +88,7 @@ else
     FORCE=
     PUSH=yes
     AUTOSTASH=
+    DASHDASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
@@ -112,7 +113,13 @@ else
             for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
+        elif [ "$1" = "--" ]; then
+            DASHDASH=1
         else
+            if [ -z "$DASHDASH" ] && `echo $1 | grep --quiet -- "^-"`; then
+                echo "git-submit: Unknown option $1" >&2
+                exit 1
+            fi
             IN_CHANGES="$IN_CHANGES $1"
         fi
         shift
