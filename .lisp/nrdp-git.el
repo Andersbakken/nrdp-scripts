@@ -353,6 +353,24 @@
       (setq path (and (string-match "\\(.*/\\).*/" path) (match-string 1 path))))
     best))
 
+(defun nrdp-git-choose-committish ()
+  (completing-read "Committish: " (with-temp-buffer
+                             (call-process "git" nil t nil "branch" "-a")
+                             (goto-char (point-min))
+                             (let ((branches)
+                                   (current))
+                               (while (not (eobp))
+                                 (when (cond ((looking-at "^\\* \\(.*\\)$") (setq current (match-string 1)) nil)
+                                             ((looking-at "^  remotes/\\(.*\\)$"))
+                                             ((looking-at "^.*\.git-submit$") nil)
+                                             ((looking-at "^  \\(.*\\)$"))
+                                             (t nil))
+                                   (push (match-string 1) branches))
+                                 (forward-line 1))
+                               (when current
+                                 (push current branches))
+                               branches))))
+
 (defun nrdp-git-show-revision (&optional file sha)
   (interactive "P")
   (setq file (expand-file-name (cond ((stringp file) file)
@@ -364,22 +382,7 @@
   (setq file (file-truename file))
   (let ((default-directory (nrdp-git-dir-for-file file)))
     (unless sha
-      (setq sha (completing-read "Sha: " (with-temp-buffer
-                                           (call-process "git" nil t nil "branch" "-a")
-                                           (goto-char (point-min))
-                                           (let ((branches)
-                                                 (current))
-                                             (while (not (eobp))
-                                               (when (cond ((looking-at "^\\* \\(.*\\)$") (setq current (match-string 1)) nil)
-                                                           ((looking-at "^  remotes/\\(.*\\)$"))
-                                                           ((looking-at "^.*\.git-submit$") nil)
-                                                           ((looking-at "^  \\(.*\\)$"))
-                                                           (t nil))
-                                                 (push (match-string 1) branches))
-                                               (forward-line 1))
-                                             (when current
-                                               (push current branches))
-                                             branches)))))
+      (setq sha (nrdp-git-choose-committish)))
     (unless sha
       (error "You have to pick a SHA!"))
     (let* ((line (and (string= file (buffer-file-name)) (count-lines 1 (point))))
@@ -463,6 +466,13 @@
     (if tracking
         (nrdp-git-diff -w target no-split-window norestorefocus tracking word)
       (message "No tracking branch for branch"))))
+
+(defun nrdp-git-diff-against-committish (&optional -w target no-split-window norestorefocus word)
+  (interactive "P")
+  (let ((committish (nrdp-git-choose-committish)))
+    (if committish
+        (nrdp-git-diff -w target no-split-window norestorefocus committish word)
+      (message "No committish chosen"))))
 
 (defun nrdp-git-word-diff (&optional -w target no-split-window norestorefocus against)
   (interactive "P")
