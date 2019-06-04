@@ -10,14 +10,14 @@
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
     (eval
-      `(define-minor-mode ,(intern name)
-                          "Automagically built minor mode to define buffer-local keys."))
+     `(define-minor-mode ,(intern name)
+        "Automagically built minor mode to define buffer-local keys."))
     (let* ((mapname (format "%s-map" name))
            (map (intern mapname)))
       (unless (boundp (intern mapname))
         (set map (make-sparse-keymap)))
       (eval
-        `(define-key ,map ,key func)))
+       `(define-key ,map ,key func)))
     (funcall (intern name) t)))
 
 (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
@@ -28,9 +28,9 @@
 (define-key magit-file-mode-map "\C-xg" nil)
 
 (defun nrdp-magit-section-type (object)
-    (if (fboundp 'magit-section-type)
-        (magit-section-type object)
-      (oref object type)))
+  (if (fboundp 'magit-section-type)
+      (magit-section-type object)
+    (oref object type)))
 
 (defun nrdp-magit-section-value (object)
   (if (fboundp 'magit-section-value)
@@ -356,21 +356,21 @@
 
 (defun nrdp-git-choose-committish ()
   (completing-read "Committish: " (with-temp-buffer
-                             (call-process "git" nil t nil "branch" "-a")
-                             (goto-char (point-min))
-                             (let ((branches)
-                                   (current))
-                               (while (not (eobp))
-                                 (when (cond ((looking-at "^\\* \\(.*\\)$") (setq current (match-string 1)) nil)
-                                             ((looking-at "^  remotes/\\(.*\\)$"))
-                                             ((looking-at "^.*\.git-submit$") nil)
-                                             ((looking-at "^  \\(.*\\)$"))
-                                             (t nil))
-                                   (push (match-string 1) branches))
-                                 (forward-line 1))
-                               (when current
-                                 (push current branches))
-                               branches))))
+                                    (call-process "git" nil t nil "branch" "-a")
+                                    (goto-char (point-min))
+                                    (let ((branches)
+                                          (current))
+                                      (while (not (eobp))
+                                        (when (cond ((looking-at "^\\* \\(.*\\)$") (setq current (match-string 1)) nil)
+                                                    ((looking-at "^  remotes/\\(.*\\)$"))
+                                                    ((looking-at "^.*\.git-submit$") nil)
+                                                    ((looking-at "^  \\(.*\\)$"))
+                                                    (t nil))
+                                          (push (match-string 1) branches))
+                                        (forward-line 1))
+                                      (when current
+                                        (push current branches))
+                                      branches))))
 
 (defun nrdp-git-show-revision (&optional file sha)
   (interactive "P")
@@ -560,7 +560,7 @@
                             (switch-to-buffer found)
                             (magit-refresh)
                             t))))
-        (call-interactively 'magit-status)))
+    (call-interactively 'magit-status)))
 
 (defadvice magit-status-internal (around fixdir activate)
   (let ((dir (ad-get-arg 0)))
@@ -682,13 +682,30 @@
                                      (list "jira" "--no-interactive" "--comment")
                                    (list "jira" "--resolve" "--no-interactive" "--comment")) commit))
 
+(defun magit-submit-initial-contents (commit)
+  (let ((jira))
+    (mapc (lambda (sha)
+            (unless jira
+              (let ((output (shell-command-to-string (concat "git show --no-patch --pretty=tformat:%s " sha))))
+                ;; (message "got output %s" output)
+                (setq jira (and (string-match "^\\[?\\([A-Z]+-[0-9]+\\)" output) (match-string 1 output))))))
+          (cond ((and commit (listp commit) commit))
+                (commit (list commit))
+                (t
+                 (nrdp-git-magit-current-things-filtered 'commit))))
+    (or jira "")))
+
+
 (defun magit-submit (&optional commit pr args)
   (interactive)
   (let ((prev (getenv "GIT_POST_SUBMIT_FLAGS")))
     (setenv "GIT_POST_SUBMIT_FLAGS" (concat "--no-interactive --resolve"))
     (setq args (append args (magit-push-arguments)))
     (when pr
-      (push (read-from-minibuffer "Name: ") args)
+      (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
+        (unless (and (> (length name) 0) (not (string-match " " name)))
+          (error "Bad pr name: \"%s\"" name))
+        (push name args))
       (push "--pull-request" args))
     (push "submit" args)
     (if (member "-a" args)
