@@ -86,6 +86,7 @@ else
     IN_CHANGES=
     DELETE=no
     FORCE=
+    REPLACE=no
     PUSH=yes
     AUTOSTASH=
     DASHDASH=
@@ -107,6 +108,8 @@ else
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
             shift
             PR="$1"
+        elif [ "$1" = "--replace" ] || [ "$1" = "-r" ]; then
+            REPLACE=yes
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "--no-hooks" ]; then
@@ -125,6 +128,10 @@ else
         fi
         shift
     done
+    if [ "$REPLACE" = "yes" ] && [ -z "$PR" ]; then
+        echo "--replace only works with --pr"
+        exit 1
+    fi
     autostash() {
         if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
             ignore_marker=`git ignore-commit marker 2>/dev/null`
@@ -147,6 +154,17 @@ else
         echo "No branch to push to!"
         exit 1
     fi
+    PUSH_ORIGIN="."
+    PUSH_BRANCH="$BRANCH"
+    if echo "$PUSH_BRANCH" | grep -q "/"; then
+        PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+        PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
+    fi
+
+    if [ "$REPLACE" = "yes" ]; then
+        echo "Replacing remote branch $PUSH_ORIGIN/$PUSH_BRANCH"
+        git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
+    fi
     COMMON_SHA1_BRANCH="$BRANCH"
     git rev-parse "$COMMON_SHA1_BRANCH" >/dev/null 2>&1 || COMMON_SHA1_BRANCH="$TRACKING"
     COMMON_SHA1=`git merge-base HEAD $COMMON_SHA1_BRANCH`
@@ -155,6 +173,7 @@ else
         SUBMIT_ARGS=""
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
+        [ "$REPLACE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --replace"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         if [ -n "$PR" ]; then
             SUBMIT_ARGS="$SUBMIT_ARGS --pr ${PR}"
@@ -216,13 +235,6 @@ else
         echo "Nothing to push"
         DELETE="no"
     else
-        PUSH_ORIGIN="."
-        PUSH_BRANCH="$BRANCH"
-        if echo "$PUSH_BRANCH" | grep -q "/"; then
-            PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
-            PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
-        fi
-
         PUSH_ARGS="$PUSH_ORIGIN $NEW_SHA1:refs/heads/$PUSH_BRANCH"
         [ -n "$FORCE" ] && PUSH_ARGS="$FORCE ${PUSH_ARGS}"
         echo "Push: git push $PUSH_ARGS"

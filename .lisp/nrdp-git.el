@@ -133,6 +133,7 @@
 (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore-commit)
 (magit-define-popup-action 'magit-stash-popup ?b "Buffer" 'nrdp-git-stash-buffer)
 
+(magit-define-popup-switch 'magit-push-popup ?r "Replace" "--replace")
 (magit-define-popup-switch 'magit-push-popup ?D "Delete" "-d")
 (magit-define-popup-switch 'magit-push-popup ?a "All commits" "-a")
 
