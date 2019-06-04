@@ -208,8 +208,8 @@ else
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
     if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
-    echo "Git failed"
-    exit 1
+        echo "Git failed"
+        exit 1
     fi
     NEW_SHA1=`git rev-parse HEAD`
     if [ -z "$NEW_SHA1" ]; then
@@ -237,7 +237,7 @@ else
     fi
     git reset --hard "${RESET_HEAD}"
     if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
-       export SUBMIT_CHANGES="$CHANGES"
+        export SUBMIT_CHANGES="$CHANGES"
         export SUBMIT_CHANGES_MODE="delete"
         echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
         git rebase -i "${COMMON_SHA1}" >/dev/null
