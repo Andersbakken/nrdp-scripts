@@ -233,8 +233,7 @@
         (push current word)))
       (incf i))
     (when quotep
-      (error (format "Unbalanced quotes at %d"
-                     (- (length string) (length word)))))
+      (error (format "Unbalanced quote %c at %d" quotep (- (length string) (length word)))))
     (when word
       (push word result))
 
@@ -253,7 +252,7 @@
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
                    "git grep: pwd: "))
-         (result (read-from-minibuffer prompt (concat dir " ") nil nil nil default))
+         (result (read-shell-command prompt (concat dir " ") 'grep-find-history))
          (search))
     (unless (string-match "^\\(/[^ ]+\\) \\(.*\\)$" result)
       (error "Bad string!"))
