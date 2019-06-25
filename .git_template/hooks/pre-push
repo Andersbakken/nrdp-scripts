@@ -3,5 +3,8 @@
 #    echo "Must sync first!"
 #    exit 1
 #fi
-git ignore-commit remote push "$2" || exit 1
+if [ -z "$GIT_IGNORE_IGNORE" ] && ! git ignore-commit remote push "$2"; then
+    echo "To bypass, export GIT_IGNORE_IGNORE=1 while pushing"
+    exit 1
+fi
 exit 0
