@@ -2,7 +2,7 @@
 
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
 
-MODE="create"
+MODE="submit"
 if [ "$1" = "create" ]; then
     MODE="create"
     shift
@@ -12,13 +12,33 @@ elif [ "$1" = "list" ]; then
 elif [ "$1" = "branch" ]; then
     MODE="branch"
     shift
+elif [ "$1" = "submit" ]; then
+    MODE="submit"
+    shift
 elif [ "$1" = "issues" ]; then
     MODE="issues"
     shift
 elif [ "$1" = "fetch" ]; then
     MODE="fetch"
     shift
+elif [ "$1" = "prefix" ]; then
+    MODE="prefix"
+    shift
 fi
+
+PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
+[ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
+PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
+[ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
+
+pr_branch_name() {
+    local PR_NAME="$1"
+    if [ -z "$PR_NAME" ]; then
+        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
+    else
+        echo "${PULL_REQUEST_PREFIX}/${PR_NAME}"
+    fi
+}
 
 if [ "$MODE" = "create" ]; then
     FROM="$1"
@@ -29,21 +49,15 @@ if [ "$MODE" = "create" ]; then
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
     $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --from "${FROM}" --to "${TO}"
+elif [ "$MODE" = "prefix" ]; then
+    echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then
     git fetch origin "+refs/pull-requests/*:refs/remotes/origin/heads/pull-requests/*"
 elif [ "$MODE" = "branch" ]; then
-    PR_NAME="$1"
-    [ "$PR_NAME" = "delete" ] && PR_NAME="$2"
-    PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
-    [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
-    PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
-    [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
-    if [ -z "$PR_NAME" ]; then
-        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
+    if [ "$1" = "delete" ]; then
+        git push origin ":$(pr_branch_name $2)"
     else
-        BRANCH_NAME="${PULL_REQUEST_PREFIX}/${PR_NAME}"
-        echo "${BRANCH_NAME}"
-        [ "$1" = "delete" ] && git push origin ":${BRANCH_NAME}"
+        pr_branch_name $1
     fi
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
@@ -62,6 +76,9 @@ elif [ "$MODE" = "list" ]; then
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-a" ]; then
             PR_AUTHOR=""
+        elif [ "$1" = "-u" ]; then
+            shift
+            PR_AUTHOR="$1"
         elif [ "$1" = "-o" ]; then
             PR_STATE="OPEN"
         elif [ "$1" = "-n" ]; then
@@ -99,6 +116,40 @@ elif [ "$MODE" = "list" ]; then
         fi
     done
     rm -rf "$PR_DIR"
+elif [ "$MODE" = "submit" ]; then
+    REPLACE=
+    SUBMIT_ARGS=
+    PR_NAME=
+    while [ "$#" -ge 1 ]; do
+        if [ "$1" = "-r" ] || [ "$1" = "--replace" ]; then
+            REPLACE=1
+        elif [ "$1" = "-n" ] || [ "$1" = "--name" ]; then
+            shift
+            PR_NAME="$1"
+        else
+            SUBMIT_ARGS="$SUBMIT_ARGS $1"
+        fi
+        shift
+    done
+
+    BRANCH=
+    PUSH_ORIGIN=
+    PUSH_BRANCH=
+    if [ -n "$PR_NAME" ]; then
+        TRACKING=`git config --local submit.tracking`
+        [ -z "$TRACKING" ] && TRACKING=`git tracking`
+        PUSH_ORIGIN="$(echo $TRACKING | cut -d/ -f1)"
+        PUSH_BRANCH="$(pr_branch_name $PR_NAME)"
+        if [ "$REPLACE" = "1" ]; then
+            echo "Replacing remote branch $BRANCH"
+            git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
+        fi
+   else
+        PUSH_ORIGIN="."
+        PUSH_BRANCH="$(pr_branch_name unknown)"
+        git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
+   fi
+    $SCRIPT_DIR/git-submit --branch "$PUSH_ORIGIN/$PUSH_BRANCH" $SUBMIT_ARGS
 else
     echo "Unable to run in mode $MODE"
 fi

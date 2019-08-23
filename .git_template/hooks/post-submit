@@ -7,11 +7,39 @@ fi
 if echo "$2" | grep -q "/"; then
     JIRA="yes"
     ORIGIN=`echo $2 | cut -d/ -f1`
+    BRANCH=$(echo $2 | cut -d/ -f2-)
 
-    if [ "$2" != "$3" ] && echo "$2" | grep -q "$(git pullrequest branch)"; then #pull request
+    if [ "$2" != "$3" ] && echo "$2" | grep -q "^$ORIGIN/$(git pullrequest prefix)"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
-        if [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
-            git pullrequest create `echo $2 | cut -d/ -f2-` `echo $3 | cut -d/ -f2-`
+        if [ "$ORIGIN" = "." ]; then
+            PR_NAME=""
+            for COMMIT in $(git log --pretty=format:%h "$1..$BRANCH"); do
+                DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
+                if [ -n "$DESCRIPTION" ]; then
+                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
+                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
+                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
+                fi
+            done
+            for ISSUE in $ISSUES; do
+                if [ -n "$ISSUE" ]; then
+                    [ -n "$PR_NAME" ] && PR_NAME=","
+                    PR_NAME="${PR_NAME}${ISSUE}"
+                fi
+            done
+            if [ -z "$PR_NAME" ]; then
+                PR_NAME=$(git show $BRANCH --pretty="%s" --no-patch | sed -e 's/[^a-zA-Z0-9,-]/_/g')
+            fi
+
+            PR_SOURCE=$(git pullrequest branch "${PR_NAME}")
+            PR_DEST=$(echo $3 | cut -d/ -f2-)
+            git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
+            git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
+            JIRA="no"
+        elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
+            PR_SOURCE="$BRANCH"
+            PR_DEST=$(echo $3 | cut -d/ -f2-)
+            git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
             JIRA="no"
         fi
     fi

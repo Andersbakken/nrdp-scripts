@@ -25,7 +25,6 @@ if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
         done
     fi
     cat /tmp/commits$$ > "$1"
-    cat "$1" > /tmp/fuck
     rm -f /tmp/commits$$
     exit 0
 fi
@@ -65,10 +64,7 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
             shift
             BRANCH="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
-            PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
-            [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/`whoami`/"
-            shift
-            BRANCH="`echo $TRACKING | cut -d/ -f1`/${PULL_REQUEST_PREFIX}${1}"
+            BRANCH=$(git pullrequest branch $1)
         fi
         shift
     done
