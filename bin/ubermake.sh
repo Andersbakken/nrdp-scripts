@@ -27,13 +27,13 @@ if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
     if ! echo $NUM | grep --quiet "^[0-9]\+$"; then
         NUM=1
     fi
-    rc -j $NUM --silent
+    rc -j push:$NUM --silent
 fi
 
 cleanup()
 {
     if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
-        rc -j default --silent
+        rc -j pop --silent
     fi
 }
 
