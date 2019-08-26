@@ -124,7 +124,12 @@ else
         fi
         shift
     done
-    if [ "$REPLACE" = "yes" ] && [ -z "$PR" ]; then
+    if [ -n "$PR" ]; then
+        PR_ARGS="--name $PR"
+        [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --replace"
+        git pullrequest submit ${PR_ARGS} ${IN_CHANGES}
+        exit 0
+    elif [ "$REPLACE" = "yes" ]; then
         echo "--replace only works with --pr"
         exit 1
     fi
@@ -136,14 +141,12 @@ else
         fi
         return 1
     }
-    if [ -z "$PR" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
+    if [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
         echo "You need to sync first! [$BRANCH]" >&2
         exit 1
     fi
 
-    if [ -n "$PR" ]; then
-        BRANCH="$(echo $TRACKING | cut -d/ -f1)/$(git pullrequest branch $PR)"
-    elif [ -z "$BRANCH" ]; then
+    if [ -z "$BRANCH" ]; then
         BRANCH="$TRACKING"
     fi
     if [ -z "$BRANCH" ]; then
@@ -157,10 +160,6 @@ else
         PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
     fi
 
-    if [ "$REPLACE" = "yes" ]; then
-        echo "Replacing remote branch $PUSH_ORIGIN/$PUSH_BRANCH"
-        git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
-    fi
     COMMON_SHA1_BRANCH="$BRANCH"
     git rev-parse "$COMMON_SHA1_BRANCH" >/dev/null 2>&1 || COMMON_SHA1_BRANCH="$TRACKING"
     COMMON_SHA1=`git merge-base HEAD $COMMON_SHA1_BRANCH`
@@ -169,13 +168,8 @@ else
         SUBMIT_ARGS=""
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
-        [ "$REPLACE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --replace"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
-        if [ -n "$PR" ]; then
-            SUBMIT_ARGS="$SUBMIT_ARGS --pr ${PR}"
-        elif [ -n "$BRANCH" ]; then
-            SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
-        fi
+        [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         echo "$SUBMIT_ARGS" | grep -q "no-hooks" && run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
         exit 0
