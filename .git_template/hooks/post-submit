@@ -27,9 +27,7 @@ if echo "$2" | grep -q "/"; then
                     PR_NAME="${PR_NAME}${ISSUE}"
                 fi
             done
-            if [ -z "$PR_NAME" ]; then
-                PR_NAME=$(git show $BRANCH --pretty="%s" --no-patch | sed -e 's/[^a-zA-Z0-9,-]/_/g')
-            fi
+            [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch)
 
             PR_SOURCE=$(git pullrequest branch "${PR_NAME}")
             PR_DEST=$(echo $3 | cut -d/ -f2-)
