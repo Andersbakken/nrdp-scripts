@@ -63,8 +63,6 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
         if [ "$1" = "--branch" ]; then
             shift
             BRANCH="$1"
-        elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
-            BRANCH=$(git pullrequest branch $1)
         fi
         shift
     done
@@ -84,6 +82,7 @@ else
     FORCE=
     REPLACE=no
     PUSH=yes
+    SYNC_CHECK=yes
     AUTOSTASH=
     DASHDASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
@@ -108,6 +107,8 @@ else
             REPLACE=yes
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
+        elif [ "$1" = "--no-sync-check" ]; then
+            SYNC_CHECK="no"
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
         elif [ "$1" = "-a" ]; then
@@ -141,7 +142,7 @@ else
         fi
         return 1
     }
-    if [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
+    if [ "$SYNC_CHECK" = "yes" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
         echo "You need to sync first! [$BRANCH]" >&2
         exit 1
     fi

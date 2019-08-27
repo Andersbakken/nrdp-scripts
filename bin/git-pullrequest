@@ -149,7 +149,7 @@ elif [ "$MODE" = "submit" ]; then
         PUSH_BRANCH="$(pr_branch_name unknown)"
         git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
    fi
-    $SCRIPT_DIR/git-submit --branch "$PUSH_ORIGIN/$PUSH_BRANCH" $SUBMIT_ARGS
+    git submit --no-sync-check --branch "$PUSH_ORIGIN/$PUSH_BRANCH" $SUBMIT_ARGS
 else
     echo "Unable to run in mode $MODE"
 fi
