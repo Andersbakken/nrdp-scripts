@@ -144,11 +144,12 @@ elif [ "$MODE" = "submit" ]; then
             echo "Replacing remote branch $BRANCH"
             git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
         fi
-   else
+    else
         PUSH_ORIGIN="."
-        PUSH_BRANCH="$(pr_branch_name unknown)"
+        PUSH_BRANCH="$(pr_branch_name git-pullrequest-submit)"
         git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
-   fi
+        trap "git push ${PUSH_ORIGIN} :${PUSH_BRANCH}" QUIT EXIT
+    fi
     git submit --no-sync-check --branch "$PUSH_ORIGIN/$PUSH_BRANCH" $SUBMIT_ARGS
 else
     echo "Unable to run in mode $MODE"

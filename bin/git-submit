@@ -171,8 +171,7 @@ else
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change -filter "$BRANCH" --reverse -command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
-        echo "$SUBMIT_ARGS" | grep -q "no-hooks" && run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --filter "$BRANCH" --reverse --command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         exit 0
     else
         RESOLVED_CHANGES=""
