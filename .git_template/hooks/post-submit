@@ -33,7 +33,6 @@ if echo "$2" | grep -q "/"; then
             PR_DEST=$(echo $3 | cut -d/ -f2-)
             git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
             git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
-            git push . ":${BRANCH}"
             JIRA="no"
         elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             PR_SOURCE="$BRANCH"
