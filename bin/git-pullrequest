@@ -117,12 +117,12 @@ elif [ "$MODE" = "list" ]; then
     done
     rm -rf "$PR_DIR"
 elif [ "$MODE" = "submit" ]; then
-    REPLACE=
+    FORCE=
     SUBMIT_ARGS=
     PR_NAME=
     while [ "$#" -ge 1 ]; do
-        if [ "$1" = "-r" ] || [ "$1" = "--replace" ]; then
-            REPLACE=1
+        if [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
+            FORCE=1
         elif [ "$1" = "-n" ] || [ "$1" = "--name" ]; then
             shift
             PR_NAME="$1"
@@ -140,10 +140,7 @@ elif [ "$MODE" = "submit" ]; then
         [ -z "$TRACKING" ] && TRACKING=`git tracking`
         PUSH_ORIGIN="$(echo $TRACKING | cut -d/ -f1)"
         PUSH_BRANCH="$(pr_branch_name $PR_NAME)"
-        if [ "$REPLACE" = "1" ]; then
-            echo "Replacing remote branch $BRANCH"
-            git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
-        fi
+        [ "$FORCE" = "1" ] && git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
     else
         PUSH_ORIGIN="."
         PUSH_BRANCH="$(pr_branch_name git-pullrequest-submit)"

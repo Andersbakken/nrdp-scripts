@@ -127,7 +127,7 @@ else
     done
     if [ -n "$PR" ]; then
         PR_ARGS="--name $PR"
-        [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --replace"
+        [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --force"
         git pullrequest submit ${PR_ARGS} ${IN_CHANGES}
         exit 0
     elif [ "$REPLACE" = "yes" ]; then
