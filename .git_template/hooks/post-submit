@@ -21,10 +21,14 @@ if echo "$2" | grep -q "/"; then
                     ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
                 fi
             done
+            ISSUES=`for i in $ISSUES; do echo $i; done | sort | uniq` #dedup
             for ISSUE in $ISSUES; do
                 if [ -n "$ISSUE" ]; then
-                    [ -n "$PR_NAME" ] && PR_NAME=","
-                    PR_NAME="${PR_NAME}${ISSUE}"
+                    if [ -z "$PR_NAME" ]; then
+                        PR_NAME="${ISSUE}"
+                    else
+                        PR_NAME="${PR_NAME},${ISSUE}"
+                    fi
                 fi
             done
             [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch)
