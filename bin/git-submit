@@ -171,6 +171,7 @@ else
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
+        [ "$SYNC_CHECK" != "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --no-sync-check"
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --filter "$BRANCH" --reverse --command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         exit 0
     else
