@@ -113,7 +113,7 @@ wss.on("connection", ws => {
                 var project = request.project || "NRDP", repo = request.repo || "nrdp"
                 if(request.mode == "stash.pr.create" && request.from && request.to) {
                     var form = {
-                        title: project + '(' + repo + '): auto pull-request ' + request.from + '->' + request.to,
+                        title: project + '(' + repo + '): ' + request.from + '->' + request.to,
                         fromRef: {
                             id: "refs/heads/" + request.from,
                             repository: {

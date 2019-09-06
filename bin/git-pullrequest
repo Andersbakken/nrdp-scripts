@@ -31,15 +31,6 @@ PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
 PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
 [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
 
-pr_branch_name() {
-    local PR_NAME="$1"
-    if [ -z "$PR_NAME" ]; then
-        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
-    else
-        echo "${PULL_REQUEST_PREFIX}/${PR_NAME}"
-    fi
-}
-
 if [ "$MODE" = "create" ]; then
     FROM="$1"
     if [ -z "$FROM" ]; then
@@ -55,9 +46,11 @@ elif [ "$MODE" = "fetch" ]; then
     git fetch origin "+refs/pull-requests/*:refs/remotes/origin/heads/pull-requests/*"
 elif [ "$MODE" = "branch" ]; then
     if [ "$1" = "delete" ]; then
-        git push origin ":$(pr_branch_name $2)"
+        git push origin ":${PULL_REQUEST_PREFIX}/${2}"
+    elif [ -n "$1" ]; then
+        echo "${PULL_REQUEST_PREFIX}/${1}"
     else
-        pr_branch_name $1
+        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
     fi
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
@@ -118,6 +111,7 @@ elif [ "$MODE" = "list" ]; then
     rm -rf "$PR_DIR"
 elif [ "$MODE" = "submit" ]; then
     FORCE=
+    AUTO="auto/"
     SUBMIT_ARGS=
     PR_NAME=
     while [ "$#" -ge 1 ]; do
@@ -126,6 +120,8 @@ elif [ "$MODE" = "submit" ]; then
         elif [ "$1" = "-n" ] || [ "$1" = "--name" ]; then
             shift
             PR_NAME="$1"
+        elif [ "$1" = "-m" ] || [ "$1" = "--manual" ] || [ "$1" == "--no-auto" ]; then
+            AUTO=""
         else
             SUBMIT_ARGS="$SUBMIT_ARGS $1"
         fi
@@ -139,11 +135,11 @@ elif [ "$MODE" = "submit" ]; then
         TRACKING=`git config --local submit.tracking`
         [ -z "$TRACKING" ] && TRACKING=`git tracking`
         PUSH_ORIGIN="$(echo $TRACKING | cut -d/ -f1)"
-        PUSH_BRANCH="$(pr_branch_name $PR_NAME)"
+        PUSH_BRANCH="${PULL_REQUEST_PREFIX}/${AUTO}${PR_NAME}"
         [ "$FORCE" = "1" ] && git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
     else
         PUSH_ORIGIN="."
-        PUSH_BRANCH="$(pr_branch_name git-pullrequest-submit)"
+        PUSH_BRANCH="${PULL_REQUEST_PREFIX}/${AUTO}git-pullrequest-submit"
         git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
         trap "git push ${PUSH_ORIGIN} :${PUSH_BRANCH}" QUIT EXIT
     fi
