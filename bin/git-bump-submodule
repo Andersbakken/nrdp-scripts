@@ -1,0 +1,12 @@
+#!/bin/sh
+
+SUBMODULE="$1"
+
+SUBMODULE_TO=$(git diff ${SUBMODULE} | grep -e '+Subproject commit ' | sed 's,^+Subproject commit \(.*$\),\1,g')
+SUBMODULE_FROM=$(git diff ${SUBMODULE} | grep -e '-Subproject commit ' | sed 's,^-Subproject commit \(.*$\),\1,g')
+
+tmpfile=`mktemp /tmp/tmp.XXXXXXXXXX`
+echo -n "Bump ${SUBMODULE} ${SUBMODULE_FROM}->${SUBMODULE_TO}\n\n" >"${tmpfile}"
+(cd "$SUBMODULE" && git log --pretty="[%h] %ae %s" --no-merges "${SUBMODULE_FROM}..${SUBMODULE_TO}" >>"${tmpfile}")
+cat "${tmpfile}"
+git commit "${SUBMODULE}" -F "${tmpfile}"
