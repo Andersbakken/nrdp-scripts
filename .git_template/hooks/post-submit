@@ -31,7 +31,7 @@ if echo "$2" | grep -q "/"; then
                     fi
                 fi
             done
-            [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch)
+            [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch | head -c 64)
 
             PR_SOURCE=$(echo $BRANCH | sed "s,git-pullrequest-submit\$,${PR_NAME},")
             PR_DEST=$(echo $3 | cut -d/ -f2-)

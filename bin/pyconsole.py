@@ -131,7 +131,6 @@ class SocketThread( threading.Thread ):
 
                 continue
 
-
             if self.script:
 
                 try:
@@ -194,6 +193,7 @@ class SocketThread( threading.Thread ):
 
             self.sock = None
             print "Disconnected (%s:%d)\n" % (self.host, self.port)
+            self.done = True
 
 def main( host , port , script , filter , log ):
 
