@@ -703,8 +703,6 @@
     (setq args (append args (magit-push-arguments)))
     (when pr
       (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
-        (unless (and (> (length name) 0) (not (string-match " " name)))
-          (error "Bad pr name: \"%s\"" name))
         (push name args))
       (push "--pull-request" args))
     (push "submit" args)
