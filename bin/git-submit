@@ -81,6 +81,7 @@ else
     DELETE=no
     FORCE=
     REPLACE=no
+    MANUAL=no
     PUSH=yes
     SYNC_CHECK=yes
     AUTOSTASH=
@@ -105,6 +106,8 @@ else
             PR="$1"
         elif [ "$1" = "--replace" ] || [ "$1" = "-r" ]; then
             REPLACE=yes
+        elif [ "$1" = "--manual" ]; then
+            MANUAL=yes
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "--no-sync-check" ]; then
@@ -128,10 +131,14 @@ else
     if [ -n "$PR" ]; then
         PR_ARGS="--name $PR"
         [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --force"
+        [ "$MANUAL" = "yes" ] && PR_ARGS="$PR_ARGS --manual"
         git pullrequest submit ${PR_ARGS} ${IN_CHANGES}
         exit 0
     elif [ "$REPLACE" = "yes" ]; then
         echo "--replace only works with --pr"
+        exit 1
+    elif [ "$MANUAL" = "yes" ]; then
+        echo "--manual only works with --pr"
         exit 1
     fi
     autostash() {
