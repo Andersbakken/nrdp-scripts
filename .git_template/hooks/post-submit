@@ -16,24 +16,16 @@ if echo "$2" | grep -q "/"; then
             for COMMIT in $(git log --pretty=format:%h "$1..$BRANCH"); do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
                 if [ -n "$DESCRIPTION" ]; then
-                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
-                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
-                    ISSUES="$ISSUES $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
-                fi
-            done
-            ISSUES=`for i in $ISSUES; do echo $i; done | sort | uniq` #dedup
-            for ISSUE in $ISSUES; do
-                if [ -n "$ISSUE" ]; then
-                    if [ -z "$PR_NAME" ]; then
-                        PR_NAME="${ISSUE}"
-                    else
-                        PR_NAME="${PR_NAME},${ISSUE}"
-                    fi
+                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
+                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
+                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
+                    [ -n "$PR_NAME" ] && break
                 fi
             done
             [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch | head -c 64)
+            PR_NAME=$(echo $PR_NAME | sed "s,/ ,,")
 
-            PR_SOURCE=$(echo $BRANCH | sed "s,git-pullrequest-submit\$,${PR_NAME},")
+            PR_SOURCE=$(echo $BRANCH | sed "s#git-pullrequest-submit\$#${PR_NAME}#")
             PR_DEST=$(echo $3 | cut -d/ -f2-)
             git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
             git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
