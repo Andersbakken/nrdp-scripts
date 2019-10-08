@@ -18,10 +18,11 @@ if echo "$2" | grep -q "/"; then
                 if [ -n "$DESCRIPTION" ]; then
                     PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
                     PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
-                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed 's,: $,,')"
+                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed -e 's,: $,,')"
                     [ -n "$PR_NAME" ] && break
                 fi
             done
+            PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
             [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch | head -c 64)
             PR_NAME=$(echo $PR_NAME | sed "s,/ ,,")
 
