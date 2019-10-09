@@ -8,7 +8,7 @@ if [ ! -e "$1" ] || [ ! -x "$1" ]; then ### single source file
         echo "Can't find build.ninja"
         exit 1
     fi
-    "$0" `ninja -t commands | grep "$1" | head -n1`
+    "$0" `ninja -t commands | grep "\<$1\>" | head -n1`
     exit $?
 fi
 
