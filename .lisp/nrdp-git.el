@@ -701,11 +701,13 @@
   (let ((prev (getenv "GIT_POST_SUBMIT_FLAGS")))
     (setenv "GIT_POST_SUBMIT_FLAGS" (concat "--no-interactive --resolve"))
     (setq args (append args (magit-push-arguments)))
-    (when pr
-      (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
-        (push name args))
-      (push "--pull-request" args))
-    (push "submit" args)
+    (if pr
+        (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
+          (when (> (length name) 0)
+            (push name args)
+            (push "--name" args))
+          (push "pullrequest" args))
+      (push "submit" args))
     (if (member "-a" args)
         (magit-run-git-async args)
       (magit-run-on-multiple-commits args commit))
