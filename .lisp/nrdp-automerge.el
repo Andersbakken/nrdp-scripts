@@ -2,7 +2,6 @@
 
 (defvar nrdp-automerge-pending-shell-commands nil)
 (defvar nrdp-automerge-current-shell-process nil)
-(defvar nrdp-automerge-dry nil)
 
 (defcustom nrdp-automerge-tools-path nil
   "Path to nrdp-tools checkout"
@@ -54,19 +53,10 @@
     (nrdp-automerge-update-header)
     (setq buffer-read-only t)))
 
-(defun nrdp-automerge-toggle-dry (&optional prefix)
-  (interactive "P")
-  (setq nrdp-automerge-dry (if (integerp prefix)
-                               (not (= prefix 0))
-                             (not nrdp-automerge-dry)))
-  (nrdp-automerge-update-header))
-
 (defun nrdp-automerge-status ()
   (let ((ret (list (if (file-exists-p (concat (nrdp-automerge-nrdp-repo-path) "/.git/AUTOMERGE"))
                        "automerge underway"
                      "no automerge underway"))))
-    (when nrdp-automerge-dry
-      (push "dry" ret))
     (mapconcat 'identity (nreverse ret) ", ")))
 
 (defun nrdp-automerge-update-header ()
@@ -84,7 +74,6 @@
 (nrdp-automerge-define-action (kbd "s") "git status" 'nrdp-automerge-git-status)
 (nrdp-automerge-define-action (kbd "S") "git status inline" 'nrdp-automerge-git-status-inline)
 (nrdp-automerge-define-action (kbd "l") "clear" 'nrdp-automerge-clear)
-(nrdp-automerge-define-action (kbd "d") "Toggle dry" 'nrdp-automerge-toggle-dry)
 
 (define-derived-mode nrdp-automerge-mode fundamental-mode "nrdp-automerge-mode"
   (nrdp-automerge-clear))
@@ -159,8 +148,7 @@
                                      (cond ((eq type 'start) "--merge")
                                            ((eq type 'abort) "--abort")
                                            ((eq type 'continue) "--continue")
-                                           (t (error "bad!")))
-                                     (if nrdp-automerge-dry "--dry" "--no-dry"))))
+                                           (t (error "bad!"))))))
 
 (defun nrdp-automerge-git-status-inline ()
   (interactive)
