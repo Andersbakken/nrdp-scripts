@@ -76,22 +76,17 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
     done
 else
     PR=""
-    PR_NAME=""
     BRANCH=""
     IN_CHANGES=
     DELETE=no
     FORCE=
     REPLACE=no
-    MANUAL=no
     PUSH=yes
     SYNC_CHECK=yes
     AUTOSTASH=
-    DASHDASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
-        if [ -n "$DASHDASH" ]; then
-            IN_CHANGES="$IN_CHANGES $1"
-        elif [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
+        if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
             PUSH=no
         elif [ "$1" = "-f" ] || [ "$1" = "--force" ];  then
             FORCE="-f"
@@ -104,12 +99,9 @@ else
             BRANCH="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
             shift
-            PR=1
-            PR_NAME="$1"
+            PR="$1"
         elif [ "$1" = "--replace" ] || [ "$1" = "-r" ]; then
             REPLACE=yes
-        elif [ "$1" = "--manual" ]; then
-            MANUAL=yes
         elif [ "$1" = "--autostash" ]; then
             AUTOSTASH="yes"
         elif [ "$1" = "--no-sync-check" ]; then
@@ -121,7 +113,9 @@ else
                 IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
             done
         elif [ "$1" = "--" ]; then
-            DASHDASH=1
+            shift
+            IN_CHANGES="$IN_CHANGES $@"
+            break
         elif `echo $1 | grep --quiet -- "^-"`; then
             echo "git-submit: Unknown option $1" >&2
             exit 1
@@ -132,16 +126,12 @@ else
     done
     if [ -n "$PR" ]; then
         PR_ARGS=""
-        [ -n "$PR_NAME" ] && PR_ARGS="$PR_ARGS --name $PR_NAME"
+        [ -n "$PR" ] && PR_ARGS="$PR_ARGS --name $PR"
         [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --force"
-        [ "$MANUAL" = "yes" ] && PR_ARGS="$PR_ARGS --manual"
         git pullrequest submit ${PR_ARGS} ${IN_CHANGES}
         exit 0
     elif [ "$REPLACE" = "yes" ]; then
         echo "--replace only works with --pr"
-        exit 1
-    elif [ "$MANUAL" = "yes" ]; then
-        echo "--manual only works with --pr"
         exit 1
     fi
     autostash() {
