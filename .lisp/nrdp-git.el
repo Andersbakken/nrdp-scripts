@@ -570,7 +570,7 @@
 (define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
-(define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
+(define-key magit-status-mode-map (kbd "=") 'magit-diff-dwim)
 (define-key magit-status-mode-map (kbd "l") 'magit-log-current-section)
 (define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace)
 (if (fboundp 'magit-show-file-revision)
