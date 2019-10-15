@@ -423,7 +423,9 @@
          (dir (nrdp-git-dir-for-file file))
          (old (and (not norestorefocus) (get-buffer-window)))
          (numwindows (length (window-list)))
-         (args (list (or against "HEAD") "--" file))
+         (args (cond ((null against) (list "HEAD" "--" file))
+                     ((stringp against) (list against "--" file))
+                     (t (list "--" file))))
          (buffer (get-buffer-create (if (or nrdp-git-diff-reuse-diff-buffer (not args))
                                         "*git-diff*"
                                       (concat "*git-diff: " (car args) "*")))))
@@ -570,7 +572,7 @@
 (define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
-(define-key magit-status-mode-map (kbd "=") 'nrdp-magit-diff-dwim)
+(define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
 (define-key magit-status-mode-map (kbd "l") 'magit-log-current-section)
 (define-key magit-status-mode-map (kbd "W") 'magit-toggle-whitespace)
 (if (fboundp 'magit-show-file-revision)
@@ -633,13 +635,14 @@
   (interactive "P")
   (let ((file (magit-current-section-file)))
     (when file
-      (nrdp-git-diff -w file))))
-
-(defun nrdp-magit-diff-dwim ()
-  (interactive)
-  (let ((old (selected-window)))
-    (call-interactively 'magit-diff-dwim)
-    (select-window old)))
+      (let ((type))
+        (save-excursion
+          (while (and (not type) (> (point) (point-min)))
+            (forward-line -1)
+            (setq type (cond ((looking-at "^Staged changes") "--cached")
+                             ((looking-at "^Unstaged changes") t)
+                             (t nil)))))
+        (nrdp-git-diff -w file nil nil type)))))
 
 (defun nrdp-magit-log-show-diff (&optional -w)
   (interactive "P")
