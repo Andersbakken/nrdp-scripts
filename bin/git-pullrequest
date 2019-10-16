@@ -26,7 +26,7 @@ elif [ "$1" = "prefix" ]; then
     shift
 fi
 
-PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
+[ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
 [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
 PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
 [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
@@ -43,14 +43,14 @@ if [ "$MODE" = "create" ]; then
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then
-    git fetch origin "+refs/pull-requests/*:refs/remotes/origin/heads/pull-requests/*"
+    git fetch origin "+refs/pull-requests/*:refs/remotes/origin/heads/pull-requests/*" "+refs/pull-requests/*:refs/remotes/origin/heads/pr/*"
 elif [ "$MODE" = "branch" ]; then
     if [ "$1" = "delete" ]; then
         git push origin ":${PULL_REQUEST_PREFIX}/${2}"
     elif [ -n "$1" ]; then
         echo "${PULL_REQUEST_PREFIX}/${1}"
     else
-        git branch -r | grep "${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
+        git branch -r | grep "origin/${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
     fi
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
