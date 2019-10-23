@@ -449,7 +449,7 @@
             (when word
               (ansi-color-apply-on-region (point-min) (point-max)))
             (insert "$ git diff " (combine-and-quote-strings args) "\n")
-            (search-forward-regexp "^@@ ")
+            (search-forward-regexp "^@@" nil t)
             (goto-char (point-at-bol))
             (diff-mode)
             (setq buffer-read-only t)
