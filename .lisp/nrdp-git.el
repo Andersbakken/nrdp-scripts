@@ -6,6 +6,8 @@
 (require 'magit)
 (require 's)
 
+(setq magit-git-executable "magit-git.sh")
+
 (defun buffer-local-set-key (key func)
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
