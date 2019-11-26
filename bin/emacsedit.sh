@@ -81,6 +81,7 @@ if [ -z "$FILE" ]; then
     if [ "$EMACSWAIT" = "no" ] || [ "$EMACSWINDOW" != "no" ]; then
         MODE="eval"
         FILE="(raise-frame)"
+        raise
     fi
 fi
 
