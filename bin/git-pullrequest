@@ -39,7 +39,7 @@ if [ "$MODE" = "create" ]; then
     fi
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
-    $SCRIPT_DIR/nrdp-service/cli.js --user ${PULL_REQUEST_USER} --mode stash.pr.create --from "${FROM}" --to "${TO}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.create --from "${FROM}" --to "${TO}"
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then
@@ -55,7 +55,7 @@ elif [ "$MODE" = "branch" ]; then
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     ISSUES_FILE="${PR_DIR}/pr-issues"
-    $SCRIPT_DIR/nrdp-service/cli.js --user ${PULL_REQUEST_USER} --mode stash.pr.issues --pullRequest "$1" >"${ISSUES_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.issues --pullRequest "$1" >"${ISSUES_FILE}"
     ISSUES_COUNT=$(jq -r '. | length' "${ISSUES_FILE}")
     for ((i=0; i<$ISSUES_COUNT; i++ )); do
         ISSUE=$(jq -r ".[$i].key" "$ISSUES_FILE")
