@@ -6,6 +6,8 @@
 (require 'magit)
 (require 's)
 
+(setq magit-git-executable "magit-git.sh")
+
 (defun buffer-local-set-key (key func)
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
@@ -668,7 +670,7 @@
 
 (defun magit-run-on-multiple-commits (commands &optional commit)
   (let ((args (cond (commit (list commit))
-                    ((nrdp-git-magit-current-things-filtered 'commit))
+                    ((reverse (nrdp-git-magit-current-things-filtered 'commit)))
                     (t
                      (let ((val (read-from-minibuffer "Sha (default HEAD): " nil nil nil "HEAD")))
                        (cond ((string= "" val) (list "HEAD"))
