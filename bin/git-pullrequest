@@ -85,7 +85,7 @@ elif [ "$MODE" = "list" ]; then
 
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     PULLREQUESTS_FILE="${PR_DIR}/pullrequests"
-    $SCRIPT_DIR/nrdp-service/cli.js --user ${PULL_REQUEST_USER} --mode stash.pr.list --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.list --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
     PR_COUNT=$(jq '.size' "${PULLREQUESTS_FILE}")
     for ((p=0; p<$PR_COUNT; p++ )); do
         jq ".values[$p]" "$PULLREQUESTS_FILE" >"${PR_DIR}/pullrequest"
