@@ -219,19 +219,13 @@ build() {
         [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
         PACKAGEDOTJSON=`findancestor package.json $NPMROOTDIR`
         if [ -f "$PACKAGEDOTJSON" ]; then
-            NPMARGSPREFIX="build"
             NPMARGS=
             for opt in $MAKE_OPTIONS; do
-                case $opt in
-                    install)
-                        NPMARGSPREFIX="install"
-                        ;;
-                    *)
-                        NPMARGS="$NPMARGS $opt"
-                        ;;
-                esac
+                NPMARGS="$NPMARGS $opt"
             done
-            cd $NPMROOTDIR && npm run $NPMARGSPREFIX $NPMARGS
+            [ -z "$NPMARGS" ] && NPMARGS="build"
+
+            cd $NPMROOTDIR && eval npm run $NPMARGS
             return $?
         fi
     fi
