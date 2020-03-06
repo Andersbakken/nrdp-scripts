@@ -176,7 +176,8 @@
   file)
 
 (defun nrdp-git-grep-shell-quote-argument (arg)
-  (cond ((string-match "^\"" arg) arg)
+  (cond ((string-match "^\".*\"$" arg) arg)
+        ((string-match "^'.*'$" arg) arg)
         ((not (string-match " " arg)) (concat "\"" arg "\""))
         ((not (string-match "\"" arg)) (concat "\"" arg "\""))
         ((not (string-match "'" arg)) (concat "'" arg "'"))
@@ -300,12 +301,12 @@
       ;;                  pipe)))))
 
       (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
-                         (mapconcat 'identity args " ")
+                         (mapconcat 'nrdp-git-grep-shell-quote-argument args " ")
                          (if hasdashdash
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*'"
                          pipe)))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
