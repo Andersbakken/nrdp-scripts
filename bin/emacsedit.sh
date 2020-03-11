@@ -65,7 +65,8 @@ if [ -z "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
             EMACS="$EMACS -a \"\""
         elif [ -z "$ALTERNATE_EDITOR" ]; then
-            EMACS="$EMACS -a $(which emacs)"
+            G_EMACS=$(which emacs)
+            [ -n "$G_EMACS" ] && EMACS="$EMACS -a ${G_EMACS}"
         fi
         [ "$EMACSWAIT" = "no" ] && EMACS="$EMACS -n"
         [ "$EMACSWINDOW" = "no" ] && EMACS="$EMACS -nw"
