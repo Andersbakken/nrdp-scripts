@@ -30,6 +30,8 @@ git() #make git checkout commands usable with submodules
         run_git "$@"
     elif [ "$1" == "pull" ]; then
         run_git "$@" && run_git submodule update --init --recursive
+    elif [ "$1" == "merge" ]; then
+        run_git "$@" && run_git submodule update --init --recursive
     elif [ "$1" == "fetch" ]; then
         run_git "$@" && run_git submodule foreach git fetch --tags
     elif [ "$1" == "checkout" ]; then
