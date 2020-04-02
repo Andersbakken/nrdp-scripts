@@ -86,6 +86,7 @@ if [ -z "$FILE" ]; then
 fi
 
 if [ -n "$FILE" ]; then
+    FILE=`echo $FILE | sed -e 's,file://,,'`
     if [ "$MODE" = "run" ]; then
         raise
         $TEST $EMACS -e "$FILE"
@@ -93,20 +94,30 @@ if [ -n "$FILE" ]; then
     fi
 
     FILE=`findfile.sh "$FILE"`
+
     if [ "CONFIRM" = "yes" ]; then
         echo -n "$FILE"
         read confirm
         [ -n "$confirm" ] && return
     fi
-    if echo "$FILE" | grep ':' >/dev/null 2>&1; then
+    if echo "$FILE" | grep --quiet ':'; then
         COL=`echo $FILE | cut -d: -f3`
         LINE=`echo $FILE | cut -d: -f2`
         FILE=`echo $FILE | cut -d: -f1`
-    elif echo "$FILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
+    elif echo "$FILE" | grep --quiet ',[0-9]\+$'; then
         OFFSET=`echo $FILE | cut -d, -f2`
         FILE=`echo $FILE | cut -d, -f1`
     fi
-    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ] && [ "$MODE" != "eval" ] ; then
+    if [ ! -e "$FILE" ]; then
+        echo "here"
+        if echo "$FILE" | grep --quiet "^[A-Za-z0-9_]\+@"; then
+            echo "and here $FILE"
+            FILE=`echo $FILE | sed -e 's,^[A-Za-z0-9_]\+@,,'`
+            echo "$FILE"
+        fi
+    fi
+
+    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ] && [ "$MODE" != "eval" ]; then
         >&2 echo "$FILE doesn't seem to exist"
         exit 1
     fi
