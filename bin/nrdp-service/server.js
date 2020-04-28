@@ -110,7 +110,7 @@ wss.on("connection", ws => {
                     */
                 }
             } else if(request.mode.startsWith("stash.pr.")) {
-                var project = request.project || "NRDP", repo = request.repo || "nrdp"
+                var project = request.project, repo = request.repo;
                 if(request.mode == "stash.pr.create" && request.from && request.to) {
                     var form = {
                         title: project + '(' + repo + '): ' + request.from + '->' + request.to,
