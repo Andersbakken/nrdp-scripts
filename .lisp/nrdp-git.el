@@ -133,11 +133,13 @@
       (transient-append-suffix 'magit-pull "u" '("F" "Pull from tracking" magit-pull-from-upstream))
       (transient-append-suffix 'magit-pull "F" '("S" "Sync" nrdp-magit-sync))
 
+      (transient-append-suffix 'magit-push "-n" '("-a" "All commits" "-a"))
+      (transient-append-suffix 'magit-push "-a" '("-m" "All commits" "--manual"))
+
       (transient-append-suffix 'magit-push "e" '("S" "Submit" magit-submit))
       (transient-append-suffix 'magit-push "S" '("P" "Push to upstream" magit-push-current-to-upstream))
       (transient-append-suffix 'magit-push "P" '("s" "Submit pull-request" magit-submit-pull-request))
       (transient-append-suffix 'magit-push "s" '("I" "Ignore" magit-ignore-commit))
-
     ;; (transient-append-suffix 'magit-log " " "Blame" 'magit-blame-for-current-revision))
       (transient-append-suffix 'magit-stash "x" '("b" "Buffer(s)" nrdp-git-stash-buffer)))
   (setq magit-git-executable "magit-git.sh")
