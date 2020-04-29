@@ -17,11 +17,6 @@ EMACSWINDOW=
 [ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
 [ `uname -s` = "Linux" ] && [ -z "$DISPLAY" ] && EMACSWINDOW=no
 
-function raise()
-{
-    [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
-}
-
 while [ "$#" -gt 0 ]; do
     case "$1" in
     -f) EMACS="emacs" ;;
@@ -78,66 +73,61 @@ else
     EMACS="$EMACS $EMACSOPTS"
 fi
 
-if [ -z "$FILE" ]; then
-    if [ "$EMACSWAIT" = "no" ] || [ "$EMACSWINDOW" != "no" ]; then
-        MODE="eval"
-        FILE="(raise-frame)"
-        raise
-    fi
-fi
-
-if [ -n "$FILE" ]; then
-    if [ "$MODE" = "run" ]; then
-        raise
-        $TEST $EMACS -e "$FILE"
-        exit 1
-    fi
-
-    FILE=`findfile.sh "$FILE"`
-    if [ "CONFIRM" = "yes" ]; then
-        echo -n "$FILE"
-        read confirm
-        [ -n "$confirm" ] && return
-    fi
-    if echo "$FILE" | grep ':' >/dev/null 2>&1; then
-        COL=`echo $FILE | cut -d: -f3`
-        LINE=`echo $FILE | cut -d: -f2`
-        FILE=`echo $FILE | cut -d: -f1`
-    elif echo "$FILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
-        OFFSET=`echo $FILE | cut -d, -f2`
-        FILE=`echo $FILE | cut -d, -f1`
-    fi
-    if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ] && [ "$MODE" != "eval" ] ; then
-        >&2 echo "$FILE doesn't seem to exist"
-        exit 1
-    fi
-    if [ "$TEST" = "exists" ]; then
-        [ -e "$FILE" ] && exit 0
-        exit 1
-    elif [ "$MODE" = "eval" ]; then
-        $TEST $EMACS -e "$FILE"
-    elif [ "$MODE" = "make" ]; then
-        [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
-        raise
-        $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
-    elif [ "$MODE" = "tail" ]; then
-        $TEST $EMACS -e "(tailf \"$FILE\")"
-    elif [ -n "$OFFSET" ]; then
-        raise
-        $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
-    else
-        JUMP=
-        if [ -n "$LINE" ]; then
-            [ -z "$COL" ] && COL="0"
-            JUMP="${LINE}:${COL}"
-        else
-            JUMP=0
+runemacs() {
+    local MODE="$1"
+    local ARGS="$2"
+    if [ -n "$ARGS" ]; then
+        if [ "$MODE" = "run" ]; then
+            $TEST $EMACS -e "$ARGS"
+            exit 1
         fi
-        raise
-        $TEST eval $EMACS "+${JUMP}" "\"$FILE\""
+
+        local FILE=`findfile.sh "$ARGS"`
+        if [ "CONFIRM" = "yes" ]; then
+            echo -n "$FILE"
+            read confirm
+            [ -n "$confirm" ] && return
+        fi
+        if echo "$FILE" | grep ':' >/dev/null 2>&1; then
+            COL=`echo $FILE | cut -d: -f3`
+            LINE=`echo $FILE | cut -d: -f2`
+            FILE=`echo $FILE | cut -d: -f1`
+        elif echo "$FILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
+            OFFSET=`echo $FILE | cut -d, -f2`
+            FILE=`echo $FILE | cut -d, -f1`
+        fi
+        if [ "$NO_CREATE_FILE" ] && [ ! -e "$FILE" ] && [ "$MODE" != "eval" ] ; then
+            >&2 echo "$FILE doesn't seem to exist"
+            exit 1
+        fi
+        if [ "$TEST" = "exists" ]; then
+            [ -e "$FILE" ] && exit 0
+            exit 1
+        elif [ "$MODE" = "eval" ]; then
+            $TEST $EMACS -e "$FILE"
+        elif [ "$MODE" = "make" ]; then
+            [ -z "$EMACSEDIT_COMPILE_DIRECTORY_DEFUN" ] && EMACSEDIT_COMPILE_DIRECTORY_DEFUN="lsdev-compile-directory"
+            $TEST $EMACS -e "($EMACSEDIT_COMPILE_DIRECTORY_DEFUN \"$FILE\")"
+        elif [ "$MODE" = "tail" ]; then
+            $TEST $EMACS -e "(tailf \"$FILE\")"
+        elif [ -n "$OFFSET" ]; then
+            $TEST $EMACS -e "(jump-to-offset \"$FILE\" $OFFSET)"
+        else
+            JUMP=
+            if [ -n "$LINE" ]; then
+                [ -z "$COL" ] && COL="0"
+                JUMP="${LINE}:${COL}"
+            else
+                JUMP=0
+            fi
+            $TEST eval $EMACS "+${JUMP}" "\"$FILE\""
+        fi
+    elif [ "$TEST" != "exists" ]; then
+        $TEST eval $EMACS
     fi
-elif [ "$TEST" != "exists" ]; then
-    raise
-    $TEST eval $EMACS
-fi
+}
+
+runemacs eval "(raise-frame)"
+[ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
+runemacs "$MODE" "$FILE"
 exit 0
