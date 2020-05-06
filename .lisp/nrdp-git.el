@@ -134,7 +134,7 @@
       (transient-append-suffix 'magit-pull "F" '("S" "Sync" nrdp-magit-sync))
 
       (transient-append-suffix 'magit-push "-n" '("-a" "All commits" "-a"))
-      (transient-append-suffix 'magit-push "-a" '("-m" "All commits" "--manual"))
+      (transient-append-suffix 'magit-push "-a" '("-m" "Manual" "--manual"))
 
       (transient-append-suffix 'magit-push "e" '("S" "Submit" magit-submit))
       (transient-append-suffix 'magit-push "S" '("P" "Push to upstream" magit-push-current-to-upstream))
