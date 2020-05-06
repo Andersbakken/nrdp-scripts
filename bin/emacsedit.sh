@@ -110,9 +110,7 @@ if [ -n "$FILE" ]; then
         FILE=`echo $FILE | cut -d, -f1`
     fi
     if [ ! -e "$FILE" ]; then
-        echo "here"
         if echo "$FILE" | grep --quiet "^[A-Za-z0-9_]\+@"; then
-            echo "and here $FILE"
             FILE=`echo $FILE | sed -e 's,^[A-Za-z0-9_]\+@,,'`
             echo "$FILE"
         fi
