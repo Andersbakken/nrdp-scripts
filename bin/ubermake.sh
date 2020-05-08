@@ -1,5 +1,7 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
+
 SUCCESS_POST_COMMAND=
 ERROR_POST_COMMAND=
 ALL=
@@ -225,7 +227,7 @@ build() {
             done
             [ -z "$NPMARGS" ] && NPMARGS="build"
 
-            cd $NPMROOTDIR && eval npm run $NPMARGS
+            cd $NPMROOTDIR && $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
             return $?
         fi
     fi
