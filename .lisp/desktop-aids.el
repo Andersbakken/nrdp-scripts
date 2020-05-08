@@ -12,7 +12,7 @@
     (while (and buffers (> count 0))
       (let ((name (buffer-file-name (car buffers))))
         (when name
-          (decf count)
+          (setq count (1- count))
           (puthash name t desktop-aids-save-buffers)))
       (setq buffers (cdr buffers))))
   (apply orig-fun args)

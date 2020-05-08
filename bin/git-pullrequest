@@ -26,10 +26,14 @@ elif [ "$1" = "prefix" ]; then
     shift
 fi
 
-[ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
+PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
 [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
 PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
 [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
+PULL_REQUEST_REPO_VALUE=`git config pullrequest.repo`
+[ -z "$PULL_REQUEST_REPO_VALUE" ] && PULL_REQUEST_REPO_VALUE="NRDP/nrdp"
+PULL_REQUEST_PROJECT=`echo $PULL_REQUEST_REPO_VALUE | cut -d/ -f1`
+PULL_REQUEST_REPO=`echo $PULL_REQUEST_REPO_VALUE | cut -d/ -f2`
 
 if [ "$MODE" = "create" ]; then
     FROM="$1"
@@ -39,7 +43,7 @@ if [ "$MODE" = "create" ]; then
     fi
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
-    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.create --from "${FROM}" --to "${TO}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.create --from "${FROM}" --to "${TO}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then
@@ -55,7 +59,7 @@ elif [ "$MODE" = "branch" ]; then
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     ISSUES_FILE="${PR_DIR}/pr-issues"
-    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.issues --pullRequest "$1" >"${ISSUES_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.issues --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --pullRequest "$1" >"${ISSUES_FILE}"
     ISSUES_COUNT=$(jq -r '. | length' "${ISSUES_FILE}")
     for ((i=0; i<$ISSUES_COUNT; i++ )); do
         ISSUE=$(jq -r ".[$i].key" "$ISSUES_FILE")
@@ -85,7 +89,7 @@ elif [ "$MODE" = "list" ]; then
 
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     PULLREQUESTS_FILE="${PR_DIR}/pullrequests"
-    $SCRIPT_DIR/nrdp-service/cli.js --username ${PULL_REQUEST_USER} --mode stash.pr.list --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --mode stash.pr.list --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
     PR_COUNT=$(jq '.size' "${PULLREQUESTS_FILE}")
     for ((p=0; p<$PR_COUNT; p++ )); do
         jq ".values[$p]" "$PULLREQUESTS_FILE" >"${PR_DIR}/pullrequest"

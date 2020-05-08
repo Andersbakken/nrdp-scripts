@@ -1,5 +1,34 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
+
+SUCCESS_POST_COMMAND=
+ERROR_POST_COMMAND=
+ALL=
+VERSION=
+MAKE_DIR=
+MAKE_OPTIONS=
+RTAGS=
+LSDEV_ARGS=
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -C) shift; MAKE_DIR="$1" ;;
+        -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
+        --all) ALL="1" ;;
+        -r|--rtags) RTAGS="1" ;;
+        --verbose) VERBOSE="1" ;;
+        -v) VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
+        -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
+        -s) shift; SUCCESS_POST_COMMAND="$1" ;;
+        -e) shift; ERROR_POST_COMMAND="$1" ;;
+        *) MAKE_OPTIONS="$MAKE_OPTIONS \"$1\"" ;;
+    esac
+    shift
+done
+
+# TRAP SIGNALS
+trap 'cleanup' QUIT EXIT
+
 findancestor() {
     file="$1"
     dir="$2"
@@ -16,11 +45,6 @@ findancestor() {
         done)
     return 0
 }
-SUCCESS_POST_COMMAND=
-ERROR_POST_COMMAND=
-
-# TRAP SIGNALS
-trap 'cleanup' QUIT EXIT
 
 if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
     NUM=$UBERMAKE_REDUCE_RTAGS_LOAD
@@ -192,6 +216,21 @@ build() {
         (cd $BUILD_DIR && eval sake $SAKE_OPTIONS)
         return
     fi
+    if [ -x `which npm` ]; then
+        NPMROOTDIR=$BUILD_DIR
+        [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
+        PACKAGEDOTJSON=`findancestor package.json $NPMROOTDIR`
+        if [ -f "$PACKAGEDOTJSON" ]; then
+            NPMARGS=
+            for opt in $MAKE_OPTIONS; do
+                NPMARGS="$NPMARGS $opt"
+            done
+            [ -z "$NPMARGS" ] && NPMARGS="build"
+
+            cd $NPMROOTDIR && $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
+            return $?
+        fi
+    fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
 
     MAKE=`findmake`
@@ -209,28 +248,6 @@ build() {
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
     return $?
 }
-
-ALL=
-VERSION=
-MAKE_DIR=
-MAKE_OPTIONS=
-RTAGS=
-LSDEV_ARGS=
-while [ "$#" -gt 0 ]; do
-    case $1 in
-        -C) shift; MAKE_DIR="$1" ;;
-        -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
-        --all) ALL="1" ;;
-        -r|--rtags) RTAGS="1" ;;
-        --verbose) VERBOSE="1" ;;
-        -v) VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
-        -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
-        -s) shift; SUCCESS_POST_COMMAND="$1" ;;
-        -e) shift; ERROR_POST_COMMAND="$1" ;;
-        *) MAKE_OPTIONS="$MAKE_OPTIONS \"$1\"" ;;
-    esac
-    shift
-done
 
 if [ -z "$MAKE_DIR" ]; then
     NAME=`lsdev.pl -p -ts`
@@ -255,7 +272,7 @@ if [ -z "$MAKE_DIR" ]; then
         fi
     fi
 
-    if [ -e "Makefile" ] || [ -e "build.ninja" ] || [ -e "Sakefile.js" ] || [ -e "SConstruct" ]; then
+    if [ -e "Makefile" ] || [ -e "build.ninja" ] || [ -e "Sakefile.js" ] || [ -e "SConstruct" ] || [ -e "package.json" ]; then
         build "${PWD}/"
     elif [ -n "$NAME" ]; then
         build `lsdev.pl build -tp $LSDEV_ARGS`
