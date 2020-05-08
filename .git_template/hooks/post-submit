@@ -11,9 +11,11 @@ if echo "$2" | grep -q "/"; then
 
     if [ "$2" != "$3" ] && echo "$2" | grep -q "^$ORIGIN/$(git pullrequest prefix)"; then #pull request
         TRACKING_ORIGIN=`echo $3 | cut -d/ -f1`
+        TRACKING_BRANCH=`echo $3 | cut -d/ -f2-`
         if [ "$ORIGIN" = "." ] && echo "$BRANCH" | grep -q "git-pullrequest-submit$"; then
             PR_NAME=""
-            for COMMIT in $(git log --pretty=format:%h "$1..$BRANCH"); do
+            COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
+            for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
                 if [ -n "$DESCRIPTION" ]; then
                     PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
@@ -23,8 +25,9 @@ if echo "$2" | grep -q "/"; then
                 fi
             done
             PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
-            [ -z "$PR_NAME" ] && PR_NAME=$(git show $BRANCH --pretty="%f" --no-patch | head -c 64)
+            [ -z "$PR_NAME" ] && PR_NAME=$(git show --pretty="%f" --no-patch ${COMMITS} | head -1 | head -c 64)
             PR_NAME=$(echo $PR_NAME | sed "s,/ ,,")
+            PR_NAME="${TRACKING_BRANCH}/${PR_NAME}"
 
             PR_SOURCE=$(echo $BRANCH | sed "s#git-pullrequest-submit\$#${PR_NAME}#")
             PR_DEST=$(echo $3 | cut -d/ -f2-)
