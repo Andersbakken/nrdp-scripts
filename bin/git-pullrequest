@@ -43,6 +43,10 @@ if [ "$MODE" = "create" ]; then
     fi
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
+    if [ "$SHITHEAD" != "1" ] && git log -p "origin/${TO}..origin/${FROM}" | grep --quiet -i "fuck\|\<shit\>"; then
+        echo Refusing to make profane pr you shithead. Export SHITHEAD=1 and rerun to force
+        exit 1
+    fi
     $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.create --from "${FROM}" --to "${TO}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
