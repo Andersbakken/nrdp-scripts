@@ -221,13 +221,10 @@ build() {
         [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
         PACKAGEDOTJSON=`findancestor package.json $NPMROOTDIR`
         if [ -f "$PACKAGEDOTJSON" ]; then
-            NPMARGS=
-            for opt in $MAKE_OPTIONS; do
-                NPMARGS="$NPMARGS $opt"
-            done
+            NPMARGS="$MAKE_OPTIONS"
             [ -z "$NPMARGS" ] && NPMARGS="build"
 
-            cd $NPMROOTDIR && $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
+            cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
             return $?
         fi
     fi
