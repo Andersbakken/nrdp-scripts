@@ -129,7 +129,7 @@ runemacs() {
 }
 
 if [ "$MODE" != "eval" ]; then
-    runemacs eval "-nw (raise-frame)"
+    [ "$EMACSWAIT" = "no" ] && $TEST $EMACS -e "(raise-frame)" 
     [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
 fi
 runemacs "$MODE" "$FILE"
