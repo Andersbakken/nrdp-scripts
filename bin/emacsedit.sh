@@ -128,8 +128,9 @@ runemacs() {
     fi
 }
 
-runemacs "$MODE" "$FILE"
-if [ "$MODE" = "eval" ] || [ -n "$RAISE_EMACS" ]; then
-   eval "$RAISE_EMACS"
+if [ "$MODE" != "eval" ]; then
+    runemacs eval "-nw (raise-frame)"
+    [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
 fi
+runemacs "$MODE" "$FILE"
 exit 0
