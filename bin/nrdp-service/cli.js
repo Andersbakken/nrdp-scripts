@@ -46,7 +46,7 @@ function connect()
     if (!username)
         username = process.env.USER;
 
-    let action = { mode: argv.mode }
+    let action = { mode: argv.mode };
     if(action.mode == "stash.pr.create") {
         if(!argv.from || !argv.to) {
             console.error("need an from/to");
@@ -102,26 +102,26 @@ function connect()
         }
 
         if (response.needsPassword) {
-            //console.log("gotta send stuff");
-            if (process.env["JIRA_PASSWORD_FILE"]) {
-                //console.log("hehhh");
-                gpg.decryptFile(process.env["JIRA_PASSWORD_FILE"], (err, contents) => {
+            var gpg_password;
+            if (action.mode.startsWith("stash.") && process.env["STASH_PASSWORD_FILE"])
+                gpg_password = process.env["STASH_PASSWORD_FILE"];
+            if (!gpg_password)
+                gpg_password = process.env["JIRA_PASSWORD_FILE"];
+            if (gpg_password) {
+                gpg.decryptFile(gpg_password, (err, contents) => {
                     if (!contents) {
                         console.error("gpg error", err);
                         process.exit(1);
                         return;
                     }
 
-                    //console.log("hehhh2");
                     ws.send(JSON.stringify({
                         username: username,
                         password: contents.toString("utf8").trim()
                     }));
                 });
-                //console.log("hehhh3");
             } else {
                 readPassword().then(pwd => {
-                    //console.log("hohhh2");
                     ws.send(JSON.stringify({
                         username: username,
                         password: pwd

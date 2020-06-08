@@ -75,8 +75,6 @@ wss.on("connection", ws => {
                         apiVersion: "2",
                         strictSSL: true
                     };
-                    //log("welp", jiraopts);
-
                     opts.jira = new Jira(jiraopts);
                 }
                 if (request.issue) {
@@ -101,120 +99,115 @@ wss.on("connection", ws => {
                                 opts.password = undefined;
                         });
                     }
-                    /*
-                      opts.jira.findIssue(request.issue).then(issue => {
-                      ok(request, issue);
-                      }).catch(err => {
-                      error(request, err);
-                      });
-                    */
                 }
-            } else if(request.mode.startsWith("stash.pr.")) {
-                var project = request.project || "NRDP", repo = request.repo || "nrdp"
-                if(request.mode == "stash.pr.create" && request.from && request.to) {
-                    var form = {
-                        title: project + '(' + repo + '): ' + request.from + '->' + request.to,
-                        fromRef: {
-                            id: "refs/heads/" + request.from,
-                            repository: {
-                                slug: repo,
-                                project: { key: project }
-                            }
-                        },
-                        toRef: {
-                            id: "refs/heads/" + request.to,
-                            repository: {
-                                slug: repo,
-                                project: { key: project }
-                            }
-                        }
-                    };
-                    url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', {
-                        body: JSON.stringify(form),
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        auth: {
+            } else if (request.mode.startsWith("stash.")) {
+                let stash_auth_data = {};
+                if(opts.password) {
+                    if(1) {
+                        if(!stash_auth_data.headers)
+                            stash_auth_data.headers = {};
+                        stash_auth_data.headers['Authorization'] = 'Bearer ' + opts.password;
+                        stash_auth_data.rejectAuthorized = false;
+                    } else {
+                        stash_auth_data.auth = {
                             user: opts.username,
                             pass: opts.password,
                             sendImmediately: true
-                        }
-                    }, function(err, response, body) {
-                        var data = { statusCode: response.statusCode, body: body };
-                        try {
-                            var pr;
-                            var obj = JSON.parse(data.body);
-                            if(obj.errors) {
-                                var e = obj.errors[0];
-                                data.message = e.message;
-                                pr = e.existingPullRequest;
+                        };
+                    }
+                }
+                if(request.mode.startsWith("stash.pr.")) {
+                    var project = request.project || "NRDP", repo = request.repo || "nrdp";
+                    if(request.mode == "stash.pr.create" && request.from && request.to) {
+                        var form = {
+                            title: project + '(' + repo + '): ' + request.from + '->' + request.to,
+                            fromRef: {
+                                id: "refs/heads/" + request.from,
+                                repository: {
+                                    slug: repo,
+                                    project: { key: project }
+                                }
+                            },
+                            toRef: {
+                                id: "refs/heads/" + request.to,
+                                repository: {
+                                    slug: repo,
+                                    project: { key: project }
+                                }
+                            }
+                        };
+                        var request_args = stash_auth_data;
+                        request_args.body = JSON.stringify(form);
+                        if(!request_args.headers)
+                            request_args.headers = {};
+                        request_args.headers['Content-Type'] = 'application/json';
+                        url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', request_args, function(err, response, body) {
+                            var data = { statusCode: response.statusCode, body: body };
+                            try {
+                                var pr;
+                                var obj = JSON.parse(data.body);
+                                if(obj.errors) {
+                                    var e = obj.errors[0];
+                                    data.message = e.message;
+                                    pr = e.existingPullRequest;
+                                } else {
+                                    pr = obj;
+                                }
+                                if(pr.links) {
+                                    const href = pr.links.self[0].href;
+                                    if(href)
+                                        data.message = (data.message ? (data.message + ": ") : "Status: ") + href;
+                                }
+                            } catch(v) {
+                            }
+                            if(err || data.statusCode >= 300) {
+                                if(!data.message)
+                                    data.message = data.body;
+                                var error_msg = data.body;
+                                error(request, { message: data.message });
+                                if(data.statusCode == 401)
+                                    opts.password = undefined;
                             } else {
-                                pr = obj;
+                                ok(request, data);
                             }
-                            if(pr.links) {
-                                const href = pr.links.self[0].href;
-                                if(href)
-                                    data.message = (data.message ? (data.message + ": ") : "Status: ") + href;
-                            }
-                        } catch(v) {
-                        }
-                        if(err || data.statusCode >= 300) {
-                            if(!data.message)
-                                data.message = data.body;
-                            var error_msg = data.body;
-                            error(request, { message: data.message });
-                            if(data.statusCode == 401)
-                                opts.password = undefined;
-                        } else {
-                            ok(request, data);
-                        }
-                    });
-                } else if(request.mode == "stash.pr.issues") {
-                    console.log('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues');
-                    url_request.get('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues', {
-                        auth: {
-                            user: opts.username,
-                            pass: opts.password,
-                            sendImmediately: true
-                        }
-                    }, function(err, response, body) {
-                        var data = { statusCode: response.statusCode, body: body };
-                        data.message = body;
-                        if(err || data.statusCode >= 300) {
-                            if(!data.message)
-                                data.message = data.body;
-                            var error_msg = data.body;
-                            error(request, { message: data.message });
-                            if(data.statusCode == 401)
-                                opts.password = undefined;
-                        } else {
-                            ok(request, data);
-                        }
-                    });
-                } else if(request.mode == "stash.pr.list") {
-                    var state = "ALL";
-                    if(request.state && request.state.length !== "")
-                        state = request.state;
-                    url_request.get('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests?state=' + state + '&order=NEWEST', {
-                        auth: {
-                            user: opts.username,
-                            pass: opts.password,
-                            sendImmediately: true
-                        }
-                    }, function(err, response, body) {
-                        var data = { statusCode: response.statusCode, body: body };
-                        data.message = body;
-                        if(err || data.statusCode >= 300) {
-                            if(!data.message)
-                                data.message = data.body;
-                            var error_msg = data.body;
-                            error(request, { message: data.message });
-                            if(data.statusCode == 401)
-                                opts.password = undefined;
-                        } else {
-                            ok(request, data);
-                        }
-                    });
+                        });
+                    } else if(request.mode == "stash.pr.issues") {
+                        console.log('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues');
+                        url_request.get('https://stash.corp.netflix.com/rest/jira/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + request.pullRequest + '/issues',
+                                        stash_auth_data, function(err, response, body) {
+                                            var data = { statusCode: response.statusCode, body: body };
+                                            data.message = body;
+                                            if(err || data.statusCode >= 300) {
+                                                if(!data.message)
+                                                    data.message = data.body;
+                                                var error_msg = data.body;
+                                                error(request, { message: data.message });
+                                                if(data.statusCode == 401)
+                                                    opts.password = undefined;
+                                            } else {
+                                                ok(request, data);
+                                            }
+                                        });
+                    } else if(request.mode == "stash.pr.list") {
+                        var state = "ALL";
+                        if(request.state && request.state.length !== "")
+                            state = request.state;
+                        url_request.get('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests?state=' + state + '&order=NEWEST',
+                                        stash_auth_data, function(err, response, body) {
+                                            var data = { statusCode: response.statusCode, body: body };
+                                            data.message = body;
+                                            if(err || data.statusCode >= 300) {
+                                                if(!data.message)
+                                                    data.message = data.body;
+                                                var error_msg = data.body;
+                                                error(request, { message: data.message });
+                                                if(data.statusCode == 401)
+                                                    opts.password = undefined;
+                                            } else {
+                                                ok(request, data);
+                                            }
+                                        });
+                    }
                 }
             }
         }
