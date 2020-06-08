@@ -19,29 +19,29 @@ EMACSWINDOW=
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
-    -f) EMACS="emacs" ;;
-    -c) CONFIRM=yes ;;
-    -r) MODE=run ;;
-    -e) MODE=eval ;;
-    -t) MODE=tail ;;
-    -m) MODE=make ;;
-    -s|--dry) TEST=echo ;;
-    --no-create-file) NO_CREATE_FILE=1 ;;
-    -n) EMACSWAIT=no ;;
-    -q) TEST=exists ;;
-    --daemon|-d) EMACSDAEMON="yes" ;;
-    -w) EMACSWINDOW=yes ;;
-    -nw) unset DISPLAY; EMACSWINDOW=no ;;
-    -h|--help|-help) echo "$0: [options] [file]"
-        echo "Options:"
-        echo "  -c    Must confirm execution"
-        echo "  -t    Tail provided file"
-        echo "  -e    Treat file as elisp and evaluate it"
-        exit 0
-        ;;
-    +*) LINE=$(expr `echo $1 | sed 's,^+,,'` - 5)  ;;
-    -*) EMACSOPTS="$EMACSOPTS $1" ;;
-    *)  FILE="$1" ;;
+        -f) EMACS="emacs" ;;
+        -c) CONFIRM=yes ;;
+        -r) MODE=run ;;
+        -e) MODE=eval ;;
+        -t) MODE=tail ;;
+        -m) MODE=make ;;
+        -s|--dry) TEST=echo ;;
+        --no-create-file) NO_CREATE_FILE=1 ;;
+        -n) EMACSWAIT=no ;;
+        -q) TEST=exists ;;
+        --daemon|-d) EMACSDAEMON="yes" ;;
+        -w) EMACSWINDOW=yes ;;
+        -nw) unset DISPLAY; EMACSWINDOW=no ;;
+        -h|--help|-help) echo "$0: [options] [file]"
+                         echo "Options:"
+                         echo "  -c    Must confirm execution"
+                         echo "  -t    Tail provided file"
+                         echo "  -e    Treat file as elisp and evaluate it"
+                         exit 0
+                         ;;
+        +*) LINE=$(expr `echo $1 | sed 's,^+,,'` - 5)  ;;
+        -*) EMACSOPTS="$EMACSOPTS $1" ;;
+        *)  FILE="$1" ;;
     esac
     shift
 done
@@ -127,7 +127,9 @@ runemacs() {
     fi
 }
 
-runemacs eval "(raise-frame)"
-[ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
+if [ "$MODE" != "eval" ]; then
+    runemacs eval "(raise-frame)"
+    [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
+fi
 runemacs "$MODE" "$FILE"
 exit 0

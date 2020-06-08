@@ -309,7 +309,7 @@
 
 ;; compile stuff
 
-(defvar lsdev-compile-args-by-dir (make-hash-table :test 'equal))
+(defvar lsdev-compile-args-by-dir nil)
 (defvar lsdev-compile-command nil)
 (defvar lsdev-compile-last-directory nil)
 (defvar lsdev-compile-last-args (getenv "MAKEFLAGS"))
@@ -320,6 +320,8 @@
   ;; (message "%s %s" directory (cond ((integerp auto) (int-to-string auto))
   ;;                                  (auto "t")
   ;;                                  (t "nil")))
+  (unless lsdev-compile-args-by-dir
+    (setq lsdev-compile-args-by-dir (make-hash-table :test 'equal)))
   (unless (and directory auto)
     (setq directory (read-directory-name "Directory: " directory directory)))
   (if (> (length directory) 0)

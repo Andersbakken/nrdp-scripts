@@ -6,8 +6,6 @@
 (require 'magit)
 (require 's)
 
-(setq magit-git-executable "magit-git.sh")
-
 (defun buffer-local-set-key (key func)
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
@@ -127,22 +125,40 @@
 (fset 'magit-toggle-whitespace
       (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
 
-(magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
-(magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
-(magit-define-popup-action 'magit-push-popup ?s "Submit pull-request" 'magit-submit-pull-request)
-(magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
-(magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
-(magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore-commit)
-(magit-define-popup-action 'magit-stash-popup ?b "Buffer" 'nrdp-git-stash-buffer)
 
-(magit-define-popup-switch 'magit-push-popup ?m "Manual" "--manual")
-(magit-define-popup-switch 'magit-push-popup ?D "Delete" "-d")
-(magit-define-popup-switch 'magit-push-popup ?a "All commits" "-a")
+(if (string> (magit-version) "20200407.")
+    (progn
+      (transient-append-suffix 'magit-reset "h" '("X" "hard" magit-reset-hard))
 
-(when (string< "20151209.731" (magit-version))
-  (magit-define-popup-action 'magit-pull-popup ?F "Pull from tracking" 'magit-pull-from-upstream)
-  (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream))
-(magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
+      (transient-append-suffix 'magit-pull "u" '("F" "Pull from tracking" magit-pull-from-upstream))
+      (transient-append-suffix 'magit-pull "F" '("S" "Sync" nrdp-magit-sync))
+
+      (transient-append-suffix 'magit-push "-n" '("-a" "All commits" "-a"))
+      (transient-append-suffix 'magit-push "-a" '("-m" "Manual" "--manual"))
+
+      (transient-append-suffix 'magit-push "e" '("S" "Submit" magit-submit))
+      (transient-append-suffix 'magit-push "S" '("P" "Push to upstream" magit-push-current-to-upstream))
+      (transient-append-suffix 'magit-push "P" '("s" "Submit pull-request" magit-submit-pull-request))
+      (transient-append-suffix 'magit-push "s" '("I" "Ignore" magit-ignore-commit))
+    ;; (transient-append-suffix 'magit-log " " "Blame" 'magit-blame-for-current-revision))
+      (transient-append-suffix 'magit-stash "x" '("b" "Buffer(s)" nrdp-git-stash-buffer)))
+  (setq magit-git-executable "magit-git.sh")
+  (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
+  (magit-define-popup-action 'magit-push-popup ?S "Submit" 'magit-submit)
+  (magit-define-popup-action 'magit-push-popup ?s "Submit pull-request" 'magit-submit-pull-request)
+  (magit-define-popup-action 'magit-push-popup ?J "Jira" 'magit-jira)
+  (magit-define-popup-action 'magit-push-popup ?R "Jira (Don't resolve)" 'magit-jira-no-resolve)
+  (magit-define-popup-action 'magit-push-popup ?I "Ignore" 'magit-ignore-commit)
+  (magit-define-popup-action 'magit-stash-popup ?b "Buffer" 'nrdp-git-stash-buffer)
+
+  (magit-define-popup-switch 'magit-push-popup ?m "Manual" "--manual")
+  (magit-define-popup-switch 'magit-push-popup ?D "Delete" "-d")
+  (magit-define-popup-switch 'magit-push-popup ?a "All commits" "-a")
+  (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
+
+  (when (string< "20151209.731" (magit-version))
+    (magit-define-popup-action 'magit-pull-popup ?F "Pull from tracking" 'magit-pull-from-upstream)
+    (magit-define-popup-action 'magit-push-popup ?P "Push to tracking" 'magit-push-current-to-upstream)))
 
 (unless (fboundp 'magit-current-section-string)
   (defun magit-current-section-string ()))
@@ -176,7 +192,8 @@
   file)
 
 (defun nrdp-git-grep-shell-quote-argument (arg)
-  (cond ((string-match "^\"" arg) arg)
+  (cond ((string-match "^\".*\"$" arg) arg)
+        ((string-match "^'.*'$" arg) arg)
         ((not (string-match " " arg)) (concat "\"" arg "\""))
         ((not (string-match "\"" arg)) (concat "\"" arg "\""))
         ((not (string-match "'" arg)) (concat "'" arg "'"))
@@ -300,12 +317,12 @@
       ;;                  pipe)))))
 
       (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
-                         (mapconcat 'identity args " ")
+                         (mapconcat 'nrdp-git-grep-shell-quote-argument args " ")
                          (if hasdashdash
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv'"
                          pipe)))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
