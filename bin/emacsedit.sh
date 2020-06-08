@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash  -x
 
 
 EMACS=
@@ -129,8 +129,8 @@ runemacs() {
 }
 
 if [ "$MODE" != "eval" ]; then
-    [ "$EMACSWAIT" = "no" ] && $TEST $EMACS -e "(raise-frame)" 
+    [ "$EMACSWAIT" = "no" ] && runemacs eval "(raise-frame)"
     [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
 fi
-runemacs "$MODE" "$FILE"
+[ -n "$FILE" ] && runemacs "$MODE" "$FILE"
 exit 0
