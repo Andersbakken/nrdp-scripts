@@ -43,7 +43,7 @@ if [ "$MODE" = "create" ]; then
     fi
     TO="$2"
     [ -z "$TO" ] && TO=`git tracking`
-    if [ "$SHITHEAD" != "1" ] && git log -p "origin/${TO}..origin/${FROM}" | grep --quiet -i "fuck\|\<shit\>"; then
+    if [ "$SHITHEAD" != "1" ] && git log -p "origin/${TO}..origin/${FROM}" | grep -i "fuck\|\<shit\>"; then
         echo Refusing to make profane pr you shithead. Export SHITHEAD=1 and rerun to force
         exit 1
     fi
