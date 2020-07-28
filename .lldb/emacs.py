@@ -8,15 +8,16 @@ def emake(debugger, command, result, internal_dict):
 
 def rez(debugger, command, result, internal_dict):
   file = "%s:%d" % (lldb.frame.GetLineEntry().GetFileSpec().fullpath, lldb.frame.GetLineEntry().GetLine())
-  print "Open: %s" % file
+  print("Open: %s" % file)
   os.system("emacsedit.sh -n %s" % file)
 
 def ecd(debugger, command, result, internal_dict):
   os.system("emacsedit.sh -n $PWD")
 
 def ebreak(debugger, command, result, internal_dict):
-  pipe = os.popen("emacsedit.sh -n -e '(sam-what-file)'", 'rb')
+  pipe = os.popen("emacsedit.sh -n -e '(sam-what-file)'", 'r')
   result = pipe.read().rstrip()
+  print("Break: %s" % result)
   pipe.close()
   debugger.HandleCommand("br %s" % result)
 
