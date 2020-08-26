@@ -124,18 +124,30 @@
          (if (and (not (/= (point-min) (point-max))) (file-exists-p f))
              (insert-file-contents f) ;;insert the license
            )))
-(defun netflix-log-message (msg nopercent) "Insert Netflix logging message."
-       (let ((result))
-         (if (or (eq major-mode 'js2-mode) (eq major-mode 'js-mode))
-             (progn
-               (insert "nrdp.log.error('" msg "'")
-               (setq result (point)))
-           (progn
-             (insert "Log::error"
-                     "(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
-             (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))))
-         (insert ");")
-         result))
+(defun netflix-log-message (msg nopercent)
+  "Insert Netflix logging message."
+  (let ((result))
+    (cond ((or (eq major-mode 'js2-mode) (eq major-mode 'js-mode) (eq major-mode 'javascript-mode))
+           (let ((quote (save-excursion
+                          (save-restriction
+                            (widen)
+                            (goto-char (point-min))
+                            (if (re-search-forward "\<let\>" nil t)
+                                "`"
+                              "\"")))))
+             (insert (format "nrdp.l.error(%s%s%s" quote msg quote)))
+           (setq result (point)))
+          ((eq major-mode 'typescript-mode)
+           (insert "nrdp.l.error(`" msg "`")
+           (setq result (point)))
+          (t
+           (insert "NERROR(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
+           (when (and (not nopercent) (string-match "%" msg))
+             (insert ", ")
+             (setq result (point)))))
+    (insert ");")
+    result))
+
 (defun netflix-c-mode-hook () (setq
                                tab-width 4
                                c-basic-offset 4
