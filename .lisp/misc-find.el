@@ -3,10 +3,17 @@
 (require 'find-file-in-repository)
 (require 'tide)
 (require 'ido)
+(require 'nrdp-misc "misc")
 (defvar misc-find-symbol-has-slime nil)
 (defvar misc-find-symbol-has-rtags nil)
 (setq misc-find-symbol-has-slime (require 'elisp-slime-nav nil t))
 (setq misc-find-symbol-has-rtags (and (require 'rtags nil t) (rtags-executable-find "rc")))
+
+(defcustom misc-find-use-misc-next-previous-error
+  nil
+  "Whether to use misc-next-error/misc-previous-error"
+  :type 'boolean
+  :safe 'booleanp)
 
 (defun --misc-grep-find-deepest-ancestor (file)
   (let ((ret)
@@ -21,6 +28,18 @@
               (setq dir nil)
             (setq dir (expand-file-name (concat dir "/..")))))))
     ret))
+
+(defun --misc-grep-tide-next-prev-error (forward settransientmap)
+  (let ((ref-buffer (get-buffer "*tide-references*")))
+    (when ref-buffer
+      (with-current-buffer ref-buffer
+        (call-interactively
+         (if forward
+             'tide-cycle-next-reference
+           'tide-cycle-previous-reference))
+        (call-interactively 'tide-goto-line-reference)
+        (when (and settransientmap misc-find-use-misc-next-previous-error)
+          (set-transient-map misc-next-error-map))))))
 
 (defun --misc-grep-find-symbol (&optional symbol)
   (interactive "sSymbol: ")
@@ -78,7 +97,8 @@
         ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function)) ;; not sure what else to do here
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
-         (call-interactively 'tide-references))
+         (call-interactively 'tide-references)
+         (call-interactively '--misc-grep-tide-next-prev-error t nil))
         (t
          (let ((cur (thing-at-point 'symbol)))
            (if cur
@@ -92,7 +112,9 @@
             (rtags-is-indexed)
             (or (eq major-mode 'c++-mode)
                 (eq major-mode 'c-mode)))
-       (if prefix 'rtags-taglist 'rtags-imenu)
+       (if prefix
+           'rtags-taglist
+         'rtags-imenu)
      'idomenu)))
 
 (defun misc-find-next-match ()
@@ -100,15 +122,15 @@
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-next-match))
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
-         (call-interactively 'tide-find-next-reference))
-        (t (call-interactively 'next-error))))
+         (--misc-grep-tide-next-prev-error t t))
+        (t (call-interactively (if misc-find-use-misc-next-previous-error 'misc-next-error 'next-error)))))
 
 (defun misc-find-previous-match ()
   (interactive)
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-previous-match))
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
-         (call-interactively 'tide-find-previous-reference))
-        (call-interactively 'previous-error)))
+         (--misc-grep-tide-next-prev-error nil t))
+        (t (call-interactively (if misc-find-use-misc-next-previous-error 'misc-previous-error 'previous-error)))))
 
 (provide 'misc-find)
