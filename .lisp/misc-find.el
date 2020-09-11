@@ -36,14 +36,13 @@
                             (t default-directory))))
         (grep-find (concat "find " ancestor "-type f -print0 | xargs -0 grep -nH " command))))))
 
-(defun misc-find-file ()
+(defun misc-find-file (&optional prefix)
   (interactive "P")
   (call-interactively
    (if (and misc-find-symbol-has-rtags
             (rtags-has-filemanager))
        'rtags-find-file
      'find-file-in-repository)))
-
 
 (defun misc-find-symbol-at-point (&optional prefix)
   (interactive "P")
