@@ -1727,7 +1727,7 @@ there's a region, all lines that region covers will be duplicated."
 (defvar misc-grep-find-not
   " -not -name error.js -not -name xboxupsellpage.js -not -name '*.min.js*' -not -name 'string-unpack-code.js' -not -name ttrlibs.js -not -path '*/sunspider/*' -not -path '*/newt-docs/*'")
 (defvar misc-grep-find-source-files
-  "\\( -name \"*.cpp\" -o -name \"*.h\" -o -name \"*.c\" -o -name \"*.js\" -o -name \".mm\" -o -name \"*.m\" -o -name \"*.inc\" -o -name \"*.cc\" -o -iname \"*.hpp\" -o -name \"*.py\" -o -name \"*.el\" -o -name \"*.java\" -o -name \"*.html\" -o -name \"Makefile*\" \\)")
+  "\\( -name \"*.cpp\" -o -name \"*.h\" -o -name \"*.c\" -o -name \"*.ts\" -o -name \"*.ts.d\" -o -name \"*.js\" -o -name \".mm\" -o -name \"*.m\" -o -name \"*.inc\" -o -name \"*.cc\" -o -iname \"*.hpp\" -o -name \"*.py\" -o -name \"*.el\" -o -name \"*.java\" -o -name \"*.html\" -o -name \"Makefile*\" \\)")
 (defvar misc-grep-find-cmake
   "\\( -name \"CMakeLists.txt\" -o -name \"*.cmake\" \\)")
 
