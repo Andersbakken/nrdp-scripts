@@ -3,6 +3,8 @@
 (require 'find-file-in-repository)
 (require 'tide)
 (require 'ido)
+(defvar misc-find-symbol-has-slime nil)
+(defvar misc-find-symbol-has-rtags nil)
 (setq misc-find-symbol-has-slime (require 'elisp-slime-nav nil t))
 (setq misc-find-symbol-has-rtags (and (require 'rtags nil t) (rtags-executable-find "rc")))
 
