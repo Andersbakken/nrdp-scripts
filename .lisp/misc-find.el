@@ -101,7 +101,7 @@
          (call-interactively 'rtags-next-match))
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
          (call-interactively 'tide-find-next-reference))
-        (t (call-interactively (or next-error-function 'next-error)))))
+        (t (call-interactively 'next-error))))
 
 (defun misc-find-previous-match ()
   (interactive)
@@ -109,6 +109,6 @@
          (call-interactively 'rtags-previous-match))
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
          (call-interactively 'tide-find-previous-reference))
-        (t (call-interactively (or prev-error-function 'previous-error)))))
+        (call-interactively 'previous-error)))
 
 (provide 'misc-find)
