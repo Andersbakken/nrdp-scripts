@@ -95,4 +95,20 @@
        (if prefix 'rtags-taglist 'rtags-imenu)
      'idomenu)))
 
+(defun misc-find-next-match ()
+  (interactive)
+  (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
+         (call-interactively 'rtags-next-match))
+        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+         (call-interactively 'tide-find-next-reference))
+        (t (call-interactively (or next-error-function 'next-error)))))
+
+(defun misc-find-previous-match ()
+  (interactive)
+  (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
+         (call-interactively 'rtags-previous-match))
+        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+         (call-interactively 'tide-find-previous-reference))
+        (t (call-interactively (or prev-error-function 'previous-error)))))
+
 (provide 'misc-find)
