@@ -573,14 +573,6 @@ to case differences."
             (when (file-readable-p candidate)
               ;; (message "Found in simple search: %s" candidate)
               (return candidate)))
-          (and (executable-find "gtags")
-               (gtags-get-rootpath)
-               (dolist (candidate candidates)
-                 (with-temp-buffer
-                   (call-process (executable-find "global") nil t nil "-Pa" (concat "/" (file-name-nondirectory candidate) "$"))
-                   (when (eq (count-lines (point-min) (point-max)) 1)
-                     ;; (message "Found in gtags search: %s" candidate)
-                     (return (buffer-substring (point-min) (- (point-max) 1)))))))
           (and (rtags-has-filemanager)
                (dolist (candidate candidates)
                  (with-temp-buffer
@@ -1706,8 +1698,7 @@ there's a region, all lines that region covers will be duplicated."
     best))
 
 (defun misc-project-root()
-  (s-chop-suffix "/" (cond ((misc-liberal-file-exists (gtags-get-rootpath)))
-                           ((misc-liberal-file-exists (lsdev-root-dir default-directory)))
+  (s-chop-suffix "/" (cond ((misc-liberal-file-exists (lsdev-root-dir default-directory)))
                            ((misc-liberal-file-exists (nrdp-git-deepest-root)))
                            ((misc-find-outer-file-directory "configure"))
                            ((misc-find-outer-file-directory "Makefile"))
