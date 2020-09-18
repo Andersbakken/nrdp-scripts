@@ -80,12 +80,12 @@
 
 (defun misc-find-symbol (&optional prefix)
   (interactive "P")
-  (cond ((and misc-find-symbol-has-rtags (rtags-has-filemanager))
-         (call-interactively 'rtags-find-symbol))
-        ((eq major-mode 'emacs-lisp-mode)
+  (cond ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function))
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
          (call-interactively 'tide-nav))
+        ((and misc-find-symbol-has-rtags (rtags-has-filemanager))
+         (call-interactively 'rtags-find-symbol))
         (t
          (call-interactively '--misc-grep-find-symbol))))
 
