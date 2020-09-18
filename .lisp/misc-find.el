@@ -80,7 +80,7 @@
 
 (defun misc-find-symbol (&optional prefix)
   (interactive "P")
-  (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
+  (cond ((and misc-find-symbol-has-rtags (rtags-has-filemanager))
          (call-interactively 'rtags-find-symbol))
         ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function))
