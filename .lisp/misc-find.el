@@ -15,15 +15,15 @@
   :type 'boolean
   :safe 'booleanp)
 
-(defun --misc-grep-find-deepest-ancestor (file)
+(defun --misc-grep-find-deepest-ancestor-directory (file)
   (let ((ret)
         (dir default-directory))
     (while dir
       (let ((val (find-ancestor-file file dir)))
         (if (not val)
             (setq dir nil)
-          (setq ret val)
           (setq dir (file-name-directory val))
+          (setq ret dir)
           (if (string= dir "/")
               (setq dir nil)
             (setq dir (expand-file-name (concat dir "/..")))))))
@@ -45,17 +45,16 @@
   (interactive "sSymbol: ")
   (unless (and (stringp symbol) (> (length symbol) 0))
     (error "Nothing to find"))
-  (let ((command (concat "--recurse-submodules -I -n \"\\<" symbol "\\>\""
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'"))
+  (let ((command (concat "-I -n \"\\<" symbol "\\>\""))
         (gitdir (magit-toplevel)))
     (if gitdir
         (let ((default-directory gitdir))
-          (grep-find (concat "git --no-pager grep " command)))
-      (let ((ancestor (cond ((--misc-grep-find-deepest-ancestor "configure"))
-                            ((--misc-grep-find-deepest-ancestor "CMakeLists.txt"))
-                            ((--misc-grep-find-deepest-ancestor "Makefile"))
+          (grep-find (concat "git --no-pager grep --recurse-submodules " command " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'")))
+      (let ((ancestor (cond ((--misc-grep-find-deepest-ancestor-directory "configure"))
+                            ((--misc-grep-find-deepest-ancestor-directory "CMakeLists.txt"))
+                            ((--misc-grep-find-deepest-ancestor-directory "Makefile"))
                             (t default-directory))))
-        (grep-find (concat "find " ancestor "-type f -print0 | xargs -0 grep -nH " command))))))
+        (grep-find (concat "find " ancestor " -type f -print0 | xargs -0 grep -nH " command))))))
 
 (defun misc-find-file (&optional prefix)
   (interactive "P")
@@ -88,7 +87,7 @@
         ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
          (call-interactively 'tide-nav))
         (t
-         (call-interactively 'grep-find-symbol))))
+         (call-interactively '--misc-grep-find-symbol))))
 
 (defun misc-find-references-at-point (&optional prefix)
   (interactive "P")
