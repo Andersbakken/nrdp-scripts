@@ -4,6 +4,7 @@
 (require 'tide)
 (require 'ido)
 (require 'nrdp-misc "misc")
+(require 'simple)
 (defvar misc-find-symbol-has-slime nil)
 (defvar misc-find-symbol-has-rtags nil)
 (setq misc-find-symbol-has-slime (require 'elisp-slime-nav nil t))
@@ -13,7 +14,8 @@
   nil
   "Whether to use misc-next-error/misc-previous-error"
   :type 'boolean
-  :safe 'booleanp)
+  :safe 'booleanp
+  :group 'misc-find)
 
 (defun --misc-grep-find-deepest-ancestor-directory (file)
   (let ((ret)
