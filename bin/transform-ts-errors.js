@@ -7,6 +7,7 @@ const fs = require("fs");
 const child = require("child_process").execFile(process.argv[2], process.argv.slice(3));
 
 const lastWasEmpty = [ false, false ];
+let lastFile;
 
 function filter(idx, line) {
     if (!line) {
@@ -14,6 +15,7 @@ function filter(idx, line) {
             return;
         lastWasEmpty[idx] = true;
     } else {
+        // removing colors I think
         line = line.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
         lastWasEmpty[idx] = false;
     }
@@ -27,15 +29,23 @@ function filter(idx, line) {
         return;
     }
 
-    const match = /Error: (.*)/.exec(line);
+    let match = /Error: (.*)/.exec(line);
     if (match) {
         line = match[1];
-        const idx = line.indexOf(" ");
-        if (idx !== -1) {
+        const index = line.indexOf(" ");
+        if (index !== -1) {
             let str = " error:";
-            if (line[idx - 1] !== ":")
+            if (line[index - 1] !== ":")
                 str = ":" + str;
-            line = line.substr(0, idx) + str + line.substr(idx);
+            line = line.substr(0, index) + str + line.substr(index);
+        }
+    } else if (/^\/[A-Za-z0-9_\/\.-]*\.ts$/.exec(line)) {
+        lastFile = line;
+        return;
+    } else if (lastFile) {
+        match = /^ *([0-9]+):([0-9]+) *([a-z]*) *(.*)/.exec(line);
+        if (match) {
+            line = `${match[3].toUpperCase()}: ${lastFile}:${match[1]}:${match[2]} - ${match[4]}`;
         }
     }
 
