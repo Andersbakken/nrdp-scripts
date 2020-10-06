@@ -45,7 +45,7 @@ function filter(idx, line) {
     } else if (lastFile) {
         match = /^ *([0-9]+):([0-9]+) *([a-z]*) *(.*)/.exec(line);
         if (match) {
-            line = `${match[3].toUpperCase()}: ${lastFile}:${match[1]}:${match[2]} - ${match[4]}`;
+            line = `${match[3].toUpperCase()}: ${lastFile}:${match[1]}:${match[2]} - ${match[4].replace(/\s+/g, " ")}`;
         }
     }
 

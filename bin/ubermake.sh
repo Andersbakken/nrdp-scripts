@@ -248,8 +248,8 @@ build() {
 
 if [ -z "$MAKE_DIR" ]; then
     NAME=`lsdev.pl -p -ts`
+    SOURCE_PATH=`lsdev.pl -r -tp source`
     if [ -n "$NAME" ] && [ -n "$ALL" ]; then
-        SOURCE_PATH=`lsdev.pl -r -tp source`
         REST_PATH=`lsdev.pl -p -tr`
         [ "$REST_PATH" = "<root>" ] && REST_PATH=
         if [ -d "$SOURCE_PATH" ]; then
@@ -269,8 +269,9 @@ if [ -z "$MAKE_DIR" ]; then
         fi
     fi
 
-    if [ -e "Makefile" ] || [ -e "build.ninja" ] || [ -e "Sakefile.js" ] || [ -e "SConstruct" ] || [ -e "package.json" ]; then
-        build "${PWD}/"
+    [ ! -d "$SOURCE_PATH" ] && SOURCE_PATH="$PWD"
+    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
+        build "${SOURCE_PATH}/"
     elif [ -n "$NAME" ]; then
         build `lsdev.pl build -tp $LSDEV_ARGS`
     else
