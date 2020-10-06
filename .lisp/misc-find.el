@@ -17,20 +17,6 @@
   :safe 'booleanp
   :group 'misc-find)
 
-(defun --misc-grep-find-deepest-ancestor-directory (file)
-  (let ((ret)
-        (dir default-directory))
-    (while dir
-      (let ((val (find-ancestor-file file dir)))
-        (if (not val)
-            (setq dir nil)
-          (setq dir (file-name-directory val))
-          (setq ret dir)
-          (if (string= dir "/")
-              (setq dir nil)
-            (setq dir (expand-file-name (concat dir "/..")))))))
-    ret))
-
 (defun --misc-grep-tide-next-prev-error (forward settransientmap)
   (let ((ref-buffer (get-buffer "*tide-references*")))
     (when ref-buffer
@@ -52,9 +38,9 @@
     (if gitdir
         (let ((default-directory gitdir))
           (grep-find (concat "git --no-pager grep --recurse-submodules " command " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'")))
-      (let ((ancestor (cond ((--misc-grep-find-deepest-ancestor-directory "configure"))
-                            ((--misc-grep-find-deepest-ancestor-directory "CMakeLists.txt"))
-                            ((--misc-grep-find-deepest-ancestor-directory "Makefile"))
+      (let ((ancestor (cond ((--misc-find-deepest-ancestor-directory "configure"))
+                            ((--misc-find-deepest-ancestor-directory "CMakeLists.txt"))
+                            ((--misc-find-deepest-ancestor-directory "Makefile"))
                             (t default-directory))))
         (grep-find (concat "find " ancestor " -type f -print0 | xargs -0 grep -nH " command))))))
 

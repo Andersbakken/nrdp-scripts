@@ -5,6 +5,20 @@
 (require 'bytecomp)
 (require 's)
 
+(defun --misc-find-deepest-ancestor-directory (file)
+  (let ((ret)
+        (dir default-directory))
+    (while dir
+      (let ((val (find-ancestor-file file dir)))
+        (if (not val)
+            (setq dir nil)
+          (setq dir (file-name-directory val))
+          (setq ret dir)
+          (if (string= dir "/")
+              (setq dir nil)
+            (setq dir (expand-file-name (concat dir "/..")))))))
+    ret))
+
 (defun is-ancestor (root child)
   "Try to recursively go upwards from this directory and see if child is an ancestor of root"
   (let ((root-dir (cond (root ;; extrapolate from name
