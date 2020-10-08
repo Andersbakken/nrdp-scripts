@@ -158,12 +158,25 @@
     (insert ");")
     result))
 
-(defun netflix-c-mode-hook () (setq
-                               tab-width 4
-                               c-basic-offset 4
-                               cmake-tab-width 4
-                               indent-tabs-mode nil
-                               ))
+(defun netflix-c-mode-hook ()
+  (setq
+   tab-width 4
+   c-basic-offset 4
+   cmake-tab-width 4
+   indent-tabs-mode nil
+   )
+  ;; make new font for rest of qt keywords
+  (make-face 'netflix-keywords-face)
+  (set-face-foreground 'netflix-keywords-face "BlueViolet")
+  (font-lock-add-keywords 'c++-mode
+                          '(("\\<NF_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+  (font-lock-add-keywords 'c++-mode
+                          '(("\\<NRDP_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+  (font-lock-add-keywords 'c++-mode
+                          '(("\\<DEFINE_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+  (font-lock-add-keywords 'c++-mode
+                          '(("\\<DECLARE_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+  )
 (defun netflix-find-file-hook ()
   (setq
    cmake-tab-width 4
