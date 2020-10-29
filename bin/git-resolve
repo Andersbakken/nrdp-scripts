@@ -194,6 +194,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                                 merged=true
                                 break 2
                             fi
+                            break
                             ;;
                         n|no) edit=yes ;;
                         *) ;;
