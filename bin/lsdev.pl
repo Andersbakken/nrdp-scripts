@@ -183,7 +183,7 @@ sub answer {
         $output = generateRootName($root);
     } elsif($answer eq "rest") {
         $output = getRestDir($path);
-        $output = "<root>" unless(length($output));
+
     } elsif($answer eq "path") {
         $output = $path;
     } else {
@@ -608,7 +608,10 @@ sub generateRootName {
 
     my $name = $root->{name};
     $name = generateBuildName($root) if(isRootBuild($root));
-    return (isRootSource($root) ? $src_prefix : $build_prefix) . $name;
+    if($name) {
+        return (isRootSource($root) ? $src_prefix : $build_prefix) . $name;
+    }
+    return undef;
 }
 
 sub isPathSame {
