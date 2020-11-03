@@ -271,7 +271,9 @@ if [ -z "$MAKE_DIR" ]; then
             fi
         fi
     fi
-    [ -z "$SOURCE_PATH"] && [ ! -d "$SOURCE_PATH" ] && SOURCE_PATH="$PWD"
+    if [ -z "$SOURCE_PATH" ] || [ ! -d "$SOURCE_PATH" ]; then
+        SOURCE_PATH="$PWD"
+    fi
     if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
         build "${SOURCE_PATH}/"
     elif [ -n "$NAME" ]; then
