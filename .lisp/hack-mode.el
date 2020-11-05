@@ -123,10 +123,12 @@
   (let ((root (--misc-find-deepest-ancestor-directory "configure")))
     (when root
       (with-temp-buffer
-        (insert-file-contents (concat root "/src/base/Version.h"))
-        (goto-char (point-min))
-        (when (re-search-forward "^#define NRDP_VERSION_MAJOR \\([0-9]+\\)" nil t)
-          (>= (string-to-number (match-string 1)) 2020))))))
+        (if (file-exists-p (concat root "/src/base/Version.h"))
+            (progn
+              (insert-file-contents (concat root "/src/base/Version.h"))
+              (goto-char (point-min))
+              (when (re-search-forward "^#define NRDP_VERSION_MAJOR \\([0-9]+\\)" nil t)
+                (>= (string-to-number (match-string 1)) 2020))))))))
 
 ;;netflix stuff
 (defun netflix-templatize-file () "Insert a standard Netflix template comment into the current buffer."
