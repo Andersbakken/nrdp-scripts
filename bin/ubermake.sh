@@ -142,7 +142,7 @@ build() {
             [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
             [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
             for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-                case $opt in
+                case $(eval echo $opt) in
                     clean|distclean) NINJA_OPTIONS="$NINJA_OPTIONS -t clean" ;;
                     -k) NINJA_OPTIONS="$NINJA_OPTIONS -k 1000" ;;
                     *) NINJA_OPTIONS="$NINJA_OPTIONS \"$opt\"" ;;
@@ -196,7 +196,7 @@ build() {
     if [ -x "`which scons`" ] && [ -e "${BUILD_DIR}SConstruct" ]; then
         SCONS_OPTIONS=
         for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-            case $opt in
+            case $(eval echo $opt) in
                 clean|distclean) SCONS_OPTIONS="$SCONS_OPTIONS -c" ;;
                 *) SCONS_OPTIONS="$SCONS_OPTIONS \"$opt\"" ;;
             esac
@@ -206,7 +206,7 @@ build() {
     elif [ -e "${BUILD_DIR}Sakefile.js" ]; then
         SAKE_OPTIONS=
         for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-            case $opt in
+            case $(eval echo $opt) in
                 -j[0-9]*) ;;
                 help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
                 distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
