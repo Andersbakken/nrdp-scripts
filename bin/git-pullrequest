@@ -36,18 +36,32 @@ PULL_REQUEST_PROJECT=`echo $PULL_REQUEST_REPO_VALUE | cut -d/ -f1`
 PULL_REQUEST_REPO=`echo $PULL_REQUEST_REPO_VALUE | cut -d/ -f2`
 
 if [ "$MODE" = "create" ]; then
-    FROM="$1"
-    if [ -z "$FROM" ]; then
+    PR_FROM_BRANCH=
+    PR_TO_BRANCH=
+    PR_REVIEWERS=
+    while [ "$#" -ge 1 ]; do
+        if [ "$1" = "--reviewer" ]; then
+            shift
+            PR_REVIEWERS="$PR_REVIEWERS $1"
+        elif [ -z "$PR_FROM_BRANCH" ]; then
+            PR_FROM_BRANCH="$1"
+        elif [ -z "$PR_TO_BRANCH" ]; then
+            PR_TO_BRANCH="$1"
+        else
+            echo "Unknown option: $1"
+        fi
+        shift
+    done
+    if [ -z "$PR_FROM_BRANCH" ]; then
         echo "Usage: $0 from [to]"
         exit 3
     fi
-    TO="$2"
-    [ -z "$TO" ] && TO=`git tracking`
-    if [ "$SHITHEAD" != "1" ] && git log -p "origin/${TO}..origin/${FROM}" | grep -i "fuck\|\<shit\>"; then
-        echo Refusing to make profane pr you shithead. Export SHITHEAD=1 and rerun to force
+    [ -z "$PR_TO_BRANCH" ] && PR_TO_BRANCH=`git tracking`
+    if [ -n "$PULL_REQUEST_CHECK" ] && git log -p "origin/${PR_TO_BRANCH}..origin/${PR_FROM_BRANCH}" | grep -i "${PULL_REQUEST_CHECK}"; then
+        echo PULL_REQUEST_CHECK failed, unset and rerun to force
         exit 1
     fi
-    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.create --from "${FROM}" --to "${TO}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
+    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.create --reviewers "${PR_REVIEWERS}" --from "${PR_FROM_BRANCH}" --to "${PR_TO_BRANCH}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then

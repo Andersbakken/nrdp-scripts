@@ -14,14 +14,19 @@ if echo "$2" | grep -q "/"; then
         TRACKING_BRANCH=`echo $3 | cut -d/ -f2-`
         if [ "$ORIGIN" = "." ] && echo "$BRANCH" | grep -q "git-pullrequest-submit$"; then
             PR_NAME=""
+            PR_REVIEWER=""
             COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
             for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
                 if [ -n "$DESCRIPTION" ]; then
-                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
-                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
-                    PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed -e 's,: $,,')"
-                    [ -n "$PR_NAME" ] && break
+
+                    PR_REVIEWER="$PR_REVIEWER $(echo "$DESCRIPTION" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
+                    echo "shit: $DESCRIPTION"
+                    if [ -n "$PR_NAME" ]; then
+                        PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
+                        PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
+                        PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed -e 's,: $,,')"
+                    fi
                 fi
             done
             PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
@@ -32,7 +37,7 @@ if echo "$2" | grep -q "/"; then
             PR_SOURCE=$(echo $BRANCH | sed "s#git-pullrequest-submit\$#${PR_NAME}#")
             PR_DEST=$(echo $3 | cut -d/ -f2-)
             git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
-            git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
+            git pullrequest create --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
             JIRA="no"
         elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             PR_SOURCE="$BRANCH"

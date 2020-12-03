@@ -119,7 +119,7 @@ wss.on("connection", ws => {
                 if(request.mode.startsWith("stash.pr.")) {
                     var project = request.project || "NRDP", repo = request.repo || "nrdp";
                     if(request.mode == "stash.pr.create" && request.from && request.to) {
-                        var form = {
+                        const create_pr_form = {
                             title: project + '(' + repo + '): ' + request.from + '->' + request.to,
                             fromRef: {
                                 id: "refs/heads/" + request.from,
@@ -136,12 +136,12 @@ wss.on("connection", ws => {
                                 }
                             }
                         };
-                        var request_args = stash_auth_data;
-                        request_args.body = JSON.stringify(form);
-                        if(!request_args.headers)
-                            request_args.headers = {};
-                        request_args.headers['Content-Type'] = 'application/json';
-                        url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', request_args, function(err, response, body) {
+                        var create_pr_args = stash_auth_data;
+                        create_pr_args.body = JSON.stringify(create_pr_form);
+                        if(!create_pr_args.headers)
+                            create_pr_args.headers = {};
+                        create_pr_args.headers['Content-Type'] = 'application/json';
+                        url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests', create_pr_args, function(err, response, body) {
                             var data = { statusCode: response.statusCode, body: body };
                             try {
                                 var pr;
@@ -157,6 +157,21 @@ wss.on("connection", ws => {
                                     const href = pr.links.self[0].href;
                                     if(href)
                                         data.message = (data.message ? (data.message + ": ") : "Status: ") + href;
+                                }
+                                if(pr.id && request.reviewers) {
+                                    request.reviewers.split(' ').forEach(function(reviewer) {
+                                        const review_pr_form = {
+                                            user: { name: reviewer },
+                                            role: "REVIEWER"
+                                        }
+                                        let review_pr_args = stash_auth_data;
+                                        review_pr_args.body = JSON.stringify(review_pr_form);
+                                        if(!review_pr_args.headers)
+                                            review_pr_args.headers = {};
+                                        review_pr_args.headers['Content-Type'] = 'application/json';
+                                        url_request.post('https://stash.corp.netflix.com/rest/api/1.0/projects/' + project + '/repos/' + repo + '/pull-requests/' + pr.id + '/participants', review_pr_args, function(err, response, body) {
+                                        });
+                                    });
                                 }
                             } catch(v) {
                             }
