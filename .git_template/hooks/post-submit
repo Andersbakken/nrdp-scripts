@@ -21,7 +21,6 @@ if echo "$2" | grep -q "/"; then
                 if [ -n "$DESCRIPTION" ]; then
 
                     PR_REVIEWER="$PR_REVIEWER $(echo "$DESCRIPTION" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
-                    echo "shit: $DESCRIPTION"
                     if [ -n "$PR_NAME" ]; then
                         PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
                         PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
