@@ -19,14 +19,15 @@ if echo "$2" | grep -q "/"; then
             for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
                 if [ -n "$DESCRIPTION" ]; then
-
-                    PR_REVIEWER="$PR_REVIEWER $(echo "$DESCRIPTION" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
                     if [ -n "$PR_NAME" ]; then
                         PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^\[.\+\] ' | sed 's,^\[\([^]]*\)\] .*,\1,')"
                         PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '\[.\+\]$' | sed 's,.*\[\([^]]*\)\]$,\1,')"
                         PR_NAME="$PR_NAME $(echo "$DESCRIPTION" | grep -o '^[^ ]\+-[0-9]\+: ' | sed -e 's,: $,,')"
                     fi
                 fi
+
+                BODY=$(git log --pretty=format:%B --reverse "$1..$BRANCH")
+                PR_REVIEWER="$PR_REVIEWER $(echo "$BODY" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
             done
             PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
             [ -z "$PR_NAME" ] && PR_NAME=$(git show --pretty="%f" --no-patch ${COMMITS} | head -1 | head -c 64)
