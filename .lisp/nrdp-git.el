@@ -25,7 +25,7 @@
 (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
 (define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
 
-(define-key magit-file-mode-map "\C-xg" nil)
+(if (fboundp 'magit-file-mode-map) (define-key magit-file-mode-map "\C-xg" nil))
 
 (defun nrdp-magit-section-type (object)
   (if (fboundp 'magit-section-type)
