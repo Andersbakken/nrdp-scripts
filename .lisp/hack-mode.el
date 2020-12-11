@@ -119,17 +119,6 @@
   )
 (setq hack-mode-webkit '("WebKit" webkit-templatize-file webkit-c-mode-hook webkit-find-file-hook nil))
 
-(defun netflix-has-NERROR ()
-  (let ((root (--misc-find-deepest-ancestor-directory "configure")))
-    (when root
-      (with-temp-buffer
-        (if (file-exists-p (concat root "/src/base/Version.h"))
-            (progn
-              (insert-file-contents (concat root "/src/base/Version.h"))
-              (goto-char (point-min))
-              (when (re-search-forward "^#define NRDP_VERSION_MAJOR \\([0-9]+\\)" nil t)
-                (>= (string-to-number (match-string 1)) 2020))))))))
-
 ;;netflix stuff
 (defun netflix-templatize-file () "Insert a standard Netflix template comment into the current buffer."
        (let ((f (expand-file-name "~/.netflix.license")))
@@ -153,7 +142,7 @@
            (insert "nrdp.l.error(`" msg "`")
            (setq result (point)))
           (t
-           (insert (if (netflix-has-NERROR) "NERROR" "Log::error") "(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
+           (insert "Log::error(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
            (when (and (not nopercent) (string-match "%" msg))
              (insert ", ")
              (setq result (point)))))
