@@ -6,6 +6,8 @@
 (require 'magit)
 (require 's)
 
+(defvar nrdp-git-grep-max-column-length 1024)
+
 (defun buffer-local-set-key (key func)
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
@@ -323,7 +325,8 @@
                            " -- ")
                          dir
                          " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'"
-                         pipe)))))
+                         pipe
+                         (format " | cut -c -%d" nrdp-git-grep-max-column-length))))))
 
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
