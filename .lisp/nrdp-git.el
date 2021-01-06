@@ -256,7 +256,7 @@
     (when word
       (push word result))
 
-    (mapcar (lambda (x) (coerce (reverse x) 'string))
+    (mapcar (lambda (x) (cl-coerce (reverse x) 'string))
             (reverse result))))
 
 (defun nrdp-git-grep (&optional dir)
