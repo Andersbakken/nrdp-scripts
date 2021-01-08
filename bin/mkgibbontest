@@ -107,7 +107,7 @@ function main() {
     nrdp.gibbon.addEventListener("key", keyboardHandler);
     // nrdp.gibbon.load({url:"http://en.wikipedia.org/wiki/Leif_Erikson", headers: {"X-Gibbon-Cache-Control:max-age:1000}}, networkResponseHandler);
     nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:"#00ff00"});
-    // w.image.url = {url:"http://cdn-1.nflximg.com/images/7516/817516.jpg"};
+    // w.image.url = {url:"https://assets.nflxext.com/us/ffe/htmltvui/photon/mdx/background-streams.jpg"};
     // nrdp.gibbon.setTimeout(onTimeout, 0);
 }
 nrdp.gibbon.init(main);

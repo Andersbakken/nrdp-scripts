@@ -1277,7 +1277,7 @@ to case differences."
           "    nrdp.gibbon.addEventListener(\"key\", keyboardHandler);\n"
           "    // nrdp.gibbon.load({url:\"http://en.wikipedia.org/wiki/Leif_Erikson\", headers: {\"X-Gibbon-Cache-Control\":\"max-age:1000\"}}, networkResponseHandler);\n"
           "    nrdp.gibbon.scene.widget = w = nrdp.gibbon.makeWidget({width:1280, height:720, color:\"#00ff00\"});\n"
-          "    // w.image.url = {url:\"http://cdn-1.nflximg.com/images/7516/817516.jpg\"};\n"
+          "    // w.image.url = {url:\"https://assets.nflxext.com/us/ffe/htmltvui/photon/mdx/background-streams.jpg\"};\n"
           "    // nrdp.gibbon.setTimeout(onTimeout, 0);\n"
           "}\n"
           "nrdp.gibbon.init(main);\n"))
