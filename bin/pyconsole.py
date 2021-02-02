@@ -45,15 +45,16 @@ class SocketThread( threading.Thread ):
 
                 self.log = open( log , "at" )
 
-            except Exception , e :
+            except Exception as e:
 
-                print "FAIL TO OPEN" , log , ":" , str( e )
+                print("FAIL TO OPEN" , log , ":" , str( e ))
 
         self.sock = None
 
     def quit(self):
         self.done = True
-        self.sock.close();
+        if self.sock:
+            self.sock.close();
 
     def send(self, s):
                 if s.startswith( ":" ):
@@ -61,14 +62,13 @@ class SocketThread( threading.Thread ):
                     command = s[ 1 : ]
                     if command[0:5].lower() == "sleep":
                         delay = 1
-                        print "SLEEPING", delay
+                        print("SLEEPING", delay)
                         time.sleep( delay )
                     elif command[0:10].lower() == "disconnect":
-                        print "QUIT"
+                        print("QUIT")
                         self.quit()
                     else:
-
-                        print "RUNNING" , command
+                        print("RUNNING" , command)
 
                         try:
 
@@ -80,13 +80,13 @@ class SocketThread( threading.Thread ):
 
                         except:
 
-                            print "THERE IS AN ERROR IN THE SCRIPT:"
+                            print("THERE IS AN ERROR IN THE SCRIPT:")
                             traceback.print_exc()
 
-                        print "FINISHED"
+                        print("FINISHED")
 
                 else:
-                    #print "SENDING :%s:" % (s)
+                    #print("SENDING :%s:" % (s))
                     self.send_internal(s)
 
     def send_internal( self , data ):
@@ -108,24 +108,24 @@ class SocketThread( threading.Thread ):
 
             try:
 
-                print "Connecting to" , self.host , self.port , "...\n" ,
+                print("Connecting to" , self.host , self.port , "...\n")
 
                 self.sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM )
 
                 self.sock.connect( ( self.host , self.port ) )
 
-                print "Connected (%s:%d)\n" % (self.host, self.port)
+                print("Connected (%s:%d)\n" % (self.host, self.port))
 
-            except Exception , e:
+            except Exception as e:
 
-                print "failed :" , str( e )
+                print("failed :" , str( e ))
 
                 self.sock = None
 
 
             if not self.sock:
 
-                print "Waiting (%s:%d)\n" % (self.host, self.port)
+                print("Waiting (%s:%d)\n" % (self.host, self.port))
 
                 time.sleep( 1 )
 
@@ -138,9 +138,8 @@ class SocketThread( threading.Thread ):
                     for line in open( self.script , "rt" ):
                         self.send( line )
 
-                except Exception , e:
-
-                    print "Failed to read script" , self.script , ":" , str( e )
+                except Exception as e:
+                    print("Failed to read script" , self.script , ":" , str( e ))
 
             inbound_data = ""
 
@@ -170,11 +169,11 @@ class SocketThread( threading.Thread ):
                             line , rest = inbound_data.partition( "\n" )
                             if len( line ) > 0:
                                 if ( not self.filter ) or ( self.filter and self.filter.search( line ) ):
-                                    print line
+                                    print(line)
                                     if self.log:
                                         self.log.write( line + "\n" )
                     else:
-                        print inbound_data,
+                        print(inbound_data)
                         if self.log:
                             self.log.write( inbound_data )
                         inbound_data = ""
@@ -192,7 +191,7 @@ class SocketThread( threading.Thread ):
                 pass
 
             self.sock = None
-            print "Disconnected (%s:%d)\n" % (self.host, self.port)
+            print("Disconnected (%s:%d)\n" % (self.host, self.port))
             self.done = True
 
 def main( host , port , script , filter , log ):
@@ -267,7 +266,7 @@ if __name__ == "__main__":
 
             filter = re.compile( options.filter )
 
-        except Exception , e:
+        except Exception as e:
 
             parser.error( "Invalid filter expression : " + str( e ) )
 
