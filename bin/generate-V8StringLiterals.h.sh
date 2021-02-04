@@ -10,12 +10,12 @@ echo ""
 echo "#ifndef SCRIPT_V8_V8STRINGLITERALS_H"
 echo "#define SCRIPT_V8_V8STRINGLITERALS_H"
 echo ""
-echo "#include <v8.h>"
+echo "#include \"ScriptEngineV8.h\""
 echo ""
 echo "#define V8_STRING_LITERALS(V) \\"
 
 TMPFILE=$(mktemp)
-find "$1" "$2" -name "*.cpp" | xargs grep NRDP_SCRIPT_IDENTIFIER | sed -e 's,^.*(\([^)]*\).*$,    V(\1) \\,' | sort -u > $TMPFILE
+find "$1" "$2" -name "*.cpp" | xargs grep NRDP_SCRIPT_IDENTIFIER | sed -e 's,^.*(\([^)]*\).*$,  V(\1) \\,' | sort -u > $TMPFILE
 BYTES=$(wc -c "$TMPFILE" | cut -d" " -f 1)
 head -c$(expr $BYTES - 2) "$TMPFILE"
 rm "$TMPFILE"
