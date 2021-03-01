@@ -260,9 +260,9 @@
 (defun lsdev-cd (&optional prefix listfunc)
   (interactive "P")
   (let ((args (list "-a" "-r"))
-         (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
-         (project)
-         (split "\f\t\n\r\v"))
+        (from-eshell (and (eq major-mode 'eshell-mode) (current-buffer)))
+        (project)
+        (split "\f\t\n\r\v"))
     (if prefix
         (setq split (concat split "_-"))
       (push "-me" args))
@@ -393,14 +393,25 @@
     (and (> (point-max) (point-min))
          (buffer-substring-no-properties (point-min) (1- (point-max))))))
 
-(defun lsdev-file-path-in-project (src path) ;; src must be the actual root for stuff to work
+;; src is root of git repo
+;; file is filename
+;; relativedir is to relaitive to git repo not including name
+;; path is relative to git repo including file name
+(defun lsdev-file-path-in-project (src filename relativedir relative) ;; src must be the actual root for stuff to work
   (unless (string-match "/$" src)
     (setq src (concat src "/")))
-  (cond ((file-exists-p (concat src path))
-         (concat src path))
-        ((lsdev-find-git-file src (file-name-nondirectory path)))
+  ;; (message "shit called %s %s %s" src path lsdev-open-equivalent-use-find)
+  (cond ((let ((concatted (concat src relative)))
+           (and (file-exists-p concatted) concatted)))
+        ((let* ((dir (concat src relativedir))
+                (files (and (file-exists-p dir)
+                            (directory-files dir nil nil t)))
+                (match (and files (cl-member-if (lambda (fn)
+                                                  (eq (compare-strings fn nil nil filename nil nil t) t)) files))))
+           (and match (concat src relativedir (car match)))))
+        ((lsdev-find-git-file src filename))
         (lsdev-open-equivalent-use-find
-         (call-process "find" nil (cons t nil) nil src "-type" "f" "-name" (file-name-nondirectory path))
+         (call-process "find" nil (cons t nil) nil src "-type" "f" "-name" filename)
          (and (> (point-max) (point-min))
               (buffer-substring-no-properties (point-min) (1- (point-max)))))
         (t nil)))
@@ -410,35 +421,39 @@
     (let* ((default-directory "/")
            (current-root (lsdev-root-dir (buffer-file-name)))
            (relative (substring (buffer-file-name) (length current-root)))
+           (filename (file-name-nondirectory relative))
+           (relativedir (file-name-directory relative))
            (all (lsdev-dirs-all "src_"))
            (names)
            (alternatives))
       (while all
         (let* ((cur (car all))
-               (name (substring (car cur) 4))
                (path (car (cdr cur)))
+               (name nil)
                (file (and (not (string= path current-root))
-                          (lsdev-file-path-in-project path relative))))
+                          (lsdev-file-path-in-project path filename relativedir relative))))
           (when file
+            ;; (message "GOT FILE %s for %s" file name)
+            (setq name (substring (car cur) 4))
             (push name names)
             (push (cons name file) alternatives)))
         (setq all (cdr all)))
-      (if alternatives
-          (let* ((default (car names))
-                 (project (completing-read
-                           (format "Open %s (default %s): " (file-name-nondirectory (buffer-file-name)) default)
-                           names nil nil (and (= (length names) 1) (car names)) nil default)))
-            (when project
-              (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
-                     (file (car files)))
-                (if (> (length files) 1)
-                    (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
-                           (src-root-len (1+ (length src-root))))
-                      (setq file (completing-read "File: "
-                                                  (mapcar (lambda (arg) (substring arg src-root-len)) files)))
-                      (when file
-                        (setq file (concat src-root "/" file)))))
-                file)))))))
+      (when alternatives
+        (let* ((default (car names))
+               (project (completing-read
+                         (format "Open %s (default %s): " filename default)
+                         names nil nil (and (= (length names) 1) (car names)) nil default)))
+          (when project
+            (let* ((files (split-string (cdr (assoc project alternatives)) "\n"))
+                   (file (car files)))
+              (if (> (length files) 1)
+                  (let* ((src-root (lsdev-dir-for-name (concat "src_" project)))
+                         (src-root-len (1+ (length src-root))))
+                    (setq file (completing-read "File: "
+                                                (mapcar (lambda (arg) (substring arg src-root-len)) files)))
+                    (when file
+                      (setq file (concat src-root "/" file)))))
+              file)))))))
 
 (defun lsdev-open-equivalent (&optional ediff)
   (interactive "P")
