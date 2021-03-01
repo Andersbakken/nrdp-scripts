@@ -162,7 +162,7 @@ class SocketThread( threading.Thread ):
 
                     # Split it into lines
 
-                    inbound_data += data_received
+                    inbound_data += data_received.decode('UTF-8')
 
                     if self.filter :
                     	if self.filter.search( line ):
@@ -219,7 +219,7 @@ def main( host , port , script , filter , log ):
             pass
 
         while not thread.done:
-            s = raw_input( )
+            s = input( )
 
             if len( s ) > 0:
                 send( s )
