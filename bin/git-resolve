@@ -155,13 +155,18 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                 while true; do
                     if [ "$edit" = "yes" ]; then
                         if [ "$editor" = "meld" ] || [ "$cmd" = "m" ]; then
-                            tmpincoming=`mktemp /tmp/incoming.XXXXXX`
+                            mergedir=`mktemp -d`
+                            incomingbranch="$(grep '>>>>>' ${file} | head -n1 | cut -f2 -d' ')"
+                            currentbranch="$(git rev-parse --abbrev-ref HEAD)"
+                            tmpname="$mergedir/$(basename $file)"
+                            tmpincoming="${tmpname}_INCOMING"
                             gitCatBase $file $(gitBase incoming) $tmpincoming
-                            tmpcurrent=`mktemp /tmp/current.XXXXXXX`
+                            tmpcurrent="${tmpname}_CURRENT"
                             gitCatBase $file $(gitBase current) $tmpcurrent
-                            tmp=`mktemp /tmp/base.XXXXXXX`
+                            tmp="${tmpname}_BASE"
                             gitCatBase $file $(gitBase base) $tmp
-                            meld $tmpincoming $tmpcurrent $tmp
+                            echo "${file}"
+                            meld --label "/${file}" --label "${incomingbranch} [incoming]" --label "${currentbranch} [current]" $tmpincoming $tmpcurrent $tmp
                             $TEST cat $tmpcurrent >$file
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
