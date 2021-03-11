@@ -166,7 +166,7 @@ for file in `git status | grep "both \(added\|modified\)" | sed "s,.*both \(adde
                             tmp="${tmpname}_BASE"
                             gitCatBase $file $(gitBase base) $tmp
                             echo "${file}"
-                            meld --label "/${file}" --label "${incomingbranch} [incoming]" --label "${currentbranch} [current]" $tmpincoming $tmpcurrent $tmp
+                            meld --label "${incomingbranch} [INCOMING]" --label "${currentbranch} [CURRENT]" --label "/${file}" $tmpincoming $tmpcurrent $tmp
                             $TEST cat $tmpcurrent >$file
                         elif ! $editor $file; then
                             echo "Unable to spawn editor!!"
