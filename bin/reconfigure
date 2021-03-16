@@ -4,6 +4,7 @@ RECONFIG_RM=
 RECONFIG_CAT=
 RECONFIG_RESET=
 RECONFIG_EDIT=
+RECONFIG_YANK=
 BUILD=
 for ARG
 do
@@ -23,6 +24,9 @@ do
             ;;
         -build=*)
             BUILD=`echo ${!IDX} | sed -e 's,^-build=,,'`
+            ;;
+        -yank)
+            RECONFIG_YANK=1
             ;;
         -b|-build)
             shift
@@ -76,7 +80,7 @@ elif [ -e "config.status" ]; then
         else
             cat "config.status"
         fi
-    else
+    elif [ "$RECONFIG_YANK" ]; then
         cat "config.status" | yank -c >/dev/null 2>&1
     fi
 fi
