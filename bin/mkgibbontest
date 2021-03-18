@@ -178,6 +178,3 @@ if [ -e "$test_file" ]; then
     fi
         echo -e "$test_url" | yank -c >/dev/null 2>&1
 fi
-
-
-

@@ -58,13 +58,26 @@ function filter(idx, line) {
     }
 }
 
-
+let stdoutPending = "";
 child.stdout.on("data", data => {
-    data.toString().split("\n").forEach(filter.bind(undefined, 0));
+    stdoutPending += data;
+    const lastNewLine = stdoutPending.lastIndexOf("\n");
+    if (lastNewLine !== -1) {
+        const lines = stdoutPending.substr(0, lastNewLine + 1).split("\n");
+        stdoutPending = stdoutPending.substr(lastNewLine + 1);
+        lines.forEach(filter.bind(undefined, 0));
+    }
 });
 
+let stderrPending = "";
 child.stderr.on("data", data => {
-    data.toString().split("\n").forEach(filter.bind(undefined, 1));
+    stderrPending += data;
+    const lastNewLine = stderrPending.lastIndexOf("\n");
+    if (lastNewLine !== -1) {
+        const lines = stderrPending.substr(0, lastNewLine + 1).split("\n");
+        stderrPending = stderrPending.substr(lastNewLine + 1);
+        lines.forEach(filter.bind(undefined, 1));
+    }
 });
 
 child.on("exit", (code, signal) => {
