@@ -10,7 +10,7 @@ MAKE_DIR=
 MAKE_OPTIONS=
 RTAGS=
 LSDEV_ARGS=
-NRDP=
+GDB_ADD_INDEX=
 while [ "$#" -gt 0 ]; do
     case $1 in
         -C) shift; MAKE_DIR="$1" ;;
@@ -29,6 +29,13 @@ done
 
 # TRAP SIGNALS
 trap 'cleanup' QUIT EXIT
+
+should-gdb-index() {
+    [ "$(uname -s)" = "Linux" ] || return 1
+    file "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null | grep -q "x86-64\|80386" || return 1
+    readelf -S "$NINJA_DIR/src/platform/gibbon/netflix" | grep -q gdb_index && return 1
+    return 0
+}
 
 findancestor() {
     file="$1"
@@ -98,8 +105,8 @@ resolvelink () {
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
-        if [ "$NRDP" ] && [ "$(uname -s)" = "Linux" ]; then
-            echo "Runing gdb-add-index"
+        if [ "$GDB_ADD_INDEX" ]; then
+            echo "Running gdb-add-index"
             nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
         fi
     else
@@ -193,14 +200,13 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            local MTIME=$(stat -c %Y "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null)
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
-            if [ -f "$NINJA_DIR/src/platform/gibbon/netflix" ] && [ "$MTIME" != "$(stat -c %Y "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null)" ]; then
+            if [ "$RESULT" = "0" ] && should-gdb-index; then
                 # echo "DOING POST $MTIME"
                 OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
                 [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
-                NRDP=1
+                GDB_ADD_INDEX=1
             fi
             finish $RESULT "${NINJA_DIR}"
             return $RESULT
