@@ -68,24 +68,24 @@ source ~/.gdb/breakpoints.gdb
 source ~/.gdb/init_os_end.gdb
 source ~/.gdb/init_host_end.gdb
 
-define hook-delete
-  bclear
-end
-define hookpost-break
-  brestore
-end
-define hook-run
-  setup-detect-target
-  brestore
-end
-define hook-file
-  setup-detect-target
-end
-define hook-core-file
-  setup-detect-target
-end
-define hook-quit
-   if $brestore_once_flag
-     bsave
-   end
-end
+# define hook-delete
+#   bclear
+# end
+# define hookpost-break
+#   brestore
+# end
+# define hook-run
+#   setup-detect-target
+#   brestore
+# end
+# define hook-file
+#   setup-detect-target
+# end
+# define hook-core-file
+#   setup-detect-target
+# end
+# define hook-quit
+#    if $brestore_once_flag
+#      bsave
+#    end
+# end
