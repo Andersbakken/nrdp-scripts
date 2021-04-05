@@ -10,6 +10,7 @@ MAKE_DIR=
 MAKE_OPTIONS=
 RTAGS=
 LSDEV_ARGS=
+NRDP=
 while [ "$#" -gt 0 ]; do
     case $1 in
         -C) shift; MAKE_DIR="$1" ;;
@@ -97,6 +98,7 @@ resolvelink () {
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
+        [ "$NRDP" ] && [ "$(uname -s)" = "Linux" ] && nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
     else
         [ -n "$ERROR_POST_COMMAND" ] && eval "$ERROR_POST_COMMAND"
     fi
@@ -132,9 +134,9 @@ build() {
         [ -z "$NINJA_DIR" ] && NINJA_DIR=.
         NINJA=`findancestor build.ninja $NINJA_DIR`
         if [ -e "$NINJA" ]; then
-            cd `dirname $NINJA`
+            NINJA_DIR=$(dirname $NINJA)
             if [ -n "$RTAGS" ]; then
-                ninja -t commands | rc --compile
+                ninja -C "$NINJA" -t commands | rc --compile
                 return 0
             fi
             NINJA_OPTIONS="-l 1000"
@@ -157,7 +159,7 @@ build() {
                 MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
                 if [ "$NUM" -gt "$MAX" ]; then
                     # echo "max is $max num is $num"
-                    LINE=`ninja -t commands | grep " -c\>" 2>/dev/null | grep "\.o\>" 2>/dev/null | head -n1`
+                    LINE=`ninja -C "$NINJA_DIR" -t commands | grep " -c\>" 2>/dev/null | grep "\.o\>" 2>/dev/null | head -n1`
                     for i in $LINE; do
                         [ ! -e "$i" ] && [ ! -e "`which $i`" ] && continue
                         echo "$i" | grep --quiet "\\(.*ccache\\|.*rtags-gcc-prefix.sh\\|.*cc_prefix.sh\\|make$\\)" && continue
@@ -188,8 +190,17 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            eval ninja $NINJA_OPTIONS
-            return $?
+            local MTIME=$(stat -c %Y "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null)
+            eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
+            RESULT=$?
+            if [ -f "$NINJA_DIR/src/platform/gibbon/netflix" ] && [ "$MTIME" != "$(stat -c %Y "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null)" ]; then
+                # echo "DOING POST $MTIME"
+                OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
+                [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
+                NRDP=1
+            fi
+            finish $RESULT "${NINJA_DIR}"
+            return $RESULT
         fi
     fi
 
@@ -202,7 +213,7 @@ build() {
             esac
         done
         (cd $BUILD_DIR && eval scons $SCONS_OPTIONS)
-        return
+        return $?
     elif [ -e "${BUILD_DIR}Sakefile.js" ]; then
         SAKE_OPTIONS=
         for opt in $MAKEFLAGS $MAKE_OPTIONS; do
@@ -214,7 +225,7 @@ build() {
             esac
         done
         (cd $BUILD_DIR && eval sake $SAKE_OPTIONS)
-        return
+        return $?
     fi
     if [ -x `which npm` ]; then
         NPMROOTDIR=$BUILD_DIR
@@ -225,7 +236,9 @@ build() {
             [ -z "$NPMARGS" ] && NPMARGS="build"
 
             cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
-            return $?
+            RESULT=$?
+            finish $RESULT "$NPMROOTDIR"
+            return $RESULT
         fi
     fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
@@ -243,7 +256,9 @@ build() {
         return 0
     fi
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
-    return $?
+    RESULT=$?
+    finish $RESULT "${BUILD_DIR}"
+    return $RESULT
 }
 
 if [ -z "$MAKE_DIR" ]; then
@@ -267,7 +282,6 @@ if [ -z "$MAKE_DIR" ]; then
                              fi
                          fi
                      done; exit $?)
-                finish $?
             fi
         fi
     fi
@@ -284,5 +298,3 @@ if [ -z "$MAKE_DIR" ]; then
 else
     build "${MAKE_DIR}/"
 fi
-
-finish $?
