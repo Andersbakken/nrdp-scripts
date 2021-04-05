@@ -98,7 +98,10 @@ resolvelink () {
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
-        [ "$NRDP" ] && [ "$(uname -s)" = "Linux" ] && nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
+        if [ "$NRDP" ] && [ "$(uname -s)" = "Linux" ]; then
+            echo "Runing gdb-add-index"
+            nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
+        fi
     else
         [ -n "$ERROR_POST_COMMAND" ] && eval "$ERROR_POST_COMMAND"
     fi
