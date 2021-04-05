@@ -95,26 +95,10 @@ resolvelink () {
     echo $filename
 }
 
-prebuild() {
-    # echo "prebuild $1"
-    if [ -d "$1" ] && [ -f "$1/.gdb-add-index.pid" ]; then
-        PID=$(cat $1/.gdb-add-index.pid)
-        if ps aux | grep -q "\<$PID\>.*gdb-add-index"; then
-            # echo "KILLING $PID"
-            kill "$PID"
-            rm -f $1/.gdb-add-index.pid
-        fi
-    fi
-}
-
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
-        if [ "$NRDP" ]; then
-            nohup bash -c "gdb-add-index $2/src/platform/gibbon/netflix && rm -f $2/.gdb-add-index.pid" 2>/dev/null &
-            local PID="$!"
-            echo "$PID" > $2/.gdb-add-index.pid
-        fi
+        [ "$NRDP" ] && [ "$(uname -s)" = "Linux" ] && nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
     else
         [ -n "$ERROR_POST_COMMAND" ] && eval "$ERROR_POST_COMMAND"
     fi
@@ -206,7 +190,6 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            prebuild "${NINJA_DIR}"
             local MTIME=$(stat -c %Y "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null)
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
@@ -252,7 +235,6 @@ build() {
             NPMARGS="$MAKE_OPTIONS"
             [ -z "$NPMARGS" ] && NPMARGS="build"
 
-            prebuild "$NPMROOTDIR"
             cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
             RESULT=$?
             finish $RESULT "$NPMROOTDIR"
@@ -273,7 +255,6 @@ build() {
         RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
         return 0
     fi
-    prebuild "$BUILD_DIR"
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
     RESULT=$?
     finish $RESULT "${BUILD_DIR}"
