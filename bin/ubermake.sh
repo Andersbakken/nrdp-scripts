@@ -4,21 +4,22 @@ SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
 
 SUCCESS_POST_COMMAND=
 ERROR_POST_COMMAND=
-ALL=
-VERSION=
+UBER_ALL=
+PRINT_VERSION=
 MAKE_DIR=
 MAKE_OPTIONS=
-RTAGS=
+UBER_RTAGS=
+UBER_VERBOSE=
 LSDEV_ARGS=
 GDB_ADD_INDEX=
 while [ "$#" -gt 0 ]; do
     case $1 in
         -C) shift; MAKE_DIR="$1" ;;
         -C*) MAKE_DIR=`echo $1 | sed 's,^-C,,'` ;;
-        --all) ALL="1" ;;
-        -r|--rtags) RTAGS="1" ;;
+        --all) UBER_ALL="1" ;;
+        -r|--rtags) UBER_RTAGS="1" ;;
         --verbose) VERBOSE="1" ;;
-        -v) VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
+        -v) PRINT_VERSION="1"; MAKE_DIR="${PWD}/" ;; #disable lsdev
         -l) shift; LSDEV_ARGS="$LSDEV_ARGS $1" ;;
         -s) shift; SUCCESS_POST_COMMAND="$1" ;;
         -e) shift; ERROR_POST_COMMAND="$1" ;;
@@ -33,6 +34,8 @@ trap 'cleanup' QUIT EXIT
 should-gdb-index() {
     [ "$(uname -s)" = "Linux" ] || return 1
     file "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null | grep -q "x86-64\|80386" || return 1
+    local MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
+    [ "$MTIME" == "$1" ] && return 1
     readelf -S "$NINJA_DIR/src/platform/gibbon/netflix" | grep -q gdb_index && return 1
     return 0
 }
@@ -118,7 +121,7 @@ finish() {
 build() {
     local BUILD_DIR="$1"
     echo $BUILD_DIR | grep --quiet "/$" || BUILD_DIR="${BUILD_DIR}/"
-    if [ -n "$RTAGS" ]; then
+    if [ -n "$UBER_RTAGS" ]; then
         DIR="$BUILD_DIR"
         [ -z "$DIR" ] && DIR=.
         COMPILATION_DATABASEJSON=`findancestor compile_commands.json $DIR`
@@ -145,13 +148,13 @@ build() {
         NINJA=`findancestor build.ninja $NINJA_DIR`
         if [ -e "$NINJA" ]; then
             NINJA_DIR=$(dirname $NINJA)
-            if [ -n "$RTAGS" ]; then
+            if [ -n "$UBER_RTAGS" ]; then
                 ninja -C "$NINJA" -t commands | rc --compile
                 return 0
             fi
             NINJA_OPTIONS="-l 1000"
             #NINJA_OPTIONS="$NINJA_OPTIONS -d keeprsp"
-            [ "$VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
+            [ "$PRINT_VERSION" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS --version"
             [ "$VERBOSE" = "1" ] && NINJA_OPTIONS="$NINJA_OPTIONS -v"
             for opt in $MAKEFLAGS $MAKE_OPTIONS; do
                 case $(eval echo $opt) in
@@ -200,9 +203,11 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
+            MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
+
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
-            if [ "$RESULT" = "0" ] && should-gdb-index; then
+            if [ "$RESULT" = "0" ] && should-gdb-index $MTIME; then
                 # echo "DOING POST $MTIME"
                 OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
                 [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
@@ -260,7 +265,7 @@ build() {
 
     [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
     [ -z "$BUILD_DIR" ] && BUILD_DIR=.
-    if [ -n "$RTAGS" ]; then
+    if [ -n "$UBER_RTAGS" ]; then
         RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
         return 0
     fi
@@ -275,7 +280,7 @@ if [ -z "$MAKE_DIR" ]; then
     NAME=`lsdev.pl -p -ts`
     if [ -n "$NAME" ]; then
         SOURCE_PATH=`lsdev.pl -r -tp source`
-        if [ -n "$NAME" ] && [ -n "$ALL" ]; then
+        if [ -n "$NAME" ] && [ -n "$UBER_ALL" ]; then
             REST_PATH=`lsdev.pl -p -tr`
             [ "$REST_PATH" = "<root>" ] && REST_PATH=
             if [ -d "$SOURCE_PATH" ]; then
