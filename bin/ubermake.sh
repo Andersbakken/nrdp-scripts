@@ -34,8 +34,10 @@ trap 'cleanup' QUIT EXIT
 should-gdb-index() {
     [ "$(uname -s)" = "Linux" ] || return 1
     file "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null | grep -q "x86-64\|80386" || return 1
-    local MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
-    [ "$MTIME" == "$1" ] && return 1
+    if [ -n "$UBERMAKE_DO_STAT" ]; then
+        local MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
+        [ "$MTIME" == "$1" ] && return 1
+    fi
     readelf -S "$NINJA_DIR/src/platform/gibbon/netflix" | grep -q gdb_index && return 1
     return 0
 }
@@ -203,7 +205,7 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
+            [ -n "$UBERMAKE_DO_STAT" ] && MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
 
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
