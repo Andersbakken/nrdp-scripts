@@ -57,87 +57,56 @@ class SocketThread( threading.Thread ):
             self.sock.close();
 
     def send(self, s):
-                if s.startswith( ":" ):
-
-                    command = s[ 1 : ]
-                    if command[0:5].lower() == "sleep":
-                        delay = 1
-                        print("SLEEPING", delay)
-                        time.sleep( delay )
-                    elif command[0:10].lower() == "disconnect":
-                        print("QUIT")
-                        self.quit()
-                    else:
-                        print("RUNNING" , command)
-
-                        try:
-
-                            execfile( command )
-
-                        except KeyboardInterrupt:
-
-                            pass
-
-                        except:
-
-                            print("THERE IS AN ERROR IN THE SCRIPT:")
-                            traceback.print_exc()
-
-                        print("FINISHED")
-
-                else:
-                    #print("SENDING :%s:" % (s))
-                    self.send_internal(s)
+        if s.startswith( ":" ):
+            command = s[ 1 : ]
+            if command[0:5].lower() == "sleep":
+                delay = 1
+                print("SLEEPING", delay)
+                time.sleep( delay )
+            elif command[0:10].lower() == "disconnect":
+                print("QUIT")
+                self.quit()
+            else:
+                print("RUNNING" , command)
+                try:
+                    execfile( command )
+                except KeyboardInterrupt:
+                    pass
+                except:
+                    print("THERE IS AN ERROR IN THE SCRIPT:")
+                    traceback.print_exc()
+                    print("FINISHED")
+        else:
+            #print("SENDING :%s:" % (s))
+            self.send_internal(s)
 
     def send_internal( self , data ):
-
         if self.sock:
-
             try:
-
-                self.sock.send( data )
-
+                self.sock.send( data.encode() )
             except:
-
                 pass
 
-
     def run( self ):
-
         while not self.done:
-
             try:
-
                 print("Connecting to" , self.host , self.port , "...\n")
-
                 self.sock = socket.socket( socket.AF_INET , socket.SOCK_STREAM )
-
                 self.sock.connect( ( self.host , self.port ) )
-
                 print("Connected (%s:%d)\n" % (self.host, self.port))
-
             except Exception as e:
-
                 print("failed :" , str( e ))
-
                 self.sock = None
 
-
             if not self.sock:
-
                 print("Waiting (%s:%d)\n" % (self.host, self.port))
-
                 time.sleep( 1 )
-
                 continue
 
             if self.script:
-
                 try:
-
                     for line in open( self.script , "rt" ):
                         self.send( line )
-
                 except Exception as e:
                     print("Failed to read script" , self.script , ":" , str( e ))
 
@@ -145,19 +114,12 @@ class SocketThread( threading.Thread ):
 
             while not self.done:
                 read_ready , write_ready , errors = select.select([self.sock ] , [] , [ self.sock ], 0.5 )
-
                 if self.sock in read_ready:
-
                     try:
-
                         data_received = self.sock.recv( 4096 )
-
                     except:
-
                         break
-
                     if len( data_received ) == 0:
-
                         break
 
                     # Split it into lines
@@ -211,18 +173,17 @@ def main( host , port , script , filter , log ):
         history_file_name = os.path.join( os.path.expanduser('~') , ".pyconsole.history" )
 
         try:
-
             readline.read_history_file( history_file_name )
-
         except:
-
             pass
 
         while not thread.done:
-            s = input( )
-
-            if len( s ) > 0:
-                send( s )
+            if sys.version_info[0] < 3:
+                s = raw_input()
+            else:
+                s = input()
+            if len(s) > 0:
+                send(s)
 
     except (EOFError, KeyboardInterrupt):
         thread.quit()
