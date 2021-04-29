@@ -195,5 +195,5 @@ fi
 alias clean-var="rm -rf data/var"
 clean-platform-cpp ()
 {
-    find . -name "*PlatformClass.cpp" -exec rm "{}" \;
+    find . -name "*Platform*Class.cpp" -exec rm "{}" \;
 }
