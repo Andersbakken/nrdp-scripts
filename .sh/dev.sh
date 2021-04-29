@@ -193,3 +193,7 @@ if [ -n "$BASH" ]; then
 fi
 
 alias clean-var="rm -rf data/var"
+clean-platform-cpp ()
+{
+    find . -name "*PlatformClass.cpp" -exec rm "{}" \;
+}
