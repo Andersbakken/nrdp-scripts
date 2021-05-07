@@ -12,35 +12,35 @@ run_git()
 
 git() #make git checkout commands usable with submodules
 {
-    if [ "$1" == "--version" ] || [ "$1" == "--help" ] || [ "$1" == "init" ]; then
+    if [ "$1" = "--version" ] || [ "$1" = "--help" ] || [ "$1" = "init" ]; then
         command git $1
         shift
-    elif [ "$1" == "--skip-submodule" ]; then
+    elif [ "$1" = "--skip-submodule" ]; then
         shift
         run_git "$@"
-    elif [ "$1" == "clone" ]; then
+    elif [ "$1" = "clone" ]; then
         run_git "$@" --recursive
-    elif [ "$1" == "clean" ]; then
+    elif [ "$1" = "clean" ]; then
         run_git "$@" && run_git submodule foreach --recursive git "$@"
-    elif [ "$1" == "status" ]; then
+    elif [ "$1" = "status" ]; then
         run_git submodule foreach --quiet --recursive git "$@" --porcelain
         run_git "$@"
-    elif [ "$1" == "describe" ]; then
+    elif [ "$1" = "describe" ]; then
         run_git submodule status
         run_git "$@"
-    elif [ "$1" == "pull" ]; then
+    elif [ "$1" = "pull" ]; then
         run_git "$@" && run_git submodule update --init --recursive
-    elif [ "$1" == "merge" ]; then
+    elif [ "$1" = "merge" ]; then
         run_git "$@" && run_git submodule update --init --recursive
-    elif [ "$1" == "fetch" ]; then
+    elif [ "$1" = "fetch" ]; then
         run_git "$@" && run_git submodule foreach git fetch --tags
-    elif [ "$1" == "checkout" ]; then
+    elif [ "$1" = "checkout" ]; then
         if echo "$@" | grep -e "--force" >/dev/null || echo "$@" | grep -e "-f" >/dev/null; then
             run_git "$@" && run_git submodule update --init --recursive --force
         else
             run_git "$@" && run_git submodule update --init --recursive
         fi
-    elif [ "$1" == "reset" ]; then
+    elif [ "$1" = "reset" ]; then
         if echo "$@" | grep -e "--hard" >/dev/null; then
             run_git "$@" && run_git submodule update --init --recursive --force
         else

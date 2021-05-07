@@ -1,4 +1,4 @@
-shopt -s histappend
+[ -n "$BASH" ] && shopt -s histappend
 
 export HISTSIZE=500000
 export HISTFILESIZE=5000000
