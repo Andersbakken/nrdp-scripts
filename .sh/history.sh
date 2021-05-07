@@ -1,8 +1,5 @@
-[ -n "$BASH" ] && shopt -s histappend
-
 export HISTSIZE=500000
 export HISTFILESIZE=5000000
-export HISTCONTROL=ignoredups
 export HISTIGNORE=$'&'
 
 history_share_auto()
@@ -29,15 +26,28 @@ history_share_auto()
             fi
         done
     fi
+    if [ -n "$ZSH_VERSION" ]; then
+        [ "$HISTORY_SHARE_AUTO_READ" = "1" ] && setopt SHARE_HISTORY
+        [ "$HISTORY_SHARE_AUTO_WRITE" = "1" ] && setopt INC_APPEND_HISTORY
+    fi
 }
 
-cmd_history_share_auto()
-{
-    [ "$HISTORY_SHARE_AUTO_WRITE" = "1" ] && history -a
-    [ "$HISTORY_SHARE_AUTO_READ" = "1" ] && history -n
-}
-
+if [ -n "$BASH" ]; then
+    cmd_history_share_auto()
+    {
+        [ "$HISTORY_SHARE_AUTO_WRITE" = "1" ] && history -a
+        [ "$HISTORY_SHARE_AUTO_READ" = "1" ] && history -n
+    }
+    export HISTCONTROL=ignoredups
+    shopt -s histappend
+    add_prompt_command "cmd_history_share_auto"
+elif [ -n "$ZSH_VERSION" ]; then
+    export SAVEHIST="$HISTSIZE"
+    export HISTFILE="$HOME/.zhistory"
+    setopt APPEND_HISTORY
+    setopt EXTENDED_HISTORY
+    setopt hist_ignore_all_dups
+    bindkey '^r' history-incremental-search-backward
+fi
 history_share_auto read write
-add_prompt_command "cmd_history_share_auto"
-
 
