@@ -252,6 +252,6 @@ complete-cddev ()
     fi
 }
 
-if [ -n "$BASH" ]; then
+if type complete >/dev/null 2>&1; then
     complete -F complete-cddev cdd cddev mdd makedev editdev edd cds cdds cddb cdb lsdev
 fi
