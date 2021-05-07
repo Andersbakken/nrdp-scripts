@@ -115,7 +115,8 @@ seticecc() {
            PATH=`echo $PATH | sed "s,${ICECC_DIR},${ICECC_DIR}${ICECC_OFF},g"`
        fi
    fi
-   if which make >/dev/null 2>&1 && make -v 2>&1 | grep GNU >/dev/null || uname -a 2>&1 | grep BSD >/dev/null 2>&1; then
+   MAKE=$(which make)
+   if [ -n "$MAKE" ] >/dev/null 2>&1 && $MAKE -v 2>&1 | grep GNU >/dev/null || uname -a 2>&1 | grep BSD >/dev/null 2>&1; then
        if [ "$1" = "on" ] && [ ! -z "$NUMJOBS" ]; then
           MAKEFLAGS=-j${NUMJOBS}
        else
