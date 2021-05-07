@@ -87,7 +87,7 @@ function bloaty(file)
 function formatNum(num)
 {
     if (humanReadable) {
-        const units = [ "B", "KB", "MB", "GB" ];
+        const units = [ "B", "kB", "mB", "gB" ];
         let idx = 0;
         while (idx<units.length) {
             if (Math.abs(num) > 1000) {
