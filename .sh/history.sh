@@ -27,8 +27,16 @@ history_share_auto()
         done
     fi
     if [ -n "$ZSH_VERSION" ]; then
-        [ "$HISTORY_SHARE_AUTO_READ" = "1" ] && setopt SHARE_HISTORY
-        [ "$HISTORY_SHARE_AUTO_WRITE" = "1" ] && setopt INC_APPEND_HISTORY
+        if [ "$HISTORY_SHARE_AUTO_READ" = "1" ]; then
+            setopt SHARE_HISTORY
+        else
+            unsetopt SHARE_HISTORY
+        fi
+        if [ "$HISTORY_SHARE_AUTO_WRITE" = "1" ]; then
+            setopt INC_APPEND_HISTORY
+        else
+            unsetopt INC_APPEND_HISTORY
+        fi
     fi
 }
 
