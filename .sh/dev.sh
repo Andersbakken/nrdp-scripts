@@ -188,7 +188,7 @@ complete-netflix ()
     fi
 }
 
-if [ -n "$BASH" ]; then
+if type complete >/dev/null 2>&1; then
     complete -F complete-netflix -o default netflix ./netflix
 fi
 
