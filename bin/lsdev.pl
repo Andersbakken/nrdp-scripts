@@ -72,6 +72,13 @@ sub cexists {
     return $#stat != -1;
 }
 
+sub trim($)
+{
+  my $string = shift;
+  $string =~ s/^\s+//;
+  $string =~ s/\s+$//;
+  return $string;
+}
 
 sub showHelp {
     display "lsdev [options] [matches]\n";
@@ -95,7 +102,7 @@ sub showHelp {
 
 sub parseOptions {
     while(@_) {
-        my $option = shift @_;
+        my $option = trim(shift @_);
         if($option eq "-w") {
             $write_default_file = 1;
         } elsif($option eq "-r") {

@@ -53,8 +53,13 @@ elif [ -n "$ZSH_VERSION" ]; then
     export SAVEHIST="$HISTSIZE"
     export HISTFILE="$HOME/.zhistory"
     setopt APPEND_HISTORY
-    setopt EXTENDED_HISTORY
-    setopt hist_ignore_all_dups
+    setopt EXTENDED_HISTORY          # Write the history file in the ':start:elapsed;command' format.
+    setopt HIST_EXPIRE_DUPS_FIRST    # Expire a duplicate event first when trimming history.
+    setopt HIST_IGNORE_DUPS          # Do not record an event that was just recorded again.
+    setopt HIST_IGNORE_ALL_DUPS      # Delete an old recorded event if a new event is a duplicate.
+    setopt HIST_FIND_NO_DUPS         # Do not display a previously found event.
+    setopt HIST_IGNORE_SPACE         # Do not record an event starting with a space.
+    setopt HIST_SAVE_NO_DUPS
     bindkey '^r' history-incremental-search-backward
 fi
 history_share_auto read write
