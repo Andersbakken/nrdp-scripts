@@ -71,8 +71,8 @@ lsdev_git_sync() #sync a tree
       shift
     done
     if [ `lsdev.pl -r -l $LSDEV_FLAGS | wc -l` = "1" ]; then
-        command git lsdev $LSDEV_FLAGS -- $ACTION
+        eval command git lsdev $LSDEV_FLAGS -- $ACTION
     elif $(git rev-parse --git-dir &> /dev/null); then
-        command git $ACTION
+        eval command git $ACTION
     fi
 }
