@@ -75,7 +75,7 @@ function syncdir
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
-    if [ -n "$stashed" ]; then
+    if [ -n "$stashed" ] && [ ! -f "$GITDIR/REBASE_HEAD" ]; then
         git reset HEAD~
     fi
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
