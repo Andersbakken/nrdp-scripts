@@ -68,6 +68,17 @@ source ~/.gdb/breakpoints.gdb
 source ~/.gdb/init_os_end.gdb
 source ~/.gdb/init_host_end.gdb
 
+# define step-bypass-stl
+#   step
+#   while 1
+#     use "info source", put current source file into variable
+#     if source file does not match */bits/* then
+#         break-loop
+#     end
+#     step
+#   end
+# end
+
 # define hook-delete
 #   bclear
 # end

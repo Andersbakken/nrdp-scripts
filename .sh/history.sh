@@ -60,7 +60,6 @@ elif [ -n "$ZSH_VERSION" ]; then
     setopt HIST_FIND_NO_DUPS         # Do not display a previously found event.
     setopt HIST_IGNORE_SPACE         # Do not record an event starting with a space.
     setopt HIST_SAVE_NO_DUPS
-    bindkey '^r' history-incremental-search-backward
 fi
 history_share_auto read write
 
