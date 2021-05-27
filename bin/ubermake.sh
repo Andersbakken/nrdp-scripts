@@ -172,8 +172,8 @@ build() {
             if [ -n "$NUM" ]; then
                 CORES=`numcores`
                 MAX=$(expr $(expr ${CORES} \* 150) / 100) # 1.5 * $CORES
-                if [ "$NUM" -gt "$MAX" ]; then
-                    # echo "max is $max num is $num"
+                if [ "$NUM" -gt "$MAX" ] && false; then
+                    # echo "max is $MAX num is $NUM"
                     LINE=`ninja -C "$NINJA_DIR" -t commands | grep " -c\>" 2>/dev/null | grep "\.o\>" 2>/dev/null | head -n1`
                     for i in $LINE; do
                         [ ! -e "$i" ] && [ ! -e "`which $i`" ] && continue
