@@ -31,7 +31,7 @@ if echo "$2" | grep -q "/"; then
             done
             PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
             [ -z "$PR_NAME" ] && PR_NAME=$(git show --pretty="%f" --no-patch ${COMMITS} | head -1 | head -c 64)
-            PR_NAME=$(echo $PR_NAME | sed "s,/ ,,")
+            PR_NAME=$(echo $PR_NAME | sed -e "s,/ ,," -e "s,.$,,")
             PR_NAME="${TRACKING_BRANCH}/${PR_NAME}"
 
             PR_SOURCE=$(echo $BRANCH | sed "s#git-pullrequest-submit\$#${PR_NAME}#")
