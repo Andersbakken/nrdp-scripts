@@ -13,10 +13,7 @@ reconfigure()
 }
 
 #make wrapper
-make()
-{
-    "ubermake.sh" "$@"
-}
+alias make=ubermake.sh
 
 #gdb wrapper
 gdb()
