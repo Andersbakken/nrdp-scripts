@@ -48,7 +48,7 @@ if echo "$2" | grep -q "/"; then
                 PR_REVIEWER="$PR_REVIEWER $(echo "$BODY" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
             done
 
-            git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
+            git pullrequest create --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
             JIRA="no"
         fi
     fi
