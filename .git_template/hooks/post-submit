@@ -42,7 +42,13 @@ if echo "$2" | grep -q "/"; then
         elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             PR_SOURCE="$BRANCH"
             PR_DEST=$(echo $3 | cut -d/ -f2-)
-            git pullrequest create "${PR_SOURCE}" "${PR_DEST}"
+            COMMITS=$(git log --pretty=format:%h --reverse "$1..$PR_DEST")
+            for COMMIT in ${COMMITS}; do
+                BODY=$(git log --pretty=format:%B --reverse "$1..$PR_DEST")
+                PR_REVIEWER="$PR_REVIEWER $(echo "$BODY" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
+            done
+
+            git pullrequest create --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
             JIRA="no"
         fi
     fi
