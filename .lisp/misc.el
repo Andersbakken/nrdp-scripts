@@ -1092,7 +1092,7 @@ to case differences."
       (let ((start (point)))
         (beginning-of-thing 'symbol)
         (isearch-yank-char (- start (point)))))
-  (isearch-yank-word-or-char))
+  (isearch-yank-word-or-char 1))
 
 ;; ================================================================================
 ;; mktest
