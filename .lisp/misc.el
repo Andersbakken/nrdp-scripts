@@ -1092,7 +1092,9 @@ to case differences."
       (let ((start (point)))
         (beginning-of-thing 'symbol)
         (isearch-yank-char (- start (point)))))
-  (isearch-yank-word-or-char 1))
+  (if (string> emacs-version "27")
+      (isearch-yank-word-or-char 1)
+    (isearch-yank-word-or-char)))
 
 ;; ================================================================================
 ;; mktest
