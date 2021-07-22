@@ -243,15 +243,18 @@ build() {
         (cd $BUILD_DIR && eval sake $SAKE_OPTIONS)
         return $?
     fi
-    if [ -x `which npm` ]; then
+    if [ -x `which npm` ] || [ -x `which yarn` ]; then
         NPMROOTDIR=$BUILD_DIR
         [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
         PACKAGEDOTJSON=`findancestor package.json $NPMROOTDIR`
         if [ -f "$PACKAGEDOTJSON" ]; then
             NPMARGS="$MAKE_OPTIONS"
             [ -z "$NPMARGS" ] && NPMARGS="build"
-
-            cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
+            if [ -e "$NPMROOTDIR/yarn.lock" ]; then
+                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js yarn run $NPMARGS
+            else
+                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
+            fi
             RESULT=$?
             finish $RESULT "$NPMROOTDIR"
             return $RESULT
