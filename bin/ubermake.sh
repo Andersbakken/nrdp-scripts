@@ -151,7 +151,7 @@ build() {
         if [ -e "$NINJA" ]; then
             NINJA_DIR=$(dirname $NINJA)
             if [ -n "$UBER_RTAGS" ]; then
-                ninja -C "$NINJA" -t commands | rc --compile
+                ninja -C "$NINJA_DIR" -t commands | rc --compile
                 return 0
             fi
             NINJA_OPTIONS="-l 1000"
