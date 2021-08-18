@@ -698,7 +698,7 @@ to case differences."
   (if (and sam-auto-clean-whitespace (or (eq major-mode 'c++-mode) (eq major-mode 'c-mode)))
       (sam-clean-out-spaces))
   nil)
-(add-hook 'write-file-hooks 'sam-c-clean-out-spaces-hooked)
+(add-hook 'write-file-functions 'sam-c-clean-out-spaces-hooked)
 
 (defun sudo-find-file (file-name)
   "Like find file, but opens the file as root."
@@ -1092,7 +1092,9 @@ to case differences."
       (let ((start (point)))
         (beginning-of-thing 'symbol)
         (isearch-yank-char (- start (point)))))
-  (isearch-yank-word-or-char))
+  (if (string> emacs-version "27")
+      (isearch-yank-word-or-char 1)
+    (isearch-yank-word-or-char)))
 
 ;; ================================================================================
 ;; mktest
@@ -1837,35 +1839,6 @@ there's a region, all lines that region covers will be duplicated."
                     (t misc-grep-find-source-files))
               " -print0 | xargs -0 -P 30 grep -n ")
       'grep-find-history))))
-
-(require 'minimal-session-saver nil t)
-(defvar misc-loaded-session nil)
-(defvar misc-mss-store-timer nil)
-(defun misc-mss-store ()
-  (setq misc-mss-store-timer nil)
-  (and (fboundp 'minimal-session-saver-store) (minimal-session-saver-store)))
-
-(defun misc-mss-schedule-store ()
-  (when misc-mss-store-timer
-    (cancel-timer misc-mss-store-timer))
-  (setq misc-mss-store-timer (run-with-idle-timer 5 nil (function misc-mss-store))))
-
-(defun misc-mss-kill-buffer-hook ()
-  (when (buffer-file-name)
-    (unless (file-directory-p default-directory)
-      (cd "/"))
-    (misc-mss-schedule-store))
-  t)
-
-(defun misc-mss-enable () ;;minimal-session-saver
-  (unless misc-loaded-session
-    (setq misc-loaded-session t)
-    (condition-case nil
-        (and (fboundp 'minimal-session-saver-load) (minimal-session-saver-load))
-      (error)))
-  (add-hook 'find-file-hook (function misc-mss-schedule-store))
-  (add-hook 'kill-buffer-hook (function misc-mss-kill-buffer-hook))
-  (add-hook 'kill-emacs-hook (function minimal-session-saver-store)))
 
 (defun misc-grep-find-project (&optional filterType)
   (interactive "P")

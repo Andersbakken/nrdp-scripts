@@ -287,7 +287,7 @@
     (let ((pipeidx (string-match "|" search)))
       (when pipeidx
         (setq pipe (substring search pipeidx))
-        (setq search (substring search 0 pipeidx))))
+        (setq search (s-trim (substring search 0 pipeidx)))))
     (setq search (s-chop-suffix " " search))
     (when (string-match "^[^\"'-]* [^\"'-]*$" search)
       (setq search (concat "\"" search "\"")))
