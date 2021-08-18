@@ -1,25 +1,26 @@
 #!/bin/sh
 
 get_changes() {
-    SUBMODULE="$1"
+    FORMAT="$1"
+    SUBMODULE="$2"
     SUBMODULE_TO=$(git diff ${SUBMODULE} | grep -e '+Subproject commit ' | sed 's,^+Subproject commit \(.*$\),\1,g')
     SUBMODULE_FROM=$(git diff ${SUBMODULE} | grep -e '-Subproject commit ' | sed 's,^-Subproject commit \(.*$\),\1,g')
     echo -n "Bump ${SUBMODULE} ${SUBMODULE_FROM}->${SUBMODULE_TO}\n\n"
-    (cd "$SUBMODULE" && git log --pretty="[%h] %ae %s" --no-merges "${SUBMODULE_FROM}..${SUBMODULE_TO}")
+    (cd "$SUBMODULE" && git log --pretty="${FORMAT}" --no-merges "${SUBMODULE_FROM}..${SUBMODULE_TO}")
 }
 
 if [ "$1" = "pull" ]; then
     shift
 elif [ "$1" = "reset" ]; then
     shift
+elif [ "$1" = "log" ]; then
+    shift
+    get_changes "[%h] %ae %s %gn" "$1"
 elif [ "$1" = "commit" ]; then
     shift
     tmpfile=`mktemp /tmp/tmp.XXXXXXXXXX`
-    get_changes "$1" >>"${tmpfile}"
+    get_changes "[%h] %ae %s" "$1" >>"${tmpfile}"
     cat "${tmpfile}"
     git commit "${SUBMODULE}" -F "${tmpfile}"
     rm -f "${tmpfile}"
-else
-    [ "$1" = "commit" ] && shift
-    get_changes "$1"
 fi
