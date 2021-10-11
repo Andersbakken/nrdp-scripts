@@ -102,8 +102,10 @@
                         (car dirs)
                       (assoc (completing-read "Build: " dirs) dirs)))
                (path (cadr dir)))
-          (and (or create (file-exists-p (concat path "/" file)))
-               (concat path "/" file)))))))
+          (setq file (concat path "/" file))
+          (when (file-directory-p file)
+            (setq file (read-file-name "File: " file)))
+          (and (or create (file-exists-p file)) file))))))
 
 (defun lsdev-open-build-file (&optional file srcdir create)
   (interactive)

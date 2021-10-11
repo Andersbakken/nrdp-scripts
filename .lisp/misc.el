@@ -1047,6 +1047,10 @@ to case differences."
   (interactive)
   (lsdev-open-build-file "src/platform/gibbon/data/resources/js/NetflixBridge.js" srcdir))
 
+(defun .ts.d (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "src/platform/gibbon/tsbridge/typings" srcdir))
+
 (defun PartnerBridge.js (&optional srcdir)
   (interactive)
   (lsdev-open-build-file "src/platform/gibbon/data/resources/js/PartnerBridge.js" srcdir))
