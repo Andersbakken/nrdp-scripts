@@ -189,7 +189,18 @@ if type complete >/dev/null 2>&1; then
     complete -F complete-netflix -o default netflix ./netflix
 fi
 
-alias clean-var="rm -rf data/var"
+clean-var ()
+{
+    find . -type d -name "var" | grep "data/var$" | while read i; do rm -rf $i; done
+}
+
+clean-tsbridge ()
+{
+    find . -type d -name tsbridge | while read i; do
+        find "$i/typings" -name "*.d.ts" -not -name "types.d.ts" -exec rm "{}" \;
+    done
+}
+
 clean-platform-cpp ()
 {
     find . -name "*Platform*Class.cpp" -exec rm "{}" \;
