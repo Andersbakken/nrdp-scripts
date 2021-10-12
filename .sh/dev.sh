@@ -198,6 +198,7 @@ clean-tsbridge ()
 {
     find . -type d -name tsbridge | while read i; do
         find "$i/typings" -name "*.d.ts" -not -name "types.d.ts" -exec rm "{}" \;
+        find "$i" -name "NetflixBridge.*" -exec rm "{}" \;
     done
 }
 
