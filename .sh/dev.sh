@@ -196,7 +196,7 @@ clean-var ()
 
 clean-tsbridge ()
 {
-    DIR=$(find . -type d -name tsbridge)
+    DIR=$(find . -type d -name tsbridge | grep -v "\.rollup\.cache")
     [ -z "$DIR" ] && [ -d "typings" ] && DIR=$PWD
     find "$DIR/typings" -name "*.d.ts" -not -name "types.d.ts" -exec rm "{}" \;
     find "$DIR" -name "NetflixBridge.*" -exec rm "{}" \;
