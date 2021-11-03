@@ -324,7 +324,7 @@
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js' ':!*/animation.*.js*'"
                          pipe
                          (format " | cut -c -%d" nrdp-git-grep-max-column-length))))))
 
