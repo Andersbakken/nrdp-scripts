@@ -23,9 +23,9 @@
     (funcall (intern name) t)))
 
 (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
-(define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
+(define-key magit-file-section-map "\r" 'magit-diff-visit-worktree-file)
 (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
-(define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
+(define-key magit-hunk-section-map "\r" 'magit-diff-visit-worktree-file)
 
 (if (fboundp 'magit-file-mode-map) (define-key magit-file-mode-map "\C-xg" nil))
 
