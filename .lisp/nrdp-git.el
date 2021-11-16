@@ -729,7 +729,7 @@
 (defun magit-submit (&optional commit pr args)
   (interactive)
   (let ((prev (getenv "GIT_POST_SUBMIT_FLAGS")))
-    (setenv "GIT_POST_SUBMIT_FLAGS" (concat "--no-interactive --resolve"))
+    (setenv "GIT_POST_SUBMIT_FLAGS" "--no-interactive --resolve")
     (setq args (append args (magit-push-arguments)))
     (if pr
         (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
