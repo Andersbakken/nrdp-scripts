@@ -301,7 +301,7 @@ build() {
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
     RESULT=$?
     if [ "$RESULT" = "0" ]; then
-        EXE=`findexe ${NINJA_DIR}`
+        EXE=`findexe ${BUILD_DIR}`
         if [ -e "$EXE" ]; then
             if [ "$GDB_ADD_INDEX" ]; then
                 echo "Running gdb-add-index [$EXE]"
