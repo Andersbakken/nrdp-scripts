@@ -599,7 +599,7 @@ to case differences."
   (interactive)
   (let ((found (find-corresponding-cpp-h)))
     (when found
-      (find-file found))))
+      (switch-to-buffer (find-file-noselect found)))))
 
 (defun point-is-at-eol (pos) (save-excursion (goto-char pos) (= pos (point-at-eol))))
 (defun point-is-at-bol (pos) (save-excursion (goto-char pos) (= pos (point-at-bol))))
@@ -1046,6 +1046,10 @@ to case differences."
 (defun NetflixBridge.js (&optional srcdir)
   (interactive)
   (lsdev-open-build-file "src/platform/gibbon/data/resources/js/NetflixBridge.js" srcdir))
+
+(defun .ts.d (&optional srcdir)
+  (interactive)
+  (lsdev-open-build-file "src/platform/gibbon/tsbridge/typings" srcdir))
 
 (defun PartnerBridge.js (&optional srcdir)
   (interactive)

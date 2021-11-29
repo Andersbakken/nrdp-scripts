@@ -23,9 +23,9 @@
     (funcall (intern name) t)))
 
 (define-key magit-file-section-map [C-return] 'magit-diff-visit-file)
-(define-key magit-file-section-map "\r" 'magit-diff-visit-file-worktree)
+(define-key magit-file-section-map "\r" 'magit-diff-visit-worktree-file)
 (define-key magit-hunk-section-map [C-return] 'magit-diff-visit-file)
-(define-key magit-hunk-section-map "\r" 'magit-diff-visit-file-worktree)
+(define-key magit-hunk-section-map "\r" 'magit-diff-visit-worktree-file)
 
 (if (fboundp 'magit-file-mode-map) (define-key magit-file-mode-map "\C-xg" nil))
 
@@ -324,7 +324,7 @@
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js' ':!*/animation.*.js*'"
                          pipe
                          (format " | cut -c -%d" nrdp-git-grep-max-column-length))))))
 
@@ -729,7 +729,7 @@
 (defun magit-submit (&optional commit pr args)
   (interactive)
   (let ((prev (getenv "GIT_POST_SUBMIT_FLAGS")))
-    (setenv "GIT_POST_SUBMIT_FLAGS" (concat "--no-interactive --resolve"))
+    (setenv "GIT_POST_SUBMIT_FLAGS" "--no-interactive --resolve")
     (setq args (append args (magit-push-arguments)))
     (if pr
         (let ((name (s-trim (read-from-minibuffer "Name: " (magit-submit-initial-contents commit)))))
