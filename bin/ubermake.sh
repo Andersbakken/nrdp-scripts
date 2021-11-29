@@ -32,13 +32,15 @@ done
 trap 'cleanup' QUIT EXIT
 
 should-gdb-index() {
+    exe="$1"
+    mtime="$2"
     [ "$(uname -s)" = "Linux" ] || return 1
-    file "$NINJA_DIR/src/platform/gibbon/netflix" 2>/dev/null | grep -q "x86-64\|80386" || return 1
+    file "$exe" 2>/dev/null | grep -q "x86-64\|80386" || return 1
     if [ -n "$UBERMAKE_DO_STAT" ]; then
-        local MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
-        [ "$MTIME" == "$1" ] && return 1
+        local MTIME=$(stat "$exe" --format %Y 2>/dev/null)
+        [ "$MTIME" == "$mtime" ] && return 1
     fi
-    readelf -S "$NINJA_DIR/src/platform/gibbon/netflix" | grep -q gdb_index && return 1
+    readelf -S "$exe" | grep -q gdb_index && return 1
     return 0
 }
 
@@ -56,6 +58,19 @@ findancestor() {
                 cd ..
             fi
         done)
+    return 0
+}
+
+findexe() {
+    dir="$1"
+    [ -z "$dir" ] && dir="$PWD"
+    if [ -e "${dir}/src/platform/gibbon/libgibbon.so" ]; then
+        echo "${dir}/src/platform/gibbon/libgibbon.so"
+        return 1
+    elif [ -e "${dir}/src/platform/gibbon/netflix" ]; then
+        echo "${dir}/src/platform/gibbon/netflix"
+        return 1
+    fi
     return 0
 }
 
@@ -110,10 +125,6 @@ resolvelink () {
 finish() {
     if [ "$1" -eq 0 ]; then
         [ -n "$SUCCESS_POST_COMMAND" ] && eval "$SUCCESS_POST_COMMAND"
-        if [ "$GDB_ADD_INDEX" ]; then
-            echo "Running gdb-add-index"
-            nohup gdb-add-index "$2/src/platform/gibbon/netflix" 2>/dev/null &
-        fi
     else
         [ -n "$ERROR_POST_COMMAND" ] && eval "$ERROR_POST_COMMAND"
     fi
@@ -205,17 +216,30 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            [ -n "$UBERMAKE_DO_STAT" ] && MTIME=$(stat "$NINJA_DIR/src/platform/gibbon/netflix" --format %Y 2>/dev/null)
+            MTIME="0"
+            if [ -n "$UBERMAKE_DO_STAT" ]; then
+                EXE=`findexe ${NINJA_DIR}`
+                [ -e "$EXE" ] && MTIME=$(stat "$EXE" --format %Y 2>/dev/null)
+            fi
 
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
-            if [ "$RESULT" = "0" ] && should-gdb-index $MTIME; then
-                # echo "DOING POST $MTIME"
-                OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
-                [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
-                GDB_ADD_INDEX=1
+            if [ "$RESULT" = "0" ]; then
+                EXE=`findexe ${NINJA_DIR}`
+                if [ -n "$EXE" ] && [ -e "$EXE" ]; then
+                    if should-gdb-index $EXE $MTIME; then
+                        # echo "DOING POST $MTIME"
+                        OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
+                        [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
+                        GDB_ADD_INDEX=1
+                    fi
+                    if [ "$GDB_ADD_INDEX" ]; then
+                        echo "Running gdb-add-index [$EXE]"
+                        nohup gdb-add-index $EXE 2>/dev/null &
+                    fi
+                fi
             fi
-            finish $RESULT "${NINJA_DIR}"
+            finish $RESULT
             return $RESULT
         fi
     fi
@@ -256,7 +280,7 @@ build() {
                 cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
             fi
             RESULT=$?
-            finish $RESULT "$NPMROOTDIR"
+            finish $RESULT
             return $RESULT
         fi
     fi
@@ -276,7 +300,16 @@ build() {
     fi
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
     RESULT=$?
-    finish $RESULT "${BUILD_DIR}"
+    if [ "$RESULT" = "0" ]; then
+        EXE=`findexe ${NINJA_DIR}`
+        if [ -e "$EXE" ]; then
+            if [ "$GDB_ADD_INDEX" ]; then
+                echo "Running gdb-add-index [$EXE]"
+                nohup gdb-add-index $EXE 2>/dev/null &
+            fi
+        fi
+    fi
+    finish $RESULT
     return $RESULT
 }
 
