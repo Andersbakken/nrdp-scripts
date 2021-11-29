@@ -160,13 +160,13 @@
   (make-face 'netflix-keywords-face)
   (set-face-foreground 'netflix-keywords-face "BlueViolet")
   (font-lock-add-keywords 'c++-mode
-                          '(("\\<NF_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+                          '(("\\<NF_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   (font-lock-add-keywords 'c++-mode
-                          '(("\\<NRDP_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+                          '(("\\<NRDP_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   (font-lock-add-keywords 'c++-mode
-                          '(("\\<DEFINE_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+                          '(("\\<DEFINE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   (font-lock-add-keywords 'c++-mode
-                          '(("\\<DECLARE_[A-Z][_A-Za-z]*" . 'netflix-keywords-face)))
+                          '(("\\<DECLARE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   )
 (defun netflix-find-file-hook ()
   (setq
