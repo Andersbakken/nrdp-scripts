@@ -272,12 +272,14 @@ build() {
         [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
         PACKAGEDOTJSON=`findancestor package.json $NPMROOTDIR`
         if [ -f "$PACKAGEDOTJSON" ]; then
-            NPMARGS="$MAKE_OPTIONS"
-            [ -z "$NPMARGS" ] && NPMARGS="build"
+            NPM_ARGS=$(echo $MAKE_OPTIONS | sed -e 's, *-j *[0-9]*,,')
+            if [ -z "$NPM_ARGS" ] || [ "$NPM_ARGS" = "\"\"" ]; then
+                NPM_ARGS="build"
+            fi
             if [ -e "$NPMROOTDIR/yarn.lock" ]; then
-                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js yarn run $NPMARGS
+                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js yarn run $NPM_ARGS
             else
-                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPMARGS
+                cd $NPMROOTDIR && eval $SCRIPT_DIR/transform-ts-errors.js npm run $NPM_ARGS
             fi
             RESULT=$?
             finish $RESULT
