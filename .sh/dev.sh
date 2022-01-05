@@ -159,17 +159,24 @@ complete-netflix ()
     modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
     if [ ! -e "/tmp/netflix-completions-helper" ] || [ "$modified" != "`head -n 1 /tmp/netflix-completions-helper`" ]; then
         echo $modified > /tmp/netflix-completions-helper
-        "$app" --help --dump | grep '^ \+-' | grep "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,g' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
-        "$app" --help --dump | grep '^ \+-' | grep -v "\[value\]" | sed -e 's,|NF.*,,' -e 's,|, ,g' -e 's,^ *,,' | xargs >> /tmp/netflix-completions-helper
+        TMP=`mktemp`
+        "$app" --help --dump | grep '^ \+-' | sed -e 's,^ *,,' > $TMP
+        local ENV_WITH_VALUE=$(grep "NF_.*\[value\]" $TMP | sed -e 's,|NF_.*,,' -e 's,|, ,g' | xargs)
+        local NO_ENV_WITH_VALUE=$(grep "\[value\]" $TMP | grep -v NF_ | sed -e 's, \[value\].*,,' -e 's,|, ,g' | xargs)
+        local ENV_WITHOUT_VALUE=$(grep "NF_." $TMP | grep -v "\[value\]" | sed -e 's,|NF_.*,,' -e 's,|, ,g' | xargs)
+        local NO_ENV_WITHOUT_VALUE=$(grep -v "\[value\]" $TMP | grep -v NF_ | sed -e 's,:.*,,' -e 's,|, ,g' | xargs)
+        echo "$ENV_WITH_VALUE $NO_ENV_WITH_VALUE" >> /tmp/netflix-completions-helper
+        echo "$NO_ENV_WITHOUT_VALUE $NO_ENV_WITHOUT_VALUE" >> /tmp/netflix-completions-helper
+        rm -f $TMP
     fi
-    local valueopts=`head -n 2 /tmp/netflix-completions-helper | tail -n 1`
+    local valueopts=$(head -n 2 /tmp/netflix-completions-helper | tail -n 1)
     local cur=${COMP_WORDS[COMP_CWORD]}
     local prev=${COMP_WORDS[COMP_CWORD-1]}
     if [ -n "$prev" ]; then
        if [ "$prev" = "-x" ] || [ "$prev" = "--config-file" ]; then
            dir=$(type $app | sed -e "s,^$app is ,,")
            dir=$(dirname $dir)
-           confs=`/bin/ls "$dir/data/etc/conf/" | sed -e 's,\.xml,,' | xargs`
+           confs=$(/bin/ls "$dir/data/etc/conf/" | sed -e 's,\.xml,,' | xargs)
            COMPREPLY=($(compgen -W "${confs}" -- ${cur}))
            return;
        elif printf -- "${valueopts}\n" | grep --quiet -- "$prev"; then
@@ -178,10 +185,10 @@ complete-netflix ()
        fi
     fi
 
-    local nonvalueopts=`tail -n 1 /tmp/netflix-completions-helper`
-    COMPREPLY=(`compgen -W "$valueopts $nonvalueopts" -- $cur`)
+    local nonvalueopts=$(tail -n 1 /tmp/netflix-completions-helper)
+    COMPREPLY=($(compgen -W "$valueopts $nonvalueopts" -- $cur))
     if [ -n "$cur" ] && [ ${#COMPREPLY[@]} -eq 0 ] && printf -- "$cur\n" | grep --quiet -- "^-[^-]"; then
-        COMPREPLY=(`compgen -W "$valueopts $nonvalueopts" -- -$cur`)
+        COMPREPLY=($(compgen -W "$valueopts $nonvalueopts" -- -$cur))
     fi
 }
 
