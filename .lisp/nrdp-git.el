@@ -428,6 +428,24 @@
       (setq buffer-read-only t)
       (buffer-local-set-key (kbd "q") 'bury-buffer))))
 
+(defun nrdp-git-diff-revert-buffer (ignore-auto noconfirm)
+  (save-excursion
+    (goto-char (point-min))
+    (when (looking-at "\$ git diff ")
+      (let ((args (split-string (buffer-substring-no-properties (+ (point-at-bol) 11) (point-at-eol)) " "))
+            (buffer-read-only nil))
+        (erase-buffer)
+        (unless (= (apply #'call-process "git" nil t t "diff" args) 0)
+          (error "Failed to run git diff %s" (mapconcat 'identity args " ")))
+        (if (= (point-min) (point-max))
+            (progn
+              (message "Empty diff")
+              (kill-buffer (current-buffer)))
+          (goto-char (point-min))
+          (insert "$ git diff " (combine-and-quote-strings args) "\n")
+          (search-forward-regexp "^@@" nil t)
+          (goto-char (point-at-bol)))))))
+
 (defvar nrdp-git-diff-reuse-diff-buffer nil)
 (defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against word)
   (interactive "P")
@@ -461,6 +479,7 @@
       (if no-split-window
           (switch-to-buffer buffer)
         (set-buffer (switch-to-buffer-other-window buffer)))
+      (setq revert-buffer-function 'nrdp-git-diff-revert-buffer)
       (setq buffer-read-only nil)
       (erase-buffer)
       (setq default-directory dir)
