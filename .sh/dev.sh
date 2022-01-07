@@ -166,7 +166,7 @@ complete-netflix ()
         local ENV_WITHOUT_VALUE=$(grep "NF_." $TMP | grep -v "\[value\]" | sed -e 's,|NF_.*,,' -e 's,|, ,g' | xargs)
         local NO_ENV_WITHOUT_VALUE=$(grep -v "\[value\]" $TMP | grep -v NF_ | sed -e 's,:.*,,' -e 's,|, ,g' | xargs)
         echo "$ENV_WITH_VALUE $NO_ENV_WITH_VALUE" >> /tmp/netflix-completions-helper
-        echo "$NO_ENV_WITHOUT_VALUE $NO_ENV_WITHOUT_VALUE" >> /tmp/netflix-completions-helper
+        echo "$ENV_WITHOUT_VALUE $NO_ENV_WITHOUT_VALUE" >> /tmp/netflix-completions-helper
         rm -f $TMP
     fi
     local valueopts=$(head -n 2 /tmp/netflix-completions-helper | tail -n 1)
