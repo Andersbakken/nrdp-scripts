@@ -64,6 +64,7 @@ source ~/.gdb/emacs.gdb
 source ~/.gdb/data.gdb
 source ~/.gdb/signals.gdb
 source ~/.gdb/breakpoints.gdb
+source ~/.gdb/nrdp.gdb
 
 source ~/.gdb/init_os_end.gdb
 source ~/.gdb/init_host_end.gdb
@@ -100,3 +101,5 @@ source ~/.gdb/init_host_end.gdb
 #      bsave
 #    end
 # end
+
+
