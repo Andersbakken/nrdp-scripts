@@ -479,7 +479,7 @@
       (if no-split-window
           (switch-to-buffer buffer)
         (set-buffer (switch-to-buffer-other-window buffer)))
-      (setq revert-buffer-function 'nrdp-git-diff-revert-buffer)
+      (set (make-local-variable 'revert-buffer-function) 'nrdp-git-diff-revert-buffer)
       (setq buffer-read-only nil)
       (erase-buffer)
       (setq default-directory dir)
