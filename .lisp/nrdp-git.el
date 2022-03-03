@@ -261,15 +261,17 @@
     (mapcar (lambda (x) (cl-coerce (reverse x) 'string))
             (reverse result))))
 
-(defun nrdp-git-grep (&optional dir)
+(defvar nrdp-git-grep-last-search nil)
+(defun nrdp-git-grep (&optional dir default)
   "git-grep the entire current repo"
   (interactive)
   (unless dir
     (setq dir (magit-toplevel)))
   (unless dir
     (error "No git dir"))
-  (let* ((default (current-word))
-         (pipe)
+  (unless default
+    (setq default (current-word)))
+  (let* ((pipe)
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
                    "git grep: pwd: "))
@@ -289,6 +291,7 @@
         (setq pipe (substring search pipeidx))
         (setq search (s-trim (substring search 0 pipeidx)))))
     (setq search (s-chop-suffix " " search))
+    (setq nrdp-git-grep-last-search search)
     (when (string-match "^[^\"'-]* [^\"'-]*$" search)
       (setq search (concat "\"" search "\"")))
 
@@ -331,17 +334,17 @@
 (defun nrdp-git-grep-dwim (&optional prefix)
   (interactive "P")
   (let* ((devs (lsdev-dirs-internal default-directory "src"))
-         (dir (magit-toplevel (and (= (length devs) 1) (cadar devs)))))
+         (dir (magit-toplevel (and (= (length devs) 1) (cadar devs))))
+         (default))
     (unless dir
       (error "No git dir"))
-    (nrdp-git-grep (cond ((and (numberp prefix) (file-directory-p (concat dir "src")))
-                          (concat dir "src"))
+    (nrdp-git-grep (cond ((numberp prefix) (setq default nrdp-git-grep-last-search) dir)
                          ((null prefix) dir)
                          ((listp prefix) default-directory)
                          ((stringp prefix) (if (file-directory-p (concat dir prefix))
                                                (file-directory-p (concat dir prefix))
                                              prefix))
-                         (t default-directory)))))
+                         (t default-directory)) default)))
 
 (defun nrdp-git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
