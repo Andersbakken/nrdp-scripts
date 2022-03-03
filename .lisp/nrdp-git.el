@@ -336,9 +336,9 @@
          (default))
     (unless dir
       (error "No git dir"))
-    (nrdp-git-grep-impl (cond ((numberp prefix) (setq default nrdp-git-grep-last-search) dir)
-                              ((null prefix) dir)
-                              ((listp prefix) default-directory)
+    (nrdp-git-grep-impl (cond ((null prefix) dir)
+                              ((listp prefix) (setq default nrdp-git-grep-last-search) dir)
+                              ((numberp prefix) default-directory)
                               ((stringp prefix) (if (file-directory-p (concat dir prefix))
                                                     (file-directory-p (concat dir prefix))
                                                   prefix))
