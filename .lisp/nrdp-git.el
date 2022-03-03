@@ -262,9 +262,7 @@
             (reverse result))))
 
 (defvar nrdp-git-grep-last-search nil)
-(defun nrdp-git-grep (&optional dir default)
-  "git-grep the entire current repo"
-  (interactive)
+(defun nrdp-git-grep-impl (&optional dir default)
   (unless dir
     (setq dir (magit-toplevel)))
   (unless dir
@@ -331,20 +329,20 @@
                          pipe
                          (format " | cut -c -%d" nrdp-git-grep-max-column-length))))))
 
-(defun nrdp-git-grep-dwim (&optional prefix)
+(defun nrdp-git-grep (&optional prefix)
   (interactive "P")
   (let* ((devs (lsdev-dirs-internal default-directory "src"))
          (dir (magit-toplevel (and (= (length devs) 1) (cadar devs))))
          (default))
     (unless dir
       (error "No git dir"))
-    (nrdp-git-grep (cond ((numberp prefix) (setq default nrdp-git-grep-last-search) dir)
-                         ((null prefix) dir)
-                         ((listp prefix) default-directory)
-                         ((stringp prefix) (if (file-directory-p (concat dir prefix))
-                                               (file-directory-p (concat dir prefix))
-                                             prefix))
-                         (t default-directory)) default)))
+    (nrdp-git-grep-impl (cond ((numberp prefix) (setq default nrdp-git-grep-last-search) dir)
+                              ((null prefix) dir)
+                              ((listp prefix) default-directory)
+                              ((stringp prefix) (if (file-directory-p (concat dir prefix))
+                                                    (file-directory-p (concat dir prefix))
+                                                  prefix))
+                              (t default-directory)) default)))
 
 (defun nrdp-git-config-value (conf)
   (let ((ret (shell-command-to-string (concat "git config " conf))))
