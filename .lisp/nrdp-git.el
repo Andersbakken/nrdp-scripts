@@ -212,7 +212,7 @@
       (or default ""))))
 
 (defun nrdp-git-grep-split-arguments (string)
-  (let ((i 0) result current quotep escapedp word)
+  (let ((i 0) result current quotep escapedp word hadDoubleAndSingle)
     (while (< i (length string))
       (setq current (aref string i))
       ;; (message "Looking at %d/%d [%c]"
@@ -221,14 +221,16 @@
       ;; (when quotep
       ;;   (message "quotep %c" quotep))
       ;; (when escapedp
-      ;;   (message "escapedp"))
-      ;;quotep  (if escapedp "yes" "no"))
+      ;;   (message "escapedp %s" (if escapedp "yes" "no")))
       (cond
        ((and (char-equal current ?\ )
              (not quotep))
         (when word
-          (push word result))
-        (setq word nil escapedp nil))
+          ;; (message "pushing word [%s]" word)
+          (push word result)
+          (setq word nil
+                quotep nil
+                escapedp nil))
        ((and (or (char-equal current ?\')
                  (char-equal current ?\"))
              (not escapedp)
@@ -240,22 +242,33 @@
              quotep
              (char-equal current quotep)
              (not escapedp))
-        (push word result)
-        (setq quotep nil
-              word nil
-              escapedp nil))
+        (push (cond ((null hadDoubleAndSingle) word)
+                    ((char-equal hadDoubleAndSingle ?\')
+                     (append '(?\") word '(?\")))
+                    ((char-equal hadDoubleAndSingle ?\?)
+                     (append '(?\') word '(?\'))))
+              result))
+        (setq word nil
+              quotep nil
+              escapedp nil
+              hadDoubleAndSingle nil))
        ((char-equal current ?\\)
         (when escapedp (push current word))
         (setq escapedp (not escapedp)))
        (t
         (when escapedp
           (push ?\\ word))
+        (cond ((null quotep))
+              ((and (char-equal quotep ?\") (char-equal current ?\')) (setq hadDoubleAndSingle ?\'))
+              ((and (char-equal quotep ?\') (char-equal current ?\")) (setq hadDoubleAndSingle ?\"))
+              (t))
         (setq escapedp nil)
         (push current word)))
       (incf i))
     (when quotep
       (error (format "Unbalanced quote %c at %d" quotep (- (length string) (length word)))))
     (when word
+      ;; (message "pushing last word [%s]" word)
       (push word result))
 
     (mapcar (lambda (x) (cl-coerce (reverse x) 'string))
