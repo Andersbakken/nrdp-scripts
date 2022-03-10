@@ -230,7 +230,7 @@
           (push word result)
           (setq word nil
                 quotep nil
-                escapedp nil))
+                escapedp nil)))
        ((and (or (char-equal current ?\')
                  (char-equal current ?\"))
              (not escapedp)
@@ -247,7 +247,7 @@
                      (append '(?\") word '(?\")))
                     ((char-equal hadDoubleAndSingle ?\?)
                      (append '(?\') word '(?\'))))
-              result))
+              result)
         (setq word nil
               quotep nil
               escapedp nil
