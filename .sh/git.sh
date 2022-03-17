@@ -65,17 +65,18 @@ lsdev_git_sync() #sync a tree
     ACTION="sync"
     LSDEV_FLAGS="src "
     while [ "$#" -gt 0 ]; do
-      case "$1" in
-      --status) ACTION="status" ;;
-      --push) shift; ACTION="push $1" ;;
-      --pushf) shift; ACTION="push -f $1" ;;
-      *) LSDEV_FLAGS="$LSDEV_FLAGS $1" ;;
-      esac
-      shift
+        case "$1" in
+            --status) ACTION="status" ;;
+            --push) shift; ACTION="push $1" ;;
+            --pushf) shift; ACTION="push -f $1" ;;
+            *) LSDEV_FLAGS="$LSDEV_FLAGS $1" ;;
+        esac
+        shift
     done
-    if [ `lsdev.pl -r -l $LSDEV_FLAGS | wc -l` = "1" ]; then
-        eval command git lsdev $LSDEV_FLAGS -- $ACTION
+    SRC=$(lsdev.pl -r -l -tp $LSDEV_FLAGS)
+    if [ $(echo $SRC | wc -l) = "1" ]; then
+        (cd "$SRC" && command git "$ACTION")
     elif $(git rev-parse --git-dir &> /dev/null); then
-        eval command git $ACTION
+        command git $ACTION
     fi
 }
