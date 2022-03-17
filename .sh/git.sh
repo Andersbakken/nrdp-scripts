@@ -3,10 +3,13 @@ run_git()
 {
     if $(command git rev-parse --git-dir &> /dev/null); then
         command git "$@"
-    elif [ `lsdev.pl -r -l | wc -l` = "1" ]; then
-        command git lsdev -- "$@"
     else
-        command git "$@"
+        SRC=$(lsdev.pl -l -tp)
+        if [ $(echo $SRC | wc -l) = "1" ]; then
+            (cd "$SRC" && command git "$@")
+        else
+            command git "$@"
+        fi
     fi
 }
 
