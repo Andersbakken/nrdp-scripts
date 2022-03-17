@@ -1,15 +1,11 @@
 
 run_git()
 {
-    if $(command git rev-parse --git-dir &> /dev/null); then
-        command git "$@"
+    SRC=$(lsdev.pl -l -tS -p)
+    if [ -n "$SRC" ]; then
+        (cd "$SRC" && command git "$@")
     else
-        SRC=$(lsdev.pl -l -tp)
-        if [ $(echo $SRC | wc -l) = "1" ]; then
-            (cd "$SRC" && command git "$@")
-        else
-            command git "$@"
-        fi
+        command git "$@"
     fi
 }
 
@@ -73,10 +69,12 @@ lsdev_git_sync() #sync a tree
         esac
         shift
     done
-    SRC=$(lsdev.pl -r -l -tp $LSDEV_FLAGS)
-    if [ $(echo $SRC | wc -l) = "1" ]; then
+    SRC=$(lsdev.pl -l -tS -p $LSDEV_FLAGS)
+    if [ -n "$SRC" ]; then
         (cd "$SRC" && command git "$ACTION")
     elif $(git rev-parse --git-dir &> /dev/null); then
         command git $ACTION
+    else
+        echo "No dev dirs found" >&2
     fi
 }
