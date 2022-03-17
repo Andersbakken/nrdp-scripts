@@ -357,11 +357,12 @@
                                                   prefix))
                               (t default-directory)) default)))
 
-(defun nrdp-git-config-value (conf)
-  (let ((ret (shell-command-to-string (concat "git config " conf))))
-    (if (and ret (string-match "\n$" ret))
-        (substring ret 0 (1- (length ret)))
-      ret)))
+(defun nrdp-git-config-value (conf &optional dir)
+  (let ((default-directory (or dir default-directory)))
+    (let ((ret (shell-command-to-string (concat "git config " conf))))
+      (if (and ret (string-match "\n$" ret))
+          (substring ret 0 (1- (length ret)))
+        ret))))
 
 (defun nrdp-git-dir-for-file (&optional file)
   (magit-toplevel (file-name-directory (file-truename (cond ((stringp file) file)
