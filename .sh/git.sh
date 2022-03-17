@@ -59,17 +59,17 @@ add_prompt_command "update_current_pwd"
 lsdev_git_sync() #sync a tree
 {
     ACTION="sync"
-    LSDEV_FLAGS="src "
+    LSDEV_FLAGS="-l -tS -p"
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --status) ACTION="status" ;;
             --push) shift; ACTION="push $1" ;;
             --pushf) shift; ACTION="push -f $1" ;;
-            *) LSDEV_FLAGS="$LSDEV_FLAGS $1" ;;
+            *) LSDEV_FLAGS="src $1" ;;
         esac
         shift
     done
-    SRC=$(lsdev.pl -l -tS -p $LSDEV_FLAGS)
+    SRC=$(lsdev.pl $LSDEV_FLAGS)
     if [ -n "$SRC" ]; then
         (cd "$SRC" && command git "$ACTION")
     elif $(git rev-parse --git-dir &> /dev/null); then
