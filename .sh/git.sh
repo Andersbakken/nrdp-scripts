@@ -1,11 +1,15 @@
 
 run_git()
 {
-    SRC=$(lsdev.pl -l -tS -p)
-    if [ -n "$SRC" ]; then
-        (cd "$SRC" && command git "$@")
-    else
+    if $(command git rev-parse --git-dir &> /dev/null); then
         command git "$@"
+    else
+        SRC=$(lsdev.pl -l -tS -p)
+        if [ -n "$SRC" ]; then
+            (cd "$SRC" && command git "$@")
+        else
+            command git "$@"
+        fi
     fi
 }
 
