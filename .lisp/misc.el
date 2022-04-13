@@ -1071,16 +1071,16 @@ to case differences."
         (ret nil))
     (while args
       (let ((arg (downcase (car args)))(value nil))
-    (setq args (cdr args))
-    (cond
+        (setq args (cdr args))
+        (cond
          ((equal arg (concat "-" s))
           (progn
             (setq value t)
             (if (and args (not (string-match "^-" (car args)))) (setq value (car args)))
-        ))
+            ))
          ((string-match (concat "--" s "=") arg) (setq value (replace-match "" t t arg)))
          )
-    (if value (progn (setq ret value) (setq args nil)))))
+        (if value (progn (setq ret value) (setq args nil)))))
     ret))
 
 ;; ================================================================================
