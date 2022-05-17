@@ -498,8 +498,8 @@
       (setq buffer-read-only nil)
       (erase-buffer)
       (setq default-directory dir)
-      (if (and (= (apply #'call-process "git" nil t t "diff" args) 0)
-               (not (= (point-min) (point-max))))
+      (insert (shell-command-to-string (concat "git diff " (mapconcat 'identity args " "))))
+      (if (not (= (point-min) (point-max)))
           (progn
             (goto-char (point-min))
             (when word
@@ -515,8 +515,8 @@
         (kill-buffer (current-buffer))
         (if (= numwindows 1)
             (delete-window)
-          (other-window 1))
-        nil))))
+          (other-window 1))))
+    nil))
 
 (defun nrdp-git-diff-tracking (&optional -w target no-split-window norestorefocus word)
   (interactive "P")
