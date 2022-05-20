@@ -603,7 +603,9 @@
 (defun nrdp-magit-status (&optional prefix)
   (interactive "P")
   (when (or prefix (not (let ((buffers (buffer-list))
-                              (top (magit-toplevel))
+                              (top (or (magit-toplevel)
+                                       (let ((devs (lsdev-dirs-internal default-directory "src")))
+                                         (magit-toplevel (and (= (length devs) 1) (cadar devs))))))
                               (found))
                           (unless top
                             (error "Not a git repo"))
