@@ -1,0 +1,29 @@
+#!/bin/bash
+
+LINE=
+COL=
+INFILE="$1"
+OFFSET=
+
+if echo "$INFILE" | grep ':[0-9:]\+$' >/dev/null 2>&1; then
+    COL=`echo $INFILE | cut -d: -f3`
+    LINE=`echo $INFILE | cut -d: -f2`
+    INFILE=`echo $INFILE | cut -d: -f1`
+elif echo "$INFILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
+    OFFSET=`echo $INFILE | cut -d, -f2`
+    INFILE=`echo $INFILE | cut -d, -f1`
+fi
+
+FILE=$(choose.pl $(find . -name "$INFILE"))
+[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
+[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+if [ -e "$FILE" ]; then
+    if [ -n "$COL" ]; then
+        FILE="$FILE:$LINE:$COL"
+    elif [ -n "$LINE" ]; then
+        FILE="$FILE:$LINE"
+    elif [ -n "$OFFSET" ]; then
+        FILE="$FILE,$OFFSET"
+    fi
+    em "$FILE"
+fi

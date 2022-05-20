@@ -1,0 +1,9 @@
+#!/bin/bash
+
+INFILE="$1"
+FILE=$(choose.pl $(find . -name "$INFILE"))
+[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
+[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+if [ -e "$FILE" ]; then
+    vim "$FILE"
+fi
