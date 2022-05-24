@@ -208,6 +208,8 @@
 (defvar litter-printf-function (lambda() (insert "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")))
 (defun litter (trash &optional begin end)
   (interactive "sTrash: ")
+  (unless (string-match "^\n" trash)
+    (setq trash (concat "\n" trash)))
   (unless begin
     (setq begin (or (if mark-active (region-beginning))
                     (save-excursion
@@ -239,8 +241,7 @@
       (goto-char (car points))
       (if (functionp trash) (funcall trash) (insert trash))
       (setq points (cdr points))))
-  (c-indent-defun)
-  )
+  (c-indent-defun))
 
 (defun litter-printf (&optional begin end)
   (interactive)
