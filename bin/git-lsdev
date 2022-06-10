@@ -1,0 +1,72 @@
+#!/bin/bash
+
+TEST=
+COMMAND=
+ERROR=
+RECURSIVE=no
+LSDEV_OPTS="-b src"
+LSDEV_DIRS=
+
+while [ "$#" -gt 0 ]; do
+  OPT="$1"
+  shift
+  case $OPT in
+  -r) RECURSIVE=yes; LSDEV_OPTS="$LSDEV_OPTS -r" ;;
+  -dry) TEST="echo" ;;
+  --) COMMAND="$@"; break ;;
+  --*) COMMAND=`echo $OPT | sed "s,^--,,g"` ;;
+  *)
+     if [ -z "$COMMAND" ]; then
+         ALL_COMMAND=yes
+         for arg in "$@"; do
+             if echo "$arg" | grep -v '^-' >/dev/null 2>&1; then
+                 ALL_COMMAND=no
+                 break
+             fi
+         done
+         if [ "$ALL_COMMAND" = "yes" ]; then
+             COMMAND="$OPT"
+             [ "$#" -gt 0 ] && COMMAND="$COMMAND $@"
+             break
+         fi
+     fi
+     LSDEV_DIRS="$LSDEV_DIRS $OPT" ;;
+  esac
+done
+
+if [ -z "$COMMAND" ]; then
+   echo "No command provided!"
+   exit 1
+fi
+
+ROOTDIRS=`lsdev.pl $LSDEV_OPTS -tp $LSDEV_DIRS`
+for ROOTDIR in $ROOTDIRS; do
+   if [ -d "$ROOTDIR" ]; then
+       cd "$ROOTDIR"
+       ROOTDIR=`pwd` # kill trailing slash, ~ etc
+       ROOT=$(git rev-parse --show-toplevel) 2>/dev/null
+       if [ -d "$ROOT" ]; then
+           $TEST git -C "$ROOT" $COMMAND || ERROR=1
+           if [ "$RECURSIVE" = "yes" ]; then
+               find -L "$ROOTDIR" -maxdepth 4 -name ".git" | while read i; do
+                   SUBDIR=`(cd "$(eval dirname \"$i\")" && pwd)`
+                   if [ -d "$SUBDIR" ] && [ "$SUBDIR" != "$ROOTDIR" ]; then
+                       if [ -e ".lsdev_config" ]; then
+                           source .lsdev_config
+                           [ -n "$git_ignore" ] && continue
+                       fi
+                       echo "============================================================="
+                       echo "** Subdir: `echo $SUBDIR | sed \"s,^$ROOTDIR/,,\"`"
+                       echo "============================================================="
+                       $TEST git -C "$SUBDIR" $COMMAND || ERROR=1
+                   fi
+               done
+           fi
+       fi
+   fi
+done
+
+if [ -n "$ERROR" ]; then
+    echo -e "\n\nThere were errors."
+    exit 1
+fi
