@@ -344,6 +344,8 @@ if [ -z "$MAKE_DIR" ]; then
     fi
     if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
         build "${SOURCE_PATH}/"
+    elif [ -e "${PWD}/Makefile" ]; then
+        build "${PWD}/"
     elif [ -n "$NAME" ]; then
         build `lsdev.pl build -tp $LSDEV_ARGS`
     else
