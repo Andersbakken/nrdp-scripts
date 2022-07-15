@@ -32,16 +32,19 @@ done
 trap 'cleanup' QUIT EXIT
 
 should-gdb-index() {
-    exe="$1"
-    mtime="$2"
-    [ "$(uname -s)" = "Linux" ] || return 1
-    file "$exe" 2>/dev/null | grep -q "x86-64\|80386" || return 1
-    if [ -n "$UBERMAKE_DO_STAT" ]; then
-        local MTIME=$(stat "$exe" --format %Y 2>/dev/null)
-        [ "$MTIME" == "$mtime" ] && return 1
+    if [ "$UBERMAKE_GDB_INDEX" == "1" ]; then
+        exe="$1"
+        mtime="$2"
+        [ "$(uname -s)" = "Linux" ] || return 1
+        file "$exe" 2>/dev/null | grep -q "x86-64\|80386" || return 1
+        if [ -n "$UBERMAKE_DO_STAT" ]; then
+            local MTIME=$(stat "$exe" --format %Y 2>/dev/null)
+            [ "$MTIME" == "$mtime" ] && return 1
+        fi
+        readelf -S "$exe" | grep -q gdb_index && return 1
+        return 0
     fi
-    readelf -S "$exe" | grep -q gdb_index && return 1
-    return 0
+    return 1
 }
 
 findancestor() {

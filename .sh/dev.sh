@@ -124,15 +124,6 @@ block-icecream() {
     echo blockcs "$1" | nc "$ICECC_SCHEDULER_HOST" 8766
 }
 
-addrtoline() {
-    while [ -n "$1" ]; do
-        echo "$1" | sed -e 's,\+0x, 0x,' | while read FILE ADDRESS; do
-            addr2line -e "$FILE" -a "$ADDRESS"
-        done
-        shift
-    done
-}
-
 nf_sync_gibbon()
 {
     outdir="$1"
