@@ -33,7 +33,6 @@ trap 'cleanup' QUIT EXIT
 
 should-gdb-index() {
     if [ "$UBERMAKE_GDB_INDEX" == "1" ]; then
-
         exe="$1"
         mtime="$2"
         [ "$(uname -s)" = "Linux" ] || return 1
@@ -43,8 +42,9 @@ should-gdb-index() {
             [ "$MTIME" == "$mtime" ] && return 1
         fi
         readelf -S "$exe" | grep -q gdb_index && return 1
+        return 0
     fi
-    return 0
+    return 1
 }
 
 findancestor() {
