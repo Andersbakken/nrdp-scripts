@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" -o "$1" == "-" ]; then
+    cat /dev/stdin | awk '{print $NF}' | sed -e 's,[()],,g' -e 's,\+0x, 0x,' | while read FILE ADDRESS; do
+        addr2line -e "$FILE" -a "$ADDRESS"
+    done
+else
+   while [ -n "$1" ]; do
+       echo "$1" | awk '{print $NF}' | sed -e 's,[()],,g' -e 's,\+0x, 0x,' | while read FILE ADDRESS; do
+           addr2line -e "$FILE" -a "$ADDRESS"
+       done
+       shift
+   done
+fi
