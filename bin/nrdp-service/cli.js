@@ -52,6 +52,7 @@ function connect()
             console.error("need an from/to");
             return;
         }
+        action.description = argv.description;
         action.reviewers = argv.reviewers;
         action.project = argv.project;
         action.repo = argv.repo;

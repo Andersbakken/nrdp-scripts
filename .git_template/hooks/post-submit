@@ -15,6 +15,8 @@ if echo "$2" | grep -q "/"; then
         if [ "$ORIGIN" = "." ] && echo "$BRANCH" | grep -q "git-pullrequest-submit$"; then
             PR_NAME=""
             PR_REVIEWER=""
+            PR_DESCRIPTION=""
+            PR_DESCRIPTION=$(git log --pretty=format:%s --no-merges --reverse "$1..$BRANCH")
             COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
             for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
@@ -37,7 +39,7 @@ if echo "$2" | grep -q "/"; then
             PR_SOURCE=$(echo $BRANCH | sed "s#git-pullrequest-submit\$#${PR_NAME}#")
             PR_DEST=$(echo $3 | cut -d/ -f2-)
             git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
-            git pullrequest create --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
+            git pullrequest create --description "$PR_DESCRIPTION" --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
             JIRA="no"
         elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             PR_SOURCE="$BRANCH"

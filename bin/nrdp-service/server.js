@@ -121,6 +121,7 @@ wss.on("connection", ws => {
                     if(request.mode == "stash.pr.create" && request.from && request.to) {
                         const create_pr_form = {
                             title: project + '(' + repo + '): ' + request.from + '->' + request.to,
+                            description: request.description,
                             fromRef: {
                                 id: "refs/heads/" + request.from,
                                 repository: {
