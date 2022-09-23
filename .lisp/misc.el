@@ -159,7 +159,7 @@
     (save-excursion
       (goto-char (or start (point-min)))
       (while (search-forward from end t)
-        (incf count)
+        (cl-incf count)
         (replace-match (or to "") nil t)))
     (and (> count 0) count)))
 
@@ -168,7 +168,7 @@
     (save-excursion
       (goto-char (or start (point-min)))
       (while (re-search-forward from end t)
-        (incf count)
+        (cl-incf count)
         (replace-match (or to "") nil literal)))
     (and (> count 0) count)))
 
@@ -268,7 +268,7 @@
                     (unless (string= (nth len words) "final")
                       (add-to-list 'classes (nth len words))
                       (setq len -1))
-                    (decf len))))))))
+                    (cl-decf len))))))))
       classes)))
 
 (defun make-member-strip-default-arguments (string)
@@ -332,11 +332,11 @@ to case differences."
                          (while (cond ((eobp) nil)
                                       ((looking-at ">")
                                        (forward-char)
-                                       (decf count)
+                                       (cl-decf count)
                                        (> count 0))
                                       ((looking-at "<")
                                        (forward-char)
-                                       (incf count)
+                                       (cl-incf count)
                                        t)
                                       (t (forward-char) t))))
                        (push (buffer-substring-no-properties last (point)) ret)
@@ -368,9 +368,9 @@ to case differences."
                           ((string= word "unsigned"))
                           ((string= word "long")))
               (while (>= len 0)
-                (decf len)
+                (cl-decf len)
                 (pop words)))))
-        (decf len))
+        (cl-decf len))
       (setq ret (replace-regexp-in-string "\\([\\*&]\\) +" "\\1" (mapconcat 'identity words " ")))
       (cons (cond ((misc-string-suffix-p "&" ret) ret)
                   ((misc-string-suffix-p "*" ret) ret)
@@ -717,8 +717,8 @@ to case differences."
     (while (and (> count 0) (< (point) (point-max)))
       (let ((char (elt (buffer-string) (1- (point)))))
         ;; (message "Foobar %c %d %d" char (point) count)
-        (cond ((= char 60) (incf count)) ;; <
-              ((= char 62) (decf count)) ;; >
+        (cond ((= char 60) (cl-incf count)) ;; <
+              ((= char 62) (cl-decf count)) ;; >
               ((= char 10) (setq count 0) (setq ok nil))
               (t)))
       (if (> count 0)
@@ -1128,14 +1128,14 @@ to case differences."
                 ((eq (nth 1 file) t)
                  (unless norecurse
                    (if cb
-                       (incf ret (misc-find-files (car file) pattern norecurse cb exclude))
+                       (cl-incf ret (misc-find-files (car file) pattern norecurse cb exclude))
                      (setq ret (append ret (misc-find-files (car file) pattern norecurse cb exclude))))))
                 ((and (not (nth 1 file)) ;; skip-symlinks
                       (misc-check-pattern pattern (car file)))
                  (if (not cb)
                      (push (car file) ret)
                    (funcall cb (car file))
-                   (incf ret)))
+                   (cl-incf ret)))
                 (t))))
       (setq files (cdr files)))
     ret))
@@ -1148,9 +1148,9 @@ to case differences."
                      "\\.el$"
                      norecurse
                      (lambda (file)
-                       (incf considered)
+                       (cl-incf considered)
                        (unless (or (misc-is-compiled file) (not (file-writable-p file)))
-                         (incf compiled)
+                         (cl-incf compiled)
                          (condition-case nil
                              (byte-compile-file file t)
                            (error))))
@@ -1168,8 +1168,8 @@ to case differences."
         (compiled 0))
     (while paths
       (let ((result (misc-byte-compile-all (car paths))))
-        (incf compiled (car result))
-        (incf considered (cdr result)))
+        (cl-incf compiled (car result))
+        (cl-incf considered (cdr result)))
       (setq paths (cdr paths)))
     (message "Compiled %d/%d files" compiled considered)))
 
@@ -1555,14 +1555,14 @@ there's a region, all lines that region covers will be duplicated."
          (count 0))
     (misc-find-files misc-compiles-dir "/compile_[0-9]+\\.txt$" t (lambda (file)
                                                                     (when (string-match "/compile_\\([0-9]+\\)\\.txt$" file)
-                                                                      (incf count)
+                                                                      (cl-incf count)
                                                                       (setq max (max max (string-to-number (match-string 1 file)))))))
     (when (and (numberp misc-store-compiles)
                (>= count misc-store-compiles))
       (let* ((compiles (nreverse (misc-directory-files-helper misc-compiles-dir "compile_[0-9]+.txt" nil t))))
         (while (>= count misc-store-compiles)
           (delete-file (concat misc-compiles-dir "/" (car compiles)))
-          (decf count)
+          (cl-decf count)
           (setq compiles (cdr compiles)))))
     (save-restriction
       (widen)
@@ -1630,7 +1630,7 @@ there's a region, all lines that region covers will be duplicated."
       (if (string-match (concat "^" (car pref) "$") type)
           (setq pref nil)
         (setq pref (cdr pref))
-        (incf idx)))
+        (cl-incf idx)))
     idx))
 
 (defvar misc-man-completion-cache nil)
@@ -1647,7 +1647,7 @@ there's a region, all lines that region covers will be duplicated."
                                  (section (match-string 2 entry))
                                  (formatted (concat topic "(" section ")")))
                             (if (string= topic last)
-                                (incf count)
+                                (cl-incf count)
                               (setq last topic)
                               (setq count 1))
                             (push formatted results)
@@ -1910,7 +1910,7 @@ there's a region, all lines that region covers will be duplicated."
 
       (when (string-match pattern (or (buffer-file-name (car buffers))
                                       (buffer-name (car buffers))))
-        (incf count)
+        (cl-incf count)
         (kill-buffer (car buffers)))
       (setq buffers (cdr buffers)))
     (message "Killed %d buffers matching %s" count pattern)))
@@ -2011,13 +2011,13 @@ there's a region, all lines that region covers will be duplicated."
                      (if (= extra 0)
                          (setq conditional (point-at-bol))
                        (when (string= (match-string 1) "endif")
-                         (decf extra))))
+                         (cl-decf extra))))
                     ((or (string= (match-string 1) "ifdef")
                          (string= (match-string 1) "ifndef")
                          (string= (match-string 1) "if"))
                      (if endif
                          (setq conditional (point-at-bol))
-                       (incf extra)))
+                       (cl-incf extra)))
                     (t)))
             (forward-char 1)))))
     (if conditional
@@ -2058,11 +2058,11 @@ there's a region, all lines that region covers will be duplicated."
                        (when (or (string= (match-string 1) "ifdef")
                                  (string= (match-string 1) "ifndef")
                                  (string= (match-string 1) "if"))
-                         (decf extra))))
+                         (cl-decf extra))))
                     ((string= (match-string 1) "endif")
                      (if ifif
                          (setq conditional (point-at-bol))
-                       (incf extra)))
+                       (cl-incf extra)))
                     (t)))
             (backward-char 1)))))
     (if conditional
