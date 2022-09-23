@@ -264,7 +264,7 @@
               (t))
         (setq escapedp nil)
         (push current word)))
-      (incf i))
+      (cl-incf i))
     (when quotep
       (error (format "Unbalanced quote %c at %d" quotep (- (length string) (length word)))))
     (when word
@@ -303,7 +303,7 @@
         (setq search (s-trim (substring search 0 pipeidx)))))
     (setq search (s-chop-suffix " " search))
     (setq nrdp-git-grep-last-search search)
-    (when (string-match "^[^\"'-]* [^\"'-]*$" search)
+    (when (string-match "^[^\"-]*[ '][^\"-]*$" search)
       (setq search (concat "\"" search "\"")))
 
     (let* ((hasdashdash)
@@ -338,7 +338,7 @@
                              " "
                            " -- ")
                          dir
-                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js' ':!*/animation.*.js*'"
+                         " ':!*/sunspider/*' ':!*/error-text/*' ':!*/xboxupsellpage.js' ':!*/mkdocs-material*' ':!*min.js*' ':!*prod.js' ':!*/jquery*.js' ':!*bundle.js*' ':!*.yuv' ':!*.y4m' ':!*/ttrlibs.js' ':!*/animation.*.js*'"
                          pipe
                          (format " | cut -c -%d" nrdp-git-grep-max-column-length))))))
 

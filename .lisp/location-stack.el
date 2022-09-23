@@ -84,7 +84,7 @@
          (curitem))
     (while (and (> cur 0)
                 (not (buffer-live-p (car (nth cur location-stack)))))
-      (decf cur))
+      (cl-decf cur))
     (setq curitem (nth cur location-stack))
     (when curitem
       (let ((idx 0)
@@ -93,7 +93,7 @@
           (if (eq curitem (car s))
               (setq location-stack-index idx
                s nil)
-            (incf idx)
+            (cl-incf idx)
             (setq s (cdr s))))))
     (setq location-stack stack)))
 
@@ -126,7 +126,7 @@
         (if (= idx location-stack-index)
             (push (format  "%d: <%s>" idx str) msgs)
           (push (format "%d: %s" idx str) msgs)))
-      (incf idx))
+      (cl-incf idx))
     (message "%s" (mapconcat 'identity msgs " "))))
 
 (defun location-stack-next ()
