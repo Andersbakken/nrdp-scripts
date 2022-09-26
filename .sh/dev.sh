@@ -145,9 +145,17 @@ nf_sync_gibbon()
 
 complete-netflix ()
 {
-    app=${COMP_WORDS[0]}
+    local app=${COMP_WORDS[0]}
     test -x "$app" || return;
-    modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
+    local modified=
+    if [ -f "$(dirname $app)/libgibbon.so" ]; then
+        modified="`ls -la \"$(dirname $app)/libgibbon.so\" | awk '{print $5,$6,$7,$8}'`"
+    elif [ -f "$(dirname $app)/libgibbon.dylib" ]; then
+        modified="`ls -la \"$(dirname $app)/libgibbon.dylib\" | awk '{print $5,$6,$7,$8}'`"
+    else
+        modified="`ls -la \"$app\" | awk '{print $5,$6,$7,$8}'`"
+    fi
+
     if [ ! -e "/tmp/netflix-completions-helper" ] || [ "$modified" != "`head -n 1 /tmp/netflix-completions-helper`" ]; then
         echo $modified > /tmp/netflix-completions-helper
         TMP=`mktemp`
