@@ -208,7 +208,7 @@
 (defvar litter-printf-function (lambda() (insert "\nprintf(\"%s:%d [%s]\\n\", __FILE__, __LINE__, __FUNCTION__);")))
 (defun litter (trash &optional begin end)
   (interactive "sTrash: ")
-  (unless (string-match "^\n" trash)
+  (when (and (stringp trash) (not (string-match "^\n" trash)))
     (setq trash (concat "\n" trash)))
   (unless begin
     (setq begin (or (if mark-active (region-beginning))
