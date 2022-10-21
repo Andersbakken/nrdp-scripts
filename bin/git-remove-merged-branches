@@ -86,12 +86,12 @@ git branch -r | grep ${REMOTE}/ | grep -v -- "->" | grep -v $BRANCH | while read
     if [ -z "$(git cherry $BRANCH $i)" ]; then
         BRANCHNAME=$(echo $i | sed -e 's,^[^/]*/,,')
         if [ -z "$DRYRUN" ]; then
-            echo "Branch $i is fully merged into $BRANCH, removing it"
+            echo "+ Branch $i is fully merged into $BRANCH, removing it"
             git push $REMOTE :${BRANCHNAME}
         else
-            echo "Branch $i is fully merged into $BRANCH, would have called: git push $REMOTE :${BRANCHNAME}"
+            echo "+ Branch $i is fully merged into $BRANCH, would have called: git push $REMOTE :${BRANCHNAME}"
         fi
     elif [ -n "$VERBOSE" ]; then
-        echo "Branch $i is not fully merged into $BRANCH"
+        echo "- Branch $i is not fully merged into $BRANCH"
     fi
 done
