@@ -3,16 +3,26 @@
 VERBOSE=
 DRYRUN=
 BRANCH=
+IGNORE=()
 while [ -n "$1" ]; do
     case $1 in
+        --help|-h)
+            echo "git remove-merged-branches [--help|-h] [--dry-run|-n] [--ignore|-i <regex>] [BRANCH]"
+            exit 0
+            ;;
         --dry-run|-n)
             DRYRUN=1
             ;;
         --verbose|-v)
             VERBOSE=1
             ;;
+        -i|--ignore)
+            shift
+            IGNORE+=($1)
+            ;;
         *)
             if [ -n "$BRANCH" ]; then
+                echo "git remove-merged-branches [--help|-h] [--dry-run|-n] [--ignore|-i <regex>] [BRANCH]" >&2
                 echo "Not sure what to with this, you've already specified a branch: ${BRANCH}" >&2
                 exit 1
             fi
@@ -59,8 +69,18 @@ fi
 
 [ -n "$VERBOSE" ] && echo "Checking for branches fully merged into branch ${BRANCH}"
 
-git branch -r | grep -v -- "->" | grep -v $BRANCH | while read i; do
+git branch -r | grep ${REMOTE}/ | grep -v -- "->" | grep -v $BRANCH | while read i; do
     [ -n "$VERBOSE" ] && echo "Considering branch $i against $BRANCH"
+    IGNORED=
+    for ignore in ${IGNORE[@]}; do
+        if echo $i | grep --quiet ${ignore}; then
+            IGNORED=1
+            [ -n "$VERBOSE" ] && echo "$i is ignored because of pattern ${ignore}"
+            break
+        fi
+    done
+    [ -n "${IGNORED}" ] && continue
+
     if [ -z "$(git cherry $BRANCH $i)" ]; then
         BRANCHNAME=$(echo $i | sed -e 's,^[^/]*/,,')
         if [ -z "$DRYRUN" ]; then
