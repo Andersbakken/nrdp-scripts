@@ -82,6 +82,7 @@ else
     FORCE=
     REPLACE=no
     PUSH=yes
+    IGNORE_CHECK=yes
     SYNC_CHECK=yes
     AUTOSTASH=
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
@@ -106,6 +107,8 @@ else
             AUTOSTASH="yes"
         elif [ "$1" = "--no-sync-check" ]; then
             SYNC_CHECK="no"
+        elif [ "$1" = "--no-ignore-check" ]; then
+            IGNORE_CHECK="no"
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
         elif [ "$1" = "-a" ]; then
@@ -172,6 +175,7 @@ else
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
         [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
         [ "$SYNC_CHECK" != "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --no-sync-check"
+        [ "$IGNORE_CHECK" != "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --no-ignore-check"
         which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --filter "$BRANCH" --reverse --command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         exit 0
     else
@@ -193,7 +197,7 @@ else
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
             echo "$SHA1 does not appear to be in the current branch"
             continue
-        elif git ignore-commit check "$SHA1" >/dev/null; then
+        elif [ "$IGNORE_CHECK" = "yes" ] && git ignore-commit check "$SHA1" >/dev/null; then
             echo "$SHA1 is marked to ignore!"
             continue
         fi
