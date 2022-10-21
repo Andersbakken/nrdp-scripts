@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+VERBOSE=
+DRYRUN=
+BRANCH=
+while [ -n "$1" ]; do
+    case $1 in
+        --dry-run|-n)
+            DRYRUN=1
+            ;;
+        --verbose|-v)
+            VERBOSE=1
+            ;;
+        *)
+            if [ -n "$BRANCH" ]; then
+                echo "Not sure what to with this, you've already specified a branch: ${BRANCH}" >&2
+                exit 1
+            fi
+
+            BRANCH=$1
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$BRANCH" ]; then
+    BRANCH="$(git branch | grep '^\*' | cut -d ' ' -f 2)"
+    [ -n "$VERBOSE" ] && echo "No branch specified looking up from current branch => $BRANCH"
+    if [ -z "$BRANCH" ]; then
+        echo "Can't look up current branch" >&2
+        exit 1
+    fi
+fi
+
+if ! echo $BRANCH | grep -q "^[^/]\+/.\+"; then
+    REMOTE=$(git config branch.${BRANCH}.remote)
+    [ -n "$VERBOSE" ] && echo "Branch specified doesn't have a remote attached, looking up remote for ${BRANCH} => $REMOTE"
+
+    if [ -z "$REMOTE" ]; then
+        echo "Can't look up remote for ${BRANCH}" >&2
+        exit 1
+    fi
+    MERGE=$(git config branch.${BRANCH}.merge)
+    [ -n "$VERBOSE" ] && echo "Looking up merge branch for ${REMOTE}/${BRANCH} => $MERGE"
+
+    if [ -z "$MERGE" ]; then
+        echo "Can't find merge branch for ${BRANCH}"
+        exit 1
+    fi
+    if [ "$REMOTE" = "." ] && echo $merge | grep "^refs/remotes/" --quiet; then
+        BRANCH=$(echo $MERGE | sed -e 's,^refs/remotes/,,')
+    else
+        MERGE="$(echo $MERGE | sed -e 's,^refs\/heads\/,,')"
+        BRANCH="$REMOTE/$MERGE"
+    fi
+else
+    REMOTE=$(echo $BRANCH | cut -d/ -f1)
+fi
+
+[ -n "$VERBOSE" ] && echo "Checking for branches fully merged into branch ${BRANCH}"
+
+git branch -r | grep -v -- "->" | grep -v $BRANCH | while read i; do
+    [ -n "$VERBOSE" ] && echo "Considering branch $i against $BRANCH"
+    if [ -z "$(git cherry $BRANCH $i)" ]; then
+        BRANCHNAME=$(echo $i | sed -e 's,^[^/]*/,,')
+        if [ -z "$DRYRUN" ]; then
+            echo "Branch $i is fully merged into $BRANCH, removing it"
+            git push $REMOTE :${BRANCHNAME}
+        else
+            echo "Branch $i is fully merged into $BRANCH, would have called: git push $REMOTE :${BRANCHNAME}"
+        fi
+    elif [ -n "$VERBOSE" ]; then
+        echo "Branch $i is not fully merged into $BRANCH"
+    fi
+done
