@@ -321,7 +321,7 @@ build() {
 if [ -z "$MAKE_DIR" ]; then
     SOURCE_PATH=""
     NAME=`lsdev.pl -p -ts`
-    if [ -n "$NAME" ]; then
+    if [ -n "$NAME" ] && ! echo "$NAME" | grep --quiet "^build_"; then
         SOURCE_PATH=`lsdev.pl -r -tp source`
         if [ -n "$NAME" ] && [ -n "$UBER_ALL" ]; then
             REST_PATH=`lsdev.pl -p -tr`
