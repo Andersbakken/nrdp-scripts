@@ -45,6 +45,11 @@
   "Face used to display trace area name in NRDP log files"
   :group 'netflix-log)
 
+(defface netflix-log-success-face
+  '((t :inherit font-lock-warning-face))
+  "Face used to display trace area name in NRDP log files"
+  :group 'netflix-log)
+
 (defface netflix-log-fatal-face
   '((t :inherit font-lock-warning-face))
   "Face used to display trace area name in NRDP log files"
@@ -57,7 +62,7 @@
   "[\\[(]\\(\\([^(]+\\)?:\\)?\\([x[:xdigit:]]+\\)\\()\\|\\]\\)")
 
 (defvar netflix-log-area-regexp
-  "\\([A-Z_]+\\)(\\(trace\\|debug\\|info\\|warn\\|error\\|fatal\\)):")
+  "\\([A-Z0-9_]+\\)(\\(trace\\|debug\\|info\\|warn\\|error\\|fatal\\|success\\)):")
 
 (defvar netflix-log-font-lock-keywords
   `((,(concat "\\(" netflix-log-time-regexp "\\)"
@@ -82,6 +87,9 @@
      ("(\\(error\\)): \\(.*\\)" (backward-word 2) nil
       (1 'netflix-log-error-face t t)
       (2 'netflix-log-error-face t t))
+     ("(\\(success\\)): \\(.*\\)" (backward-word 2) nil
+      (1 'netflix-log-success-face t t)
+      (2 'netflix-log-success-face t t))
      ("(\\(fatal\\)): \\(.*\\)" (backward-word 2) nil
       (1 'netflix-log-fatal-face t t)
       (2 'netflix-log-fatal-face t t)))))
@@ -188,7 +196,7 @@
         (remove-overlays (point-min) (point-max) 'invisible 'level)
         (netflix-log-hide-nrdp-log-log))
     (let ((regexp (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)))
-      (netflix-log-limit regexp 7 "\\(debug\\|info\\|warn\\|error\\|fatal\\)" 'level))))
+      (netflix-log-limit regexp 7 "\\(debug\\|info\\|warn\\|error\\|fatal\\|success\\)" 'level))))
 
 (defun netflix-log-current-area ()
   (netflix-log-current-name
