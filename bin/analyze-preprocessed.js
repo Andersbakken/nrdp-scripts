@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 const fs = require("fs");
+let files = new Map();
 
 process.argv.slice(2).forEach(file => {
     let cur;
-    let files = new Map();
-    console.log(file);
+    // console.log(file);
     fs.readFileSync(file, "utf8").split("\n").forEach(x => {
         // console.log("line", x);
         const match = /^# [0-9]+ "([^ "]+)/.exec(x);
@@ -21,10 +21,11 @@ process.argv.slice(2).forEach(file => {
             ++cur.value;
         }
     });
-    Array.from(files.entries()).map(x => [ x[0], x[1].value]).sort((l, r) => {
-        // console.log(r[1], l[1]);
-        return r[1] - l[1];
-    }).forEach(x => {
-        console.log(`${x[0]}: ${x[1]}`);
-    });
+});
+
+Array.from(files.entries()).filter(x => x[1].value > 0).map(x => [ x[0], x[1].value]).sort((l, r) => {
+    // console.log(r[1], l[1]);
+    return r[1] - l[1];
+}).forEach(x => {
+    console.log(`${x[0]}: ${x[1]}`);
 });
