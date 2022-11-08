@@ -8,6 +8,7 @@ const child = require("child_process").execFile(process.argv[2], process.argv.sl
 
 const lastWasEmpty = [ false, false ];
 let lastFile;
+let lastError;
 
 function filter(idx, line) {
     if (!line) {
@@ -29,7 +30,8 @@ function filter(idx, line) {
         return;
     }
 
-    let match = /Error: (.*)/.exec(line);
+    let match = /error: (.*)/.exec(line);
+    // console.log("line", line, match);
     if (match) {
         line = match[1];
         const index = line.indexOf(" ");
@@ -46,6 +48,19 @@ function filter(idx, line) {
         match = /^ *([0-9]+):([0-9]+) *([a-z]*) *(.*)/.exec(line);
         if (match) {
             line = `${match[3].toUpperCase()}: ${lastFile}:${match[1]}:${match[2]} - ${match[4].replace(/\s+/g, " ")}`;
+        }
+    } else if (line.startsWith("@rollup/plugin-typescript: error: ")) {
+        lastError = line.substring(34);
+        return;
+    } else if (line.startsWith("[!] (plugin typescript) Error: @rollup/plugin-typescript ")) {
+        lastError = line.substring(57);
+        return;
+    } else if (lastError) {
+        match = /^([A-Za-z0-9_\/\.-]*\.ts) \(([0-9]+):([0-9]+)\)$/.exec(line);
+        if (match) {
+            // console.log(lastError, match);
+            line = `error: ${match[1]}:${match[2]}:${match[3]} - ${lastError.replace(/\s+/g, " ")}`;
+            lastError = undefined;
         }
     }
 
