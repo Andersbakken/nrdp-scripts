@@ -30,10 +30,10 @@ function filter(idx, line) {
         return;
     }
 
-    let match = /error: (.*)/.exec(line);
+    let match = /^([A-Za-z0-9_./]*.ts:[0-9]+:[0-9]+:? *)?error: (.*)/.exec(line);
     // console.log("line", line, match);
     if (match) {
-        line = match[1];
+        line = match[1] ? match[1] + match[2] : match[2];
         const index = line.indexOf(" ");
         if (index !== -1) {
             let str = " error:";
