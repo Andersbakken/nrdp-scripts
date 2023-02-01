@@ -8,6 +8,21 @@
 (defconst hack-mode-find-file-mode-nth 3)
 (defconst hack-mode-find-log-nth 4)
 
+(defun hack-mode-printf-escape-quotes (argument &optional quote)
+  (unless quote (setq quote "\""))
+  (let ((result "")
+        (start 0)
+        end)
+
+    (if (or (null (string-match (format "[^%s]" quote) argument))
+            (< (match-end 0) (length argument)))
+        (while (string-match (format "[%s]" quote) argument start)
+          (setq end (match-beginning 0)
+                result (concat result (substring argument start end)
+                               "\\" (substring argument end (1+ end)))
+                start (1+ end))))
+    (concat result (substring argument start))))
+
 (defun hack-mode-printf-format ()
   (let* ((fn (buffer-file-name))
          (name (if fn
@@ -67,7 +82,7 @@
            )))
 (defun troll-log-message (msg &optional nopercent) "Insert Troll logging message."
        (let ((result))
-         (insert (concat "qWarning(\"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format))))
+         (insert (concat "qWarning(\"" (car (hack-mode-printf-format)) ": " (hack-mode-printf-escape-quotes msg) "\"" (cdr (hack-mode-printf-format))))
          (if (and (not nopercent) (string-match "%" msg)) (progn (insert ", ") (setq result (point))))
          (insert ");")
          result))
@@ -136,13 +151,13 @@
                             (if (re-search-forward "\<let\>" nil t)
                                 "`"
                               "\"")))))
-             (insert (format "nrdp.l.error(%s%s%s" quote msg quote)))
+             (insert (format "nrdp.l.error(%s%s%s" quote (hack-mode-printf-escape-quotes msg quote) quote)))
            (setq result (point)))
           ((eq major-mode 'typescript-mode)
-           (insert "nrdp.l.error(`" msg "`")
+           (insert "nrdp.l.error(`" (hack-mode-printf-escape-quotes msg "`") "`")
            (setq result (point)))
           (t
-           (insert "Log::error(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " msg "\"" (cdr (hack-mode-printf-format)))
+           (insert "Log::error(TRACE_LOG, \"" (car (hack-mode-printf-format)) ": " (hack-mode-printf-escape-quotes msg) "\"" (cdr (hack-mode-printf-format)))
            (when (and (not nopercent) (string-match "%" msg))
              (insert ", ")
              (setq result (point)))))
@@ -175,24 +190,10 @@
 (setq hack-mode-netflix '("Netflix" netflix-templatize-file netflix-c-mode-hook netflix-find-file-hook netflix-log-message))
 
 ;;printf handling
-(defun hack-mode-escape-arg (argument)
-  (let ((result "")
-        (start 0)
-        end)
-    (if (or (null (string-match "[^\"]" argument))
-            (< (match-end 0) (length argument)))
-        (while (string-match "[\"]" argument start)
-          (setq end (match-beginning 0)
-                result (concat result (substring argument start end)
-                               "\\" (substring argument end (1+ end)))
-                start (1+ end))))
-    (concat result (substring argument start))))
-
 (defun hack-mode-insert-debug-printf(&optional prefix msg nopercent)
   (interactive "P")
   (unless msg
     (setq msg (read-from-minibuffer "String: ")))
-  (setq msg (hack-mode-escape-arg msg))
   (beginning-of-line)
   (indent-for-tab-command)
   (let ((msg-pos))
@@ -200,8 +201,8 @@
         (setq msg-pos (funcall (nth hack-mode-find-log-nth hack-mode) msg nopercent))
       (progn
         (if (or (eq major-mode 'js2-mode) (eq major-mode 'js-mode))
-            (insert "console.log('" msg "');")
-          (progn (insert (concat "printf(\"" (car (hack-mode-printf-format)) ": " msg "\\n\"" (cdr (hack-mode-printf-format))))
+            (insert "console.log('" (hack-mode-printf-escape-quotes msg "'") "');")
+          (progn (insert (concat "printf(\"" (car (hack-mode-printf-format)) ": " (hack-mode-printf-escape-quotes msg) "\\n\"" (cdr (hack-mode-printf-format))))
                  (if (and (not nopercent) (string-match "%" msg))
                      (progn (insert ", ") (setq msg-pos (point))))
                  (insert "); fflush(stdout);")))))

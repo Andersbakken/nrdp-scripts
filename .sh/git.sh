@@ -1,4 +1,6 @@
 
+export FILTER_BRANCH_SQUELCH_WARNING=1.
+
 run_git()
 {
     if $(command git rev-parse --git-dir &> /dev/null); then
