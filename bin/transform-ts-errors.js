@@ -64,6 +64,10 @@ function filter(idx, line) {
         }
     }
 
+    if (line.startsWith("Error: ") && line.includes("error")) {
+        line = line.substring(7);
+    }
+
     if (idx === 0) {
         // console.log("out", `[${line}]`);
         console.log(line);
