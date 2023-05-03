@@ -298,6 +298,7 @@ build() {
     fi
 
     [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor Makefile .\`"`
+    [ -z "$BUILD_DIR" ] && BUILD_DIR=`dirname "\`findancestor makefile .\`"`
     [ -z "$BUILD_DIR" ] && BUILD_DIR=.
     if [ -n "$UBER_RTAGS" ]; then
         RTAGS_RMAKE=1 "$i" -C "$BUILD_DIR" -B
@@ -345,9 +346,9 @@ if [ -z "$MAKE_DIR" ]; then
     if [ -z "$SOURCE_PATH" ] || [ ! -d "$SOURCE_PATH" ]; then
         SOURCE_PATH="$PWD"
     fi
-    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
+    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
         build "${SOURCE_PATH}/"
-    elif [ -e "${PWD}/Makefile" ]; then
+    elif [ -e "${PWD}/Makefile" ] || [ -e "${PWD}/makefile" ]; then
         build "${PWD}/"
     elif [ -n "$NAME" ]; then
         build `lsdev.pl build -tp $LSDEV_ARGS`
