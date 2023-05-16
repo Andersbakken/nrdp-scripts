@@ -408,7 +408,7 @@
                                         (push current branches))
                                       branches))))
 
-(defun nrdp-git-show-revision (&optional file sha)
+(defun nrdp-git-show-revision (&optional file sha no-keymap)
   (interactive "P")
   (setq file (expand-file-name (cond ((stringp file) file)
                                      ((bufferp file) (buffer-file-name file))
@@ -441,7 +441,8 @@
       (setq buffer-file-name nil)
       (if (fboundp 'font-lock-flush) (font-lock-flush))
       (setq buffer-read-only t)
-      (buffer-local-set-key (kbd "q") 'bury-buffer))))
+      (unless no-keymap
+        (buffer-local-set-key (kbd "q") 'bury-buffer)))))
 
 (defun nrdp-git-diff-revert-buffer (ignore-auto noconfirm)
   (save-excursion
@@ -548,11 +549,11 @@
   (interactive "P")
   (nrdp-git-diff -w default-directory))
 
-(defun nrdp-git-show-head (&optional file)
+(defun nrdp-git-show-head (&optional file no-keymap)
   (interactive)
   (unless (or file (buffer-file-name))
     (error "Not a real file"))
-  (nrdp-git-show-revision (or file (buffer-file-name)) "HEAD"))
+  (nrdp-git-show-revision (or file (buffer-file-name)) "HEAD" no-keymap))
 
 (defun nrdp-git-show-tracking (&optional file)
   (interactive)
@@ -791,7 +792,7 @@
   (interactive)
   (unless buffer (setq buffer (current-buffer)))
   (let ((default-directory (nrdp-git-dir-for-file buffer)))
-    (ediff-buffers buffer (progn (nrdp-git-show-head (buffer-file-name buffer)) (current-buffer)))))
+    (ediff-buffers buffer (progn (nrdp-git-show-head (buffer-file-name buffer) t) (current-buffer)))))
 
 ;; ================================================================================
 ;; git-jira
