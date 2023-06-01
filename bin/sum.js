@@ -46,6 +46,7 @@ const sorted = items.map(x => {
 
 function formatNum(val)
 {
+    val = val || 0;
     if (val == Math.floor(val) || pretty) {
         return pretty ? prettyBytes(val) : val;
     }

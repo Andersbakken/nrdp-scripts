@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-while [ ! -e compile_commands.json ] && [ `pwd` != "/" ]; do
+while [ ! -e compile_commands.json ] && [ $(pwd) != "/" ]; do
     cd ..
 done
 if [ ! -e compile_commands.json ]; then
@@ -13,29 +13,30 @@ DIR=clang_check_$$
 mkdir "$DIR"
 
 cat compile_commands.json \
-    | sed -e 's,[^ ]*fiskc ,,' -e 's,/usr/bin/ccache,,' -e 's/-Wa,--[0-9][0-9]//' -e 's,-fno-var-tracking-assignments,,' -e 's,--fisk-compiler=\([^ ]*\),\1,' -e 's, -c , -Wno-unknown-warning-option -c ,' \
+    | sed -e 's,[^ ]*fiskc ,,' -e 's,/usr/bin/ccache,,' -e 's/-Wa,--[0-9][0-9]//' -e 's,-fno-var-tracking-assignments,,' -e 's,--fisk-compiler=\([^ ]*\),\1,' -e 's, -c , -Wno-unknown-warning-option -Wno-unused-command-line-argument -c ,' \
           > $DIR/compile_commands.json
 
 CLANG_CHECK=
-if [ -x "`which clang-check`" ]; then
-    CLANG_CHECK=`which clang-check`
+if [ -x "$(which clang-check)" ]; then
+    CLANG_CHECK=$(which clang-check)
 else
-    for i in `seq 20 -1 3`; do
-        # echo "trying clang-check-$i `which clang-check-$i`"
-        if [ -x "`which clang-check-$i`" ]; then
-            CLANG_CHECK=`which clang-check-$i`
+    for i in $(seq 20 -1 3); do
+        # echo "trying clang-check-$i $(which clang-check-$i)"
+        if [ -x "$(which clang-check-$i)" ]; then
+            CLANG_CHECK=$(which clang-check-$i)
             break;
         fi
     done
 fi
 
-if [ ! -x "$CLANG_CHECK" ] && [ `uname` = "Darwin" ]; then
-   if [ -x `which brew` ]; then
-       CLANG_CHECK=`brew list llvm | sort -r | head -n1`
+if [ ! -x "$CLANG_CHECK" ] && [ $(uname) = "Darwin" ]; then
+   if [ -x $(which brew) ]; then
+       CLANG_CHECK=$(brew list llvm | sort -r | head -n1)
    fi
    if [ ! -x "$CLANG_CHECK" ] && [ -d /usr/local/Cellar ]; then
-       CLANG_CHECK=`find /usr/local/Cellar -name 'clang-check*' | sort -r | head -n1`
-       ### won't be right for clang >=10
+       VERSION=$(find /usr/local/Cellar -name 'clang-check*' | sed -e 's,.*clang-check\(-\)\?,,'  | sort -n -r | head -n1)
+       CLANG_CHECK=$(find /usr/local/Cellar -name 'clang-check-${VERSION}')
+       [ -z "$CLANG_CHECK" ] && CLANG_CHECK=$(find /usr/local/Cellar -name 'clang-check${VERSION}')
    fi
 fi
 
@@ -44,9 +45,8 @@ if [ -x "$CLANG_CHECK" ]; then
         set -- "$@" "."
     fi
     while [ -n "$1" ]; do
-        for FILE in `grep "^ *\"file\" *: *\"[^\"]*$1" $DIR/compile_commands.json | awk -F\" '{print $4}' | sort -u`; do
+        for FILE in $(grep "^ *\"file\" *: *\"[^\"]*$1" $DIR/compile_commands.json | awk -F\" '{print $4}' | sort -u); do
             echo "$CLANG_CHECK" "$FILE"
-            # echo
             "$CLANG_CHECK" -analyze "$FILE" -p $DIR
         done
         shift
