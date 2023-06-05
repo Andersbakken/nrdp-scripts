@@ -1967,7 +1967,7 @@ there's a region, all lines that region covers will be duplicated."
     (goto-char (point-min))
     (setq buffer-read-only t)
     (compilation-mode)
-    (let ((proc (start-process "CLANG_CHECK" (current-buffer) "clang-check.sh" filename)))
+    (let ((proc (start-process "CLANG_CHECK" (current-buffer) "clang-check.sh" (concat "/" filename))))
       (set-process-filter proc (lambda (process output)
                                  (with-current-buffer (process-buffer process)
                                    (save-excursion
