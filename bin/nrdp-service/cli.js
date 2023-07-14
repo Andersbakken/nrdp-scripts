@@ -146,7 +146,7 @@ function connect()
             }
             if(message)
                 console.error(message);
-            process.exit(!response.success);
+            process.exit(response.success ? 0 : 1);
         }
     });
 
