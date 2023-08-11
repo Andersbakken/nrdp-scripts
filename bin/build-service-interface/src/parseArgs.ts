@@ -1,41 +1,41 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseArgs = void 0;
-const findProject_1 = require("./findProject");
-const isBuild_1 = require("./isBuild");
-const loadFile_1 = require("./loadFile");
-const loadFromUrl_1 = require("./loadFromUrl");
-const usage_1 = require("./usage");
-const verbose_1 = require("./verbose");
-const assert_1 = __importDefault(require("assert"));
-function parseValueArg(long, arg) {
-    (0, assert_1.default)(long.length > 1);
+import { Options } from "./Options";
+import { findProject } from "./findProject";
+import { fromSha } from "./fromSha";
+import { isBuild } from "./isBuild";
+import { loadFile } from "./loadFile";
+import { loadFromUrl } from "./loadFromUrl";
+import { usage } from "./usage";
+import { verbose } from "./verbose";
+import assert from "assert";
+
+function parseValueArg(long: string, arg: string): string | undefined {
+    assert(long.length > 1);
     const short = long[0];
     for (const a of [long, short]) {
-        (0, assert_1.default)(!a.startsWith("-"));
+        assert(!a.startsWith("-"));
         const prefix = `--${a}=`;
         if (arg.length > prefix.length && arg.startsWith(prefix)) {
             return arg.substring(prefix.length);
         }
     }
+
     if (arg.length > 2 && arg.startsWith(`-${short}`)) {
         return arg.substring(2);
     }
     return undefined;
 }
-async function parseArgs() {
-    let env = "prod";
-    let builds = ["master"];
-    let project;
-    let output;
-    let showInfo = false;
-    let infos = [];
+
+export async function parseArgs(): Promise<Options> {
+    let env: string = "prod";
+    let builds: string[] = ["master"];
+    let project: string | undefined;
+    let output: string | undefined;
+    let showInfo: boolean = false;
+    let infos: string[] = [];
     let parentCount = 0;
-    let fileOrUrl;
-    (0, verbose_1.verbose)("Parsing args", process.argv);
+    let fileOrUrl: string | undefined;
+    verbose("Parsing args", process.argv);
+
     for (let i = 2; i < process.argv.length; ++i) {
         const arg = process.argv[i];
         switch (arg) {
@@ -53,24 +53,22 @@ async function parseArgs() {
             case "--file":
             case "-f":
                 fileOrUrl = process.argv[++i];
-                builds = (0, loadFile_1.loadFile)(fileOrUrl);
+                builds = loadFile(fileOrUrl);
                 break;
             case "--url":
             case "-u":
                 fileOrUrl = process.argv[++i];
-                builds = await (0, loadFromUrl_1.loadFromUrl)(fileOrUrl);
+                builds = await loadFromUrl(fileOrUrl);
                 break;
             case "--commit":
-            case "-c": {
-                const commit = process.argv[++i];
-                builds = [`(commit="${commit}")`, `(rev="${commit}")`];
+            case "-c":
+                builds = fromSha(process.argv[++i]);
                 break;
-            }
             case "--info":
             case "-i": {
                 showInfo = true;
                 const val = process.argv[i + 1];
-                if (!(0, isBuild_1.isBuild)(val)) {
+                if (!isBuild(val)) {
                     infos.push(...val.split(","));
                     ++i;
                 }
@@ -90,7 +88,7 @@ async function parseArgs() {
                 break;
             case "--help":
             case "-h":
-                console.log(usage_1.usage);
+                console.log(usage);
                 process.exit(0);
                 break;
             case "--download":
@@ -121,54 +119,63 @@ async function parseArgs() {
                     builds = [tmp];
                     break;
                 }
+
                 tmp = parseValueArg("env", arg);
                 if (tmp) {
                     env = tmp;
                     break;
                 }
+
                 tmp = parseValueArg("project", arg);
                 if (tmp) {
                     project = tmp;
                     break;
                 }
+
                 tmp = parseValueArg("output", arg);
                 if (tmp) {
                     output = tmp;
                     break;
                 }
+
                 tmp = parseValueArg("commit", arg);
                 if (tmp) {
-                    builds = [`(commit="${tmp}")`, `(rev="${tmp}")`];
+                    builds = fromSha(tmp);
                     break;
                 }
+
                 tmp = parseValueArg("file", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds = (0, loadFile_1.loadFile)(fileOrUrl);
+                    builds = loadFile(fileOrUrl);
                     break;
                 }
+
                 tmp = parseValueArg("url", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds = await (0, loadFromUrl_1.loadFromUrl)(fileOrUrl);
+                    builds = await loadFromUrl(fileOrUrl);
                     break;
                 }
+
                 tmp = parseValueArg("info", arg);
                 if (tmp) {
                     showInfo = true;
                     infos.push(...tmp.split(","));
                     break;
                 }
-                if ((0, isBuild_1.isBuild)(arg)) {
+
+                if (isBuild(arg)) {
                     builds = [arg];
                     break;
                 }
-                console.error(`${usage_1.usage}\nUnknown argument "${arg}"`);
+                console.error(`${usage}\nUnknown argument "${arg}"`);
                 process.exit(1);
                 break;
             }
         }
     }
+
     if (!showInfo && output === undefined) {
         showInfo = true;
     }
@@ -199,7 +206,8 @@ async function parseArgs() {
             });
         }
     }
-    const parsed = builds.length === 1 && (0, isBuild_1.isBuild)(String(builds[0]));
+
+    const parsed = builds.length === 1 && isBuild(String(builds[0]));
     if (parsed && parsed[1]) {
         while (parentCount < parsed[1].length) {
             if (parsed[1][parentCount] !== "~") {
@@ -210,33 +218,34 @@ async function parseArgs() {
         if (parentCount !== parsed[1].length) {
             parentCount += parseInt(parsed[1].substring(parentCount)) - 1;
         }
+
         if (/^[0-9]+$/.exec(parsed[0])) {
             builds = [String(parseInt(parsed[0]) - parentCount)];
             parentCount = 0;
-        }
-        else {
+        } else {
             builds = [parsed[0]];
         }
     }
+
     if (!project) {
         if (fileOrUrl) {
             if (fileOrUrl.includes("milo")) {
                 project = "milo";
-            }
-            else if (fileOrUrl.includes("poby")) {
+            } else if (fileOrUrl.includes("poby")) {
                 project = "poby";
-            }
-            else if (fileOrUrl.includes("bogart")) {
+            } else if (fileOrUrl.includes("bogart")) {
                 project = "bogart";
             }
         }
         if (!project) {
-            project = (0, findProject_1.findProject)();
+            project = findProject();
         }
     }
+
     if (output === "") {
         output = `${project}.${env}.js`;
     }
+
     return {
         builds,
         env,
@@ -245,7 +254,6 @@ async function parseArgs() {
         parentCount,
         project,
         showInfo,
-        verbose: verbose_1.verbose
+        verbose
     };
 }
-exports.parseArgs = parseArgs;

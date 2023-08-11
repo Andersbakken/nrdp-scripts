@@ -1,3 +1,4 @@
+import { fromSha } from "./fromSha";
 import { verbose } from "./verbose";
 
 export function parseFile(url: string, contents: string): string[] {
@@ -15,7 +16,7 @@ export function parseFile(url: string, contents: string): string[] {
         const end = contents.indexOf('"', start);
         const substr = contents.substring(start, end);
         verbose("Found build_sha in file", substr);
-        return [`(commit="${substr}")`, `(rev="${substr}")`];
+        return fromSha(substr);
     } catch (err: unknown) {
         console.error((err as Error).message);
         process.exit();

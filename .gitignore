@@ -5,3 +5,5 @@
 /.gdb/init_os_end.gdb
 /.gdb/init_os_start.gdb
 /bin/bsi
+/bin/build-service-interface/node_modules
+/bin/build-service-interface/dist/
