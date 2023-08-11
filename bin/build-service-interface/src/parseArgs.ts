@@ -7,6 +7,7 @@ import { loadFromUrl } from "./loadFromUrl";
 import { usage } from "./usage";
 import { verbose } from "./verbose";
 import assert from "assert";
+import fs from "fs";
 
 function parseValueArg(long: string, arg: string): string | undefined {
     assert(long.length > 1);
@@ -244,6 +245,12 @@ export async function parseArgs(): Promise<Options> {
 
     if (output === "") {
         output = `${project}.${env}.js`;
+        if (fs.existsSync(output)) {
+            let idx = 0;
+            do {
+                output = `${project}.${env}.js.${++idx}`;
+            } while (fs.existsSync(output));
+        }
     }
 
     return {
