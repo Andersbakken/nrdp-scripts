@@ -11,7 +11,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "eslint src/*.ts && tsc --target es2020 --module node16 src/index.ts --outDir ./dist && chmod +x ./dist/index.js && ln -sf ./dist/index.js ../bsi",
+        "build": "eslint src/*.ts && tsc --target es2020 --module node16 src/index.ts --outDir ./dist && chmod +x ./dist/index.js && ln -sf $PWD/dist/index.js ../bsi",
         "release": "nflx-release"
     },
     "devDependencies": {

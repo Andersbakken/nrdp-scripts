@@ -4,3 +4,4 @@
 /.gdb/init_host_start.gdb
 /.gdb/init_os_end.gdb
 /.gdb/init_os_start.gdb
+/bin/bsi
