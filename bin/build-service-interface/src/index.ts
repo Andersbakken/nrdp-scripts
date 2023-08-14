@@ -10,9 +10,15 @@ import path from "path";
 async function exec() {
     const options: Options = await parseArgs();
     const urls = options.builds.map((x) => `https://build.dta.netflix.com/nrdp/${options.project}/${x}`);
-    let infoResponse = await load(urls);
-    if (infoResponse.status !== 200) {
-        console.error(`Failed to fetch url(s) ${urls.join(", ")} (${infoResponse.status})`);
+    let infoResponse;
+    try {
+        infoResponse = await load(urls);
+        if (infoResponse.status !== 200) {
+            console.error(`Failed to fetch url(s) ${urls.join(", ")} (${infoResponse.status})`);
+            process.exit(1);
+        }
+    } catch (err: unknown) {
+        console.error(`Failed to fetch url(s) ${urls.join(", ")} (${(err as Error).message})`);
         process.exit(1);
     }
 
@@ -22,9 +28,14 @@ async function exec() {
         const url = `https://build.dta.netflix.com/nrdp/${options.project}/${
             parseInt(String(info.variantBuildNumber)) - options.parentCount
         }`;
-        infoResponse = await load(url);
-        if (infoResponse.status !== 200) {
-            console.error(`Failed to fetch ${url} (${infoResponse.status})`);
+        try {
+            infoResponse = await load(url);
+            if (infoResponse.status !== 200) {
+                console.error(`Failed to fetch ${url} (${infoResponse.status})`);
+                process.exit(1);
+            }
+        } catch (err: unknown) {
+            console.error(`Failed to fetch ${url} (${(err as Error).message})`);
             process.exit(1);
         }
 
@@ -65,8 +76,15 @@ async function exec() {
     }
 
     if (options.output) {
-        const response = await load(String(info.url));
-        const contents = await response.text();
+        let response;
+        let contents;
+        try {
+            response = await load(String(info.url));
+            contents = await response.text();
+        } catch (err: unknown) {
+            console.error("Failed to download", info.url, (err as Error).message);
+            process.exit(1);
+        }
         fs.writeFileSync(options.output, contents);
         if (!options.output.startsWith("/dev/std")) {
             if (!options.output.startsWith("/")) {

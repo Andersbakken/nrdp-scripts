@@ -39,36 +39,37 @@ export async function parseArgs(): Promise<Options> {
 
     for (let i = 2; i < process.argv.length; ++i) {
         const arg = process.argv[i];
+        assert(arg !== undefined);
         switch (arg) {
             case "--verbose":
             case "-v":
                 break;
             case "--build":
             case "-b":
-                builds = [process.argv[++i]];
+                builds = [String(process.argv[++i])];
                 break;
             case "--project":
             case "-p":
-                project = process.argv[++i];
+                project = String(process.argv[++i]);
                 break;
             case "--file":
             case "-f":
-                fileOrUrl = process.argv[++i];
+                fileOrUrl = String(process.argv[++i]);
                 builds = loadFile(fileOrUrl);
                 break;
             case "--url":
             case "-u":
-                fileOrUrl = process.argv[++i];
+                fileOrUrl = String(process.argv[++i]);
                 builds = await loadFromUrl(fileOrUrl);
                 break;
             case "--commit":
             case "-c":
-                builds = fromSha(process.argv[++i]);
+                builds = fromSha(String(process.argv[++i]));
                 break;
             case "--info":
             case "-i": {
                 showInfo = true;
-                const val = process.argv[i + 1];
+                const val = String(process.argv[i + 1]);
                 if (!isBuild(val)) {
                     infos.push(...val.split(","));
                     ++i;
@@ -100,7 +101,7 @@ export async function parseArgs(): Promise<Options> {
                 break;
             case "--env":
             case "-e":
-                env = process.argv[++i];
+                env = String(process.argv[++i]);
                 break;
             case "--prod":
             case "-P":

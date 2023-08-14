@@ -24,6 +24,10 @@ export async function load(url: string | string[]): Promise<LoadResponse> {
         throw lastError;
     }
 
-    const response = await got.get(url);
-    return new GotToResponse(url, response);
+    try {
+        const response = await got.get(url);
+        return new GotToResponse(url, response);
+    } catch (err: unknown) {
+        throw new Error(`Failed to fetch ${url} ${(err as Error).message}`);
+    }
 }
