@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# typical usage for nrdp repo: git remove-merged-branches -i /release/ -i origin/[0-9] -i /nova/ -i /partner/ -i pr/[0-9] -i /ninja/ -i /jenkins/ -i /sdk/
+# typical usage for nrdp repo: git remove-merged-branches -i /release/ -i origin/[0-9] -i /nova/ -i /partner/ -i pr/[0-9] -i /ninja/ -i /jenkins/ -i /sdk/ -i /main/
 
 VERBOSE=
 DRYRUN=
