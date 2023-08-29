@@ -95,9 +95,12 @@ else
             FORCE="--force-with-lease"
         elif [ "$1" = "-d" ]; then
             DELETE=yes
-        elif [ "$1" = "--branch" ]; then
+        elif [ "$1" = "--branch" ] || [ "$1" = "--src-branch" ]; then
             shift
             BRANCH="$1"
+        elif [ "$1" = "--tracking" ] || [ "$1" = "--dst-branch" ]; then
+            shift
+            TRACKING="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
             shift
             PR="$1"
@@ -169,7 +172,7 @@ else
     COMMON_SHA1=`git merge-base HEAD $COMMON_SHA1_BRANCH`
 
     if [ -z "$IN_CHANGES" ]; then
-        SUBMIT_ARGS=""
+        SUBMIT_ARGS="--tracking ${TRACKING}"
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
