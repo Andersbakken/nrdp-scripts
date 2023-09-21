@@ -5,7 +5,7 @@ include_sh() {
     if [ -f "$src" ]; then
         source "$src"
     else
-        for DIR in $(echo $SH_DIRECTORY | sed -e 's,:, ,'); do
+        for DIR in $(echo $SH_DIRECTORY | sed -e 's,:, ,g'); do
             sh="${DIR}/${src}"
             if [ -d "$sh" ]; then
                 sh="${DIR}/${src}/${src}"
