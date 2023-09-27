@@ -2,7 +2,7 @@
 
 include_sh() {
     src="$1"
-    if [ -f "$src" ]; then
+    if echo "$src" | grep -q "^/" && [ -f "$src" ]; then
         source "$src"
     else
         for DIR in $(echo $SH_DIRECTORY | sed -e 's,:, ,g'); do
