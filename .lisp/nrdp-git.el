@@ -281,7 +281,7 @@
   (unless dir
     (error "No git dir"))
   (unless default
-    (setq default (current-word)))
+    (setq default (concat "\\<" (current-word) "\\>")))
   (let* ((pipe)
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
