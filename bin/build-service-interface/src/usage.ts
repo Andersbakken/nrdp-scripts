@@ -5,7 +5,7 @@ export const usage = `bsi [...options] [build]
   [--project|-p] <project>                        Use this project instead of deducing it from the file system
   [--project=<project>|-p=<project>|-p<project>
 
-  [--build|-b] <build>                            Use this build (default master)
+  [--build|-b] <build>                            Use this build
   [--build=<build>|-b=<build>|-b<build>]
 
   [--commit|-c] <sha>                             Find build by git commit

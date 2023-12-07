@@ -28,7 +28,7 @@ function parseValueArg(long: string, arg: string): string | undefined {
 
 export async function parseArgs(): Promise<Options> {
     let env: string = "prod";
-    let builds: string[] = ["master"];
+    let builds: string[] = [""];
     let project: string | undefined;
     let output: string | undefined;
     let showInfo: boolean = false;
@@ -199,7 +199,7 @@ export async function parseArgs(): Promise<Options> {
                 "pointingRefs",
                 "rev",
                 "commit",
-                "variantBuildNumber",
+                "repoBuildNumber",
                 "url"
             ].forEach((x) => {
                 if (!infos.includes(x)) {

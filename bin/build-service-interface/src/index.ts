@@ -9,7 +9,12 @@ import path from "path";
 
 async function exec() {
     const options: Options = await parseArgs();
-    const urls = options.builds.map((x) => `https://build.dta.netflix.com/nrdp/${options.project}/${x}`);
+    const urls = options.builds.map((x) => {
+        if (isNaN(parseInt(x))) {
+            return `https://build.dta.netflix.com/nrdp/${options.project}/${x}`
+        }
+        return `https://build.dta.netflix.com/nrdp/${options.project}/(repoBuildNumber=${x})`
+    });
     let infoResponse;
     try {
         infoResponse = await load(urls);
@@ -24,9 +29,9 @@ async function exec() {
 
     let info: Record<string, unknown> = (await infoResponse.json()) as Record<string, unknown>;
     if (options.parentCount) {
-        assert(options.builds.length === 1 && options.builds[0] === "master");
+        assert(options.builds.length === 1 && options.builds[0] === "");
         const url = `https://build.dta.netflix.com/nrdp/${options.project}/${
-            parseInt(String(info.variantBuildNumber)) - options.parentCount
+            parseInt(String(info.repoBuildNumber)) - options.parentCount
         }`;
         try {
             infoResponse = await load(url);
@@ -41,7 +46,7 @@ async function exec() {
 
         info = (await infoResponse.json()) as Record<string, unknown>;
     }
-    info.url = `https://build.dta.netflix.com/nrdp/${options.project}/${info.variantBuildNumber}/dist/${options.project}.${options.env}.js`;
+    info.url = `https://build.dta.netflix.com/nrdp/${options.project}/(repoBuildNumber=${info.repoBuildNumber})/dist/${options.project}.${options.env}.js`;
     if (options.showInfo) {
         let longestKey = 0;
         console.error(
