@@ -28,7 +28,7 @@ function parseValueArg(long: string, arg: string): string | undefined {
 
 export async function parseArgs(): Promise<Options> {
     let env: string = "prod";
-    let builds: string[] = [""];
+    let builds: string[] = [];
     let project: string | undefined;
     let output: string | undefined;
     let showInfo: boolean = false;
@@ -46,7 +46,7 @@ export async function parseArgs(): Promise<Options> {
                 break;
             case "--build":
             case "-b":
-                builds = [String(process.argv[++i])];
+                builds.push(process.argv[++i] ?? "");
                 break;
             case "--project":
             case "-p":
@@ -55,16 +55,16 @@ export async function parseArgs(): Promise<Options> {
             case "--file":
             case "-f":
                 fileOrUrl = String(process.argv[++i]);
-                builds = loadFile(fileOrUrl);
+                builds.push(...loadFile(fileOrUrl));
                 break;
             case "--url":
             case "-u":
                 fileOrUrl = String(process.argv[++i]);
-                builds = await loadFromUrl(fileOrUrl);
+                builds.push(...await loadFromUrl(fileOrUrl));
                 break;
             case "--commit":
             case "-c":
-                builds = fromSha(String(process.argv[++i]));
+                builds.push(...fromSha(String(process.argv[++i])));
                 break;
             case "--info":
             case "-i": {
@@ -118,7 +118,7 @@ export async function parseArgs(): Promise<Options> {
             default: {
                 let tmp = parseValueArg("build", arg);
                 if (tmp) {
-                    builds = [tmp];
+                    builds.push(tmp);
                     break;
                 }
 
@@ -142,21 +142,21 @@ export async function parseArgs(): Promise<Options> {
 
                 tmp = parseValueArg("commit", arg);
                 if (tmp) {
-                    builds = fromSha(tmp);
+                    builds.push(...fromSha(tmp));
                     break;
                 }
 
                 tmp = parseValueArg("file", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds = loadFile(fileOrUrl);
+                    builds.push(...loadFile(fileOrUrl));
                     break;
                 }
 
                 tmp = parseValueArg("url", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds = await loadFromUrl(fileOrUrl);
+                    builds.push(...await loadFromUrl(fileOrUrl));
                     break;
                 }
 
@@ -168,7 +168,7 @@ export async function parseArgs(): Promise<Options> {
                 }
 
                 if (isBuild(arg)) {
-                    builds = [arg];
+                    builds.push(arg);
                     break;
                 }
                 console.error(`${usage}\nUnknown argument "${arg}"`);
@@ -176,6 +176,9 @@ export async function parseArgs(): Promise<Options> {
                 break;
             }
         }
+    }
+    if (!builds.length) {
+        builds.push("");
     }
 
     if (!showInfo && output === undefined) {
