@@ -1,13 +1,13 @@
 import { Build } from "./Build";
+import { BuildResult } from "./BuildResult";
 import { BuildType } from "./BuildType";
-import { LoadResponse } from "./LoadResponse";
 import { Options } from "./Options";
 import { loadByBranch } from "./loadByBranch";
 import { loadByBuildNumber } from "./loadByBuildNumber";
 import { loadBySha } from "./loadBySha";
 
-export async function gatherResponses(options: Options): Promise<LoadResponse[]> {
-    const promises: Promise<LoadResponse>[] = options.builds.map((x: Build) => {
+export function gatherResponses(options: Options): Promise<BuildResult[]> {
+    const promises: Promise<BuildResult>[] = options.builds.map((x: Build) => {
         switch (x.type) {
             case BuildType.BuildNumber:
                 return loadByBuildNumber(options, x);

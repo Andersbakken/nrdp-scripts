@@ -1,12 +1,14 @@
 import { Build } from "./Build";
-import { LoadResponse } from "./LoadResponse";
+import { BuildResult } from "./BuildResult";
 import { Options } from "./Options";
 import { load } from "./load";
 import assert from "assert";
 
-export function loadByBuildNumber(options: Options, build: Build): Promise<LoadResponse> {
+export async function loadByBuildNumber(options: Options, build: Build): Promise<BuildResult> {
     assert(typeof build.value === "number");
-    return load(
+    const response = await load(
         `https://build.dta.netflix.com/nrdp/${options.project}/(repoBuildNumber=${build.value - (build.parent ?? 0)})`
     );
+    const info = (await response.json()) as Record<string, unknown>;
+    return { response, info };
 }
