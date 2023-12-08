@@ -1,9 +1,12 @@
+import { Build } from "./Build";
+import { BuildType } from "./BuildType";
 import { Options } from "./Options";
 import { findProject } from "./findProject";
 import { fromSha } from "./fromSha";
 import { isBuild } from "./isBuild";
 import { loadFile } from "./loadFile";
 import { loadFromUrl } from "./loadFromUrl";
+import { parseParent } from "./parseParent";
 import { usage } from "./usage";
 import { verbose } from "./verbose";
 import assert from "assert";
@@ -26,14 +29,35 @@ function parseValueArg(long: string, arg: string): string | undefined {
     return undefined;
 }
 
+function createBuild(val: string): Build {
+    const tildeIndex = val.indexOf("~");
+    let value: string;
+    let parent: undefined | number;
+    if (tildeIndex !== -1) {
+        value = val.substring(0, tildeIndex);
+        parent = parseParent(val.substring(tildeIndex));
+    } else {
+        value = val;
+    }
+    const int = parseInt(value);
+    if (!isNaN(int)) {
+        return { type: BuildType.BuildNumber, value: int, parent };
+    }
+
+    if (!value || value.startsWith("master") || value.startsWith("release")) {
+        return { type: BuildType.Branch, value, parent };
+    }
+
+    return { type: BuildType.Sha, value, parent };
+}
+
 export async function parseArgs(): Promise<Options> {
     let env: string = "prod";
-    let builds: string[] = [];
+    const builds: Build[] = [];
     let project: string | undefined;
     let output: string | undefined;
     let showInfo: boolean = false;
     let infos: string[] = [];
-    let parentCount = 0;
     let fileOrUrl: string | undefined;
     verbose("Parsing args", process.argv);
 
@@ -46,7 +70,7 @@ export async function parseArgs(): Promise<Options> {
                 break;
             case "--build":
             case "-b":
-                builds.push(process.argv[++i] ?? "");
+                builds.push(createBuild(process.argv[++i] ?? ""));
                 break;
             case "--project":
             case "-p":
@@ -55,16 +79,16 @@ export async function parseArgs(): Promise<Options> {
             case "--file":
             case "-f":
                 fileOrUrl = String(process.argv[++i]);
-                builds.push(...loadFile(fileOrUrl));
+                builds.push(loadFile(fileOrUrl));
                 break;
             case "--url":
             case "-u":
                 fileOrUrl = String(process.argv[++i]);
-                builds.push(...await loadFromUrl(fileOrUrl));
+                builds.push(await loadFromUrl(fileOrUrl));
                 break;
             case "--commit":
             case "-c":
-                builds.push(...fromSha(String(process.argv[++i])));
+                builds.push(fromSha(String(process.argv[++i])));
                 break;
             case "--info":
             case "-i": {
@@ -118,7 +142,7 @@ export async function parseArgs(): Promise<Options> {
             default: {
                 let tmp = parseValueArg("build", arg);
                 if (tmp) {
-                    builds.push(tmp);
+                    builds.push(createBuild(tmp));
                     break;
                 }
 
@@ -142,21 +166,21 @@ export async function parseArgs(): Promise<Options> {
 
                 tmp = parseValueArg("commit", arg);
                 if (tmp) {
-                    builds.push(...fromSha(tmp));
+                    builds.push(fromSha(tmp));
                     break;
                 }
 
                 tmp = parseValueArg("file", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds.push(...loadFile(fileOrUrl));
+                    builds.push(loadFile(fileOrUrl));
                     break;
                 }
 
                 tmp = parseValueArg("url", arg);
                 if (tmp) {
                     fileOrUrl = tmp;
-                    builds.push(...await loadFromUrl(fileOrUrl));
+                    builds.push(await loadFromUrl(fileOrUrl));
                     break;
                 }
 
@@ -168,7 +192,7 @@ export async function parseArgs(): Promise<Options> {
                 }
 
                 if (isBuild(arg)) {
-                    builds.push(arg);
+                    builds.push(createBuild(arg));
                     break;
                 }
                 console.error(`${usage}\nUnknown argument "${arg}"`);
@@ -178,7 +202,7 @@ export async function parseArgs(): Promise<Options> {
         }
     }
     if (!builds.length) {
-        builds.push("");
+        builds.push({ type: BuildType.Branch, value: "master" });
     }
 
     if (!showInfo && output === undefined) {
@@ -212,26 +236,6 @@ export async function parseArgs(): Promise<Options> {
         }
     }
 
-    const parsed = builds.length === 1 && isBuild(String(builds[0]));
-    if (parsed && parsed[1]) {
-        while (parentCount < parsed[1].length) {
-            if (parsed[1][parentCount] !== "~") {
-                break;
-            }
-            ++parentCount;
-        }
-        if (parentCount !== parsed[1].length) {
-            parentCount += parseInt(parsed[1].substring(parentCount)) - 1;
-        }
-
-        if (/^[0-9]+$/.exec(parsed[0])) {
-            builds = [String(parseInt(parsed[0]) - parentCount)];
-            parentCount = 0;
-        } else {
-            builds = [parsed[0]];
-        }
-    }
-
     if (!project) {
         if (fileOrUrl) {
             if (fileOrUrl.includes("milo")) {
@@ -262,7 +266,6 @@ export async function parseArgs(): Promise<Options> {
         env,
         infos,
         output,
-        parentCount,
         project,
         showInfo,
         verbose

@@ -1,8 +1,10 @@
+import { Build } from "./Build";
 import { load } from "./load";
 import { parseFile } from "./parseFile";
 import { verbose } from "./verbose";
+import assert from "assert";
 
-export async function loadFromUrl(url: string): Promise<string[]> {
+export async function loadFromUrl(url: string): Promise<Build> {
     try {
         verbose("loadFromUrl", url);
         const response = await load(url);
@@ -13,8 +15,7 @@ export async function loadFromUrl(url: string): Promise<string[]> {
         const text = await response.text();
         return parseFile(url, text);
     } catch (err: unknown) {
-        console.error("Failed to loadFromUrl", (err as Error).message);
-        process.exit(1);
-        return Promise.resolve([]);
+        assert(err instanceof Error);
+        throw new Error(`Failed to loadFromUrl ${url} ${err.message}`);
     }
 }

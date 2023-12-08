@@ -1,9 +1,10 @@
+import { Build } from "./Build";
+
 export interface Options {
-    builds: string[];
+    builds: Build[];
     env: string;
     infos: string[];
     output: string | undefined;
-    parentCount: number;
     project: string;
     showInfo: boolean;
     verbose: (...args: unknown[]) => void;

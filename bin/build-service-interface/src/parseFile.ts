@@ -1,7 +1,9 @@
+import { Build } from "./Build";
 import { fromSha } from "./fromSha";
 import { verbose } from "./verbose";
+import assert from "assert";
 
-export function parseFile(url: string, contents: string): string[] {
+export function parseFile(url: string, contents: string): Build {
     try {
         let start = contents.indexOf('build_sha="');
         if (start === -1) {
@@ -23,8 +25,7 @@ export function parseFile(url: string, contents: string): string[] {
         verbose("Found build_sha in file", substr);
         return fromSha(substr);
     } catch (err: unknown) {
-        console.error((err as Error).message);
-        process.exit();
-        return [];
+        assert(err instanceof Error);
+        throw new Error(`Failed to parse file ${url} ${err.message}`);
     }
 }
