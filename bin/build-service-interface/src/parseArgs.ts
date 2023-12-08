@@ -39,9 +39,9 @@ function createBuild(val: string): Build {
     } else {
         value = val;
     }
-    const int = parseInt(value);
-    if (!isNaN(int)) {
-        return { type: BuildType.BuildNumber, value: int, parent };
+
+    if (/^[0-9]+$/.exec(value)) {
+        return { type: BuildType.BuildNumber, value: parseInt(value), parent };
     }
 
     if (!value || value.startsWith("master") || value.startsWith("release")) {
