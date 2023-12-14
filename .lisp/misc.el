@@ -919,11 +919,11 @@ to case differences."
                     ((bound-and-true-p git-gutter-mode) 'git-gutter-mode)
                     ((bound-and-true-p git-gutter+-mode) 'git-gutter+-mode)
                     (t nil)))
-        (hadlinum (bound-and-true-p linum-mode)))
+        (hadlinum (bound-and-true-p display-line-numbers-mode)))
     (unwind-protect
         (progn
           (unless (or nolinum hadlinum)
-            (linum-mode 1))
+            (display-line-numbers-mode 1))
           (when mode
             (funcall mode 0))
 
@@ -937,7 +937,7 @@ to case differences."
                    (forward-char (1- (string-to-number (match-string 2 res)))))
                   (t (--misc-goto-line-helper (string-to-number res))))))
       (unless (or nolinum hadlinum)
-        (linum-mode -1))
+        (display-line-numbers-mode -1))
       (when mode
         (funcall mode 1)))))
 
