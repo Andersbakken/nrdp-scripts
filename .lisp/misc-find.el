@@ -1,10 +1,11 @@
 (require 'thingatpt)
-(require 'typescript-mode)
 (require 'find-file-in-repository)
 (require 'tide)
 (require 'ido)
 (require 'nrdp-misc "misc")
 (require 'simple)
+(require 'typescript-mode nil t)
+(require 'typescript-ts-mode nil t)
 (defvar misc-find-symbol-has-slime nil)
 (defvar misc-find-symbol-has-rtags nil)
 (setq misc-find-symbol-has-slime (require 'elisp-slime-nav nil t))
@@ -58,7 +59,7 @@
          (call-interactively 'rtags-find-symbol-at-point))
         ((eq major-mode 'emacs-lisp-mode)
          (call-interactively (if misc-find-symbol-has-slime 'elisp-slime-nav-find-elisp-thing-at-point 'find-function)))
-        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+        ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (call-interactively 'tide-jump-to-definition))
         (t
          (let ((cur (thing-at-point 'symbol)))
@@ -70,7 +71,7 @@
   (interactive "P")
   (cond ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function))
-        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+        ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (call-interactively 'tide-nav))
         ((and misc-find-symbol-has-rtags (rtags-has-filemanager))
          (call-interactively 'rtags-find-symbol))
@@ -83,7 +84,7 @@
          (call-interactively 'rtags-find-references-at-point))
         ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function)) ;; not sure what else to do here
-        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+        ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (call-interactively 'tide-references)
          (call-interactively '--misc-grep-tide-next-prev-error t nil))
         (t
@@ -108,7 +109,7 @@
   (interactive)
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-next-match))
-        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+        ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (--misc-grep-tide-next-prev-error t t))
         (t (call-interactively (if misc-find-use-misc-next-previous-error 'misc-next-error 'next-error)))))
 
@@ -116,7 +117,7 @@
   (interactive)
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-previous-match))
-        ((and (member 'tide-mode minor-mode-list) (eq major-mode 'typescript-mode))
+        ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (--misc-grep-tide-next-prev-error nil t))
         (t (call-interactively (if misc-find-use-misc-next-previous-error 'misc-previous-error 'previous-error)))))
 

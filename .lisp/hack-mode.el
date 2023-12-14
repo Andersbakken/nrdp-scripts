@@ -2,6 +2,9 @@
   (require 'cl))
 (require 'ido)
 (require 'nrdp-misc "misc")
+(require 'typescript-mode nil t)
+(require 'typescript-ts-mode nil t)
+(require 'c++-ts-mode nil t)
 
 (defconst hack-mode-templatize-nth 1)
 (defconst hack-mode-c-mode-nth 2)
@@ -153,7 +156,7 @@
                               "\"")))))
              (insert (format "nrdp.l.error(%s%s%s" quote (hack-mode-printf-escape-quotes msg quote) quote)))
            (setq result (point)))
-          ((eq major-mode 'typescript-mode)
+          ((or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode))
            (insert "nrdp.l.error(`" (hack-mode-printf-escape-quotes msg "`") "`")
            (setq result (point)))
           (t
@@ -174,6 +177,16 @@
   ;; make new font for rest of qt keywords
   (make-face 'netflix-keywords-face)
   (set-face-foreground 'netflix-keywords-face "BlueViolet")
+  (when (fboundp 'c++-ts-mode)
+    (font-lock-add-keywords 'c++-ts-mode
+                            '(("\\<NF_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
+    (font-lock-add-keywords 'c++-ts-mode
+                            '(("\\<NRDP_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
+    (font-lock-add-keywords 'c++-ts-mode
+                            '(("\\<DEFINE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
+    (font-lock-add-keywords 'c++-ts-mode
+                            '(("\\<DECLARE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face))))
+
   (font-lock-add-keywords 'c++-mode
                           '(("\\<NF_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   (font-lock-add-keywords 'c++-mode
@@ -181,8 +194,8 @@
   (font-lock-add-keywords 'c++-mode
                           '(("\\<DEFINE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
   (font-lock-add-keywords 'c++-mode
-                          '(("\\<DECLARE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face)))
-  )
+                          '(("\\<DECLARE_[A-Z][_A-Za-z0-9]*" . 'netflix-keywords-face))))
+
 (defun netflix-find-file-hook ()
   (setq
    cmake-tab-width 4
