@@ -7,3 +7,4 @@
 /bin/bsi
 /bin/build-service-interface/node_modules
 /bin/build-service-interface/dist/
+/.lldb/lldb-widehistory
