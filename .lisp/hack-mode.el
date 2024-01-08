@@ -292,8 +292,8 @@
       (setq hack-mode (block stop-guessing
                         (dolist (mode hack-modes)
                           (cond
-                           ((functionp (car mode)) (if (funcall (car mode)) (return-from stop-guessing (nth 1 mode))))
-                           ((stringp (car mode)) (if (and (buffer-file-name) (string-match (car mode) (buffer-file-name))) (return-from stop-guessing (nth 1 mode))))
+                           ((functionp (car mode)) (if (funcall (car mode)) (cl-return-from stop-guessing (nth 1 mode))))
+                           ((stringp (car mode)) (if (and (buffer-file-name) (string-match (car mode) (buffer-file-name))) (cl-return-from stop-guessing (nth 1 mode))))
                            (t nil)))))
       (unless hack-mode (hack-mode-set "Default")))))
 (hack-mode-set "Default")

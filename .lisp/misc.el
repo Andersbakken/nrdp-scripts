@@ -586,14 +586,14 @@ to case differences."
       (or (dolist (candidate candidates)
             (when (file-readable-p candidate)
               ;; (message "Found in simple search: %s" candidate)
-              (return candidate)))
+              (cl-return candidate)))
           (and (rtags-has-filemanager)
                (dolist (candidate candidates)
                  (with-temp-buffer
                    (rtags-call-rc "-K" "-A" "-P" candidate)
                    (when (eq (count-lines (point-min) (point-max)) 1)
                      ;; (message "Found in rtags search: %s" candidate)
-                     (return (buffer-substring (point-min) (- (point-max) 1)))))))))))
+                     (cl-return (buffer-substring (point-min) (- (point-max) 1)))))))))))
 
 (defun switch-cpp-h ()
   "Switch to the corresponding .cpp, .C, .cc or .h file."
@@ -1071,7 +1071,7 @@ to case differences."
   (let ((args command-line-args)
         (ret nil))
     (while args
-      (let ((arg (downcase (car args)))(value nil))
+      (let ((arg (downcase (car args))) (value nil))
         (setq args (cdr args))
         (cond
          ((equal arg (concat "-" s))
