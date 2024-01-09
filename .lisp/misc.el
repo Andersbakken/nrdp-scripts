@@ -4,6 +4,8 @@
 (require 'thingatpt)
 (require 'bytecomp)
 (require 's)
+(require 'cl-lib)
+(require 'cl)
 
 (defun --misc-find-deepest-ancestor-directory (file)
   (let ((ret)
@@ -586,14 +588,14 @@ to case differences."
       (or (dolist (candidate candidates)
             (when (file-readable-p candidate)
               ;; (message "Found in simple search: %s" candidate)
-              (cl-return candidate)))
+              (return candidate)))
           (and (rtags-has-filemanager)
                (dolist (candidate candidates)
                  (with-temp-buffer
                    (rtags-call-rc "-K" "-A" "-P" candidate)
                    (when (eq (count-lines (point-min) (point-max)) 1)
                      ;; (message "Found in rtags search: %s" candidate)
-                     (cl-return (buffer-substring (point-min) (- (point-max) 1)))))))))))
+                     (return (buffer-substring (point-min) (- (point-max) 1)))))))))))
 
 (defun switch-cpp-h ()
   "Switch to the corresponding .cpp, .C, .cc or .h file."
