@@ -30,6 +30,10 @@ function filter(idx, line) {
         return;
     }
 
+    if (line.startsWith("[!] (plugin rpt2) ")) {
+        line = line.substring(18);
+    }
+
     let match = /^([A-Za-z0-9_./]*.ts:[0-9]+:[0-9]+:? *)?error: (.*)/.exec(line);
     // console.log("line", line, match);
     if (match) {
