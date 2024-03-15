@@ -45,6 +45,14 @@ function filter(idx, line) {
                 str = ":" + str;
             line = line.substr(0, index) + str + line.substr(index);
         }
+    } else if (line.includes(": error:")) {
+        // error without line/col it messes up emacs, AFAICT these get
+        // printed later in a way that has more context
+        // example is something like this:
+        // ')': error: expected. (104:42)
+        // later on we get this:
+        // src/SSLManager.ts:104:42: error: - error TS1005: ')' expected.
+        return;
     } else if (/^\/[A-Za-z0-9_\/\.-]*\.ts$/.exec(line)) {
         lastFile = line;
         return;
