@@ -65,7 +65,7 @@ if [ "$MODE" = "create" ]; then
         echo PULL_REQUEST_CHECK failed, unset and rerun to force
         exit 1
     fi
-    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.create --description "${PR_DESCRIPTION}" --reviewers "${PR_REVIEWERS}" --from "${PR_FROM_BRANCH}" --to "${PR_TO_BRANCH}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
+    $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --username "${PULL_REQUEST_USER}" --description "${PR_DESCRIPTION}" --reviewers "${PR_REVIEWERS}" --from "${PR_FROM_BRANCH}" --to "${PR_TO_BRANCH}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}"
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
 elif [ "$MODE" = "fetch" ]; then
@@ -81,7 +81,7 @@ elif [ "$MODE" = "branch" ]; then
 elif [ "$MODE" = "issues" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     ISSUES_FILE="${PR_DIR}/pr-issues"
-    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --mode stash.pr.issues --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --pullRequest "$1" >"${ISSUES_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.issues --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --pullRequest "$1" >"${ISSUES_FILE}"
     ISSUES_COUNT=$(jq -r '. | length' "${ISSUES_FILE}")
     for ((i=0; i<$ISSUES_COUNT; i++ )); do
         ISSUE=$(jq -r ".[$i].key" "$ISSUES_FILE")
@@ -111,7 +111,7 @@ elif [ "$MODE" = "list" ]; then
 
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
     PULLREQUESTS_FILE="${PR_DIR}/pullrequests"
-    $SCRIPT_DIR/nrdp-service/cli.js --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --mode stash.pr.list --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
+    $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.list --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_PROJECT}" --state "$PR_STATE" >"${PULLREQUESTS_FILE}"
     PR_COUNT=$(jq '.size' "${PULLREQUESTS_FILE}")
     for ((p=0; p<$PR_COUNT; p++ )); do
         jq ".values[$p]" "$PULLREQUESTS_FILE" >"${PR_DIR}/pullrequest"
@@ -161,7 +161,7 @@ elif [ "$MODE" = "submit" ]; then
         TRACKING=`git config --local submit.tracking`
         [ -z "$TRACKING" ] && TRACKING=`git tracking`
         PUSH_ORIGIN="$(echo $TRACKING | cut -d/ -f1)"
-        TRACKING_REMOTE_BRANCH="$(echo $TRACKING | cut -d/ -f2)"
+        TRACKING_REMOTE_BRANCH="$(echo $TRACKING | cut -d/ -f2-)"
         PUSH_BRANCH="${PULL_REQUEST_PREFIX}/${AUTO}${TRACKING_REMOTE_BRANCH}/${PR_NAME}"
         [ "$FORCE" = "1" ] && git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
     else
