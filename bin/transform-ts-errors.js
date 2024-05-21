@@ -45,7 +45,7 @@ function filter(idx, line) {
                 str = ":" + str;
             line = line.substr(0, index) + str + line.substr(index);
         }
-    } else if (line.includes(": error:")) {
+    } else if (line.includes("[^0-9]: error:")) {
         // error without line/col it messes up emacs, AFAICT these get
         // printed later in a way that has more context
         // example is something like this:
