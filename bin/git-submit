@@ -76,7 +76,9 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
     done
 else
     PR=""
-    BRANCH=""
+    SRC_BRANCH=""
+    DST_BRANCH="$TRACKING"
+    ALL=no
     IN_CHANGES=
     DELETE=no
     FORCE=
@@ -97,10 +99,13 @@ else
             DELETE=yes
         elif [ "$1" = "--branch" ] || [ "$1" = "--src-branch" ]; then
             shift
-            BRANCH="$1"
-        elif [ "$1" = "--tracking" ] || [ "$1" = "--dst-branch" ]; then
+            SRC_BRANCH="$1"
+        elif [ "$1" = "--tracking" ]; then
             shift
             TRACKING="$1"
+        elif [ "$1" = "--dst-branch" ]; then
+            shift
+            DST_BRANCH="$1"
         elif [ "$1" = "--pr" ] || [ "$1" = "--pull-request" ]; then
             shift
             PR="$1"
@@ -115,9 +120,7 @@ else
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
         elif [ "$1" = "-a" ]; then
-            for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
-                IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
-            done
+            ALL=yes
         elif [ "$1" = "--" ]; then
             shift
             IN_CHANGES="$IN_CHANGES $@"
@@ -130,6 +133,11 @@ else
         fi
         shift
     done
+    if [ "$ALL" = "yes" ]; then
+        for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
+            IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
+        done
+    fi
     if [ -n "$PR" ]; then
         PR_ARGS=""
         [ -n "$PR" ] && PR_ARGS="$PR_ARGS --name $PR"
@@ -148,26 +156,20 @@ else
         fi
         return 1
     }
-    if [ "$SYNC_CHECK" = "yes" ] && [ -n "$BRANCH" ] && ! git sync --check "$BRANCH" >/dev/null 2>&1; then
-        echo "You need to sync first! [$BRANCH]" >&2
+    if [ "$SYNC_CHECK" = "yes" ] && [ -n "$SRC_BRANCH" ] && ! git sync --check "$SRC_BRANCH" >/dev/null 2>&1; then
+        echo "You need to sync first! [$SRC_BRANCH]" >&2
         exit 1
     fi
 
-    if [ -z "$BRANCH" ]; then
-        BRANCH="$TRACKING"
+    if [ -z "$SRC_BRANCH" ]; then
+        SRC_BRANCH="$DST_BRANCH"
     fi
-    if [ -z "$BRANCH" ]; then
+    if [ -z "$SRC_BRANCH" ]; then
         echo "No branch to push to!"
         exit 1
     fi
-    PUSH_ORIGIN="."
-    PUSH_BRANCH="$BRANCH"
-    if echo "$PUSH_BRANCH" | grep -q "/"; then
-        PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
-        PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
-    fi
 
-    COMMON_SHA1_BRANCH="$BRANCH"
+    COMMON_SHA1_BRANCH="$SRC_BRANCH"
     git rev-parse "$COMMON_SHA1_BRANCH" >/dev/null 2>&1 || COMMON_SHA1_BRANCH="$TRACKING"
     COMMON_SHA1=`git merge-base HEAD $COMMON_SHA1_BRANCH`
 
@@ -176,10 +178,11 @@ else
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
         [ "$DELETE" = "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS -d"
-        [ -n "$BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --branch ${BRANCH}"
+        [ -n "$SRC_BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --src-branch ${SRC_BRANCH}"
+        [ -n "$DST_BRANCH" ] && SUBMIT_ARGS="$SUBMIT_ARGS --dst-branch ${DST_BRANCH}"
         [ "$SYNC_CHECK" != "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --no-sync-check"
         [ "$IGNORE_CHECK" != "yes" ] && SUBMIT_ARGS="$SUBMIT_ARGS --no-ignore-check"
-        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --filter "$BRANCH" --reverse --command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
+        which git-choose-show-change >/dev/null 2>&1 && git-choose-show-change --filter "$SRC_BRANCH" --reverse --command "submit ${SUBMIT_ARGS}" "${TRACKING}..HEAD"
         exit 0
     else
         RESOLVED_CHANGES=""
@@ -192,9 +195,9 @@ else
 
     AUTOSTASHED=0
     autostash && AUTOSTASHED=$((AUTOSTASHED+1))
+    RESET_HEAD=`git rev-parse HEAD`
 
     CHANGES=""
-    RESET_HEAD=`git rev-parse HEAD`
     for change in $IN_CHANGES; do
         SHA1=`git rev-parse --short "$change"`
         if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
@@ -204,8 +207,8 @@ else
             echo "$SHA1 is marked to ignore!"
             continue
         fi
-        if git rev-parse "$BRANCH" >/dev/null 2>&1; then
-            FILTER_CHERRY=$(git cherry "$BRANCH" "${SHA1}" "${SHA1}~" 2>/dev/null)
+        if git rev-parse "$SRC_BRANCH" >/dev/null 2>&1; then
+            FILTER_CHERRY=$(git cherry "$SRC_BRANCH" "${SHA1}" "${SHA1}~" 2>/dev/null)
             if [ -z "${FILTER_CHERRY}" ] || echo "$FILTER_CHERRY" | grep -q '^-'; then
                 echo "Filtered: ${SHA1}" >&2
                 continue
@@ -215,8 +218,8 @@ else
     done
 
     export SUBMIT_CHANGES="$CHANGES"
-    if [ -z "$FORCE" ] && git rev-parse "$BRANCH" >/dev/null 2>&1; then
-        for h in $(git log --reverse --pretty='%h' "${COMMON_SHA1}..${BRANCH}"); do
+    if [ -z "$FORCE" ] && git rev-parse "$SRC_BRANCH" >/dev/null 2>&1; then
+        for h in $(git log --reverse --pretty='%h' "${COMMON_SHA1}..${SRC_BRANCH}"); do
             export SUBMIT_CHANGES="$h $SUBMIT_CHANGES"
         done
     fi
@@ -233,13 +236,20 @@ else
         echo "Nothing to push"
         DELETE="no"
     else
+        PUSH_ORIGIN="."
+        PUSH_BRANCH="$DST_BRANCH"
+        [ -z "$PUSH_BRANCH" ] && PUSH_BRANCH="$SRC_BRANCH"
+        if echo "$PUSH_BRANCH" | grep -q "/"; then
+            PUSH_ORIGIN=`echo $PUSH_BRANCH | cut -d/ -f1`
+            PUSH_BRANCH=`echo $PUSH_BRANCH | cut -d/ -f2-`
+        fi
         PUSH_ARGS="$PUSH_ORIGIN $NEW_SHA1:refs/heads/$PUSH_BRANCH"
         [ -n "$FORCE" ] && PUSH_ARGS="$FORCE ${PUSH_ARGS}"
         echo "Push: git push $PUSH_ARGS"
 
-        if [ "$PUSH" = "yes" ] && run_hook "pre-submit" "$NEW_SHA1" "$BRANCH"; then
+        if [ "$PUSH" = "yes" ] && run_hook "pre-submit" "$NEW_SHA1" "$SRC_BRANCH"; then
             if git push ${PUSH_ARGS}; then
-                run_hook "post-submit" "$COMMON_SHA1" "$BRANCH" "$TRACKING"
+                run_hook "post-submit" "$COMMON_SHA1" "$SRC_BRANCH" "$TRACKING"
             else
                 DELETE="no"
             fi
