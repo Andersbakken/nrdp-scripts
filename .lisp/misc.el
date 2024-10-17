@@ -478,6 +478,7 @@ to case differences."
             (message "It's already there!")
             (switch-to-buffer (cdr old))
             (goto-char (car old)))
+        (while (re-search-backward "^}.*//.*namespace" nil t))
         (unless (looking-back "\n\n" (point-at-bol))
           (insert "\n"))
         (insert insertion-string "\n{\n}\n")
