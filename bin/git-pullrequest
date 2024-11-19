@@ -87,7 +87,7 @@ if [ "$MODE" = "create" ]; then
         PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
         cat >>"${PR_DIR}/in.json" <<EOF
 {
-            "title": "${PR_DESCRIPTION}",
+            "title": "$(echo ${PR_DESCRIPTION} | sed -e ':a;N;$!ba;s/\n/\\n/g')",
             "head": "${PR_FROM_BRANCH}",
             "base": "${PR_TO_BRANCH}"
 }
@@ -97,11 +97,13 @@ EOF
         PR_NODE=""
         if [ "$PR" != "null" ]; then
             metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls/${PR}" >"${PR_DIR}/pr.json"
-            PR_NODE=$(jq -r '.node_id' ${PR_DIR}/pr.json)
-        elif grep -q "already exists" ${pr_dir}/create.json; then
-            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${PR_TO_BRANCH}&head=${PR_FROM_BRANCH}" >"${tmpdir}/response"
-            PR=$(jq -r '.[0].number' ${PR_DIR}/pr.json)
-            [ "$PR" != "null" ] && PR_NODE=$(jq -r '.[0].node_id' ${PR_DIR}/pr.json)
+            PR_NODE=$(jq -r '.node_id' "${PR_DIR}/pr.json")
+        elif grep -q "already exists" "${PR_DIR}/create.json"; then
+            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${PR_TO_BRANCH}&head=${PR_FROM_BRANCH}" >"${PR_DIR}/pr.json"
+            PR=$(jq -r '.[0].number' "${PR_DIR}/pr.json")
+            [ "$PR" != "null" ] && PR_NODE=$(jq -r '.[0].node_id' "${PR_DIR}/pr.json")
+        else
+            cat "${PR_DIR}/create.json"
         fi
         if [ -n "$PR_NODE" ]; then
             echo "PullRequest: https://git.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
