@@ -87,7 +87,8 @@ if [ "$MODE" = "create" ]; then
         PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
         cat >>"${PR_DIR}/in.json" <<EOF
 {
-            "title": "$(echo ${PR_DESCRIPTION} | sed -e ':a;N;$!ba;s/\n/\\n/g')",
+            "title": "${PULL_REQUEST_REPO}: ${PR_FROM_BRANCH}->${PR_TO_BRANCH}",
+            "body": "$(echo ${PR_DESCRIPTION} | sed -e ':a;N;$!ba;s/\n/\\n/g')",
             "head": "${PR_FROM_BRANCH}",
             "base": "${PR_TO_BRANCH}"
 }
