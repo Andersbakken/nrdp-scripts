@@ -28,6 +28,7 @@ fi
 
 PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
 [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
+PULL_REQUEST_AUTO_PREFIX="auto/"
 PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
 [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
 PULL_REQUEST_REPO=`git config pullrequest.repo`
@@ -83,8 +84,33 @@ if [ "$MODE" = "create" ]; then
     if [ "$PULL_SCM" = "stash" ]; then
         $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --username "${PULL_REQUEST_USER}" --description "${PR_DESCRIPTION}" --reviewers "${PR_REVIEWERS}" --from "${PR_FROM_BRANCH}" --to "${PR_TO_BRANCH}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_STASH_PROJECT}"
     else
-        echo "Need to implement ${PULL_SCM}" >&2
-        exit 1
+        PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
+        cat >>"${PR_DIR}/in.json" <<EOF
+{
+            "title": "${PR_DESCRIPTION}",
+            "head": "${PR_FROM_BRANCH}",
+            "base": "${PR_TO_BRANCH}"
+}
+EOF
+        metatron curl -a topcoat -H "Accept: application/vnd.github+json" -H "Content-Type: application/json" -X POST "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls" -d "@${PR_DIR}/in.json" >"${PR_DIR}/create.json"
+        PR=$(jq -r '.number' ${PR_DIR}/create.json)
+        PR_NODE=""
+        if [ "$PR" != "null" ]; then
+            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls/${PR}" >"${PR_DIR}/pr.json"
+            PR_NODE=$(jq -r '.node_id' ${PR_DIR}/pr.json)
+        elif grep -q "already exists" ${pr_dir}/create.json; then
+            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${pr_to_branch}&head=${PR_FROM_BRANCH}" >"${tmpdir}/response"
+            PR=$(jq -r '.[0].number' ${PR_DIR}/pr.json)
+            [ "$PR" != "null" ] && PR_NODE=$(jq -r '.[0].node_id' ${PR_DIR}/pr.json)
+        fi
+        if [ -n "$PR_NODE" ]; then
+            echo "PullRequest: ${PR} (${PR_NODE})"
+            if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
+                AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: MERGE}) {clientMutationId}}\" }"
+                metatron curl -a topcoat -H "Content-Type: application/json" -X POST "https://git.netflix.net:7004/api/graphql" -d "${AUTO_QUERY}"
+            fi
+        fi
+        rm -rf "${PR_DIR}"
     fi
 elif [ "$MODE" = "prefix" ]; then
     echo "$PULL_REQUEST_PREFIX"
@@ -172,7 +198,7 @@ elif [ "$MODE" = "list" ]; then
     rm -rf "$PR_DIR"
 elif [ "$MODE" = "submit" ]; then
     FORCE=
-    AUTO="auto/"
+    AUTO="${PULL_REQUEST_AUTO_PREFIX}"
     SUBMIT_ARGS=
     PR_NAME=
     while [ "$#" -ge 1 ]; do
