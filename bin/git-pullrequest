@@ -99,15 +99,15 @@ EOF
             metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls/${PR}" >"${PR_DIR}/pr.json"
             PR_NODE=$(jq -r '.node_id' ${PR_DIR}/pr.json)
         elif grep -q "already exists" ${pr_dir}/create.json; then
-            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${pr_to_branch}&head=${PR_FROM_BRANCH}" >"${tmpdir}/response"
+            metatron curl -a topcoat -H "Accept: application/vnd.github+json" -X GET "https://git.netflix.net:7004/api/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${PR_TO_BRANCH}&head=${PR_FROM_BRANCH}" >"${tmpdir}/response"
             PR=$(jq -r '.[0].number' ${PR_DIR}/pr.json)
             [ "$PR" != "null" ] && PR_NODE=$(jq -r '.[0].node_id' ${PR_DIR}/pr.json)
         fi
         if [ -n "$PR_NODE" ]; then
-            echo "PullRequest: ${PR} (${PR_NODE})"
+            echo "PullRequest: https://git.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
             if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
                 AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: MERGE}) {clientMutationId}}\" }"
-                metatron curl -a topcoat -H "Content-Type: application/json" -X POST "https://git.netflix.net:7004/api/graphql" -d "${AUTO_QUERY}"
+                metatron curl -a topcoat -H "Content-Type: application/json" -X POST "https://git.netflix.net:7004/api/graphql" -d "${AUTO_QUERY}" >"${PR_DIR}/automerge.json"
             fi
         fi
         rm -rf "${PR_DIR}"
