@@ -124,7 +124,7 @@ EOF
             cat "${PR_DIR}/create.json"
         fi
         if [ -n "$PR_NODE" ]; then
-            echo "PullRequest: https://git.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
+            echo "PullRequest: https://github.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
             if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
                 AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: MERGE}) {clientMutationId}}\" }"
                 runcurl "/graphql" -d "${AUTO_QUERY}" -H "Content-Type: application/json" -X POST >"${PR_DIR}/automerge.json"
