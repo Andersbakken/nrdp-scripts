@@ -37,8 +37,10 @@ if [ -z "$PULL_SCM" ]; then
     PULL_ORIGIN=`git remote get-url origin`
     if echo "${PULL_ORIGIN}" | grep -q github; then
         PULL_SCM="github"
-    else
+    elif echo "${PULL_ORIGIN}" | grep -q stash; then
         PULL_SCM="stash"
+    else
+        PULL_SCM="github"
     fi
 fi
 if [ "$PULL_SCM" = "stash" ]; then
