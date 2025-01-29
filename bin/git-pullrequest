@@ -118,7 +118,7 @@ EOF
             #cat "${PR_DIR}/pr.json"
             PR_NODE=$(jq -r '.node_id' "${PR_DIR}/pr.json")
         elif grep -q "already exists" "${PR_DIR}/create.json"; then
-            runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${PR_TO_BRANCH}&head=${PR_FROM_BRANCH}" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
+            runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls?base=${PR_TO_BRANCH}&head=${PULL_REQUEST_GITHUB_OWNER}:${PR_FROM_BRANCH}" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
             #cat "${PR_DIR}/pr.json"
             PR=$(jq -r '.[0].number' "${PR_DIR}/pr.json")
             [ "$PR" != "null" ] && PR_NODE=$(jq -r '.[0].node_id' "${PR_DIR}/pr.json")
