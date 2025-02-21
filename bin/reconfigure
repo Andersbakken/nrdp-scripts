@@ -66,9 +66,9 @@ elif [ -e "config.status" ]; then
     CONFIGURE="./config.status"
     if [ "$RECONFIG_EDIT" ]; then
         test -z "$EDITOR" && EDITOR=vim
-        cp ./config.status /tmp/config.status
-        if $EDITOR /tmp/config.status && ! diff -q ./config.status /tmp/config.status >/dev/null 2>&1 && [ `wc -c /tmp/config.status | awk '{ print $1 }'` -ge 1 ]; then
-            cp /tmp/config.status ./config.status
+        cp ./config.status /tmp/config.status.reconfigure
+        if $EDITOR /tmp/config.status.reconfigure && ! diff -q ./config.status /tmp/config.status.reconfigure >/dev/null 2>&1 && [ `wc -c /tmp/config.status.reconfigure | awk '{ print $1 }'` -ge 1 ]; then
+            cp /tmp/config.status.reconfigure ./config.status
         else
             CONFIGURE=
         fi
@@ -91,10 +91,10 @@ if [ -n "$CONFIGURE" ]; then
             read REALLY
             case "$REALLY" in
                 y|yes)
-                    rm -f "/tmp/config.status"
-                    cp "config.status" "/tmp/config.status"
+                    rm -f "/tmp/config.status.reconfigure"
+                    cp "config.status" "/tmp/config.status.reconfigure"
                     rm -rf * .ninja_* .configure.*
-                    cp "/tmp/config.status" "config.status"
+                    cp "/tmp/config.status.reconfigure" "config.status"
                     break
                     ;;
                 n|no)
