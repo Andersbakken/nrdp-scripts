@@ -246,7 +246,7 @@ elif [ "$MODE" = "submit" ]; then
         [ -z "$TRACKING" ] && TRACKING=`git tracking`
         PUSH_ORIGIN="$(echo $TRACKING | cut -d/ -f1)"
         TRACKING_REMOTE_BRANCH="$(echo $TRACKING | cut -d/ -f2-)"
-        PR_BRANCH_NAME=$(echo $PR_NAME | sed -e ':a;N;$!ba;s/\n/\\n/g' | sed -e 's,\",\\\",g' -e 's, ,_,g' 2>/dev/null)
+        PR_BRANCH_NAME=$(echo $PR_NAME | sed -e 's,[^0-9A-Za-z],_,g' 2>/dev/null)
         PUSH_BRANCH="${PULL_REQUEST_PREFIX}/${AUTO}${TRACKING_REMOTE_BRANCH}/${PR_BRANCH_NAME}"
         [ "$FORCE" = "1" ] && git push $PUSH_ORIGIN ":$PUSH_BRANCH" 2>/dev/null
     else
