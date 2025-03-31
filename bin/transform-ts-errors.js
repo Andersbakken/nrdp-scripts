@@ -74,6 +74,11 @@ function filter(idx, line) {
             line = `error: ${match[1]}:${match[2]}:${match[3]} - ${lastError.replace(/\s+/g, " ")}`;
             lastError = undefined;
         }
+    } else {
+        match = /^(\/[A-Za-z0-9_\/\.-]*\.ts):([0-9]+):([0-9]+) - ([0-9]+):([0-9]+):/.exec(line);
+        if (match) {
+            line = `${match[1]}:${match[2]}:${match[3]}: error: (end ${match[4]}:${match[5]})`;
+        }
     }
 
     if (line.startsWith("Error: ") && line.includes("error")) {

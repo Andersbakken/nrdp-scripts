@@ -225,7 +225,11 @@ build() {
                 [ -e "$EXE" ] && MTIME=$(stat "$EXE" --format %Y 2>/dev/null)
             fi
 
-            eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
+            if [ -n "$INSIDE_EMACS" ]; then
+                eval transform-ts-errors.js ninja -C "$NINJA_DIR" $NINJA_OPTIONS
+            else
+                eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
+            fi
             RESULT=$?
             if [ "$RESULT" = "0" ]; then
                 EXE=`findexe ${NINJA_DIR}`
