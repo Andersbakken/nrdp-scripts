@@ -18,6 +18,12 @@
   :safe 'booleanp
   :group 'misc-find)
 
+(defun find-tsserver ()
+  (let ((tsserver (locate-dominating-file (buffer-file-name) "node_modules/typescript/bin/tsserver")))
+    (and tsserver
+         (expand-file-name (concat tsserver "node_modules/typescript/bin/tsserver")))))
+(setq tide-tsserver-locator-function 'find-tsserver)
+
 (defun --misc-grep-tide-next-prev-error (forward settransientmap)
   (let ((ref-buffer (get-buffer "*tide-references*")))
     (when ref-buffer
