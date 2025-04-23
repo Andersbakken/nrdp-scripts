@@ -11,7 +11,6 @@ MAKE_OPTIONS=
 UBER_RTAGS=
 UBER_VERBOSE=
 LSDEV_ARGS=
-GDB_ADD_INDEX=
 while [ "$#" -gt 0 ]; do
     case $1 in
         -C) shift; MAKE_DIR="$1" ;;
@@ -31,59 +30,22 @@ done
 # TRAP SIGNALS
 trap 'cleanup' QUIT EXIT
 
-should-gdb-index() {
-    if [ "$UBERMAKE_GDB_INDEX" == "1" ]; then
-        exe="$1"
-        mtime="$2"
-        [ "$(uname -s)" = "Linux" ] || return 1
-        file "$exe" 2>/dev/null | grep -q "x86-64\|80386" || return 1
-        if [ -n "$UBERMAKE_DO_STAT" ]; then
-            local MTIME=$(stat "$exe" --format %Y 2>/dev/null)
-            [ "$MTIME" == "$mtime" ] && return 1
-        fi
-        readelf -S "$exe" | grep -q gdb_index && return 1
-        return 0
-    fi
-    return 1
-}
-
 findancestor() {
     file="$1"
     dir="$2"
     [ -z "$dir" ] && dir="$PWD"
     (cd $dir && while true; do
-            if [ -e "$file" ]; then
-                echo "$PWD/$file"
-                return 1
-            elif [ "$PWD" = "/" ]; then
-                break
-            else
-                cd ..
-            fi
-        done)
+         if [ -e "$file" ]; then
+             echo "$PWD/$file"
+             return 1
+         elif [ "$PWD" = "/" ]; then
+             break
+         else
+             cd ..
+         fi
+     done)
     return 0
 }
-
-findexe() {
-    dir="$1"
-    [ -z "$dir" ] && dir="$PWD"
-    if [ -e "${dir}/src/platform/gibbon/libgibbon.so" ]; then
-        echo "${dir}/src/platform/gibbon/libgibbon.so"
-        return 1
-    elif [ -e "${dir}/src/platform/gibbon/netflix" ]; then
-        echo "${dir}/src/platform/gibbon/netflix"
-        return 1
-    fi
-    return 0
-}
-
-if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
-    NUM=$UBERMAKE_REDUCE_RTAGS_LOAD
-    if ! echo $NUM | grep --quiet "^[0-9]\+$"; then
-        NUM=1
-    fi
-    rc -j push:$NUM --silent
-fi
 
 cleanup()
 {
@@ -148,14 +110,16 @@ build() {
         fi
     fi
 
-    CONFIG_STATUS=`findancestor config.status $BUILD_DIR`
-    if [ -e "$CONFIG_STATUS" ]; then
-        TOOLCHAIN=`grep "Toolchain used: " "$CONFIG_STATUS" | sed -e 's,^.*Toolchain used: \(.*\),\1,'`
-        if [ -n "$TOOLCHAIN" ] && [ ! -d "$TOOLCHAIN" ]; then
-            echo "Toolchain has been upgraded, rerunning config.status"
-            echo "===================================================="
-            ( cd `dirname $CONFIG_STATUS` && $CONFIG_STATUS )
+    MAKE=`findmake`
+    if [ -f "$BUILD_DIR/Makefile" ] || [ -f "$BUILD_DIR/makefile" ]; then
+        if [ -z "$MAKE" ]; then
+            echo "Can't find make"
+            exit 1
         fi
+        eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
+        RESULT=$?
+        finish $RESULT
+        return $RESULT
     fi
 
     if which ninja >/dev/null 2>&1; then
@@ -219,57 +183,13 @@ build() {
             fi
             # END=`date +%s%N | cut -b1-13`
             # expr $END - $START
-            MTIME="0"
-            if [ -n "$UBERMAKE_DO_STAT" ]; then
-                EXE=`findexe ${NINJA_DIR}`
-                [ -e "$EXE" ] && MTIME=$(stat "$EXE" --format %Y 2>/dev/null)
-            fi
-
             eval ninja -C "$NINJA_DIR" $NINJA_OPTIONS
             RESULT=$?
-            if [ "$RESULT" = "0" ]; then
-                EXE=`findexe ${NINJA_DIR}`
-                if [ -n "$EXE" ] && [ -e "$EXE" ]; then
-                    if should-gdb-index $EXE $MTIME; then
-                        # echo "DOING POST $MTIME"
-                        OBJCOPY=$(grep -o "OBJCOPY=[^ ]*" "$NINJA_DIR/build.ninja" | head -n1)
-                        [ -n "$OBJCOPY" ] && eval $OBJCOPY && export OBJCOPY
-                        GDB_ADD_INDEX=1
-                    fi
-                    if [ "$GDB_ADD_INDEX" ]; then
-                        echo "Running gdb-add-index [$EXE]"
-                        nohup gdb-add-index $EXE 2>/dev/null &
-                    fi
-                fi
-            fi
             finish $RESULT
             return $RESULT
         fi
     fi
 
-    if [ -x "`which scons`" ] && [ -e "${BUILD_DIR}SConstruct" ]; then
-        SCONS_OPTIONS=
-        for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-            case $(eval echo $opt) in
-                clean|distclean) SCONS_OPTIONS="$SCONS_OPTIONS -c" ;;
-                *) SCONS_OPTIONS="$SCONS_OPTIONS \"$opt\"" ;;
-            esac
-        done
-        (cd $BUILD_DIR && eval scons $SCONS_OPTIONS)
-        return $?
-    elif [ -e "${BUILD_DIR}Sakefile.js" ]; then
-        SAKE_OPTIONS=
-        for opt in $MAKEFLAGS $MAKE_OPTIONS; do
-            case $(eval echo $opt) in
-                -j[0-9]*) ;;
-                help) SAKE_OPTIONS="$SAKE_OPTIONS -T" ;;
-                distclean) SAKE_OPTIONS="$SAKE_OPTIONS clobber" ;;
-                *) SAKE_OPTIONS="$SAKE_OPTIONS \"$opt\"" ;;
-            esac
-        done
-        (cd $BUILD_DIR && eval sake $SAKE_OPTIONS)
-        return $?
-    fi
     if [ -x `which npm` ] || [ -x `which yarn` ]; then
         NPMROOTDIR=$BUILD_DIR
         [ -z "$NPMROOTDIR" ] && NPMROOTDIR=.
@@ -291,7 +211,6 @@ build() {
     fi
     [ "$VERBOSE" = "1" ] && MAKE_OPTIONS="AM_DEFAULT_VERBOSITY=1 $MAKE_OPTIONS"
 
-    MAKE=`findmake`
     if [ -z "$MAKE" ]; then
         echo "Can't find make"
         exit 1
@@ -306,20 +225,23 @@ build() {
     fi
     eval "$MAKE" -C "$BUILD_DIR" $MAKE_OPTIONS #go for the real make
     RESULT=$?
-    if [ "$RESULT" = "0" ]; then
-        EXE=`findexe ${BUILD_DIR}`
-        if [ -e "$EXE" ]; then
-            if [ "$GDB_ADD_INDEX" ]; then
-                echo "Running gdb-add-index [$EXE]"
-                nohup gdb-add-index $EXE 2>/dev/null &
-            fi
-        fi
-    fi
     finish $RESULT
     return $RESULT
 }
 
+if [ -n "$UBERMAKE_REDUCE_RTAGS_LOAD" ] && [ -x "`which rc`" ]; then
+    NUM=$UBERMAKE_REDUCE_RTAGS_LOAD
+    if ! echo $NUM | grep --quiet "^[0-9]\+$"; then
+        NUM=1
+    fi
+    rc -j push:$NUM --silent
+fi
+
 if [ -z "$MAKE_DIR" ]; then
+    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ]; then
+        build "${SOURCE_PATH}/"
+    fi
+
     SOURCE_PATH=""
     NAME=`lsdev.pl -p -ts`
     if [ -n "$NAME" ] && ! echo "$NAME" | grep --quiet "^build_"; then
@@ -346,7 +268,7 @@ if [ -z "$MAKE_DIR" ]; then
     if [ -z "$SOURCE_PATH" ] || [ ! -d "$SOURCE_PATH" ]; then
         SOURCE_PATH="$PWD"
     fi
-    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/Sakefile.js" ] || [ -e "${SOURCE_PATH}/SConstruct" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
+    if [ -e "${SOURCE_PATH}/Makefile" ] || [ -e "${SOURCE_PATH}/makefile" ] || [ -e "${SOURCE_PATH}/build.ninja" ] || [ -e "${SOURCE_PATH}/package.json" ]; then
         build "${SOURCE_PATH}/"
     elif [ -e "${PWD}/Makefile" ] || [ -e "${PWD}/makefile" ]; then
         build "${PWD}/"
