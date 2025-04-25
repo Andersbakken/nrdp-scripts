@@ -133,7 +133,7 @@ EOF
                 AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: ${MERGE_METHOD}}) {clientMutationId}}\" }"
                 runcurl "/graphql" -d "${AUTO_QUERY}" -H "Content-Type: application/json" -X POST >"${PR_DIR}/automerge.json"
                 ERROR=$(jq -r '.errors[0].message' "${PR_DIR}/automerge.json")
-                [ -n "$ERROR" ] && echo "AutoMergeError: ${ERROR}"
+                [ "$ERROR" != "null" ] && echo "AutoMergeError: ${ERROR}"
             fi
         fi
         rm -rf "${PR_DIR}"
