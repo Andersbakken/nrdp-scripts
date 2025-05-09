@@ -6,6 +6,9 @@ MODE="submit"
 if [ "$1" = "create" ]; then
     MODE="create"
     shift
+elif [ "$1" = "show" ]; then
+    MODE="show"
+    shift
 elif [ "$1" = "list" ]; then
     MODE="list"
     shift
@@ -155,21 +158,37 @@ elif [ "$MODE" = "branch" ]; then
     else
         git branch -r | grep "origin/${PULL_REQUEST_PREFIX}" | sed 's,^ *origin/*,,'
     fi
-elif [ "$MODE" = "issues" ]; then
+elif [ "$MODE" = "show" ]; then
     PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
-    ISSUES_FILE="${PR_DIR}/pr-issues"
     if [ "$PULL_SCM" = "stash" ]; then
-        $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.issues --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_STASH_PROJECT}" --pullRequest "$1" >"${ISSUES_FILE}"
-    else
         echo "Need to implement ${PULL_SCM}" >&2
         exit 1
+    else
+        runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/commits/${1}/pulls" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
+        PRS=$(jq -r '. | length' "${PR_DIR}/pr.json")
+        for ((i=0; i<$PRS; i++ )); do
+            NUM=$(jq -r ".[$i].number" "${PR_DIR}/pr.json")
+            URL=$(jq -r ".[$i]._links.html.href" "${PR_DIR}/pr.json")
+            STATE=$(jq -r ".[$i].state" "${PR_DIR}/pr.json")
+            echo "${NUM}[${STATE}] ${URL}"
+        done
     fi
-    ISSUES_COUNT=$(jq -r '. | length' "${ISSUES_FILE}")
-    for ((i=0; i<$ISSUES_COUNT; i++ )); do
-        ISSUE=$(jq -r ".[$i].key" "$ISSUES_FILE")
-        ISSUE_URL=$(jq -r ".[$i].url" "$ISSUES_FILE")
-        echo "${ISSUE} ($ISSUE_URL)"
-    done
+    rm -rf "$PR_DIR"
+elif [ "$MODE" = "issues" ]; then
+    PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
+    if [ "$PULL_SCM" = "stash" ]; then
+        ISSUES_FILE="${PR_DIR}/pr-issues"
+        $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.issues --username "${PULL_REQUEST_USER}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_STASH_PROJECT}" --pullRequest "$1" >"${ISSUES_FILE}"
+        ISSUES_COUNT=$(jq -r '. | length' "${ISSUES_FILE}")
+        for ((i=0; i<$ISSUES_COUNT; i++ )); do
+            ISSUE=$(jq -r ".[$i].key" "$ISSUES_FILE")
+            ISSUE_URL=$(jq -r ".[$i].url" "$ISSUES_FILE")
+            echo "${ISSUE} ($ISSUE_URL)"
+        done
+    else
+        runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls/${PR}" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
+    fi
+    rm -rf "$PR_DIR"
 elif [ "$MODE" = "list" ]; then
     PR_MAX=5
     PR_STATE=
