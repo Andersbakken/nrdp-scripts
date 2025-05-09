@@ -165,13 +165,17 @@ elif [ "$MODE" = "show" ]; then
         exit 1
     else
         runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/commits/${1}/pulls" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
-        PRS=$(jq -r '. | length' "${PR_DIR}/pr.json")
-        for ((i=0; i<$PRS; i++ )); do
-            NUM=$(jq -r ".[$i].number" "${PR_DIR}/pr.json")
-            URL=$(jq -r ".[$i]._links.html.href" "${PR_DIR}/pr.json")
-            STATE=$(jq -r ".[$i].state" "${PR_DIR}/pr.json")
-            echo "${NUM}[${STATE}] ${URL}"
-        done
+        PRS=$(jq -r '. | length' "${PR_DIR}/pr.json" 2>/dev/null)
+        if [ -z "$PRS" ]; then
+           echo "No pull requests found for commit $1"
+        else
+            for ((i=0; i<$PRS; i++ )); do
+                NUM=$(jq -r ".[$i].number" "${PR_DIR}/pr.json")
+                URL=$(jq -r ".[$i]._links.html.href" "${PR_DIR}/pr.json")
+                STATE=$(jq -r ".[$i].state" "${PR_DIR}/pr.json")
+                echo "${NUM}[${STATE}] ${URL}"
+            done
+        fi
     fi
     rm -rf "$PR_DIR"
 elif [ "$MODE" = "issues" ]; then
