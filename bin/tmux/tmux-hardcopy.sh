@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 EDIT="no"
 if [ "$1" = "-e" ]; then
     EDIT="yes"

@@ -14,7 +14,7 @@ EMACSDAEMON=no
 NO_CREATE_FILE=
 
 EMACSWINDOW=
-[ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
+#[ -n "$SSH_CLIENT" -o -n "$SSH_CONNECTION" ] && EMACSWINDOW=no
 [ `uname -s` = "Linux" ] && [ -z "$DISPLAY" ] && EMACSWINDOW=no
 
 while [ "$#" -gt 0 ]; do
