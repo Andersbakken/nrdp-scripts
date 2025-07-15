@@ -31,6 +31,8 @@ git() #make git checkout commands usable with submodules
     elif [ "$1" = "--skip-submodule" ]; then
         shift
         run_git "$@"
+    elif [ "$1" = "reflog" ]; then
+        run_git "$@" --date=relative
     elif [ "$1" = "clone" ]; then
         run_git "$@" --recursive
     elif [ "$1" = "clean" ]; then
