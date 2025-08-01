@@ -31,7 +31,10 @@ function syncdir
     cd "$ROOTDIR"
     stashed=
     local PULLARGS=
-    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+    if [ -n "$operation" ]; then
+        ### test for errors and fall back to autostash etc?
+        git operation save "sync"
+    elif [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         if [ "$autostash" = "pull" ]; then
             PULLARGS="--autostash"
         else
@@ -40,6 +43,7 @@ function syncdir
             git commit -a -m "${ignore_marker}git-sync" --allow-empty
         fi
     fi
+
     if [ -n "$check" ]; then
         local_sha=`git rev-parse HEAD`
         check_origin=`echo "$check" | cut -d'/' -f1`
@@ -75,15 +79,26 @@ function syncdir
     if [ -f "$ROOTDIR/.gitmodules" ]; then
         git submodule update --init
     fi
-    if [ -n "$stashed" ] && [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-        git reset HEAD~
+
+    if [ ! -f "$GITDIR/REBASE_HEAD" ]; then
+        if [ -n "$operation" ]; then
+            git operation restore "sync"
+        elif [ -n "$stashed" ]; then
+            git reset HEAD~
+        fi
     fi
+
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
     return $rc
 }
 
 idx=0
 check=
+operation=`git config sync.operation`
+if [ "$operation" = "0" ] || [ "$operation" = "false" ]; then
+    operation=
+fi
+
 autostash=`git config sync.autostash`
 if [ "$autostash" = "pull" ]; then
     VERSION=`git --version | cut -d' ' -f3`
