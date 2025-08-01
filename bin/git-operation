@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+
+AUTOCOMMIT_SUBJECT="Auto-commit before git-operation save"
+MODE=
+NAME=
+ROOT=
+NO_AUTOCOMMIT=
+AUTOCOMMITTED=
+OVERWRITE=
+KEEP=
+NO_RTAGS=
+
+USAGE="Usage: git operation [--help|-h] (save|restore|check|list|delete) [name] [--no-autocommit] [--force|-f|--overwrite-archive] [--keep-archive] [--no-rtags]"
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --help|-h)
+            echo "$USAGE"
+            exit 0
+            ;;
+
+        save|restore|check|list|delete)
+            if [ -n "$MODE" ]; then
+                echo "Error: Cannot specify multiple operations." >&2
+                echo "$USAGE" >&2
+                exit 1
+            fi
+            MODE="$1"
+            ;;
+
+        --no-autocommit)
+            NO_AUTOCOMMIT=1
+            ;;
+
+        --no-rtags)
+            NO_RTAGS=1
+            ;;
+
+        --force|-f|--overwrite-archive)
+            OVERWRITE=1
+            ;;
+
+        --keep-archive)
+            KEEP=1
+            ;;
+
+        *)
+            if [ -z "$MODE" ]; then
+                echo "Error: No operation specified. Use 'save' or 'restore'." >&2
+                echo "$USAGE" >&2
+                exit 1
+            fi
+
+            if [ -n "$NAME" ]; then
+                echo "Error: Multiple names specified. Use only one name." >&2
+                echo "$USAGE" >&2
+                exit 1
+            fi
+            NAME="$1"
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$MODE" ]; then
+    echo "Error: No operation specified. Use 'save' or 'restore'." >&2
+    echo "$USAGE" >&2
+    exit 1
+fi
+
+if [ "$MODE" != "save" ]; then
+    if [ -n "$NO_AUTOCOMMIT" ]; then
+        echo "--no-autocommit only works for save" >$2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+
+    if [ -n "$OVERWRITE" ]; then
+        echo "-f|--force|--overwrite-archive only works for save" >$2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+
+    if [ "$MODE" != "restore" ] && [ -n "$NO_RTAGS" ]; then
+        echo "--no-rtags only works for save|restore" >$2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+fi
+
+if [ "$MODE" != "restore" ]; then
+    if [ -n "$KEEP" ]; then
+        echo "--keep-archive only works for restore" >$2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+fi
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+
+if [ -z "$ROOT" ]; then
+    echo "Error: Not a git repository."
+    echo "$USAGE" >&2
+    exit 1
+fi
+
+cd $ROOT
+GITDIR=$(git rev-parse --git-path "")
+if [ -n "$NAME" ]; then
+    DIR="${GITDIR}operation-$NAME"
+else
+    DIR="${GITDIR}operation"
+fi
+
+TARBALL="$DIR/archive.tar"
+
+if [ "$MODE" = "save" ]; then
+    if [ -z "$OVERWRITE" ] && [ -e "$TARBALL" ]; then
+        echo "There's already an archive at ${TARBALL}, refusing to write without -f|--force|--overwrite-archive" >&2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+
+    mkdir -p "$DIR"
+
+    if ! git diff --quiet --ignore-submodules HEAD; then
+        if [ -z "$NO_AUTOCOMMIT" ]; then
+            git commit --allow-empty -a -m "$AUTOCOMMIT_SUBJECT"
+            AUTOCOMMITTED=1
+            touch "$DIR/autocommitted"
+        else
+            echo "Error: Working directory is not clean. Please commit or stash your changes."
+            echo "$USAGE" >&2
+            exit 1
+        fi
+    fi
+
+    git ls-files -z --others --cached --exclude-standard | tar -cf $TARBALL --null -T -
+
+    if [ -z "$NO_RTAGS" ] && which -s rc; then
+        rc --suspend=all >/dev/null
+    fi
+
+    exit
+fi
+
+if [ "$MODE" = "restore" ]; then
+    if ! git diff --quiet --ignore-submodules HEAD; then
+        echo "Error: Working directory is not clean. This is not expected. Refusing to go on."
+        echo "$USAGE" >&2
+        exit 1
+    fi
+
+    if [ ! -e "$TARBALL" ]; then
+        echo "No archive found at ${TARBALL}" >&2
+        echo "$USAGE" >&2
+        exit 1
+    fi
+
+    if [ -e "$DIR/autocommitted" ]; then
+        if [ "$(git log -n1 --pretty=format:%s)" != "$AUTOCOMMIT_SUBJECT" ]; then
+            echo "Tip doesn't seem like our autocommit, refusing to go on" >&2
+            echo "$USAGE" >&2
+            exit 1
+        fi
+        git reset HEAD~
+    fi
+
+    tar xf "$TARBALL"
+    if ! git diff --quiet --ignore-submodules HEAD; then
+        ### weird behavior on mac where it somehow checks something
+        ### out even if there's nothing changed, calling git status
+        ### ahead of it appears to prevent it from happening. Should
+        ### debug.
+
+        git checkout .
+    fi
+
+    if [ -z "$KEEP" ]; then
+        rm -rf "$DIR"
+    fi
+
+    if [ -z "$NO_RTAGS" ] && which -s rc; then
+        rc --suspend=clear >/dev/null
+    fi
+
+    exit
+fi
+
+if [ "$MODE" = "delete" ]; then
+    rm -rf "$DIR"
+    exit
+fi
+
+if [ "$MODE" = "check" ]; then
+    if [ ! -e "$TARBALL" ]; then
+        exit 1
+    fi
+
+    exit
+fi
+
+if [ "$MODE" = "list" ]; then
+    ( cd $GITDIR && find operation* -type f 2>/dev/null | sed -e 's,^\./,,' )
+    exit
+fi
