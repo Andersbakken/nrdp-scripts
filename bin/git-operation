@@ -1,206 +1,423 @@
-#!/usr/bin/env bash
+#!/usr/bin/env node
 
-AUTOCOMMIT_SUBJECT="Auto-commit before git-operation save"
-MODE=
-NAME=
-ROOT=
-NO_AUTOCOMMIT=
-AUTOCOMMITTED=
-OVERWRITE=
-KEEP=
-NO_RTAGS=
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+const { constants } = fs;
+const { exec } = require("child_process");
+const { promisify } = require("util");
 
-USAGE="Usage: git operation [--help|-h] (save|restore|check|list|delete) [name] [--no-autocommit] [--force|-f|--overwrite-archive] [--keep-archive] [--no-rtags]"
+const execAsync = promisify(exec);
+const usage =
+    "Usage: git operation [save|apply|pop|drop|list|clear|show] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--no-rtags] [--verbose|-v] [--show-same] [--show-different]";
 
-while [ "$#" -gt 0 ]; do
-    case "$1" in
-        --help|-h)
-            echo "$USAGE"
-            exit 0
-            ;;
+let mode;
+let rtags;
+let index;
+let verbose = () => {};
+let showMode = [];
 
-        save|restore|check|list|delete)
-            if [ -n "$MODE" ]; then
-                echo "Error: Cannot specify multiple operations." >&2
-                echo "$USAGE" >&2
-                exit 1
-            fi
-            MODE="$1"
-            ;;
+async function main() {
+    for (let i = 2; i < process.argv.length; i++) {
+        switch (process.argv[i]) {
+            case "--help":
+            case "-h":
+                console.log(usage);
+                process.exit(0);
+                break;
+            case "--verbose":
+            case "-v":
+                verbose = console.error.bind(console);
+                break;
 
-        --no-autocommit)
-            NO_AUTOCOMMIT=1
-            ;;
+            case "--index":
+                index = parseInt(process.argv[++i]);
+                if (index < 0 || isNaN(index)) {
+                    die("Invalid index specified. It must be a non-negative integer.");
+                }
+                break;
 
-        --no-rtags)
-            NO_RTAGS=1
-            ;;
+            case "save":
+            case "apply":
+            case "pop":
+            case "list":
+            case "drop":
+            case "clear":
+            case "show":
+                if (mode) {
+                    die("Cannot specify multiple operations.");
+                }
+                mode = process.argv[i];
+                break;
 
-        --force|-f|--overwrite-archive)
-            OVERWRITE=1
-            ;;
+            case "--no-rtags":
+                rtags = false;
+                break;
 
-        --keep-archive)
-            KEEP=1
-            ;;
+            case "--show-same":
+                showMode.push("same");
+                break;
 
-        *)
-            if [ -z "$MODE" ]; then
-                echo "Error: No operation specified. Use 'save' or 'restore'." >&2
-                echo "$USAGE" >&2
-                exit 1
-            fi
+            case "--show-different":
+                showMode.push("different");
+                break;
 
-            if [ -n "$NAME" ]; then
-                echo "Error: Multiple names specified. Use only one name." >&2
-                echo "$USAGE" >&2
-                exit 1
-            fi
-            NAME="$1"
-            ;;
-    esac
-    shift
-done
+            default:
+                if (index === undefined) {
+                    if (process.argv[i].startsWith("--index=")) {
+                        const idxStr = process.argv[i].split("=")[1];
+                        index = parseInt(idxStr);
+                    } else {
+                        index = parseInt(process.argv[i]);
+                    }
+                    if (isNaN(index) || index < 0) {
+                        die("Invalid index specified. It must be a non-negative integer.");
+                    }
+                } else {
+                    die(`Unexpected argument '${process.argv[i]}'.`);
+                }
+        }
+    }
 
-if [ -z "$MODE" ]; then
-    echo "Error: No operation specified. Use 'save' or 'restore'." >&2
-    echo "$USAGE" >&2
-    exit 1
-fi
+    if (!mode) {
+        die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
+    }
 
-if [ "$MODE" != "save" ]; then
-    if [ -n "$NO_AUTOCOMMIT" ]; then
-        echo "--no-autocommit only works for save" >$2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+    if (mode === "save" && mode === "restore") {
+        if (rtags !== false) {
+            rtags = whichSync("rc") ?? false;
+        }
+    } else if (rtags === false) {
+        die("--no-rtags only works for save|restore");
+    }
 
-    if [ -n "$OVERWRITE" ]; then
-        echo "-f|--force|--overwrite-archive only works for save" >$2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+    root = await runCommand("git rev-parse --show-toplevel").catch((err) => {
+        die("Not a git repository.", err.message);
+    });
 
-    if [ "$MODE" != "restore" ] && [ -n "$NO_RTAGS" ]; then
-        echo "--no-rtags only works for save|restore" >$2
-        echo "$USAGE" >&2
-        exit 1
-    fi
-fi
+    gitDir = await fs.promises.realpath(await runCommand('git rev-parse --git-path ""')).catch((err) => {
+        die("Could not determine git directory.", err.message);
+    });
 
-if [ "$MODE" != "restore" ]; then
-    if [ -n "$KEEP" ]; then
-        echo "--keep-archive only works for restore" >$2
-        echo "$USAGE" >&2
-        exit 1
-    fi
-fi
+    if (mode === "apply" || mode === "pop" || mode === "drop" || mode === "show") {
+        const ops = await indexes();
+        if (index === undefined) {
+            index = ops.at(-1);
+        }
+        if (index === undefined) {
+            die("No index specified and no directories found. Use --index <idx> to specify an index.");
+        } else if (!ops.includes(index)) {
+            die(`index ${index} is out of range ${ops.length ? ops.slice(-1) : ""})`);
+        }
+    } else if (index !== undefined) {
+        die("--index only works for apply|pop|drop|show");
+    } else if (mode === "save") {
+        index = ((await indexes()).at(-1) ?? 0) + 1;
+    }
 
-ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+    verbose({ root, gitDir, mode, index });
 
-if [ -z "$ROOT" ]; then
-    echo "Error: Not a git repository."
-    echo "$USAGE" >&2
-    exit 1
-fi
+    if (mode === "show") {
+        if (!showMode.length) {
+            showMode = ["same", "different"];
+        }
+    } else if (showMode.length) {
+        die("--show-same|--show-different only works for show");
+    }
 
-cd $ROOT
-GITDIR=$(git rev-parse --git-path "")
-if [ -n "$NAME" ]; then
-    DIR="${GITDIR}operation-$NAME"
-else
-    DIR="${GITDIR}operation"
-fi
+    switch (mode) {
+        case "save":
+            await save();
+            break;
 
-TARBALL="$DIR/archive.tar"
+        case "list":
+            await list();
+            break;
 
-if [ "$MODE" = "save" ]; then
-    if [ -z "$OVERWRITE" ] && [ -e "$TARBALL" ]; then
-        echo "There's already an archive at ${TARBALL}, refusing to write without -f|--force|--overwrite-archive" >&2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+        case "drop":
+            await drop();
+            break;
 
-    mkdir -p "$DIR"
+        case "clear":
+            await clear();
+            break;
 
-    if ! git diff --quiet --ignore-submodules HEAD; then
-        if [ -z "$NO_AUTOCOMMIT" ]; then
-            git commit --allow-empty -a -m "$AUTOCOMMIT_SUBJECT"
-            AUTOCOMMITTED=1
-            touch "$DIR/autocommitted"
-        else
-            echo "Error: Working directory is not clean. Please commit or stash your changes."
-            echo "$USAGE" >&2
-            exit 1
-        fi
-    fi
+        case "show":
+            await show();
+            break;
 
-    git ls-files -z --others --cached --exclude-standard | tar -cf $TARBALL --null -T -
+        case "apply":
+            await apply();
+            break;
 
-    if [ -z "$NO_RTAGS" ] && which -s rc; then
-        rc --suspend=all >/dev/null
-    fi
+        case "pop":
+            await apply();
+            await drop();
+            break;
+    }
+}
 
-    exit
-fi
+function die(...args) {
+    throw new Error(args.join(" "));
+}
 
-if [ "$MODE" = "restore" ]; then
-    if ! git diff --quiet --ignore-submodules HEAD; then
-        echo "Error: Working directory is not clean. This is not expected. Refusing to go on."
-        echo "$USAGE" >&2
-        exit 1
-    fi
+function isDirectory(path) {
+    try {
+        const stats = fs.lstatSync(path);
+        return stats.isDirectory();
+    } catch (err) {
+        // Could be ENOENT (doesn't exist), etc.
+        return false;
+    }
+}
 
-    if [ ! -e "$TARBALL" ]; then
-        echo "No archive found at ${TARBALL}" >&2
-        echo "$USAGE" >&2
-        exit 1
-    fi
+async function listFiles(dir) {
+    try {
+        return await fs.promises.readdir(dir);
+    } catch (err) {
+        if (err.code === "ENOENT") {
+            return [];
+        }
+        throw err;
+    }
+}
 
-    if [ -e "$DIR/autocommitted" ]; then
-        if [ "$(git log -n1 --pretty=format:%s)" != "$AUTOCOMMIT_SUBJECT" ]; then
-            echo "Tip doesn't seem like our autocommit, refusing to go on" >&2
-            echo "$USAGE" >&2
-            exit 1
-        fi
-        git reset HEAD~
-    fi
+async function runCommand(command, cwd) {
+    try {
+        const { stdout } = await execAsync(command, { cwd });
+        return stdout.trim();
+    } catch (err) {
+        const error = new Error(`Command failed: ${command}`);
+        error.code = err.code ?? err.errno ?? "EXEC_FAILED";
+        error.stderr = err.stderr || "";
+        throw error;
+    }
+}
 
-    tar xf "$TARBALL"
-    if ! git diff --quiet --ignore-submodules HEAD; then
-        ### weird behavior on mac where it somehow checks something
-        ### out even if there's nothing changed, calling git status
-        ### ahead of it appears to prevent it from happening. Should
-        ### debug.
+async function indexes() {
+    const ret = await listFiles(path.join(gitDir, "git-operation"));
+    return ret.map((x) => parseInt(x)).filter((dir) => dir >= 1 && !isNaN(dir));
+}
 
-        git checkout .
-    fi
+function processFile(file) {
+    // verbose("processFile", file);
 
-    if [ -z "$KEEP" ]; then
-        rm -rf "$DIR"
-    fi
+    const abs = path.join(root, file);
+    const go = () => {
+        return new Promise((resolve, reject) => {
+            try {
+                const hash = crypto.createHash("sha1");
+                const stream = fs.createReadStream(abs);
 
-    if [ -z "$NO_RTAGS" ] && which -s rc; then
-        rc --suspend=clear >/dev/null
-    fi
+                stream.on("error", (err) => {
+                    reject(err);
+                });
 
-    exit
-fi
+                stream.on("data", (chunk) => hash.update(chunk));
 
-if [ "$MODE" = "delete" ]; then
-    rm -rf "$DIR"
-    exit
-fi
+                stream.on("end", async () => {
+                    try {
+                        const stats = await fs.promises.stat(abs);
+                        resolve({
+                            file,
+                            sha1: hash.digest("hex"),
+                            mtimeMs: Math.round(stats.mtimeMs)
+                        });
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
+    };
 
-if [ "$MODE" = "check" ]; then
-    if [ ! -e "$TARBALL" ]; then
-        exit 1
-    fi
+    return go().catch(go);
+}
 
-    exit
-fi
+async function save() {
+    const files = await Promise.all(
+        (await runCommand("git ls-files --others --cached --exclude-standard", root))
+            .split("\n")
+            .map((x) => {
+                if (!x) {
+                    return undefined;
+                }
 
-if [ "$MODE" = "list" ]; then
-    ( cd $GITDIR && find operation* -type f 2>/dev/null | sed -e 's,^\./,,' )
-    exit
-fi
+                const abs = path.join(root, x);
+                if (isDirectory(abs)) {
+                    return undefined;
+                }
+
+                return x;
+            })
+            .filter((x) => x)
+            .map((file) => processFile(file))
+    );
+    const dir = path.join(gitDir, "git-operation");
+    await fs.promises.mkdir(dir, { recursive: true });
+    await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
+
+    if (rtags) {
+        await runCommand(`${rtags} --suspend=all`);
+    }
+}
+
+async function list() {
+    const dir = path.join(gitDir, "git-operation");
+    console.log(
+        (
+            await Promise.all(
+                (await listFiles(dir)).map(async (x) => {
+                    const stats = await fs.promises.stat(path.join(dir, x));
+                    const relative = timeAgo(new Date(stats.ctimeMs));
+                    return `${x}: ${relative}`;
+                })
+            )
+        ).join("\n")
+    );
+}
+
+async function drop() {
+    const dir = path.join(gitDir, "git-operation");
+    const file = path.join(dir, index.toString());
+    const list = await indexes();
+    await fs.promises.unlink(file);
+    for (let i = list.indexOf(index); i < list.length - 1; ++i) {
+        const oldName = path.join(dir, String(list[i] + 1));
+        const newName = path.join(dir, String(list[i]));
+        verbose(`renaming ${oldName} to ${newName}`);
+        await fs.promises.rename(oldName, newName);
+    }
+}
+
+async function apply() {
+    let data = await load();
+    try {
+        await Promise.all(
+            data.map(async (x) => {
+                if (!x.diff) {
+                    // verbose(`${x.file} has the same sha1 and modification time as before`);
+                    return;
+                }
+                if (x.sha1 !== x.diff.sha1) {
+                    verbose(`${x.file} has changed. We're leaving its modification time alone`);
+                    return;
+                }
+
+                verbose(
+                    `${x.file} is unchanged. We're changing its mtime from ${prettyTime(x.diff.mtimeMs)} to ${prettyTime(x.mtimeMs)}`
+                );
+                const abs = path.join(root, x.file);
+                await fs.promises.utimes(abs, new Date(x.mtimeMs), new Date(x.mtimeMs));
+            })
+        );
+    } finally {
+        if (rtags) {
+            await runCommand(`${rtags} --suspend=clear`);
+        }
+    }
+}
+
+async function clear() {
+    const dir = path.join(gitDir, "git-operation");
+    await fs.promises.rm(dir, { recursive: true, force: true });
+}
+
+async function show() {
+    let data = await load();
+    if (!showMode.includes("same")) {
+        data = data.filter((x) => x.diff);
+    }
+
+    if (!showMode.includes("different")) {
+        data = data.filter((x) => !x.diff);
+    }
+
+    console.log(
+        data
+            .map((x, idx) => {
+                const time = `${prettyTime(x.mtimeMs)}${x.diff && x.mtimeMs !== x.diff.mtimeMs ? " *" : ""}`;
+                const sha1 = `${x.sha1}${x.diff && x.sha1 !== x.diff.sha1 ? " *" : ""}`;
+                const pad = String(data.length).length;
+                return `${String(idx).padStart(pad, "")}/${data.length}: file: ${x.file} time: ${time} sha1: ${sha1}`;
+            })
+            .join("\n")
+    );
+}
+
+async function load() {
+    const file = path.join(gitDir, "git-operation", index.toString());
+    const data = JSON.parse(await fs.promises.readFile(file, "utf8"));
+    return await Promise.all(
+        data.map(async (x) => {
+            const realData = await processFile(x.file);
+            if (realData.mtimeMs !== x.mtimeMs || realData.sha1 !== x.sha1) {
+                x.diff = realData;
+            }
+            return x;
+        })
+    );
+}
+
+function isExecutable(filePath) {
+    try {
+        fs.accessSync(filePath, constants.X_OK);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function whichSync(cmd) {
+    const paths = process.env.PATH.split(path.delimiter);
+    const extensions = process.platform === "win32" ? (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").split(";") : [""];
+
+    for (const dir of paths) {
+        for (const ext of extensions) {
+            const fullPath = path.join(dir, cmd + ext);
+            if (fs.existsSync(fullPath) && isExecutable(fullPath)) {
+                return fullPath;
+            }
+        }
+    }
+
+    return undefined;
+}
+
+function timeAgo(date) {
+    const now = new Date();
+    const seconds = Math.floor((now - date) / 1000);
+
+    const intervals = [
+        { label: "year", seconds: 31536000 },
+        { label: "month", seconds: 2592000 },
+        { label: "week", seconds: 604800 },
+        { label: "day", seconds: 86400 },
+        { label: "hour", seconds: 3600 },
+        { label: "minute", seconds: 60 },
+        { label: "second", seconds: 1 }
+    ];
+
+    for (const interval of intervals) {
+        const count = Math.floor(seconds / interval.seconds);
+        if (count >= 1) {
+            return `${count} ${interval.label}${count !== 1 ? "s" : ""} ago`;
+        }
+    }
+
+    return "just now";
+}
+
+function prettyTime(ms) {
+    const date = new Date(ms);
+    return `${date.toISOString()} (${ms}) ${timeAgo(date)}`;
+}
+
+main().catch((err) => {
+    verbose(err.stack);
+    console.error(usage);
+    console.error(err.message);
+    process.exit(1);
+});
