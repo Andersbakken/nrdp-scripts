@@ -87,6 +87,10 @@ else
     IGNORE_CHECK=yes
     SYNC_CHECK=yes
     AUTOSTASH=
+    OPERATION=`git config sync.operation`
+    if [ "$OPERATION" = "0" ] || [ "$OPERATION" = "false" ]; then
+        OPERATION=
+    fi
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
@@ -227,8 +231,10 @@ else
     export GIT_SEQUENCE_EDITOR="$0"
     echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
+    [ -n "$OPERATION" ] && git operation save
     if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
         echo "Git failed"
+        [ -n "$OPERATION" ] && git operation pop
         exit 1
     fi
     NEW_SHA1=`git rev-parse HEAD`
@@ -263,5 +269,6 @@ else
         git rebase -i "${COMMON_SHA1}" >/dev/null
     fi
     [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
+    [ -n "$OPERATION" ] && git operation pop
 fi
 exit 0

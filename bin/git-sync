@@ -31,10 +31,8 @@ function syncdir
     cd "$ROOTDIR"
     stashed=
     local PULLARGS=
-    if [ -n "$operation" ]; then
-        ### test for errors and fall back to autostash etc?
-        git operation save "sync"
-    elif [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+    [ -n "$operation" ] && git operation save
+    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         if [ "$autostash" = "pull" ]; then
             PULLARGS="--autostash"
         else
@@ -81,11 +79,12 @@ function syncdir
     fi
 
     if [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-        if [ -n "$operation" ]; then
-            git operation restore "sync"
-        elif [ -n "$stashed" ]; then
+        if [ -n "$stashed" ]; then
             git reset HEAD~
         fi
+        [ -n "$operation" ] && git operation pop
+    else
+        [ -n "$operation" ] && which -s rc && rc --suspend=clear
     fi
 
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
