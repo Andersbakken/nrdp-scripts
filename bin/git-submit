@@ -87,7 +87,7 @@ else
     IGNORE_CHECK=yes
     SYNC_CHECK=yes
     AUTOSTASH=
-    OPERATION=`git config sync.operation`
+    OPERATION=`git config submit.operation`
     if [ "$OPERATION" = "0" ] || [ "$OPERATION" = "false" ]; then
         OPERATION=
     fi
