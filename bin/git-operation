@@ -17,6 +17,14 @@ let index;
 let verbose = () => {};
 let showMode = [];
 
+if (
+    process.env.GIT_OPERATION_VERBOSE &&
+    process.env.GIT_OPERATION_VERBOSE !== "false" &&
+    process.env.GIT_OPERATION_VERBOSE !== "0"
+) {
+    verbose = console.error.bind(console);
+}
+
 async function main() {
     for (let i = 2; i < process.argv.length; i++) {
         switch (process.argv[i]) {
@@ -377,8 +385,7 @@ function whichSync(cmd) {
         try {
             fs.accessSync(ret, constants.X_OK);
             return true;
-        } catch {
-        }
+        } catch {}
         ret = undefined;
         return false;
     });
