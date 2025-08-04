@@ -9,10 +9,9 @@ const { promisify } = require("util");
 
 const execAsync = promisify(exec);
 const usage =
-    "Usage: git operation [save|apply|pop|drop|list|clear|show] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--no-rtags] [--verbose|-v] [--show-same] [--show-different]";
+    "Usage: git operation [save|apply|pop|drop|list|clear|show] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
 
 let mode;
-let rtags;
 let index;
 let verbose = () => {};
 let showMode = [];
@@ -58,10 +57,6 @@ async function main() {
                 mode = process.argv[i];
                 break;
 
-            case "--no-rtags":
-                rtags = false;
-                break;
-
             case "--show-same":
                 showMode.push("same");
                 break;
@@ -91,14 +86,6 @@ async function main() {
         die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
     }
 
-    if (mode === "save" || mode === "apply" || mode === "pop") {
-        if (rtags !== false) {
-            rtags = whichSync("rc") ?? false;
-        }
-    } else if (rtags === false) {
-        die("--no-rtags only works for save|restore");
-    }
-
     root = await runCommand("git rev-parse --show-toplevel").catch((err) => {
         die("Not a git repository.", err.message);
     });
@@ -123,7 +110,7 @@ async function main() {
         index = ((await indexes()).at(-1) ?? 0) + 1;
     }
 
-    verbose({ root, gitDir, mode, index, rtags, showMode });
+    verbose({ root, gitDir, mode, index, showMode });
 
     if (mode === "show") {
         if (!showMode.length) {
@@ -267,9 +254,7 @@ async function save() {
     await fs.promises.mkdir(dir, { recursive: true });
     await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
 
-    if (rtags) {
-        await runCommand(`${rtags} --suspend=all`);
-    }
+    await runHook("pre");
 }
 
 async function list() {
@@ -322,9 +307,7 @@ async function apply() {
             })
         );
     } finally {
-        if (rtags) {
-            await runCommand(`${rtags} --suspend=clear`);
-        }
+        runHook("post");
     }
 }
 
@@ -382,10 +365,9 @@ function whichSync(cmd) {
     let ret;
     process.env.PATH.split(":").some((p) => {
         ret = path.join(p, cmd);
-        try {
-            fs.accessSync(ret, constants.X_OK);
+        if (isExecutable(ret)) {
             return true;
-        } catch {}
+        }
         ret = undefined;
         return false;
     });
@@ -419,6 +401,15 @@ function timeAgo(date) {
 function prettyTime(ms) {
     const date = new Date(ms);
     return `${date.toISOString()} (${ms}) ${timeAgo(date)}`;
+}
+
+function runHook(type) {
+    const hook = path.join(gitDir, "hooks", `${type}-operation`);
+    if (isExecutable(hook)) {
+        verbose(`Running hook: ${hook}`);
+        return runCommand(hook, root);
+    }
+    return Promise.resolve();
 }
 
 main().catch((err) => {

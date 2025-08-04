@@ -82,10 +82,8 @@ function syncdir
         if [ -n "$stashed" ]; then
             git reset HEAD~
         fi
-        [ -n "$operation" ] && git operation pop
-    else
-        [ -n "$operation" ] && which -s rc && rc --suspend=clear
     fi
+    [ -n "$operation" ] && git operation pop
 
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
     return $rc
