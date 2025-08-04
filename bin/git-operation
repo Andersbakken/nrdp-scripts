@@ -179,10 +179,10 @@ async function listFiles(dir) {
 
 async function runCommand(command, cwd) {
     try {
-        const { stdout } = await execAsync(command, { cwd });
+        const { stdout } = await execAsync(command, { cwd, maxBuffer: 1024 * 1024 * 16 });
         return stdout.trim();
     } catch (err) {
-        const error = new Error(`Command failed: ${command}`);
+        const error = new Error(`Command failed: ${command} ${err.message} ${err.code}`);
         error.code = err.code ?? err.errno ?? "EXEC_FAILED";
         error.stderr = err.stderr || "";
         throw error;
