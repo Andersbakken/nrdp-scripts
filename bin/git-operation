@@ -83,7 +83,7 @@ async function main() {
         die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
     }
 
-    if (mode === "save" && mode === "restore") {
+    if (mode === "save" || mode === "apply" || mode === "pop") {
         if (rtags !== false) {
             rtags = whichSync("rc") ?? false;
         }
@@ -115,7 +115,7 @@ async function main() {
         index = ((await indexes()).at(-1) ?? 0) + 1;
     }
 
-    verbose({ root, gitDir, mode, index });
+    verbose({ root, gitDir, mode, index, rtags, showMode });
 
     if (mode === "show") {
         if (!showMode.length) {
@@ -371,19 +371,18 @@ function isExecutable(filePath) {
 }
 
 function whichSync(cmd) {
-    const paths = process.env.PATH.split(path.delimiter);
-    const extensions = process.platform === "win32" ? (process.env.PATHEXT || ".EXE;.CMD;.BAT;.COM").split(";") : [""];
-
-    for (const dir of paths) {
-        for (const ext of extensions) {
-            const fullPath = path.join(dir, cmd + ext);
-            if (fs.existsSync(fullPath) && isExecutable(fullPath)) {
-                return fullPath;
-            }
+    let ret;
+    process.env.PATH.split(":").some((p) => {
+        ret = path.join(p, cmd);
+        try {
+            fs.accessSync(ret, constants.X_OK);
+            return true;
+        } catch {
         }
-    }
-
-    return undefined;
+        ret = undefined;
+        return false;
+    });
+    return ret;
 }
 
 function timeAgo(date) {
