@@ -8,10 +8,10 @@ function syncdir
 {
     cd "$1"
     local rc=0
-    local SYNC_SUMMARY_START=`git rev-parse HEAD`
+    local SYNC_SUMMARY_START=`git rev-parse HEAD 2>/dev/null`
     local SYNC_SUMMARY_END="HEAD"
 
-    GITDIR=`git rev-parse --git-dir`
+    GITDIR=`git rev-parse --git-dir 2>/dev/null`
     if [ -z "$GITDIR" ] && which lsdev.pl >/dev/null 2>&1; then
         SRCDIR=`lsdev.pl -b src -tp -l`
         if [ -d "$SRCDIR/.git" ]; then
@@ -22,7 +22,7 @@ function syncdir
         echo "Not a git tree!"
         return
     fi
-    ROOTDIR=`git rev-parse --show-toplevel`
+    ROOTDIR=`git rev-parse --show-toplevel 2>/dev/null`
     if [ -z "$ROOTDIR" ]; then
         echo "Can't find root dir"
         return
