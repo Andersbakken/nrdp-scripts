@@ -15,6 +15,9 @@ let mode;
 let index;
 let verbose = () => {};
 let showMode = [];
+let gitDir;
+let srcRoot;
+let gitHooks;
 
 if (
     process.env.GIT_OPERATION_VERBOSE &&
@@ -86,12 +89,16 @@ async function main() {
         die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
     }
 
-    root = await runCommand("git rev-parse --show-toplevel").catch((err) => {
+    srcRoot = await runCommand("git rev-parse --show-toplevel").catch((err) => {
         die("Not a git repository.", err.message);
     });
 
     gitDir = await fs.promises.realpath(await runCommand('git rev-parse --git-path ""')).catch((err) => {
         die("Could not determine git directory.", err.message);
+    });
+
+    gitHooks = await runCommand("git rev-parse --git-path hooks").catch((err) => {
+        die("Could not determine git hooks directory.", err.message);
     });
 
     if (mode === "apply" || mode === "pop" || mode === "drop" || mode === "show") {
@@ -110,7 +117,7 @@ async function main() {
         index = ((await indexes()).at(-1) ?? 0) + 1;
     }
 
-    verbose({ root, gitDir, mode, index, showMode });
+    verbose({ srcRoot, gitDir, mode, index, showMode });
 
     if (mode === "show") {
         if (!showMode.length) {
@@ -197,7 +204,7 @@ async function indexes() {
 function processFile(file) {
     // verbose("processFile", file);
 
-    const abs = path.join(root, file);
+    const abs = path.join(srcRoot, file);
     const go = () => {
         return new Promise((resolve, reject) => {
             try {
@@ -233,14 +240,14 @@ function processFile(file) {
 
 async function save() {
     const files = await Promise.all(
-        (await runCommand("git ls-files --others --cached --exclude-standard", root))
+        (await runCommand("git ls-files --others --cached --exclude-standard", srcRoot))
             .split("\n")
             .map((x) => {
                 if (!x) {
                     return undefined;
                 }
 
-                const abs = path.join(root, x);
+                const abs = path.join(srcRoot, x);
                 if (isDirectory(abs)) {
                     return undefined;
                 }
@@ -302,7 +309,7 @@ async function apply() {
                 verbose(
                     `${x.file} is unchanged. We're changing its mtime from ${prettyTime(x.diff.mtimeMs)} to ${prettyTime(x.mtimeMs)}`
                 );
-                const abs = path.join(root, x.file);
+                const abs = path.join(srcRoot, x.file);
                 await fs.promises.utimes(abs, new Date(x.mtimeMs), new Date(x.mtimeMs));
             })
         );
@@ -404,10 +411,11 @@ function prettyTime(ms) {
 }
 
 function runHook(type) {
-    const hook = path.join(gitDir, "hooks", `${type}-operation`);
+    const hook = path.join(gitHooks, `${type}-operation`);
+    verbose("Checking for hook:", hook, isExecutable(hook) ? "found" : "not found");
     if (isExecutable(hook)) {
         verbose(`Running hook: ${hook}`);
-        return runCommand(hook, root);
+        return runCommand(hook, srcRoot);
     }
     return Promise.resolve();
 }
