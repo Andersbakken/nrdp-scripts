@@ -261,7 +261,7 @@ async function save() {
             })
             .filter((x) => x)
             .map((file) => processFile(file))
-            .filter(x => x)
+            .filter((x) => x)
     );
     const dir = path.join(gitDir, "git-operation");
     await fs.promises.mkdir(dir, { recursive: true });
@@ -355,13 +355,18 @@ async function load() {
     const file = path.join(gitDir, "git-operation", index.toString());
     const data = JSON.parse(await fs.promises.readFile(file, "utf8"));
     return await Promise.all(
-        data.map(async (x) => {
-            const realData = await processFile(x.file);
-            if (realData.mtimeMs !== x.mtimeMs || realData.sha1 !== x.sha1) {
-                x.diff = realData;
-            }
-            return x;
-        })
+        data
+            .filter((x) => x)
+            .map(async (x) => {
+                if (!x) {
+                    return undefined;
+                }
+                const realData = await processFile(x.file);
+                if (realData.mtimeMs !== x.mtimeMs || realData.sha1 !== x.sha1) {
+                    x.diff = realData;
+                }
+                return x;
+            })
     );
 }
 
