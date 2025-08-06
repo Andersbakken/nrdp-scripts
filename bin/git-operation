@@ -205,6 +205,7 @@ function processFile(file) {
     // verbose("processFile", file);
 
     const abs = path.join(srcRoot, file);
+
     const go = () => {
         return new Promise((resolve, reject) => {
             try {
@@ -212,6 +213,10 @@ function processFile(file) {
                 const stream = fs.createReadStream(abs);
 
                 stream.on("error", (err) => {
+                    if (err.code === "ENOENT" || err.code === "EISDIR") {
+                        resolve();
+                        return;
+                    }
                     reject(err);
                 });
 
@@ -256,6 +261,7 @@ async function save() {
             })
             .filter((x) => x)
             .map((file) => processFile(file))
+            .filter(x => x)
     );
     const dir = path.join(gitDir, "git-operation");
     await fs.promises.mkdir(dir, { recursive: true });
