@@ -303,6 +303,10 @@ async function apply() {
     try {
         await Promise.all(
             data.map(async (x) => {
+                if (!x) {
+                    return;
+                }
+
                 if (!x.diff) {
                     // verbose(`${x.file} has the same sha1 and modification time as before`);
                     return;
@@ -356,17 +360,23 @@ async function load() {
     const data = JSON.parse(await fs.promises.readFile(file, "utf8"));
     return await Promise.all(
         data
-            .filter((x) => x)
             .map(async (x) => {
                 if (!x) {
                     return undefined;
                 }
                 const realData = await processFile(x.file);
+                if (!realData) {
+                    verbose(`File ${x.file} does not exist, skipping.`);
+                    return undefined;
+                }
+
                 if (realData.mtimeMs !== x.mtimeMs || realData.sha1 !== x.sha1) {
                     x.diff = realData;
                 }
                 return x;
             })
+            .filter((x) => x)
+
     );
 }
 
