@@ -2075,4 +2075,59 @@ there's a region, all lines that region covers will be duplicated."
 (define-key c-mode-base-map (kbd "C-M-f") (function nrdp-misc-cc-forward-sexp))
 (define-key c-mode-base-map (kbd "C-M-b") (function nrdp-misc-cc-backward-sexp))
 
+
+;; Disable copilot during macro recording and replaying
+(defvar nrdp-scripts-copilot-disabled-for-macro nil
+  "Track if copilot was disabled for macro operations.")
+
+(defun nrdp-scripts-disable-copilot-for-macro ()
+  "Disable copilot if it's currently enabled."
+  (when (and (boundp 'copilot-mode) copilot-mode)
+    (setq nrdp-scripts-copilot-disabled-for-macro t)
+    (copilot-mode -1)))
+
+(defun nrdp-scripts-restore-copilot-after-macro ()
+  "Re-enable copilot if it was disabled for macro operations."
+  (when nrdp-scripts-copilot-disabled-for-macro
+    (setq nrdp-scripts-copilot-disabled-for-macro nil)
+    (copilot-mode 1)))
+
+;; Hook into macro recording
+(add-hook 'kbd-macro-termination-hook 'nrdp-scripts-restore-copilot-after-macro)
+
+;; Advice for macro recording start/end
+(defadvice kmacro-start-macro (before disable-copilot-for-macro activate)
+  "Disable copilot when starting macro recording."
+  (nrdp-scripts-disable-copilot-for-macro))
+
+(defadvice kmacro-end-macro (after restore-copilot-after-macro activate)
+  "Restore copilot when ending macro recording."
+  (nrdp-scripts-restore-copilot-after-macro))
+
+(defadvice kmacro-end-and-call-macro (after restore-copilot-after-macro activate)
+  "Restore copilot when ending and calling macro."
+  (nrdp-scripts-restore-copilot-after-macro))
+
+;; Advice for macro execution
+(defadvice kmacro-exec-ring-item (around disable-copilot-during-execution activate)
+  "Disable copilot during macro execution."
+  (let ((was-enabled (and (boundp 'copilot-mode) copilot-mode)))
+    (when was-enabled
+      (copilot-mode -1))
+    (unwind-protect
+        ad-do-it
+      (when was-enabled
+        (copilot-mode 1)))))
+
+(defadvice execute-kbd-macro (around disable-copilot-during-execution activate)
+  "Disable copilot during kbd macro execution."
+  (let ((was-enabled (and (boundp 'copilot-mode) copilot-mode)))
+    (when was-enabled
+      (copilot-mode -1))
+    (unwind-protect
+        ad-do-it
+      (when was-enabled
+        (copilot-mode 1)))))
+
+
 (provide 'nrdp-misc)
