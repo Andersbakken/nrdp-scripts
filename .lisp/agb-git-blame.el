@@ -70,14 +70,14 @@
 
 (add-hook 'post-command-hook (function agb-git-blame-post-command-hook))
 
-(defun agb-git-blame (&optional revision file)
+(defun agb-git-blame (&optional revision file target-line)
   (interactive "P")
   (let* ((buffer-name (cond (file)
                             ((buffer-file-name))
                             ((agb-git-blame-filename))))
          (buf (get-buffer-create (format "*%s - Blame - %s*" buffer-name (or revision "HEAD"))))
          ;; (line (buffer-substring (point-at-bol) (point-at-eol)))
-         (lineno (line-number-at-pos)))
+         (lineno (or target-line (line-number-at-pos))))
     (unless buffer-name
       (error "Can't blame this file"))
     (cond ((null revision) (setq revision "HEAD"))
@@ -270,5 +270,95 @@
            (>= (length agb-git-blame-commit-chain) 1))
       (agb-git-blame (car agb-git-blame-commit-chain))))
 
+
+(defun agb-git-blame-from-diff-get-line-number (for-previous-commit)
+  "Get the line number in the file corresponding to current position in diff.
+If FOR-PREVIOUS-COMMIT is non-nil, calculate line number for the old version (before changes).
+Returns the line number or nil if not found."
+  (save-excursion
+    (let ((current-line (line-number-at-pos))
+          (line-num nil)
+          (hunk-start-old nil)
+          (hunk-start-new nil))
+      ;; Find the hunk header backwards
+      (when (re-search-backward "^@@ -\\([0-9]+\\),?[0-9]* \\+\\([0-9]+\\),?[0-9]* @@" nil t)
+        (setq hunk-start-old (string-to-number (match-string 1)))
+        (setq hunk-start-new (string-to-number (match-string 2)))
+        (setq line-num (if for-previous-commit hunk-start-old hunk-start-new))
+        ;; Count lines from hunk start to current position
+        (forward-line 1)
+        (while (< (line-number-at-pos) current-line)
+          (let ((line-type (char-after)))
+            (cond ((eq line-type ?+)
+                   ;; Added lines only count in new version
+                   (unless for-previous-commit
+                     (incf line-num)))
+                  ((eq line-type ?-)
+                   ;; Deleted lines only count in old version
+                   (when for-previous-commit
+                     (incf line-num)))
+                  ((eq line-type ? )
+                   ;; Context lines count in both versions
+                   (incf line-num))))
+          (forward-line 1)))
+      line-num)))
+
+(defun agb-git-blame-from-diff-get-commit-and-file (for-previous-commit)
+  "Extract commit hash and file path from a git diff buffer.
+If FOR-PREVIOUS-COMMIT is non-nil, calculate line number for the old version.
+Returns a list (commit-hash file-path line-number) or nil if not found."
+  (let ((commit-hash
+         (save-excursion
+           (when (re-search-backward "^commit \\([a-f0-9]\\{40\\}\\)" nil t)
+             (setq commit-hash (match-string 1)))))
+        (file-path
+         (save-excursion
+           (when (re-search-backward "^diff --git [^ ]+ b/\\(.+\\)$" nil t)
+             (setq file-path (match-string 1)))))
+        (line-number (agb-git-blame-from-diff-get-line-number for-previous-commit)))
+    (cond ((and commit-hash file-path) (list commit-hash file-path line-number))
+          ((and (null commit-hash) (null file-path))
+           (message "Can't find commit or file")
+           nil)
+          ((null commit-hash)
+           (message "Can't find commit")
+           nil)
+          ((null file-path)
+           (message "Can't find file")
+           nil))))
+
+(defun agb-git-blame-from-diff-with-suffix (suffix)
+  "Call agb-git-blame from a diff buffer with the given suffix."
+  (let ((for-previous-commit (not (string= suffix "")))
+        (commit-and-file))
+    (setq commit-and-file (agb-git-blame-from-diff-get-commit-and-file for-previous-commit))
+    (when commit-and-file
+      (let ((commit-hash (car commit-and-file))
+            (file-path (cadr commit-and-file))
+            (line-number (caddr commit-and-file)))
+        (agb-git-blame (concat commit-hash suffix)
+                       (concat (agb-git-blame-root-dir) file-path)
+                       line-number)))))
+
+(defun agb-git-blame-from-diff-tilde ()
+  "Call agb-git-blame with ~ suffix from diff buffer."
+  (interactive)
+  (agb-git-blame-from-diff-with-suffix "~"))
+
+(defun agb-git-blame-from-diff-caret ()
+  "Call agb-git-blame with ^ suffix from diff buffer."
+  (interactive)
+  (agb-git-blame-from-diff-with-suffix "^"))
+
+(defun agb-git-blame-from-diff ()
+  "Call agb-git-blame with from diff buffer."
+  (interactive)
+  (agb-git-blame-from-diff-with-suffix ""))
+
+;; Add keybindings to diff-mode
+(eval-after-load 'diff-mode
+  '(progn
+     (define-key diff-mode-map (kbd "~") 'agb-git-blame-from-diff-tilde)
+     (define-key diff-mode-map (kbd "^") 'agb-git-blame-from-diff-caret)))
 
 (provide 'agb-git-blame)
