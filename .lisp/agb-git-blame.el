@@ -263,14 +263,14 @@
   (setq agb-git-blame-showing-smaller (not agb-git-blame-showing-smaller))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos)))))
+      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos))))
 
 (defun agb-git-blame-toggle-use-relative-date ()
   (interactive)
   (setq agb-git-blame-use-relative-date (not agb-git-blame-use-relative-date))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos)))))
+      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos))))
 
 
 (defun agb-git-blame-from-diff-get-line-number (for-previous-commit)
@@ -327,7 +327,7 @@ Returns a list (commit-hash file-path line-number) or nil if not found."
            nil)
           ((null file-path)
            (message "Can't find file")
-           nil))))
+           nil)))
 
 (defun agb-git-blame-from-diff-with-suffix (suffix)
   "Call agb-git-blame from a diff buffer with the given suffix."
