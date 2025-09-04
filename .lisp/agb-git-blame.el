@@ -361,6 +361,8 @@ Returns a list (commit-hash file-path line-number) or nil if not found."
 (eval-after-load 'diff-mode
   '(progn
      (define-key diff-mode-map (kbd "~") 'agb-git-blame-from-diff-tilde)
-     (define-key diff-mode-map (kbd "^") 'agb-git-blame-from-diff-caret)))
+     (define-key diff-mode-map (kbd "^") 'agb-git-blame-from-diff-caret)
+     (define-key diff-mode-map (kbd "b") 'agb-git-blame-from-diff)))
+
 
 (provide 'agb-git-blame)
