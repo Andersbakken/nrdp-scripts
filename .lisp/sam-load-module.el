@@ -17,7 +17,7 @@
         (let ((compiled-filepath (byte-compile-dest-file filepath)))
       (add-to-list 'load-path (file-name-directory filepath))
           (if (or (not (file-exists-p compiled-filepath)) (file-newer-than-file-p filepath compiled-filepath))
-              (byte-compile-file filepath t)
+              (byte-compile-file filepath)
             (load compiled-filepath)))
       (require (intern module) filename t))))
 

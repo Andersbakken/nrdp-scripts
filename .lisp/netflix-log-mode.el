@@ -145,21 +145,21 @@
                      (apply ex-fn (list (member ln-match str-match)))))
             (progn
               (if (and prev-point
-                       (not (= prev-point (point-at-bol))))
-                  (let ((o (make-overlay prev-point (point-at-bol))))
+                       (not (= prev-point (line-beginning-position))))
+                  (let ((o (make-overlay prev-point (line-beginning-position))))
                     (overlay-put o 'invisible overval)
-                    (remove-overlays prev-point (point-at-bol) 'invisible 'log-log)))
+                    (remove-overlays prev-point (line-beginning-position) 'invisible 'log-log)))
               (setq prev-point nil))
           (if (not prev-point)
-              (setq prev-point (point-at-bol)))))
+              (setq prev-point (line-beginning-position)))))
       (if prev-point
           (let ((o (make-overlay prev-point (point-max))))
             (overlay-put o 'invisible overval)
             (remove-overlays prev-point (point-max) 'invisible 'log-log))))))
 
 (defun netflix-log-current-name (regexp subexp)
-  (let ((bol (point-at-bol))
-        (eol (point-at-eol))
+  (let ((bol (line-beginning-position))
+        (eol (line-end-position))
         point-at-match
         current-name)
     (save-excursion
@@ -292,7 +292,7 @@
   (save-excursion
     (if point
         (goto-char point))
-    (goto-char (point-at-bol))
+    (goto-char (line-beginning-position))
     (cond ((looking-at "\\([0-9][0-9][0-9][0-9]\\)-\\([0-9][0-9]\\)-\\([0-9][0-9]\\) \\([0-9][0-9]\\):\\([0-9][0-9]\\):\\([0-9][0-9]\\).\\([0-9][0-9][0-9]\\) ") ;; YYYY-MM-DD hh:mm:ss.zzz
            (+ (float-time (encode-time (nfltime 6) (nfltime 5) (nfltime 4) (nfltime 3) (nfltime 2) (nfltime 1)))
               (/ (float (nfltime 7)) 1000)))
@@ -305,7 +305,7 @@
 
 (defun netflix-log-time-offset ()
   (interactive)
-  (let* ((start (if (region-active-p) (min (region-beginning) (region-end)) (1- (point-at-bol))))
+  (let* ((start (if (region-active-p) (min (region-beginning) (region-end)) (1- (line-beginning-position))))
          (end (if (region-active-p) (1- (max (region-beginning) (region-end))) (point)))
          (starttime (netflix-log-time start))
          (endtime (netflix-log-time end)))

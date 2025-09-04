@@ -118,7 +118,7 @@
                 (insert output)
                 (goto-char start)
                 (while (search-forward "" nil t)
-                  (delete-region (point-at-bol) (point))))
+                  (delete-region (line-beginning-position) (point))))
               (setq buffer-read-only t))
             (when atend
               (goto-char (point-max)))))))))

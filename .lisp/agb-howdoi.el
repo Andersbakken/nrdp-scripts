@@ -18,7 +18,7 @@
 (defvar agb-howdoi-last-index nil)
 (defvar agb-howdoi-last-search nil)
 (defun agb-howdoi (&optional answer-index search)
-  "Replace the region from BEG to END with the agb-howdoi search results for that text."
+  "Replace region with agb-howdoi search results for that text."
   (interactive)
   (let ((args '("--all")))
     (unless search

@@ -1,4 +1,4 @@
-(eval-when-compile 'cl)
+(eval-when-compile (require 'cl-lib))
 (defvar location-stack-max-count 1024)
 (defvar location-stack-index 0)
 (defvar location-stack nil)
@@ -76,7 +76,7 @@
           (save-restriction
             (widen)
             (goto-char (cdr info))
-            (format "%s:%d:%d:" (buffer-name) (line-number-at-pos (point)) (1+ (- (point) (point-at-bol))))))))))
+            (format "%s:%d:%d:" (buffer-name) (line-number-at-pos (point)) (1+ (- (point) (line-beginning-position))))))))))
 
 (defun location-stack-filter-dead-locations ()
   (let* ((cur location-stack-index)
