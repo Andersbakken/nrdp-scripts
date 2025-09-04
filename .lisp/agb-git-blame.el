@@ -1,4 +1,5 @@
 (require 'diff-mode)
+(require 'cl-lib)
 (defvar agb-git-blame-mode-hook nil)
 (defvar agb-git-blame-last-temp-buffer nil)
 (defvar agb-git-blame-last-file nil)
@@ -9,7 +10,7 @@
 (defcustom agb-git-blame-reuse-buffers
   t
   "Whether to reuse temp buffers for agb-git-blame"
-  :group 'rtags
+  :group 'tools
   :type 'boolean)
 
 (defvar agb-git-blame-mode-map nil)
@@ -38,6 +39,7 @@
   ;; (setq font-lock-defaults '(agb-git-blame-faces))
   (setq mode-name "agb-git-blame")
   (use-local-map agb-git-blame-mode-map)
+  (add-hook 'post-command-hook 'agb-git-blame-post-command-hook nil t)
   (run-hooks 'agb-git-blame-mode-hook)
   (setq buffer-read-only t))
 
@@ -68,7 +70,7 @@
             (setq wlist nil)))
         (setq wlist (cdr wlist))))))
 
-(add-hook 'post-command-hook (function agb-git-blame-post-command-hook))
+;; Hook is added/removed by the mode itself
 
 (defun agb-git-blame (&optional revision file target-line)
   (interactive "P")
@@ -132,7 +134,7 @@
   (interactive)
   (let ((commit (agb-git-blame-current-commit)))
     (when commit
-      (agb-git-blame (concat commit suffix) (agb-git-blame-current-file)))))
+      (agb-git-blame (concat commit suffix) (agb-git-blame-current-file) (line-number-at-pos)))))
 
 (defun agb-git-reblame-for-previous-revision-~ ()
   (interactive)
@@ -147,7 +149,7 @@
   (when (and (agb-git-blame-filename)
              (> (length agb-git-blame-commit-chain) 1))
     (setq agb-git-blame-commit-chain (cdr agb-git-blame-commit-chain))
-    (agb-git-blame (car agb-git-blame-commit-chain))))
+    (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos))))
 
 (defun agb-git-blame-filename ()
   (if (string-match "\\*\\(.*\\) - Blame - [A-Za-z0-9~]*\\*" (buffer-name))
@@ -261,14 +263,14 @@
   (setq agb-git-blame-showing-smaller (not agb-git-blame-showing-smaller))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain))))
+      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos)))))
 
 (defun agb-git-blame-toggle-use-relative-date ()
   (interactive)
   (setq agb-git-blame-use-relative-date (not agb-git-blame-use-relative-date))
   (if (and (agb-git-blame-filename)
            (>= (length agb-git-blame-commit-chain) 1))
-      (agb-git-blame (car agb-git-blame-commit-chain))))
+      (agb-git-blame (car agb-git-blame-commit-chain) (agb-git-blame-current-file) (line-number-at-pos)))))
 
 
 (defun agb-git-blame-from-diff-get-line-number (for-previous-commit)
@@ -310,7 +312,7 @@ Returns a list (commit-hash file-path line-number) or nil if not found."
   (let ((commit-hash
          (save-excursion
            (when (re-search-backward "^commit \\([a-f0-9]\\{40\\}\\)" nil t)
-             (setq commit-hash (match-string 1)))))
+             (match-string 1)))))
         (file-path
          (save-excursion
            (when (re-search-backward "^diff --git [^ ]+ b/\\(.+\\)$" nil t)
