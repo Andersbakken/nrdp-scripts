@@ -61,11 +61,11 @@
                                              (file-truename (buffer-substring-no-properties (match-beginning 1) (match-end 1)))))
                            (forward-line 1)
                            (skip-chars-forward "[A-Fa-f0-9]")
-                           (setq commit-length (- (point) (point-at-bol)))))))
+                           (setq commit-length (- (point) (line-beginning-position)))))))
             (select-window (get-buffer-window buf))
             (goto-char (point-min))
             (when (re-search-forward (concat "^" (substring blame-commit 0 commit-length) " ") nil t)
-              (goto-char (point-at-bol)))
+              (goto-char (line-beginning-position)))
             (select-window cur)
             (setq wlist nil)))
         (setq wlist (cdr wlist))))))
@@ -116,7 +116,7 @@
         (goto-char (- (point-max) 1))
         (if (re-search-backward "^[a-f0-9^]\\{8\\}[^)]*\\( [0-9]+\\)) ")
             (let* ((count (length (match-string 1)))
-                   (column (- (match-beginning 1) (point-at-bol)))
+                   (column (- (match-beginning 1) (line-beginning-position)))
                    (from (format "^\\(.\\{%d\\}\\).\\{%d\\}\\(.*\\)$" column count))
                    (to "\\1\\2"))
               (goto-char (point-min))
@@ -162,7 +162,7 @@
         (match-string 1))))
 
 (defun agb-git-blame-current-file()
-  (let ((file (nth 1 (split-string (buffer-substring-no-properties (point-at-bol) (point-at-eol)) " "))))
+  (let ((file (nth 1 (split-string (buffer-substring-no-properties (line-beginning-position) (line-end-position)) " "))))
     (cond ((not file) agb-git-blame-last-file)
           ((string= file "") agb-git-blame-last-file)
           ((string-match "(" file) agb-git-blame-last-file)
@@ -255,7 +255,7 @@
           (use-local-map agb-git-blame-show-revision-keymap)
           (setq buffer-file-name nil)
           (goto-char (point-min))
-          (font-lock-fontify-buffer)
+          (font-lock-ensure)
           (setq buffer-read-only t)))))
 
 (defun agb-git-blame-toggle-smaller ()
@@ -275,7 +275,7 @@
 
 (defun agb-git-blame-from-diff-get-line-number (for-previous-commit)
   "Get the line number in the file corresponding to current position in diff.
-If FOR-PREVIOUS-COMMIT is non-nil, calculate line number for the old version (before changes).
+If FOR-PREVIOUS-COMMIT is non-nil, calculate line number for old version.
 Returns the line number or nil if not found."
   (save-excursion
     (let ((current-line (line-number-at-pos))
@@ -294,14 +294,14 @@ Returns the line number or nil if not found."
             (cond ((eq line-type ?+)
                    ;; Added lines only count in new version
                    (unless for-previous-commit
-                     (incf line-num)))
+                     (cl-incf line-num)))
                   ((eq line-type ?-)
                    ;; Deleted lines only count in old version
                    (when for-previous-commit
-                     (incf line-num)))
+                     (cl-incf line-num)))
                   ((eq line-type ? )
                    ;; Context lines count in both versions
-                   (incf line-num))))
+                   (cl-incf line-num))))
           (forward-line 1)))
       line-num)))
 
@@ -312,11 +312,11 @@ Returns a list (commit-hash file-path line-number) or nil if not found."
   (let ((commit-hash
          (save-excursion
            (when (re-search-backward "^commit \\([a-f0-9]\\{40\\}\\)" nil t)
-             (match-string 1)))))
+             (match-string 1))))
         (file-path
          (save-excursion
            (when (re-search-backward "^diff --git [^ ]+ b/\\(.+\\)$" nil t)
-             (setq file-path (match-string 1)))))
+             (match-string 1))))
         (line-number (agb-git-blame-from-diff-get-line-number for-previous-commit)))
     (cond ((and commit-hash file-path) (list commit-hash file-path line-number))
           ((and (null commit-hash) (null file-path))
@@ -327,7 +327,7 @@ Returns a list (commit-hash file-path line-number) or nil if not found."
            nil)
           ((null file-path)
            (message "Can't find file")
-           nil)))
+           nil))))
 
 (defun agb-git-blame-from-diff-with-suffix (suffix)
   "Call agb-git-blame from a diff buffer with the given suffix."
