@@ -510,6 +510,8 @@
             (goto-char (point-at-bol))
             (diff-mode)
             (setq buffer-read-only t)
+            (use-local-map (copy-keymap diff-mode-map))
+            (local-set-key (kbd "g") 'revert-buffer)
             (when old
               (select-window old)))
         (message "No differences")
