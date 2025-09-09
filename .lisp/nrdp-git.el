@@ -142,7 +142,7 @@
       (transient-append-suffix 'magit-push "S" '("P" "Push to upstream" magit-push-current-to-upstream))
       (transient-append-suffix 'magit-push "P" '("s" "Submit pull-request" magit-submit-pull-request))
       (transient-append-suffix 'magit-push "s" '("I" "Ignore" magit-ignore-commit))
-    ;; (transient-append-suffix 'magit-log " " "Blame" 'magit-blame-for-current-revision))
+      ;; (transient-append-suffix 'magit-log " " "Blame" 'magit-blame-for-current-revision))
       (transient-append-suffix 'magit-stash "x" '("b" "Buffer(s)" nrdp-git-stash-buffer)))
   (setq magit-git-executable "magit-git.sh")
   (magit-define-popup-action 'magit-pull-popup ?S "Sync" 'nrdp-magit-sync)
@@ -511,7 +511,7 @@
             (diff-mode)
             (setq buffer-read-only t)
             (use-local-map (copy-keymap diff-mode-map))
-            (local-set-key (kbd "g") 'revert-buffer)
+            (local-set-key (kbd "g") 'nrdp-git-diff-revert-with-position)
             (when old
               (select-window old)))
         (message "No differences")
@@ -520,6 +520,61 @@
             (delete-window)
           (other-window 1))))
     nil))
+
+(defun nrdp-git-diff-revert-with-position (&optional ignore-auto noconfirm)
+  "Revert git diff buffer while trying to preserve cursor position."
+  (interactive)
+  (let ((current-line (thing-at-point 'line t))
+        (line-num (line-number-at-pos))
+        (col-num (current-column))
+        (context-before "")
+        (context-after "")
+        (window-start-line ""))
+    ;; Capture context lines around current position
+    (save-excursion
+      (when (> line-num 1)
+        (forward-line -1)
+        (setq context-before (thing-at-point 'line t))))
+    (save-excursion
+      (when (not (eobp))
+        (forward-line 1)
+        (setq context-after (thing-at-point 'line t))))
+    ;; Capture the first visible line for window positioning
+    (save-excursion
+      (goto-char (window-start))
+      (setq window-start-line (thing-at-point 'line t)))
+    ;; Revert the buffer
+    (revert-buffer ignore-auto noconfirm)
+    ;; Try to find the same position
+    (goto-char (point-min))
+    (cond
+     ;; First try exact line match
+     ((and current-line (search-forward current-line nil t))
+      (forward-line -1)
+      (beginning-of-line)
+      (move-to-column col-num))
+     ;; Try context before - find the line before, then go to next line
+     ((and context-before (search-forward context-before nil t))
+      (beginning-of-line)
+      (forward-line 1)
+      (move-to-column col-num))
+     ;; Try context after - find the line after, then go to previous line
+     ((and context-after (search-forward context-after nil t))
+      (beginning-of-line)
+      (forward-line -1)
+      (move-to-column col-num))
+     ;; Fall back to line number
+     (t
+      (goto-char (point-min))
+      (forward-line (1- line-num))
+      (move-to-column col-num)))
+    ;; Try to restore window position
+    (when window-start-line
+      (save-excursion
+        (goto-char (point-min))
+        (when (search-forward window-start-line nil t)
+          (beginning-of-line)
+          (set-window-start (selected-window) (point)))))))
 
 (defun nrdp-git-diff-tracking (&optional -w target no-split-window norestorefocus word)
   (interactive "P")
