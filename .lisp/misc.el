@@ -2070,7 +2070,7 @@ there's a region, all lines that region covers will be duplicated."
             (backward-char 1)))))
     (if conditional
         (goto-char conditional)
-      (backward-sexp arg))))
+      (backward-sexp arg)))))
 
 (define-key c-mode-base-map (kbd "C-M-f") (function nrdp-misc-cc-forward-sexp))
 (define-key c-mode-base-map (kbd "C-M-b") (function nrdp-misc-cc-backward-sexp))
