@@ -7,7 +7,7 @@ which git-tracking >/dev/null 2>&1 && GIT_TRACKING=`git-tracking`
 function syncdir
 {
     cd "$1"
-    local rc=0
+    local RC=0
     local SYNC_SUMMARY_START=`git rev-parse HEAD 2>/dev/null`
     local SYNC_SUMMARY_END="HEAD"
 
@@ -29,33 +29,33 @@ function syncdir
     fi
 
     cd "$ROOTDIR"
-    stashed=
+    STASHED=
     local PULLARGS=
-    [ -n "$operation" ] && git operation save
-    if [ -n "$autostash" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
-        if [ "$autostash" = "pull" ]; then
+    [ -n "$OPERATION" ] && git operation save
+    if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
+        if [ "$AUTOSTASH" = "pull" ]; then
             PULLARGS="--autostash"
         else
-            stashed="$(git ignore-commit marker 2>/dev/null)git-sync"
-            git commit -a -m "${stashed}" --allow-empty
+            STASHED="$(git ignore-commit marker 2>/dev/null)git-sync"
+            git commit -a -m "${STASHED}" --allow-empty
         fi
     fi
 
-    if [ -n "$check" ]; then
-        local_sha=`git rev-parse HEAD`
-        check_origin=`echo "$check" | cut -d'/' -f1`
-        check_branch=`echo "$check" | cut -d'/' -f2-`
-        for remote_sha in $(git ls-remote $check_origin | grep "refs/heads/${check_branch}$" | cut -f1); do
-            echo "Trying: $remote_sha :: $local_sha"
-            if ! git merge-base --is-ancestor "$remote_sha" "$local_sha" >/dev/null 2>&1; then
-                rc=1
+    if [ -n "$CHECK" ]; then
+        LOCAL_SHA=`git rev-parse HEAD`
+        CHECK_ORIGIN=`echo "$CHECK" | cut -d'/' -f1`
+        CHECK_BRANCH=`echo "$CHECK" | cut -d'/' -f2-`
+        for REMOTE_SHA in $(git ls-remote $CHECK_ORIGIN | grep "refs/heads/${CHECK_BRANCH}$" | cut -f1); do
+            echo "Trying: $REMOTE_SHA :: $LOCAL_SHA"
+            if ! git merge-base --is-ancestor "$REMOTE_SHA" "$LOCAL_SHA" >/dev/null 2>&1; then
+                RC=1
                 break
             fi
         done
-        if [ "$rc" = "1" ]; then
-            echo "$ROOTDIR: not up to date [$check]"
+        if [ "$RC" = "1" ]; then
+            echo "$ROOTDIR: not up to date [$CHECK]"
         else
-            echo "$ROOTDIR: up to date [$check]"
+            echo "$ROOTDIR: up to date [$CHECK]"
         fi
     elif [ -d "$GITDIR/refs/remotes/p4" ]; then
         git p4 sync
@@ -78,28 +78,28 @@ function syncdir
     fi
 
     if [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-        if [ -n "$stashed" ] && [ $(git show --pretty=format:%s --no-patch) = "$stashed" ]; then
+        if [ -n "$STASHED" ] && [ $(git show --pretty=format:%s --no-patch) = "$STASHED" ]; then
             git reset HEAD~
         fi
     fi
-    [ -n "$operation" ] && git operation pop
+    [ -n "$OPERATION" ] && git operation pop
 
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
-    return $rc
+    return $RC
 }
 
-idx=0
-check=
-operation=`git config sync.operation`
-if [ "$operation" = "0" ] || [ "$operation" = "false" ]; then
-    operation=
+IDX=0
+CHECK=
+OPERATION=`git config sync.operation`
+if [ "$OPERATION" = "0" ] || [ "$OPERATION" = "false" ]; then
+    OPERATION=
 fi
 
-autostash=`git config sync.autostash`
-if [ "$autostash" = "pull" ]; then
+AUTOSTASH=`git config sync.autostash`
+if [ "$AUTOSTASH" = "pull" ]; then
     VERSION=`git --version | cut -d' ' -f3`
     if [ `echo $VERSION | awk -F. '{print $1}'` -eq 2 ] && [ `echo $VERSION | awk -F. '{print $2}'` -lt 9 ]; then
-        autostash=1
+        AUTOSTASH=1
     fi
 fi
 
@@ -107,32 +107,32 @@ while [ -n "$1" ]; do
     case "$1" in
         -c|--check)
             shift
-            check="$1"
-            [ -z "$check" ] && check=$(git rev-parse --abbrev-ref @{u})
-            echo "$check" | grep -vq '/' && check="$check/`git name-rev HEAD | cut -d' ' -f2`"
+            CHECK="$1"
+            [ -z "$CHECK" ] && CHECK=$(git rev-parse --abbrev-ref @{u})
+            echo "$CHECK" | grep -vq '/' && CHECK="$CHECK/`git name-rev HEAD | cut -d' ' -f2`"
             ;;
         --no-log)
             GIT_SYNC_SUMMARY=""
             ;;
         --autostash-pull)
-            autostash=pull
+            AUTOSTASH=pull
             ;;
         -a=*|--autostash=*)
-            autostash=`echo $1 | sed -e 's,^[^=]*=,,'`
+            AUTOSTASH=`echo $1 | sed -e 's,^[^=]*=,,'`
             ;;
         --no-color)
             [ -n "$GIT_SYNC_SUMMARY" ] && GIT_SYNC_SUMMARY="$GIT_SYNC_SUMMARY --no-color"
             ;;
         --autostash|-a)
-            autostash=1
+            AUTOSTASH=1
             ;;
         --no-autostash)
-            autostash=
+            AUTOSTASH=
             ;;
         *)
             if [ -d "$1" ]; then
-                dirs[$idx]="$1"
-                idx=`expr $idx + 1`
+                dirs[$IDX]="$1"
+                IDX=`expr $IDX + 1`
             else
                 echo "$1 is not a directory"
             fi
@@ -140,16 +140,16 @@ while [ -n "$1" ]; do
     esac
     shift
 done
-if [ $idx -eq 0 ]; then
-    idx=1
+if [ $IDX -eq 0 ]; then
+    IDX=1
     dirs[0]=`pwd`
 fi
 
-i=0
-rc=0
-while [ $i -lt $idx ]; do
-    root="${dirs[$i]}"
-    syncdir "$root" || rc=1
-    i=`expr $i + 1`
+I=0
+RC=0
+while [ $I -lt $IDX ]; do
+    ROOT="${dirs[$I]}"
+    syncdir "$ROOT" || RC=1
+    I=`expr $I + 1`
 done
-exit $rc
+exit $RC
