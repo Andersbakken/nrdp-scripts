@@ -36,9 +36,8 @@ function syncdir
         if [ "$autostash" = "pull" ]; then
             PULLARGS="--autostash"
         else
-            stashed=1
-            ignore_marker=`git ignore-commit marker 2>/dev/null`
-            git commit -a -m "${ignore_marker}git-sync" --allow-empty
+            stashed="$(git ignore-commit marker 2>/dev/null)git-sync"
+            git commit -a -m "${stashed}" --allow-empty
         fi
     fi
 
@@ -79,7 +78,7 @@ function syncdir
     fi
 
     if [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-        if [ -n "$stashed" ]; then
+        if [ -n "$stashed" ] && [ $(git show --pretty=format:%s --no-patch) = "$stashed" ]; then
             git reset HEAD~
         fi
     fi
