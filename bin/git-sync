@@ -78,7 +78,7 @@ function syncdir
     fi
 
     if [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-        if [ -n "$STASHED" ] && [ $(git show --pretty=format:%s --no-patch) = "$STASHED" ]; then
+        if [ -n "$STASHED" ] && [ "$(git show --pretty=format:%s --no-patch)" = "$STASHED" ]; then
             git reset HEAD~
         fi
     fi
