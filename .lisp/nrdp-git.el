@@ -303,7 +303,8 @@
         (setq search (s-trim (substring search 0 pipeidx)))))
     (setq search (s-chop-suffix " " search))
     (setq nrdp-git-grep-last-search search)
-    (when (string-match "^[^-][^ ]*\\([ ]+[^-][^ ]*\\)+$" search)
+    (when (and (string-match "^[^-][^ ]*\\([ ]+[^-][^ ]*\\)+$" search)
+               (not (string-match "[\"']" search)))
       (setq search (concat "\"" search "\"")))
 
     (let* ((hasdashdash)
