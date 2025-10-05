@@ -36,7 +36,7 @@ function syncdir
         if [ "$AUTOSTASH" = "pull" ]; then
             PULLARGS="--autostash"
         else
-            STASHED="$(git ignore-commit marker 2>/dev/null)git-sync"
+            STASHED="$(git ignore-commit marker sync-autostash 2>/dev/null)git-sync"
             git commit -a -m "${STASHED}" --allow-empty
         fi
     fi
