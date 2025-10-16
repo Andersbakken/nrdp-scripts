@@ -36,13 +36,13 @@ define setup-detect-target
   set logging file /tmp/gdb_info_target
   set logging overwrite on
   set logging redirect on
-  set logging on
+  set logging enabled on
   set pagination off
   info target
   help all
   #source /tmp/gdb_has_python.py
   set pagination on
-  set logging off
+  set logging enabled off
   set logging redirect off
   set logging overwrite off
 

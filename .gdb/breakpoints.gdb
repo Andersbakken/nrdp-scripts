@@ -2,9 +2,9 @@
 define bsave
     shell rm -f .gdb_brestore.txt
     set logging file .gdb_brestore.txt
-    set logging on
+    set logging enabled on
     info break
-    set logging off
+    set logging enabled off
     # reformat on-the-fly to a valid gdb command file
     shell perl -n -e 'print "break $1\n" if /^\d+\s+breakpoint\s+\S+\s+y.+?(\S+)$/g' .gdb_brestore.txt > .gdb_brestore
 end
