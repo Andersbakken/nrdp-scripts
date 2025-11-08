@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
 
-which -s rc && rc --suspend=project
+if which -s rc; then
+    rc "--project=$(git rev-parse --show-toplevel)"
+    rc --suspend=project
+fi
 true
