@@ -2,6 +2,6 @@
 
 if which -s rc; then
     rc "--project=$(git rev-parse --show-toplevel)"
-    rc --suspend=project
+    rc --suspend=all
 fi
 true

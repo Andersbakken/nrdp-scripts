@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-which -s rc && rc --suspend=clear-project
+which -s rc && rc --suspend=clear
 true
