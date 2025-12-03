@@ -29,6 +29,15 @@ elif [ "$1" = "prefix" ]; then
     shift
 fi
 
+if [ $MODE == "submit" -o $MODE == "create" ] && [ ! -f $(git rev-parse --git-path hooks)/post-submit ]; then
+    HOOKS_DIR="$(realpath ${SCRIPT_DIR}/../.git_template/hooks/)"
+    echo "post-submit hook not installed. Please run:"
+    echo "  ln -s ${HOOKS_DIR}/post-submit $(git rev-parse --git-path hooks)/post-submit"
+    echo " or even:"
+    echo "  ln -s ${HOOKS_DIR}/* $(git rev-parse --git-path hooks)/"
+    exit 2
+fi
+
 PULL_REQUEST_USER=`git config user.email | cut -d@ -f1`
 [ -z "$PULL_REQUEST_USER" ] && PULL_REQUEST_USER=`whoami`
 PULL_REQUEST_AUTO_PREFIX="auto/"
