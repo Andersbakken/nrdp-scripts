@@ -36,14 +36,24 @@ PULL_REQUEST_PREFIX=`git config pullrequest.prefix`
 [ -z "$PULL_REQUEST_PREFIX" ] && PULL_REQUEST_PREFIX="pr/${PULL_REQUEST_USER}"
 PULL_REQUEST_REPO=`git config pullrequest.repo`
 PULL_SCM=`git config pullrequest.scm | cut -d@ -f1`
+PULL_ORIGIN=`git remote get-url origin 2>/dev/null`
 if [ -z "$PULL_SCM" ]; then
-    PULL_ORIGIN=`git remote get-url origin`
     if echo "${PULL_ORIGIN}" | grep -q github; then
         PULL_SCM="github"
     elif echo "${PULL_ORIGIN}" | grep -q stash; then
         PULL_SCM="stash"
     else
         PULL_SCM="github"
+    fi
+fi
+if [ -z "$PULL_REQUEST_REPO" ] && [ -n "$PULL_ORIGIN" ]; then
+    PULL_REQUEST_REPO=$(echo "$PULL_ORIGIN" | sed -e 's,.*[:/]\([^/]*/[^/]*\)\.git$,\1,' -e 's,.*[:/]\([^/]*/[^/]*\)$,\1,')
+    if echo "$PULL_ORIGIN" | grep -q "git\.netflix\.net"; then
+        GIT_ORG=$(echo "$PULL_REQUEST_REPO" | cut -d/ -f1)
+        GIT_REPO=$(echo "$PULL_REQUEST_REPO" | cut -d/ -f2)
+        if [ "$GIT_ORG" != "corp" ]; then
+            PULL_REQUEST_REPO="corp/${GIT_ORG}-${GIT_REPO}"
+        fi
     fi
 fi
 if [ "$PULL_SCM" = "stash" ]; then
