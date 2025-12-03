@@ -14,9 +14,14 @@ elif echo "$INFILE" | grep ',[0-9]\+$' >/dev/null 2>&1; then
     INFILE=`echo $INFILE | cut -d, -f1`
 fi
 
-FILE=$(choose.pl $(find . -name "$INFILE"))
-[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
-[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+if [[ "$INFILE" == */* ]]; then
+    FILE=$(choose.pl $(find . -path "*${INFILE}"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -path "*${INFILE}*"))
+else
+    FILE=$(choose.pl $(find . -name "$INFILE"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+fi
 if [ -e "$FILE" ]; then
     if [ -n "$COL" ]; then
         FILE="$FILE:$LINE:$COL"

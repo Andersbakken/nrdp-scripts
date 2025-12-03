@@ -1,9 +1,31 @@
 #!/bin/bash
 
+LINE=
+COL=
 INFILE="$1"
-FILE=$(choose.pl $(find . -name "$INFILE"))
-[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
-[ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+
+if echo "$INFILE" | grep ':[0-9:]\+$' >/dev/null 2>&1; then
+    COL=`echo $INFILE | cut -d: -f3`
+    LINE=`echo $INFILE | cut -d: -f2`
+    INFILE=`echo $INFILE | cut -d: -f1`
+fi
+
+if [[ "$INFILE" == */* ]]; then
+    # Partial path provided - use -path
+    FILE=$(choose.pl $(find . -path "*${INFILE}"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -path "*${INFILE}*"))
+else
+    # Just a filename - use -name
+    FILE=$(choose.pl $(find . -name "$INFILE"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "${INFILE}*"))
+    [ -z "$FILE" ] && FILE=$(choose.pl $(find . -name "*${INFILE}*"))
+fi
 if [ -e "$FILE" ]; then
-    vim "$FILE"
+    if [ -n "$COL" ]; then
+        vim "+call cursor($LINE, $COL)" "$FILE"
+    elif [ -n "$LINE" ]; then
+        vim "+$LINE" "$FILE"
+    else
+        vim "$FILE"
+    fi
 fi
