@@ -29,7 +29,7 @@ elif [ "$1" = "prefix" ]; then
     shift
 fi
 
-if [ $MODE == "submit" -o $MODE == "create" ] && [ ! -f $(git rev-parse --git-path hooks)/post-submit ]; then
+if [ $MODE == "submit" ] && [ ! -f $(git rev-parse --git-path hooks)/post-submit ]; then
     HOOKS_DIR="$(realpath ${SCRIPT_DIR}/../.git_template/hooks/)"
     echo "post-submit hook not installed. Please run:"
     echo "  ln -s ${HOOKS_DIR}/post-submit $(git rev-parse --git-path hooks)/post-submit"
