@@ -1983,6 +1983,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun nrdp-misc-cc-forward-sexp (&optional arg)
   (interactive "^p")
+  (or arg (setq arg 1))
   (let ((conditional)
         (include)
         (endif))
@@ -2029,6 +2030,7 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun nrdp-misc-cc-backward-sexp (&optional arg)
   (interactive "^p")
+  (or arg (setq arg 1))
   (let ((conditional)
         (include)
         (ifif))
