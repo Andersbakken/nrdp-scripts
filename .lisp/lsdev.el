@@ -585,4 +585,28 @@
     (set-process-sentinel (start-process (concat "lsdev git sync " dir) " *lsdev-git-sync*" "git" "lsdev" dir "--" "sync" "-r") 'lsdev-git-sync-sentinel)
     (message "Syncing %s..." dir)))
 
+;;; project.el integration
+(when (require 'project nil t)
+  (cl-defmethod project-root ((project (head lsdev)))
+    "Return root directory of an lsdev PROJECT."
+    (cdr project))
+
+  (defun lsdev-project-find (dir)
+    "Return a project instance if DIR is under an lsdev root."
+    (when-let ((root (lsdev-root-dir dir)))
+      (cons 'lsdev (file-name-as-directory root))))
+
+  (add-hook 'project-find-functions #'lsdev-project-find)
+
+  (defun lsdev-switch-project ()
+    "Switch to a project from the lsdev list."
+    (interactive)
+    (let* ((projects (lsdev-dirs-all))
+           (name (completing-read "Switch to project: "
+                                  (mapcar #'car projects)
+                                  nil t))
+           (dir (nth 1 (assoc name projects))))
+      (when dir
+        (project-switch-project dir)))))
+
 (provide 'lsdev)
