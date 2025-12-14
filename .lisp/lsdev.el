@@ -516,12 +516,15 @@
             (basic-save-buffer)))
         (kill-buffer buffer)))))
 
-(defun lsdev-pretty-name (buffer)
-  (let ((name (lsdev-name buffer)))
+(defun lsdev-pretty-name-path (buffer-or-dir)
+  (let ((name (lsdev-name buffer-or-dir)))
     (cond ((null name) nil)
           ((string-prefix-p "src_" name) (substring name 4))
           ((string-prefix-p "build_" name) (substring name 6))
           (t name))))
+
+(defun lsdev-pretty-name (buffer)
+  (lsdev-pretty-name-path buffer))
 
 (defun lsdev-limit-to-project (&optional unlimit)
   (interactive "P")
