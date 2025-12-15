@@ -86,4 +86,5 @@ Optionally limit to START-LINE to END-LINE (1-indexed, inclusive)."
    :description "Return the contents of the *compilation* buffer. Optionally specify start_line and end_line (1-indexed) to limit the range."
    :args '((:name "start_line" :type "integer" :description "Starting line number (1-indexed, optional)")
            (:name "end_line" :type "integer" :description "Ending line number (1-indexed, inclusive, optional)")))
+  (provide 'nrdp-scripts-claude)
   )
