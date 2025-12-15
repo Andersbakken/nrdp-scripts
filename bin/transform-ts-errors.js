@@ -34,6 +34,15 @@ function filter(idx, line) {
         line = line.substring(18);
     }
 
+    // Handle @rollup/plugin-typescript format:
+    // (!) [plugin typescript] path/file.ts (line:col): @rollup/plugin-typescript TS1234: message
+    // or with noEmitOnError:
+    // [!] (plugin typescript) RollupError: [plugin typescript] path/file.ts (line:col): @rollup/plugin-typescript TS1234: message
+    const rollupTsMatch = /^(?:\(!\) \[plugin typescript\]|\[!\] \(plugin typescript\) RollupError: \[plugin typescript\]) ([A-Za-z0-9_.\/.-]*\.ts) \(([0-9]+):([0-9]+)\): @rollup\/plugin-typescript (.*)/.exec(line);
+    if (rollupTsMatch) {
+        line = `${rollupTsMatch[1]}:${rollupTsMatch[2]}:${rollupTsMatch[3]}: error: ${rollupTsMatch[4]}`;
+    }
+
     let match = /^([A-Za-z0-9_./]*.ts:[0-9]+:[0-9]+:? *)?error: (.*)/.exec(line);
     // console.log("line", line, match);
     if (match) {
@@ -122,6 +131,35 @@ child.stderr.on("data", data => {
     }
 });
 
+let exitCode = 0;
+let stdoutClosed = false;
+let stderrClosed = false;
+let exited = false;
+
+function maybeExit() {
+    if (stdoutClosed && stderrClosed && exited) {
+        process.exit(exitCode);
+    }
+}
+
+child.stdout.on("close", () => {
+    if (stdoutPending) {
+        stdoutPending.split("\n").forEach(filter.bind(undefined, 0));
+    }
+    stdoutClosed = true;
+    maybeExit();
+});
+
+child.stderr.on("close", () => {
+    if (stderrPending) {
+        stderrPending.split("\n").forEach(filter.bind(undefined, 1));
+    }
+    stderrClosed = true;
+    maybeExit();
+});
+
 child.on("exit", (code, signal) => {
-    process.exit(code);
+    exitCode = code;
+    exited = true;
+    maybeExit();
 });
