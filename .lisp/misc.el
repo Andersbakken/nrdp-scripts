@@ -5,7 +5,6 @@
 (require 'bytecomp)
 (require 's)
 (require 'cl-lib)
-(require 'cl)
 
 (defun --misc-find-deepest-ancestor-directory (file)
   (let ((ret)

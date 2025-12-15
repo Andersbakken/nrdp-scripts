@@ -102,7 +102,7 @@
 ;;; Code:
 
 (defvar display-buffer-for-wide-screen-version "$Id: display-buffer-for-wide-screen.el,v 1.4 2010/11/02 00:25:35 rubikitch Exp $")
-(eval-when-compile (require 'cl))
+(eval-when-compile (require 'cl-lib))
 (defgroup display-buffer-for-wide-screen nil
   "display-buffer-for-wide-screen"
   :group 'emacs)
@@ -147,7 +147,7 @@ FORCE-OTHER-WINDOW is ignored."
   (or (get-buffer-window buffer)
       (and special-display-function
            (or (member (buffer-name buffer) special-display-buffer-names)
-               (some (lambda (re) (string-match re (buffer-name buffer))) special-display-regexps))
+               (cl-some (lambda (re) (string-match re (buffer-name buffer))) special-display-regexps))
            (funcall special-display-function buffer))
       (if (one-window-p)
           (let* ((shrink nil) (new-win

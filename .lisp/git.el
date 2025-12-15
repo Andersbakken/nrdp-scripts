@@ -51,7 +51,7 @@
 ;; and log-edit packages.
 ;;
 
-(eval-when-compile (require 'cl))
+(eval-when-compile (require 'cl-lib))
 (require 'ewoc)
 (require 'log-edit)
 (require 'easymenu)
@@ -366,7 +366,7 @@ the process output as a string, or nil if the git command failed."
   (if (string-match "[\n\t\"\\]" name)
       (concat "\""
               (mapconcat (lambda (c)
-                   (case c
+                   (cl-case c
                      (?\n "\\n")
                      (?\t "\\t")
                      (?\\ "\\\\")
@@ -553,7 +553,7 @@ update the \"HEAD\" reference to the new commit."
 ;;;; ------------------------------------------------------------
 
 ; fileinfo structure stolen from pcl-cvs
-(defstruct (git-fileinfo
+(cl-defstruct (git-fileinfo
             (:copier nil)
             (:constructor git-create-fileinfo (staged-state state name &optional old-perm new-perm rename-state orig-name marked))
             (:conc-name git-fileinfo->))
@@ -603,7 +603,7 @@ The list must be sorted."
 
 (defun git-state-code (code)
   "Convert from a string to a added/deleted/modified state."
-  (case (string-to-char code)
+  (cl-case (string-to-char code)
     (?M 'modified)
     (?? 'unknown)
     (?A 'added)
@@ -614,7 +614,7 @@ The list must be sorted."
 
 (defun git-status-code-as-string (code)
   "Format a git status code as string."
-  (case code
+  (cl-case code
     ('modified (propertize "Modified" 'face 'git-status-face))
     ('unknown  (propertize "Unknown " 'face 'git-unknown-face))
     ('added    (propertize "Added   " 'face 'git-status-face))
@@ -628,25 +628,25 @@ The list must be sorted."
   "Return a string describing the file type based on its permissions."
   (let* ((old-type (lsh (or old-perm 0) -9))
          (new-type (lsh (or new-perm 0) -9))
-         (str (case new-type
+         (str (cl-case new-type
                 (64  ;; file
-                 (case old-type
+                 (cl-case old-type
                    (64 nil)
                    (80 "   (type change symlink -> file)")
                    (112 "   (type change subproject -> file)")))
                  (80  ;; symlink
-                  (case old-type
+                  (cl-case old-type
                     (64 "   (type change file -> symlink)")
                     (112 "   (type change subproject -> symlink)")
                     (t "   (symlink)")))
                   (112  ;; subproject
-                   (case old-type
+                   (cl-case old-type
                      (64 "   (type change file -> subproject)")
                      (80 "   (type change symlink -> subproject)")
                      (t "   (subproject)")))
                   (72 nil)  ;; directory (internal, not a real git state)
                   (0  ;; deleted or unknown
-                   (case old-type
+                   (cl-case old-type
                      (80 "   (symlink)")
                      (112 "   (subproject)")))
                   (t (format "   (unknown type %o)" new-type)))))
@@ -966,7 +966,7 @@ The FILES list must be sorted."
                                      process-environment))
         added deleted modified)
     (dolist (info files)
-      (case (git-fileinfo->state info)
+      (cl-case (git-fileinfo->state info)
         ('added (push info added))
         ('deleted (push info deleted))
         ('modified (push info modified))))
@@ -1188,7 +1188,7 @@ The FILES list must be sorted."
                     (format "Revert %d files? " (length files))
                   (format "Revert %s? " (git-fileinfo->name (car files))))))
       (dolist (info files)
-        (case (or (git-fileinfo->state info) (git-fileinfo->staged-state info))
+        (cl-case (or (git-fileinfo->state info) (git-fileinfo->staged-state info))
           ('added (push (git-fileinfo->name info) added))
           ('deleted (push (git-fileinfo->name info) modified))
           ('unmerged (push (git-fileinfo->name info) modified))
@@ -1216,7 +1216,7 @@ The FILES list must be sorted."
   (interactive)
   (ewoc-filter git-status
                (lambda (info)
-                 (case (git-fileinfo->state info)
+                 (cl-case (git-fileinfo->state info)
                    ('ignored git-show-ignored)
                    ('uptodate git-show-uptodate)
                    ('unknown git-show-unknown)

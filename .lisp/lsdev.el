@@ -2,7 +2,7 @@
 (require 'ido)
 (require 'nrdp-git)
 (require 'buffer-pop)
-(eval-when-compile (require 'cl))
+(eval-when-compile (require 'cl-lib))
 
 (defgroup lsdev nil
   "Group for lsdev."
