@@ -1932,6 +1932,19 @@ there's a region, all lines that region covers will be duplicated."
   (interactive "p")
   (misc-other-window (or count -1) all-frames))
 
+(defun misc-window-toggle-side-windows-dwim (&optional regular-toggle)
+  "Toggle side windows with DWIM behavior.
+With prefix argument, call `window-toggle-side-windows' to toggle all side windows.
+Without prefix, try `auto-side-windows-toggle-side-window' first, and if that
+fails (e.g., current buffer isn't a side window candidate), fall back to
+`window-toggle-side-windows'."
+  (interactive "p")
+  (cond ((listp regular-toggle) (window-toggle-side-windows))
+        ((condition-case nil
+             (progn (auto-side-windows-toggle-side-window) t)
+           (error nil)))
+        (t (window-toggle-side-windows))))
+
 (defvar misc-next-error-map nil)
 (setq misc-next-error-map (make-sparse-keymap))
 (define-key misc-next-error-map (kbd "`") (function misc-next-error))
