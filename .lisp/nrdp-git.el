@@ -649,15 +649,17 @@
   (magit-run-git-async "sync" "--no-color"))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
-(defadvice pop-to-buffer (around return-focus activate)
+(defun nrdp-pop-to-buffer-return-focus (orig-fun &rest args)
+  "Restore focus when magit-process buffer pops up."
   (let ((prev (selected-window)))
-    ad-do-it
-    (when (and prev
-               (not (eq prev (selected-window)))
-               (or (and (fboundp 'magit-process-buffer-name)
-                        (string= (buffer-name) (magit-process-buffer-name)))
-                   (string-match "^\\*magit-process: " (buffer-name))))
-      (select-window prev))))
+    (prog1 (apply orig-fun args)
+      (when (and prev
+                 (not (eq prev (selected-window)))
+                 (or (and (fboundp 'magit-process-buffer-name)
+                          (string= (buffer-name) (magit-process-buffer-name)))
+                     (string-match "^\\*magit-process: " (buffer-name))))
+        (select-window prev)))))
+(advice-add 'pop-to-buffer :around #'nrdp-pop-to-buffer-return-focus)
 
 (defun nrdp-magit-status (&optional prefix)
   (interactive "P")
@@ -680,17 +682,17 @@
                             t))))
     (call-interactively 'magit-status)))
 
-(if (fboundp 'magit-status-internal)
-    (defadvice magit-status-internal (around fixdir activate)
-      (let ((dir (ad-get-arg 0)))
-        (unless (file-name-absolute-p dir)
-          (ad-set-arg 0 (expand-file-name dir))))
-      ad-do-it)
-  (defadvice magit-status-setup-buffer (around fixdir activate)
-    (let ((dir (ad-get-arg 0)))
-      (unless (file-name-absolute-p dir)
-        (ad-set-arg 0 (expand-file-name dir))))
-    ad-do-it))
+(defun nrdp-magit-status-fixdir (orig-fun dir &rest args)
+  "Ensure directory argument is absolute."
+  (apply orig-fun
+         (if (and dir (not (file-name-absolute-p dir)))
+             (expand-file-name dir)
+           dir)
+         args))
+(advice-add (if (fboundp 'magit-status-internal)
+                'magit-status-internal
+              'magit-status-setup-buffer)
+            :around #'nrdp-magit-status-fixdir)
 
 (define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
@@ -869,4 +871,36 @@
                    (and result (string-match "^\\([^ ]+\\)" result) (match-string 1 result)))))
   (if commit
       (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
+;; ================================================================================
+;; AI-generated commit messages with magit-gptcommit
+;; ================================================================================
+
+(when (require 'magit-gptcommit nil t)
+  (require 'llm-claude)
+
+  ;; Redirect llm-claude to use Netflix proxy instead of api.anthropic.com
+  (defvar nrdp-claude-proxy-url "http://localhost:9123/mtlsproxy:claudecode"
+    "Netflix proxy URL for Claude API requests.")
+
+  (defun nrdp-llm-claude-url-proxy (orig-fun method &rest args)
+    "Redirect Claude API calls to Netflix proxy."
+    (format "%s/v1/%s" nrdp-claude-proxy-url method))
+  (advice-add 'llm-claude--url :around #'nrdp-llm-claude-url-proxy)
+
+  (setq magit-gptcommit-llm-provider
+        (make-llm-claude
+         :key (or (auth-source-pick-first-password :host "api.anthropic.com")
+                  "sk-placeholder")
+         :chat-model "claude-sonnet-4-20250514"))
+
+  (magit-gptcommit-mode 1)
+  (magit-gptcommit-status-buffer-setup)
+
+  ;; C-c C-o in commit buffer to accept generated message
+  (define-key git-commit-mode-map (kbd "C-c C-o") 'magit-gptcommit-commit-accept)
+
+  ;; Add to magit commit transient menu (c g = generate AI message)
+  (transient-append-suffix 'magit-commit '(1 0 -1)
+    '("g" "Generate AI message" magit-gptcommit-commit-create)))
+
 (provide 'nrdp-git)
