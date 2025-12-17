@@ -1873,7 +1873,11 @@ there's a region, all lines that region covers will be duplicated."
 
 (defun misc-other-window (count &optional all-frames)
   (interactive "p")
-  (other-window count all-frames)
+  (let ((win (next-window nil nil 'visible)))
+    (while (and (window-minibuffer-p win)
+                (not (eq win (selected-window))))
+      (setq win (next-window win nil 'visible)))
+    (select-window win))
   (set-transient-map misc-other-window-transient-map))
 
 (defun misc-other-window-reverse (count &optional all-frames)
