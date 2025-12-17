@@ -1880,6 +1880,53 @@ there's a region, all lines that region covers will be duplicated."
     (select-window win))
   (set-transient-map misc-other-window-transient-map))
 
+(defun misc-delete-other-non-sidewindows(&optional window)
+  "Delete other windows except side windows."
+  (interactive)
+  (let ((win (or window (selected-window))))
+    (dolist (w (window-list nil 'nomini))
+      (unless (or (eq w win)
+                  (window-parameter w 'window-side))
+        (delete-window w)))))
+
+(defvar misc-side-window-state-alist nil "Alist of (SIDE . STATE) for saved side window states.")
+(defun misc-toggle-side-window (side)
+  "Toggle side window on SIDE (one of 'left, 'right, 'top, 'bottom)."
+  (interactive)
+  (let ((window (window-with-parameter 'window-side side)))
+    (if window
+        (progn
+          ;; Save state before closing
+          (setf (alist-get side misc-side-window-state-alist)
+                (window-state-get window))
+          (delete-window window))
+      ;; Restore saved state
+      (when-let ((state (alist-get side misc-side-window-state-alist)))
+        (let ((new-win (display-buffer-in-side-window
+                        (get-buffer-create "*scratch*")
+                        `((side . ,side)))))
+          (window-state-put state new-win))))))
+(defun misc-toggle-top-side-window ()
+  "Toggle the top side window."
+  (interactive)
+  (misc-toggle-side-window 'top))
+(defun misc-toggle-left-side-window ()
+  "Toggle the left side window."
+  (interactive)
+  (misc-toggle-side-window 'left))
+(defun misc-toggle-bottom-side-window ()
+  "Toggle the bottom side window."
+  (interactive)
+  (misc-toggle-side-window 'bottom))
+(defun misc-toggle-right-side-window ()
+  "Toggle the right side window."
+  (interactive)
+  (misc-toggle-side-window 'right))
+(global-set-key (kbd "C-c w h <up>") 'misc-toggle-top-side-window)
+(global-set-key (kbd "C-c w h <down>") 'misc-toggle-bottom-side-window)
+(global-set-key (kbd "C-c w h <left>") 'misc-toggle-left-side-window)
+(global-set-key (kbd "C-c w h <right>") 'misc-toggle-right-side-window)
+
 (defun misc-other-window-reverse (count &optional all-frames)
   (interactive "p")
   (misc-other-window (or count -1) all-frames))
