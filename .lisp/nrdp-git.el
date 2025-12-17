@@ -869,4 +869,36 @@
                    (and result (string-match "^\\([^ ]+\\)" result) (match-string 1 result)))))
   (if commit
       (call-process "git-jira" nil nil nil "--resolve" "--no-interactive" commit)))
+;; ================================================================================
+;; AI-generated commit messages with magit-gptcommit
+;; ================================================================================
+
+(when (require 'magit-gptcommit nil t)
+  (require 'llm-claude)
+
+  ;; Redirect llm-claude to use Netflix proxy instead of api.anthropic.com
+  (defvar nrdp-claude-proxy-url "http://localhost:9123/mtlsproxy:claudecode"
+    "Netflix proxy URL for Claude API requests.")
+
+  (defadvice llm-claude--url (around nrdp-use-claude-proxy activate)
+    "Redirect Claude API calls to Netflix proxy."
+    (setq ad-return-value
+          (format "%s/v1/%s" nrdp-claude-proxy-url (ad-get-arg 0))))
+
+  (setq magit-gptcommit-llm-provider
+        (make-llm-claude
+         :key (or (auth-source-pick-first-password :host "api.anthropic.com")
+                  "sk-placeholder")
+         :chat-model "claude-sonnet-4-20250514"))
+
+  (magit-gptcommit-mode 1)
+  (magit-gptcommit-status-buffer-setup)
+
+  ;; C-c C-o in commit buffer to accept generated message
+  (define-key git-commit-mode-map (kbd "C-c C-o") 'magit-gptcommit-commit-accept)
+
+  ;; Add to magit commit transient menu (c g = generate AI message)
+  (transient-append-suffix 'magit-commit '(1 0 -1)
+    '("g" "Generate AI message" magit-gptcommit-commit-create)))
+
 (provide 'nrdp-git)
