@@ -585,17 +585,17 @@ to case differences."
 
       ;; (message "candidates are: %s" (combine-and-quote-strings candidates))
 
-      (or (dolist (candidate candidates)
+      (or (cl-dolist (candidate candidates)
             (when (file-readable-p candidate)
               ;; (message "Found in simple search: %s" candidate)
-              (return candidate)))
+              (cl-return candidate)))
           (and (rtags-has-filemanager)
-               (dolist (candidate candidates)
+               (cl-dolist (candidate candidates)
                  (with-temp-buffer
                    (rtags-call-rc "-K" "-A" "-P" candidate)
                    (when (eq (count-lines (point-min) (point-max)) 1)
                      ;; (message "Found in rtags search: %s" candidate)
-                     (return (buffer-substring (point-min) (- (point-max) 1)))))))))))
+                     (cl-return (buffer-substring (point-min) (- (point-max) 1)))))))))))
 
 (defun switch-cpp-h ()
   "Switch to the corresponding .cpp, .C, .cc or .h file."
