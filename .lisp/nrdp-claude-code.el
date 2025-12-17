@@ -88,3 +88,14 @@ Optionally limit to START-LINE to END-LINE (1-indexed, inclusive)."
            (:name "end_line" :type "integer" :description "Ending line number (1-indexed, inclusive, optional)")))
   (provide 'nrdp-claude-code)
   )
+
+(defun nrdp-claude-code-prompt ()
+  (interactive)
+  (let ((claude-code-ide-focus-on-open nil))
+    (let* ((buffer-name (claude-code-ide--get-buffer-name))
+           (buffer (get-buffer buffer-name)))
+      (if buffer
+          (unless (get-buffer-window buffer)
+            (claude-code-ide--display-buffer-in-side-window buffer))
+        (claude-code-ide))))
+  (claude-code-ide-send-prompt))
