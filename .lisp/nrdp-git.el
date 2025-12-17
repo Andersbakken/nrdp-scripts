@@ -646,7 +646,8 @@
 (defun nrdp-magit-sync ()
   "Run git sync."
   (interactive)
-  (magit-run-git-async "sync" "--no-color"))
+  (let ((magit-process-popup-time -1))
+    (magit-run-git-async "sync" "--no-color")))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
 (defun nrdp-pop-to-buffer-return-focus (orig-fun &rest args)
@@ -781,7 +782,8 @@
     (when (and (not files) (buffer-file-name))
       (setq files (list (buffer-file-name))))
     (if files
-        (apply #'magit-run-git-async "fstash" "--quiet" files)
+        (let ((magit-process-popup-time -1))
+          (apply #'magit-run-git-async "fstash" "--quiet" files))
       (message "Nothing to fstash"))))
 
 (defun magit-log-current-section (&optional prefix)
@@ -807,7 +809,8 @@
             (t
              (push commands args)))
       ;; (message "running: [%s]" (combine-and-quote-strings args))
-      (apply #'magit-run-git-async args))))
+      (let ((magit-process-popup-time -1))
+        (apply #'magit-run-git-async args)))))
 
 (defun magit-jira (&optional commit noresolve)
   (interactive)
@@ -841,9 +844,10 @@
             (push "--name" args))
           (push "pullrequest" args))
       (push "submit" args))
-    (if (member "-a" args)
-        (magit-run-git-async args)
-      (magit-run-on-multiple-commits args commit))
+    (let ((magit-process-popup-time -1))
+      (if (member "-a" args)
+          (magit-run-git-async args)
+        (magit-run-on-multiple-commits args commit)))
     (setenv "GIT_POST_SUBMIT_FLAGS" prev)))
 
 (defun magit-submit-pull-request (&optional commit)
