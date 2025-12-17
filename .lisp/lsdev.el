@@ -293,12 +293,18 @@
 
 (add-to-list 'global-mode-string '(:eval lsdev-modestring))
 
-(defadvice switch-to-buffer (after lsdev-update-modestring-adv)
-  (lsdev-update-modestring))
-(ad-activate 'switch-to-buffer)
-(defadvice display-buffer (after lsdev-update-modestring-adv)
-  (when ad-return-value (lsdev-update-modestring)))
-(ad-activate 'display-buffer)
+(defun lsdev-switch-to-buffer-update-modestring (orig-fun &rest args)
+  "Update lsdev modestring after switching buffers."
+  (prog1 (apply orig-fun args)
+    (lsdev-update-modestring)))
+(advice-add 'switch-to-buffer :around #'lsdev-switch-to-buffer-update-modestring)
+
+(defun lsdev-display-buffer-update-modestring (orig-fun &rest args)
+  "Update lsdev modestring after displaying buffer."
+  (let ((result (apply orig-fun args)))
+    (when result (lsdev-update-modestring))
+    result))
+(advice-add 'display-buffer :around #'lsdev-display-buffer-update-modestring)
 
 
 ;;bs integration

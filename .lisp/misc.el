@@ -1747,13 +1747,14 @@ there's a region, all lines that region covers will be duplicated."
 
 
 (defvar shell-quote-argument-in-ag nil)
-(defadvice shell-quote-argument (around argument activate)
+(defun nrdp-shell-quote-argument-for-ag (orig-fun argument)
+  "Custom quoting for ag search tool."
   (if shell-quote-argument-in-ag
-      (setq ad-return-value
-            (cond ((string= argument "") "''")
-                  ((string-match "^\".*\"$" argument) argument)
-                  (t (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'"))))
-    ad-do-it))
+      (cond ((string= argument "") "''")
+            ((string-match "^\".*\"$" argument) argument)
+            (t (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'")))
+    (funcall orig-fun argument)))
+(advice-add 'shell-quote-argument :around #'nrdp-shell-quote-argument-for-ag)
 
 ;; Use -w phrase to search for whole words
 (defvar misc-grep-find-prefer-ag nil)
@@ -2148,38 +2149,29 @@ there's a region, all lines that region covers will be duplicated."
 (add-hook 'kbd-macro-termination-hook 'nrdp-scripts-restore-copilot-after-macro)
 
 ;; Advice for macro recording start/end
-(defadvice kmacro-start-macro (before disable-copilot-for-macro activate)
+(defun nrdp-kmacro-start-disable-copilot (&rest _args)
   "Disable copilot when starting macro recording."
   (nrdp-scripts-disable-copilot-for-macro))
+(advice-add 'kmacro-start-macro :before #'nrdp-kmacro-start-disable-copilot)
 
-(defadvice kmacro-end-macro (after restore-copilot-after-macro activate)
+(defun nrdp-kmacro-end-restore-copilot (&rest _args)
   "Restore copilot when ending macro recording."
   (nrdp-scripts-restore-copilot-after-macro))
-
-(defadvice kmacro-end-and-call-macro (after restore-copilot-after-macro activate)
-  "Restore copilot when ending and calling macro."
-  (nrdp-scripts-restore-copilot-after-macro))
+(advice-add 'kmacro-end-macro :after #'nrdp-kmacro-end-restore-copilot)
+(advice-add 'kmacro-end-and-call-macro :after #'nrdp-kmacro-end-restore-copilot)
 
 ;; Advice for macro execution
-(defadvice kmacro-exec-ring-item (around disable-copilot-during-execution activate)
+(defun nrdp-kmacro-exec-disable-copilot (orig-fun &rest args)
   "Disable copilot during macro execution."
   (let ((was-enabled (and (boundp 'copilot-mode) copilot-mode)))
     (when was-enabled
       (copilot-mode -1))
     (unwind-protect
-        ad-do-it
+        (apply orig-fun args)
       (when was-enabled
         (copilot-mode 1)))))
-
-(defadvice execute-kbd-macro (around disable-copilot-during-execution activate)
-  "Disable copilot during kbd macro execution."
-  (let ((was-enabled (and (boundp 'copilot-mode) copilot-mode)))
-    (when was-enabled
-      (copilot-mode -1))
-    (unwind-protect
-        ad-do-it
-      (when was-enabled
-        (copilot-mode 1)))))
+(advice-add 'kmacro-exec-ring-item :around #'nrdp-kmacro-exec-disable-copilot)
+(advice-add 'execute-kbd-macro :around #'nrdp-kmacro-exec-disable-copilot)
 
 
 (provide 'nrdp-misc)
