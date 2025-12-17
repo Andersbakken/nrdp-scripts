@@ -334,7 +334,7 @@
       ;;                  pipe)))))
 
       (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
-                         (mapconcat 'nrdp-git-grep-shell-quote-argument args " ")
+                         (mapconcat 'identity args " ")
                          (if hasdashdash
                              " "
                            " -- ")

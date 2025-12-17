@@ -1747,13 +1747,13 @@ there's a region, all lines that region covers will be duplicated."
 
 
 (defvar shell-quote-argument-in-ag nil)
-(defun nrdp-shell-quote-argument-for-ag (orig-fun argument)
+(defun nrdp-shell-quote-argument-for-ag (orig-fun argument &rest args)
   "Custom quoting for ag search tool."
   (if shell-quote-argument-in-ag
       (cond ((string= argument "") "''")
             ((string-match "^\".*\"$" argument) argument)
             (t (concat "'" (replace-regexp-in-string "'" "\\\\'" argument) "'")))
-    (funcall orig-fun argument)))
+    (apply orig-fun argument args)))
 (advice-add 'shell-quote-argument :around #'nrdp-shell-quote-argument-for-ag)
 
 ;; Use -w phrase to search for whole words
