@@ -895,7 +895,7 @@
         (make-llm-claude
          :key (or (auth-source-pick-first-password :host "api.anthropic.com")
                   "sk-placeholder")
-         :chat-model "claude-sonnet-4-20250514"))
+         :chat-model "claude-opus-4-5-20251101"))
 
   (magit-gptcommit-mode 1)
   (magit-gptcommit-status-buffer-setup)
