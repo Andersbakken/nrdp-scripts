@@ -900,8 +900,46 @@
   (magit-gptcommit-mode 1)
   (magit-gptcommit-status-buffer-setup)
 
-  ;; C-c C-o in commit buffer to accept generated message
-  (define-key git-commit-mode-map (kbd "C-c C-o") 'magit-gptcommit-commit-accept)
+  (defun nrdp-gptcommit--resolve-worktree-dir ()
+    "Resolve the actual worktree directory from a git metadata directory.
+For worktrees, the gitdir file points back to the actual worktree."
+    (let ((gitdir-file (expand-file-name "gitdir" default-directory)))
+      (if (file-exists-p gitdir-file)
+          ;; We're in a worktree metadata dir, read the gitdir file to find actual worktree
+          (let ((gitdir (string-trim (with-temp-buffer
+                                       (insert-file-contents gitdir-file)
+                                       (buffer-string)))))
+            ;; gitdir points to .git in the worktree, so get its parent
+            (file-name-directory (directory-file-name gitdir)))
+        ;; Not in a worktree metadata dir, try magit-toplevel
+        (or (magit-toplevel) default-directory))))
+
+  (defun nrdp-gptcommit-insert-message ()
+    "Insert gptcommit message into commit buffer without saving."
+    (interactive)
+    (let* ((worktree-dir (nrdp-gptcommit--resolve-worktree-dir))
+           (default-directory worktree-dir)
+           (message (magit-repository-local-get 'magit-gptcommit--last-message))
+           (buf (magit-commit-message-buffer)))
+      (if (not message)
+          (user-error "No GPT commit message available. Generate one first with 'g' in magit-status")
+        (with-current-buffer buf
+          ;; Save the current non-empty and newly written comment to ring
+          (when-let ((current-msg (git-commit-buffer-message)))
+            (unless (ring-member log-edit-comment-ring current-msg)
+              (ring-insert log-edit-comment-ring current-msg)))
+          (funcall magit-gptcommit-process-commit-message-function message nil)))))
+
+  ;; C-c C-o in commit buffer to insert generated message
+  (define-key git-commit-mode-map (kbd "C-c C-o") 'nrdp-gptcommit-insert-message)
+
+  ;; Fix magit-gptcommit functions to work with worktrees
+  (defun nrdp-gptcommit-fix-worktree-dir (orig-fun &rest args)
+    "Ensure correct default-directory for worktrees before running ORIG-FUN."
+    (let ((default-directory (nrdp-gptcommit--resolve-worktree-dir)))
+      (apply orig-fun args)))
+  (advice-add 'magit-gptcommit-commit-accept :around #'nrdp-gptcommit-fix-worktree-dir)
+  (advice-add 'magit-gptcommit-commit-create :around #'nrdp-gptcommit-fix-worktree-dir)
 
   ;; Add to magit commit transient menu (c g = generate AI message)
   (transient-append-suffix 'magit-commit '(1 0 -1)
