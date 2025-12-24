@@ -191,8 +191,15 @@ else
     else
         RESOLVED_CHANGES=""
         for change in $IN_CHANGES; do
-            SHA1=`git rev-parse "$change"`
-            RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+            if echo "$change" | grep -q '\.\.'; then
+                # Range notation (e.g., HASH1..HASH2) - expand using git log
+                for SHA1 in $(git log --reverse --pretty='%H' "$change"); do
+                    RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+                done
+            else
+                SHA1=`git rev-parse "$change"`
+                RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+            fi
         done
         IN_CHANGES="$RESOLVED_CHANGES"
     fi
