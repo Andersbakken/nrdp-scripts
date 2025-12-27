@@ -1,10 +1,10 @@
-command source ~/.lldb/init_os_start.lldb
-command source ~/.lldb/init_host_start.lldb
+command script import ~/.lldb/misc.py
+
+source_if_exists ~/.lldb/init_os_start.lldb
+source_if_exists ~/.lldb/init_host_start.lldb
 
 command source ~/.lldb/gdb.lldb
 command script import ~/.lldb/emacs.py
-command script import ~/.lldb/misc.py
 
-
-command source ~/.lldb/init_os_end.lldb
-command source ~/.lldb/init_host_end.lldb
+source_if_exists ~/.lldb/init_os_end.lldb
+source_if_exists ~/.lldb/init_host_end.lldb
