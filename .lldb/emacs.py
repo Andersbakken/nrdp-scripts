@@ -7,7 +7,12 @@ def emake(debugger, command, result, internal_dict):
   os.system("emacsedit.sh -m -n")
 
 def rez(debugger, command, result, internal_dict):
-  file = "%s:%d" % (lldb.frame.GetLineEntry().GetFileSpec().fullpath, lldb.frame.GetLineEntry().GetLine())
+  target = debugger.GetSelectedTarget()
+  process = target.GetProcess()
+  thread = process.GetSelectedThread()
+  frame = thread.GetSelectedFrame()
+  line_entry = frame.GetLineEntry()
+  file = "%s:%d" % (line_entry.GetFileSpec().fullpath, line_entry.GetLine())
   print("Open: %s" % file)
   os.system("emacsedit.sh -n %s" % file)
 
