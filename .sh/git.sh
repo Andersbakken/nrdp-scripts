@@ -87,7 +87,7 @@ git_is_worktree()
     return 1
 }
 
-git() #make git checkout commands usable with submodules
+git()
 {
     if [ "$1" = "--version" ] || [ "$1" = "--help" ] || [ "$1" = "init" ]; then
         command git $1
