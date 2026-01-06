@@ -14,7 +14,7 @@ const usage =
 let mode;
 let index;
 let isVerbose = false;
-let verbose;
+let verbose = () => {};
 let showMode = [];
 let gitDir;
 let srcRoot;
@@ -38,9 +38,11 @@ async function main() {
                 console.log(usage);
                 process.exit(0);
                 break;
+
             case "--verbose":
             case "-v":
                 isVerbose = true;
+                verbose = console.error.bind(console);
                 break;
 
             case "--index":
@@ -92,7 +94,6 @@ async function main() {
                 }
         }
     }
-    verbose = isVerbose ? console.error.bind(console) : () => {};
 
     if (!mode) {
         die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
