@@ -13,7 +13,8 @@ const usage =
 
 let mode;
 let index;
-let verbose = () => {};
+let isVerbose = false;
+let verbose;
 let showMode = [];
 let gitDir;
 let srcRoot;
@@ -24,7 +25,7 @@ if (
     process.env.GIT_OPERATION_VERBOSE !== "false" &&
     process.env.GIT_OPERATION_VERBOSE !== "0"
 ) {
-    verbose = console.error.bind(console);
+    isVerbose = true;
 }
 
 async function main() {
@@ -37,7 +38,7 @@ async function main() {
                 break;
             case "--verbose":
             case "-v":
-                verbose = console.error.bind(console);
+                isVerbose = true;
                 break;
 
             case "--index":
@@ -84,6 +85,7 @@ async function main() {
                 }
         }
     }
+    verbose = isVerbose ? console.error.bind(console) : () => {};
 
     if (!mode) {
         die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
@@ -276,9 +278,14 @@ async function list() {
         (
             await Promise.all(
                 (await listFiles(dir)).map(async (x) => {
-                    const stats = await fs.promises.stat(path.join(dir, x));
+                    const fileName = path.join(dir, x);
+                    const stats = await fs.promises.stat(fileName);
                     const relative = timeAgo(new Date(stats.ctimeMs));
-                    return `${x}: ${relative}`;
+                    let ret = `${x}: ${relative}`;
+                    if (isVerbose) {
+                        ret += ` ${fileName} (${stats.size} bytes)`;
+                    }
+                    return ret;
                 })
             )
         ).join("\n")
