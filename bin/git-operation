@@ -4,10 +4,11 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { constants } = fs;
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const { promisify } = require("util");
 
 const execAsync = promisify(exec);
+
 const usage =
     "Usage: git operation [save|apply|pop|drop|list|clear|show|trim] [index] [--index <idx>|--index=<idx>] [--pending] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
 
@@ -21,6 +22,7 @@ let srcRoot;
 let gitHooks;
 let autoTrim = 10;
 let pending = false;
+let needsIndex = false;
 
 if (
     process.env.GIT_OPERATION_VERBOSE &&
@@ -31,6 +33,7 @@ if (
 }
 
 async function main() {
+    let runArgs;
     for (let i = 2; i < process.argv.length; i++) {
         switch (process.argv[i]) {
             case "--help":
@@ -52,18 +55,31 @@ async function main() {
                 }
                 break;
 
-            case "save":
             case "apply":
             case "pop":
-            case "list":
             case "drop":
-            case "clear":
             case "show":
             case "trim":
+                needsIndex = true;
+            case "run":
+            case "save":
+            case "list":
+            case "clear":
                 if (mode) {
                     die("Cannot specify multiple operations.");
                 }
                 mode = process.argv[i];
+
+                if (mode === "run") {
+                    runArgs = process.argv.slice(i + 1);
+                    if (runArgs.length === 0) {
+                        die("run requires a command to execute.");
+                    }
+                    if (runArgs[0] !== "git") {
+                        runArgs.unshift("git");
+                    }
+                    i = process.argv.length;
+                }
                 break;
 
             case "--show-same":
@@ -79,7 +95,7 @@ async function main() {
                 break;
 
             default:
-                if (index === undefined) {
+                if (index === undefined && needsIndex) {
                     if (process.argv[i].startsWith("--index=")) {
                         const idxStr = process.argv[i].split("=")[1];
                         index = parseInt(idxStr);
@@ -96,7 +112,7 @@ async function main() {
     }
 
     if (!mode) {
-        die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', or 'clear'.");
+        die("No operation specified. Use 'save', 'restore', 'check', 'list', 'drop', 'clear', 'trim' or 'run'.");
     }
 
     srcRoot = await runCommand("git rev-parse --show-toplevel").catch((err) => {
@@ -206,6 +222,10 @@ async function main() {
         case "trim":
             await trim();
             break;
+
+        case "run":
+            await run(...runArgs);
+            break;
     }
 }
 
@@ -293,7 +313,7 @@ function processFile(file) {
     return go().catch(go);
 }
 
-async function save() {
+async function save(writeToDisk = true) {
     const files = await Promise.all(
         (await runCommand("git ls-files --others --cached --exclude-standard", srcRoot))
             .split("\n")
@@ -313,15 +333,17 @@ async function save() {
             .map((file) => processFile(file))
             .filter((x) => x)
     );
-    const dir = path.join(gitDir, "git-operation");
-    await fs.promises.mkdir(dir, { recursive: true });
-    await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
+    if (writeToDisk) {
+        const dir = path.join(gitDir, "git-operation");
+        await fs.promises.mkdir(dir, { recursive: true });
+        await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
 
-    // Create pending marker if --pending flag was used
-    if (pending) {
-        const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
-        await fs.promises.writeFile(pendingMarker, String(index));
-        verbose(`Created pending marker for operation ${index}`);
+        // Create pending marker if --pending flag was used
+        if (pending) {
+            const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
+            await fs.promises.writeFile(pendingMarker, String(index));
+            verbose(`Created pending marker for operation ${index}`);
+        }
     }
 
     await runHook("pre");
@@ -334,6 +356,9 @@ async function save() {
             index = autoTrim;
             await trim(true);
         }
+    }
+    if (!writeToDisk) {
+        return files;
     }
 }
 
@@ -379,8 +404,8 @@ async function drop() {
     }
 }
 
-async function apply() {
-    let data = await load();
+async function apply(savedData) {
+    let data = await load(savedData);
     try {
         await Promise.all(
             data.map(async (x) => {
@@ -477,9 +502,12 @@ async function show() {
     );
 }
 
-async function load() {
-    const file = path.join(gitDir, "git-operation", index.toString());
-    const data = JSON.parse(await fs.promises.readFile(file, "utf8"));
+async function load(data) {
+    if (!data) {
+        const file = path.join(gitDir, "git-operation", index.toString());
+        data = JSON.parse(await fs.promises.readFile(file, "utf8"));
+    }
+
     const results = await Promise.all(
         data.map(async (x) => {
             if (!x) {
@@ -498,6 +526,26 @@ async function load() {
         })
     );
     return results.filter((x) => x);
+}
+
+async function run(...args) {
+    verbose("calling run with args:", args);
+    const saved = await save(false);
+    const command = args.join(" ");
+    verbose(`Running command: ${command}`);
+    let exitCode = 0;
+    try {
+        exitCode = await new Promise((resolve) => {
+            const child = spawn(command, { cwd: srcRoot, shell: true, stdio: "inherit" });
+            child.on("close", (code) => resolve(code || 0));
+        });
+        if (exitCode !== 0) {
+            verbose(`Command exited with code ${exitCode}`);
+        }
+    } finally {
+        await apply(saved);
+    }
+    process.exit(exitCode);
 }
 
 function isExecutable(filePath) {
