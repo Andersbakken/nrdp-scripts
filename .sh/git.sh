@@ -1,17 +1,81 @@
+#!/usr/bin/env bash
 
 export FILTER_BRANCH_SQUELCH_WARNING=1.
 
 run_git()
 {
-    if $(command git rev-parse --git-dir &> /dev/null); then
-        command git "$@"
+    # Parse git switches (like -C) before the command
+    local git_switches=()
+    local cmd=""
+    local cmd_args=()
+    local parsing_switches=1
+    local need_value=""
+
+    for arg in "$@"; do
+        if [ -n "$parsing_switches" ]; then
+            # If previous switch needs a value, consume this arg
+            if [ -n "$need_value" ]; then
+                git_switches+=("$arg")
+                need_value=""
+                continue
+            fi
+
+            case "$arg" in
+                # Switches that take a separate argument
+                -C|-c|--git-dir|--work-tree|--namespace|--super-prefix|--config-env|--exec-path|--attr-source|--list-cmds)
+                    git_switches+=("$arg")
+                    need_value=1
+                    ;;
+                # Switches with = that include their value
+                -C=*|-c=*|--git-dir=*|--work-tree=*|--namespace=*|--super-prefix=*|--config-env=*|--exec-path=*|--attr-source=*|--list-cmds=*)
+                    git_switches+=("$arg")
+                    ;;
+                # Boolean/standalone switches
+                -v|--version|-h|--help|-p|--paginate|-P|--no-pager|--no-replace-objects|--bare|--no-optional-locks|--no-advice|--html-path|--man-path|--info-path|--glob-pathspecs|--noglob-pathspecs|--literal-pathspecs|--icase-pathspecs)
+                    git_switches+=("$arg")
+                    ;;
+                # Unknown switch - could be a global option we don't know about
+                -*)
+                    git_switches+=("$arg")
+                    ;;
+                # Not a switch - this is the command
+                *)
+                    cmd="$arg"
+                    parsing_switches=""
+                    ;;
+            esac
+        else
+            cmd_args+=("$arg")
+        fi
+    done
+
+    # Check if this command has operation config enabled
+    local use_operation=""
+    if [ -n "$cmd" ] && [ "$cmd" != "operation" ]; then
+        use_operation=$(command git "${git_switches[@]}" config "${cmd}.operation" 2>/dev/null)
+    fi
+
+    # Run the command, optionally with operation save/pop
+    local run_cmd
+    if $(command git "${git_switches[@]}" rev-parse --git-dir &> /dev/null); then
+        run_cmd=(command git "${git_switches[@]}")
     else
         SRC=$(lsdev.pl -l -tS -p)
         if [ -n "$SRC" ]; then
-            (cd "$SRC" && command git "$@")
+            run_cmd=(command git -C "$SRC" "${git_switches[@]}")
         else
-            command git "$@"
+            run_cmd=(command git "${git_switches[@]}")
         fi
+    fi
+
+    if [ "$use_operation" = "true" ]; then
+        "${run_cmd[@]}" operation save --pending
+        "${run_cmd[@]}" "$cmd" "${cmd_args[@]}"
+        local RC=$?
+        "${run_cmd[@]}" operation pop --pending
+        return $RC
+    else
+        "${run_cmd[@]}" "$cmd" "${cmd_args[@]}"
     fi
 }
 
@@ -61,12 +125,6 @@ git() #make git checkout commands usable with submodules
         else
             run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
         fi
-    elif [ "$1" = "rebase" ]; then
-        run_git operation save --pending
-        GIT_OPERATION_REBASE_WRAPPER=1 run_git "$@"
-        local RC=$?
-        run_git operation pop --pending
-        return $RC
     else
         run_git "$@"
     fi
