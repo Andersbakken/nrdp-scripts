@@ -62,6 +62,7 @@ function syncdir
     elif git config -l | grep "^svn-remote" --quiet; then
         git svn update
     else
+        [ -n "$AUTOFIX" ] && PULLARGS="$PULLARGS --autofix"
         git pull $PULLARGS
         if [ -n "$GIT_TRACKING" ]; then
             SYNC_SUMMARY_END="${GIT_TRACKING}"
@@ -125,6 +126,9 @@ while [ -n "$1" ]; do
             ;;
         --autostash|-a)
             AUTOSTASH=1
+            ;;
+        --autofix)
+            AUTOFIX=1
             ;;
         --no-autostash)
             AUTOSTASH=
