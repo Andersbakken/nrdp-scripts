@@ -9,7 +9,7 @@ const { promisify } = require("util");
 
 const execAsync = promisify(exec);
 const usage =
-    "Usage: git operation [save|apply|pop|drop|list|clear|show] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
+    "Usage: git operation [save|apply|pop|drop|list|clear|show|trim] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
 
 let mode;
 let index;
@@ -19,6 +19,7 @@ let showMode = [];
 let gitDir;
 let srcRoot;
 let gitHooks;
+let autoTrim = 10;
 
 if (
     process.env.GIT_OPERATION_VERBOSE &&
@@ -55,6 +56,7 @@ async function main() {
             case "drop":
             case "clear":
             case "show":
+            case "trim":
                 if (mode) {
                     die("Cannot specify multiple operations.");
                 }
@@ -103,6 +105,14 @@ async function main() {
         die("Could not determine git hooks directory.", err.message);
     });
 
+    const configAutoTrim = await runCommand("git config operation.autotrim").catch(() => null);
+    if (configAutoTrim !== null) {
+        const parsed = parseInt(configAutoTrim);
+        if (!isNaN(parsed) && parsed >= 0) {
+            autoTrim = parsed;
+        }
+    }
+
     if (mode === "apply" || mode === "pop" || mode === "drop" || mode === "show") {
         const ops = await indexes();
         if (index === undefined) {
@@ -113,8 +123,12 @@ async function main() {
         } else if (!ops.includes(index)) {
             die(`index ${index} is out of range ${ops.length ? ops.slice(-1) : ""})`);
         }
+    } else if (mode === "trim") {
+        if (index === undefined) {
+            die("trim requires a count argument (e.g., 'git operation trim 3')");
+        }
     } else if (index !== undefined) {
-        die("--index only works for apply|pop|drop|show");
+        die("--index only works for apply|pop|drop|show|trim");
     } else if (mode === "save") {
         index = ((await indexes()).at(-1) ?? 0) + 1;
     }
@@ -157,6 +171,10 @@ async function main() {
         case "pop":
             await apply();
             await drop();
+            break;
+
+        case "trim":
+            await trim();
             break;
     }
 }
@@ -270,6 +288,16 @@ async function save() {
     await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
 
     await runHook("pre");
+
+    // Auto-trim if configured (default 10, 0 disables)
+    if (autoTrim > 0) {
+        const ops = await indexes();
+        if (ops.length > autoTrim) {
+            verbose(`Auto-trimming to ${autoTrim} operations`);
+            index = autoTrim;
+            await trim(true);
+        }
+    }
 }
 
 async function list() {
@@ -301,7 +329,9 @@ async function drop() {
         const oldName = path.join(dir, String(list[i] + 1));
         const newName = path.join(dir, String(list[i]));
         verbose(`renaming ${oldName} to ${newName}`);
+        const stats = await fs.promises.stat(oldName);
         await fs.promises.rename(oldName, newName);
+        await fs.promises.utimes(newName, stats.atime, stats.mtime);
     }
 }
 
@@ -338,6 +368,47 @@ async function apply() {
 async function clear() {
     const dir = path.join(gitDir, "git-operation");
     await fs.promises.rm(dir, { recursive: true, force: true });
+}
+
+async function trim(quiet = false) {
+    const dir = path.join(gitDir, "git-operation");
+    const ops = await indexes();
+    const keepCount = index;
+    const removeCount = ops.length - keepCount;
+
+    if (removeCount <= 0) {
+        verbose(`Already at or below ${keepCount} operations (have ${ops.length})`);
+        return;
+    }
+
+    verbose(`Removing ${removeCount} oldest operations to keep ${keepCount}`);
+
+    // Remove the oldest (lowest index) operations
+    for (let i = 0; i < removeCount; i++) {
+        const toRemove = ops[i];
+        const file = path.join(dir, toRemove.toString());
+        verbose(`Removing operation ${toRemove}`);
+        await fs.promises.unlink(file);
+    }
+
+    // Renumber remaining operations starting from 1
+    const remaining = ops.slice(removeCount);
+    for (let i = 0; i < remaining.length; i++) {
+        const oldIdx = remaining[i];
+        const newIdx = i + 1;
+        if (oldIdx !== newIdx) {
+            const oldName = path.join(dir, oldIdx.toString());
+            const newName = path.join(dir, newIdx.toString());
+            verbose(`Renaming ${oldIdx} to ${newIdx}`);
+            const stats = await fs.promises.stat(oldName);
+            await fs.promises.rename(oldName, newName);
+            await fs.promises.utimes(newName, stats.atime, stats.mtime);
+        }
+    }
+
+    if (!quiet) {
+        console.log(`Trimmed to ${keepCount} operations (removed ${removeCount})`);
+    }
 }
 
 async function show() {
