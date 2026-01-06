@@ -134,7 +134,7 @@
 
       (transient-append-suffix 'magit-pull "u" '("F" "Pull from tracking" magit-pull-from-upstream))
       (transient-append-suffix 'magit-pull "F" '("S" "Sync" nrdp-magit-sync))
-      (transient-append-suffix 'magit-pull "S" '("A" "Sync --autofix" nrdp-magit-sync-autofix))
+      (transient-append-suffix 'magit-pull "S" '("A" "Sync --autosquash" nrdp-magit-sync-autosquash))
 
       (transient-append-suffix 'magit-push "-n" '("-a" "All commits" "-a"))
       (transient-append-suffix 'magit-push "-a" '("-m" "Manual" "--manual"))
@@ -650,11 +650,11 @@
   (let ((magit-process-popup-time -1))
     (magit-run-git-async "sync" "--no-color")))
 
-(defun nrdp-magit-sync-autofix ()
-  "Run git sync with --autofix."
+(defun nrdp-magit-sync-autosquash ()
+  "Run git sync with --autosquash."
   (interactive)
   (let ((magit-process-popup-time -1))
-    (magit-run-git-async "sync" "--no-color" "--autofix")))
+    (magit-run-git-async "sync" "--no-color" "--autosquash")))
 
 ;; Prevent *magit-process* from stealing focus when it pops up.
 (defun nrdp-pop-to-buffer-return-focus (orig-fun &rest args)
