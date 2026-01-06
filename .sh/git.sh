@@ -61,6 +61,12 @@ git() #make git checkout commands usable with submodules
         else
             run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
         fi
+    elif [ "$1" = "rebase" ]; then
+        run_git operation save --pending
+        GIT_OPERATION_REBASE_WRAPPER=1 run_git "$@"
+        local RC=$?
+        run_git operation pop --pending
+        return $RC
     else
         run_git "$@"
     fi

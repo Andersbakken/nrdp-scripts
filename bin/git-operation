@@ -9,7 +9,7 @@ const { promisify } = require("util");
 
 const execAsync = promisify(exec);
 const usage =
-    "Usage: git operation [save|apply|pop|drop|list|clear|show|trim] [index] [--index <idx>|--index=<idx>] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
+    "Usage: git operation [save|apply|pop|drop|list|clear|show|trim] [index] [--index <idx>|--index=<idx>] [--pending] [--no-autocommit] [--force|-f|--overwrite-archive] [--verbose|-v] [--show-same] [--show-different]";
 
 let mode;
 let index;
@@ -20,6 +20,7 @@ let gitDir;
 let srcRoot;
 let gitHooks;
 let autoTrim = 10;
+let pending = false;
 
 if (
     process.env.GIT_OPERATION_VERBOSE &&
@@ -71,6 +72,10 @@ async function main() {
                 showMode.push("different");
                 break;
 
+            case "--pending":
+                pending = true;
+                break;
+
             default:
                 if (index === undefined) {
                     if (process.argv[i].startsWith("--index=")) {
@@ -113,7 +118,27 @@ async function main() {
         }
     }
 
+    const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
+
     if (mode === "apply" || mode === "pop" || mode === "drop" || mode === "show") {
+        // For pop/apply --pending, check marker first
+        if (pending && (mode === "pop" || mode === "apply")) {
+            try {
+                const markerContent = await fs.promises.readFile(pendingMarker, "utf8");
+                index = parseInt(markerContent.trim());
+                if (isNaN(index)) {
+                    verbose("Invalid pending marker content, ignoring");
+                    process.exit(0);
+                }
+            } catch (err) {
+                if (err.code === "ENOENT") {
+                    verbose("No pending operation marker found");
+                    process.exit(0);
+                }
+                throw err;
+            }
+        }
+
         const ops = await indexes();
         if (index === undefined) {
             index = ops.at(-1);
@@ -141,6 +166,10 @@ async function main() {
         }
     } else if (showMode.length) {
         die("--show-same|--show-different only works for show");
+    }
+
+    if (pending && mode !== "save" && mode !== "pop" && mode !== "apply") {
+        die("--pending only works with save, apply, or pop");
     }
 
     switch (mode) {
@@ -287,6 +316,13 @@ async function save() {
     await fs.promises.mkdir(dir, { recursive: true });
     await fs.promises.writeFile(path.join(dir, String(index)), JSON.stringify(files, undefined, 4));
 
+    // Create pending marker if --pending flag was used
+    if (pending) {
+        const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
+        await fs.promises.writeFile(pendingMarker, String(index));
+        verbose(`Created pending marker for operation ${index}`);
+    }
+
     await runHook("pre");
 
     // Auto-trim if configured (default 10, 0 disables)
@@ -332,6 +368,13 @@ async function drop() {
         const stats = await fs.promises.stat(oldName);
         await fs.promises.rename(oldName, newName);
         await fs.promises.utimes(newName, stats.atime, stats.mtime);
+    }
+
+    // Remove pending marker if --pending was used
+    if (pending) {
+        const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
+        await fs.promises.unlink(pendingMarker).catch(() => {});
+        verbose("Removed pending marker");
     }
 }
 

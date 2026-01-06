@@ -31,7 +31,7 @@ function syncdir
     cd "$ROOTDIR"
     STASHED=
     local PULLARGS=
-    [ -n "$OPERATION" ] && git operation save
+    git operation save --pending
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         if [ "$AUTOSTASH" = "pull" ]; then
             PULLARGS="--autostash"
@@ -83,7 +83,7 @@ function syncdir
             git reset HEAD~
         fi
     fi
-    [ -n "$OPERATION" ] && git operation pop
+    git operation pop --pending
 
     [ -n "$GIT_SYNC_SUMMARY" ] && $GIT_SYNC_SUMMARY ${SYNC_SUMMARY_START}..${SYNC_SUMMARY_END} 2>/dev/null
     return $RC
@@ -91,11 +91,6 @@ function syncdir
 
 IDX=0
 CHECK=
-OPERATION=`git config sync.operation`
-if [ "$OPERATION" = "0" ] || [ "$OPERATION" = "false" ]; then
-    OPERATION=
-fi
-
 AUTOSTASH=`git config sync.autostash`
 if [ "$AUTOSTASH" = "pull" ]; then
     VERSION=`git --version | cut -d' ' -f3`
