@@ -1932,18 +1932,52 @@ there's a region, all lines that region covers will be duplicated."
   (interactive "p")
   (misc-other-window (or count -1) all-frames))
 
-(defun misc-window-toggle-side-windows-dwim (&optional regular-toggle)
-  "Toggle side windows with DWIM behavior.
-With prefix argument, call `window-toggle-side-windows' to toggle all side windows.
-Without prefix, try `auto-side-windows-toggle-side-window' first, and if that
-fails (e.g., current buffer isn't a side window candidate), fall back to
-`window-toggle-side-windows'."
-  (interactive "p")
-  (cond ((listp regular-toggle) (window-toggle-side-windows))
-        ((condition-case nil
-             (progn (auto-side-windows-toggle-side-window) t)
-           (error nil)))
-        (t (window-toggle-side-windows))))
+(defun misc--window-is-detached-side-window (window)
+  (local-variable-if-set-p 'detached-side-window (window-buffer window)))
+
+(defun misc--window-is-side-window (window)
+  (let ((win (or window (selected-window))))
+    (and (window-live-p win) (window-parameter win 'window-side))))
+
+(defun misc--window-list-side-windows ()
+  (seq-filter (lambda (win) (window-parameter win 'window-side))
+              (window-list nil 'nomini)))
+
+(defun misc-window-toggle-side-windows-dwim ()
+  (interactive)
+  (let* ((window (selected-window))
+         (buffer (window-buffer window)))
+    (cond ((misc--window-is-detached-side-window window)
+           (auto-side-windows-toggle-side-window)
+           (let ((value (buffer-local-value 'misc-hidden-side-windows buffer)))
+             (when value
+               (with-current-buffer buffer
+                 (kill-local-variable 'misc-hidden-side-windows))
+               (dolist (buf value)
+                 (display-buffer buf))))
+           (setq window (get-buffer-window buffer 'visible))
+           (when window
+             (select-window window)))
+
+          ((misc--window-is-side-window window)
+           (let ((visible-side-windows (cdr (misc--window-list-side-windows))))
+             (with-current-buffer buffer
+               (setq-local misc-hidden-side-windows
+                           (mapcar #'window-buffer visible-side-windows)))
+             (dolist (item visible-side-windows)
+               (delete-window item)))
+           (auto-side-windows-toggle-side-window)
+           (delete-other-windows))
+
+          (t (window-toggle-side-windows)))))
+
+(defun misc-window-switch-to-other-buffer ()
+  "Switch to other-buffer in current window"
+  (interactive)
+  (let ((buffer (other-buffer)))
+    (when buffer
+      (switch-to-buffer buffer)))
+  (switch-to-buffer (other-buffer)))
 
 (defvar misc-next-error-map nil)
 (setq misc-next-error-map (make-sparse-keymap))
