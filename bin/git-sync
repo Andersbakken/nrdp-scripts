@@ -32,7 +32,6 @@ function syncdir
     STASHED=
     local PULLARGS=
     local USE_OPERATION=$(git config sync.operation 2>/dev/null)
-    [ "$USE_OPERATION" != "true" ] && USE_OPERATION=$(git config pull.operation 2>/dev/null)
     [ "$USE_OPERATION" = "true" ] && git operation save --pending
     if [ -n "$AUTOSTASH" ] && [ -n "`git status -s -uno 2>/dev/null`" ]; then
         if [ "$AUTOSTASH" = "pull" ]; then
@@ -64,13 +63,6 @@ function syncdir
     elif git config -l | grep "^svn-remote" --quiet; then
         git svn update
     else
-        # Save merge-base for autosquash rebase
-        local AUTOSQUASH_BASE=
-        if [ -n "$AUTOSQUASH" ]; then
-            local tracking=$(git rev-parse --abbrev-ref @{u} 2>/dev/null)
-            [ -n "$tracking" ] && AUTOSQUASH_BASE=$(git merge-base HEAD "$tracking" 2>/dev/null)
-        fi
-
         git pull $PULLARGS
         if [ -n "$GIT_TRACKING" ]; then
             SYNC_SUMMARY_END="${GIT_TRACKING}"
@@ -81,9 +73,14 @@ function syncdir
             fi
         fi
 
-        # Autosquash: rebase with autosquash against merge-base
-        if [ -n "$AUTOSQUASH_BASE" ] && [ ! -f "$GITDIR/REBASE_HEAD" ]; then
-            GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash --autostash "$AUTOSQUASH_BASE"
+        # Autosquash: rebase with autosquash against merge-base (calculated AFTER pull)
+        if [ -n "$AUTOSQUASH" ] && [ ! -f "$GITDIR/REBASE_HEAD" ]; then
+            local tracking=$(git rev-parse --abbrev-ref @{u} 2>/dev/null)
+            local AUTOSQUASH_BASE=
+            [ -n "$tracking" ] && AUTOSQUASH_BASE=$(git merge-base HEAD "$tracking" 2>/dev/null)
+            if [ -n "$AUTOSQUASH_BASE" ]; then
+                GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash --autostash "$AUTOSQUASH_BASE"
+            fi
         fi
     fi
     git remote prune $(echo ${GIT_TRACKING} | cut -d/ -f1)
