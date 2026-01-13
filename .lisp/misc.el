@@ -1972,12 +1972,24 @@ there's a region, all lines that region covers will be duplicated."
           (t (window-toggle-side-windows)))))
 
 (defun misc-window-switch-to-other-buffer ()
-  "Switch to other-buffer in current window"
+  "Switch to other-buffer, respecting side window context.
+In a side window: switch to another buffer that belongs on the same side.
+In a regular window: switch to a buffer that won't become a side window."
   (interactive)
-  (let ((buffer (other-buffer)))
-    (when buffer
-      (switch-to-buffer buffer)))
-  (switch-to-buffer (other-buffer)))
+  (let* ((window (selected-window))
+         (current-buf (current-buffer))
+         (side (window-parameter window 'window-side)))
+    (cl-loop for buf in (buffer-list)
+             for buf-side = (auto-side-windows--get-buffer-side buf)
+             when (and (not (eq buf current-buf))
+                       (not (minibufferp buf))
+                       (not (get-buffer-window buf 'visible))
+                       (cond
+                        ;; In side window: find buffer for same side
+                        (side (eq buf-side side))
+                        ;; In regular window: find non-side buffer
+                        (t (or (null buf-side) (eq buf-side 'detached)))))
+             return (switch-to-buffer buf))))
 
 (defvar misc-next-error-map nil)
 (setq misc-next-error-map (make-sparse-keymap))
