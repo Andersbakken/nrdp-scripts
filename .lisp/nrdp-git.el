@@ -685,7 +685,7 @@
                                   (setq found buf buffers nil)
                                 (setq buffers (cdr buffers)))))
                           (when found
-                            (switch-to-buffer found)
+                            (pop-to-buffer found)
                             (magit-refresh)
                             t))))
     (call-interactively 'magit-status)))
