@@ -1992,7 +1992,7 @@ In a regular window: switch to a buffer that won't become a side window."
                         (side (eq buf-side side))
                         ;; In regular window: find non-side buffer
                         (t (or (null buf-side) (eq buf-side 'detached)))))
-             return (switch-to-buffer buf))))
+             return (set-window-buffer window buf))))
 
 (defvar misc-next-error-map nil)
 (setq misc-next-error-map (make-sparse-keymap))
