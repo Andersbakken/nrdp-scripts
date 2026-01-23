@@ -1892,7 +1892,8 @@ there's a region, all lines that region covers will be duplicated."
 
 (defvar misc-side-window-state-alist nil "Alist of (SIDE . STATE) for saved side window states.")
 (defun misc-toggle-side-window (side)
-  "Toggle side window on SIDE (one of 'left, 'right, 'top, 'bottom)."
+  "Toggle side window on SIDE (one of 'left, 'right, 'top, 'bottom).
+Closes all windows on that side."
   (interactive)
   (let ((window (window-with-parameter 'window-side side)))
     (if window
@@ -1900,7 +1901,9 @@ there's a region, all lines that region covers will be duplicated."
           ;; Save state before closing
           (setf (alist-get side misc-side-window-state-alist)
                 (window-state-get window))
-          (delete-window window))
+          ;; Close all windows on this side
+          (while (setq window (window-with-parameter 'window-side side))
+            (delete-window window)))
       ;; Restore saved state
       (when-let ((state (alist-get side misc-side-window-state-alist)))
         (let ((new-win (display-buffer-in-side-window
