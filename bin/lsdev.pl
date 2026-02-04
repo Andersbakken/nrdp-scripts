@@ -841,6 +841,20 @@ if(my $dev_directory = findDevRoot($cwd, 1)) {
     $root_dir = dirname($src_marker) unless(defined($root_dir));
 }
 
+# Fall back to .git detection if no other root found
+unless(defined($root_dir)) {
+    if(my $git_dir = findAncestor(".git")) {
+        my $git_root = dirname($git_dir);
+        display "Git Root Detect: $git_root\n" if($verbose);
+        $read_devdir_list = -2 if($read_devdir_list == 1 &&
+                                  ($#matches == -1 || $matches[0] eq "-"));
+        $root_dir = $git_root;
+        my $project_name = getProjectName($git_root);
+        $project_name = basename($git_root) unless(defined($project_name));
+        addRoot($project_name, $git_root);
+    }
+}
+
 #process anything that looks like a build
 if(defined($dev_roots{sources})) {
     my $sources = delete $dev_roots{sources};
