@@ -244,7 +244,7 @@ TARGET-LINE defaults to the current line number."
 
 (defun agb-git-blame--make-filter (buf)
   "Create a process filter that keeps cursor at top while output streams in."
-  (lambda (process output)
+  (lambda (_process output)
     (when (buffer-live-p buf)
       (with-current-buffer buf
         (let ((inhibit-read-only t)
@@ -405,7 +405,7 @@ COMMIT-CHAIN is the navigation history."
           (goto-char (point-min))
           (when (> (count-lines (point-min) (point-max)) lineno)
             (forward-line (1- lineno)))
-          (agb-git-blame--log "Git blame complete."))))))
+          (agb-git-blame--log "Git blame complete.")))))
 
 (defun agb-git-reblame-for-revision (&optional suffix)
   "Reblame the current file at the commit on this line, with optional SUFFIX.
