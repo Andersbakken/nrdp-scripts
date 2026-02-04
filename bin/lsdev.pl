@@ -850,13 +850,13 @@ if(my $dev_directory = findDevRoot($cwd, 1)) {
     addRoot($project_name, $git_root);
 }
 
-#process anything that looks like a build
+#process anything that looks like a source directory
 if(defined($dev_roots{sources})) {
     my $sources = delete $dev_roots{sources};
     foreach(split(/,/, $sources)) {
         my $source = $_;
         display "Looking at source: $source\n" if($verbose);
-        if( $detect_devdirs && cisdir("$source") && opendir(SOURCES, $source) ) {
+        if($detect_devdirs && cisdir("$source") && opendir(SOURCES, $source)) {
             while(my $subdir = readdir(SOURCES)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $src_dir = "$source/$subdir";
@@ -876,18 +876,47 @@ if(defined($dev_roots{sources})) {
         }
     }
 }
-#process anything that looks like a build
+
+#process anything that looks like a build directory
+foreach(keys %roots) {
+    my $root = $roots{$_};
+    my $root_dir = $root->{path};
+    next if(isRootBuild($root));
+    my $builds = getPathConfig($root_dir, "builds");
+    if($builds && opendir(BUILDS, "$root_dir/$builds")) {
+        while(my $subdir = readdir(BUILDS)) {
+            next if($subdir eq "." || $subdir eq "..");
+            my $build_dir = "$root_dir/$builds/$subdir";
+            next if(!cisdir($build_dir) || getPathConfig($build_dir, "ignore"));
+            my $src_dir = processBuildDir($build_dir);
+            display "Looking at build: $build_dir [$root_dir]\n" if($verbose);
+            if(defined($src_dir) && isPathSame($src_dir, $root_dir)) {
+                my $build_name = getProjectName($build_dir);
+                $build_name = "$subdir" unless(defined($build_name));
+                addRoot($build_name, $build_dir, $src_dir);
+            }
+        }
+        closedir(BUILDS);
+    }
+    if(cexists("$root_dir/.lsdev_shadows")) {
+        my %shadows = parseRoots("$root_dir/.lsdev_shadows");
+        foreach(keys(%shadows)) {
+            my $shadow_root_name = $_;
+            my $shadow_root = $shadows{$_};
+            addRoot($shadow_root_name, $shadow_root, $root_dir);
+        }
+    }
+}
 if(length(@build_roots)) {
     for(my $i = 0; $i <= $#build_roots; $i++) {
         my $build = $build_roots[$i];
         display "Looking at build: $build\n" if($verbose);
-        if( $detect_devdirs && cisdir("$build") && opendir(BUILDS, $build) ) {
+        if($detect_devdirs && cisdir("$build") && opendir(BUILDS, $build)) {
             while(my $subdir = readdir(BUILDS)) {
                 next if($subdir eq "." || $subdir eq "..");
                 my $build_dir = "$build/$subdir";
-                next if(getPathConfig($build_dir, "ignore"));
-                my $src_dir;
-                $src_dir = processBuildDir($build_dir) if(cisdir($build_dir));
+                next if(!cisdir($build_dir) || getPathConfig($build_dir, "ignore"));
+                my $src_dir = processBuildDir($build_dir);
                 if(defined($src_dir) && ($read_devdir_list >= 1 || isPathSame($src_dir, $root_dir) || isPathSame($src_dir, $default_dir))) {
                     my $project_name = getProjectName($src_dir);
                     unless(defined($project_name)) {
@@ -925,14 +954,6 @@ foreach(keys(%dev_roots)) {
 
         } else {
             addRoot($dev_root_name, $dev_root);
-        }
-    }
-    if(cexists("$dev_root/.lsdev_shadows")) {
-        my %shadows = parseRoots("$dev_root/.lsdev_shadows");
-        foreach(keys(%shadows)) {
-            my $shadow_root_name = $_;
-            my $shadow_root = $shadows{$_};
-            addRoot($shadow_root_name, $shadow_root, $dev_root);
         }
     }
 }
