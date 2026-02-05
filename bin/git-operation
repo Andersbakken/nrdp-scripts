@@ -163,7 +163,7 @@ async function main() {
         if (index === undefined) {
             die("No index specified and no directories found. Use --index <idx> to specify an index.");
         } else if (!ops.includes(index)) {
-            die(`index ${index} is out of range ${ops.length ? ops.slice(-1) : ""})`);
+            die(`index ${index} is out of range ${ops.length ? ops.slice(-1) : ""}) ${JSON.stringify(ops)}`);
         }
     } else if (mode === "trim") {
         if (index === undefined) {
@@ -268,7 +268,10 @@ async function runCommand(command, cwd) {
 
 async function indexes() {
     const ret = await listFiles(path.join(gitDir, "git-operation"));
-    return ret.map((x) => parseInt(x)).filter((dir) => dir >= 1 && !isNaN(dir));
+    return ret
+        .map((x) => parseInt(x))
+        .filter((dir) => dir >= 1 && !isNaN(dir))
+        .sort((a, b) => a - b);
 }
 
 function processFile(file) {
