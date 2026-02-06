@@ -358,6 +358,14 @@ async function save(writeToDisk = true) {
             verbose(`Auto-trimming to ${autoTrim} operations`);
             index = autoTrim;
             await trim(true);
+
+            // After trim, the saved entry was renumbered to autoTrim.
+            // Update the pending marker so pop --pending finds the right index.
+            if (pending) {
+                const pendingMarker = path.join(gitDir, "OPERATION_PENDING");
+                await fs.promises.writeFile(pendingMarker, String(autoTrim));
+                verbose(`Updated pending marker to ${autoTrim}`);
+            }
         }
     }
     if (!writeToDisk) {
