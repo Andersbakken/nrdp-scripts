@@ -151,7 +151,7 @@ EOF
             echo "PullRequest: https://github.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
             if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
                 MERGE_METHOD=`git config pullrequest.automergeMethod`
-                [ -z "$MERGE_METHOD" ] && MERGE_METHOD="REBASE"
+                [ -z "$MERGE_METHOD" ] && MERGE_METHOD="MERGE"
                 AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: ${MERGE_METHOD}}) {clientMutationId}}\" }"
                 runcurl "/graphql" -d "${AUTO_QUERY}" -H "Content-Type: application/json" -X POST >"${PR_DIR}/automerge.json"
                 ERROR=$(jq -r '.errors[0].message' "${PR_DIR}/automerge.json")
