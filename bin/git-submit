@@ -281,11 +281,20 @@ else
         for change in $IN_CHANGES; do
             if echo "$change" | grep -q '\.\.'; then
                 # Range notation (e.g., HASH1..HASH2) - expand using git log
-                for SHA1 in $(git log --reverse --pretty='%H' "$change"); do
+                RANGE_COMMITS=$(git log --reverse --pretty='%H' "$change" 2>/dev/null)
+                if [ $? -ne 0 ] || [ -z "$RANGE_COMMITS" ]; then
+                    echo "git-submit: Failed to resolve range '$change'" >&2
+                    exit 1
+                fi
+                for SHA1 in $RANGE_COMMITS; do
                     RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
                 done
             else
-                SHA1=`git rev-parse "$change"`
+                SHA1=$(git rev-parse "$change" 2>/dev/null)
+                if [ $? -ne 0 ] || [ -z "$SHA1" ]; then
+                    echo "git-submit: Failed to resolve commit '$change'" >&2
+                    exit 1
+                fi
                 RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
             fi
         done
