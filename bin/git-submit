@@ -1,5 +1,89 @@
 #!/bin/bash
 
+show_help() {
+    cat <<'EOF'
+git-submit - Selectively submit commits to a branch
+
+USAGE:
+    git-submit tracking [BRANCH]
+    git-submit changes|list [--branch BRANCH]
+    git-submit [OPTIONS] [COMMIT...]
+    git-submit [OPTIONS] -a
+
+DESCRIPTION:
+    git-submit extracts specific commits from your current branch, rebases them
+    onto a target branch, and pushes them. This is useful for submitting a subset
+    of commits while keeping others local.
+
+COMMANDS:
+    tracking [BRANCH]      Get or set the tracking branch
+    changes, list          List commits that differ from tracking branch
+                           Options: --branch BRANCH
+
+SUBMIT OPTIONS:
+    -h, --help             Show this help message
+    -n, --dry-run          Show what would be pushed without actually pushing
+    -f, --force            Force push
+    --force-with-lease     Force push with lease
+    -d                     Delete submitted commits from local branch after push
+    -a                     Submit all commits that differ from tracking branch
+    -r, --replace          Replace existing pull request (requires --pr)
+
+    --branch, --src-branch BRANCH
+                           Target remote branch to push to (also used to check
+                           for existing commits and as base for rebasing)
+    --dst-branch BRANCH    Override target branch (takes precedence over --src-branch;
+                           default: tracking branch)
+    --tracking BRANCH      Override tracking branch for this operation
+
+    --pr, --pull-request NAME
+                           Submit to a pull request
+
+    --autostash            Auto-stash uncommitted changes
+    --no-sync-check        Skip sync check with source branch
+    --no-ignore-check      Don't skip commits marked as ignored
+    --no-hooks             Skip git hooks (pre-submit, post-submit)
+
+    --                     Treat remaining arguments as commit hashes
+
+EXAMPLES:
+    # Set tracking branch
+    git-submit tracking origin/master
+
+    # List commits that would be submitted
+    git-submit changes
+
+    # Submit specific commits
+    git-submit abc123 def456
+
+    # Submit all commits interactively (launches chooser)
+    git-submit
+
+    # Submit all commits automatically
+    git-submit -a
+
+    # Submit and delete from local branch
+    git-submit -d abc123
+
+    # Submit to a pull request
+    git-submit --pr my-feature abc123 def456
+
+    # Dry run to see what would be pushed
+    git-submit -n abc123
+
+    # Submit commit range
+    git-submit abc123..def456
+
+NOTES:
+    - If no commits are specified, an interactive chooser is launched
+    - Commits marked as ignored are skipped unless --no-ignore-check is used
+    - Git hooks (pre-submit, post-submit) are run if they exist
+    - The script uses git rebase internally to extract commits
+
+EOF
+    exit 0
+}
+
 if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
     # The script was launched as an $EDITOR from git rebase -i.
     # Modify the pick line to an edit line and just exit.
@@ -51,7 +135,9 @@ run_hook() {
 TRACKING=`git config --local submit.tracking`
 [ -z "$TRACKING" ] && TRACKING=`git tracking`
 
-if [ "$1" = "tracking" ]; then
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+elif [ "$1" = "tracking" ]; then
     if [ -n "$2" ]; then
         git config --local submit.tracking "$2"
     else
@@ -93,7 +179,9 @@ else
     fi
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
     while [ "$#" -ge 1 ]; do
-        if [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
+        if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+            show_help
+        elif [ "$1" = "-n" ] || [ "$1" = "--dry-run" ]; then
             PUSH=no
         elif [ "$1" = "-f" ] || [ "$1" = "--force" ];  then
             FORCE="-f"

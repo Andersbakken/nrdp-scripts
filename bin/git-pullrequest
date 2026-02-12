@@ -1,6 +1,125 @@
 #!/bin/bash
 
+show_help() {
+    cat <<'EOF'
+git-pullrequest - Create and manage pull requests
+
+USAGE:
+    git-pullrequest [submit] [OPTIONS] [COMMIT...]
+    git-pullrequest create [OPTIONS] FROM_BRANCH [TO_BRANCH]
+    git-pullrequest show COMMIT
+    git-pullrequest list [OPTIONS]
+    git-pullrequest branch [delete NAME | NAME | ]
+    git-pullrequest issues PR_NUMBER
+    git-pullrequest fetch
+    git-pullrequest prefix
+
+DESCRIPTION:
+    git-pullrequest integrates with git-submit to create and manage pull requests.
+    It pushes commits to a PR branch and creates/updates the pull request via API.
+
+COMMANDS:
+    submit (default)        Submit commits to a pull request branch
+                           Calls git-submit internally and triggers post-submit hook
+                           to create the actual PR via API
+
+    create                 Manually create a pull request between two branches
+
+    show                   Show pull request(s) associated with a commit
+
+    list                   List your pull requests
+
+    branch                 Manage pull request branches
+                           - No args: list all PR branches
+                           - NAME: show full PR branch name
+                           - delete NAME: delete PR branch
+
+    issues                 Show issues linked to a pull request (Stash only)
+
+    fetch                  Fetch all pull request branches from remote
+
+    prefix                 Show your pull request branch prefix
+
+SUBMIT OPTIONS (default mode):
+    -h, --help             Show this help message
+    -f, --force            Force delete existing PR branch before creating
+    -n, --name NAME        Name for the pull request (creates a named branch)
+    -m, --manual, --no-auto
+                           Disable auto-merge for this pull request
+
+    Additional options are passed through to git-submit (see git-submit --help)
+    Note: Do NOT override --src-branch or --dst-branch as these are managed
+    by git-pullrequest. Use --tracking to change the base branch.
+
+CREATE OPTIONS:
+    --reviewer USER        Add reviewer (can be repeated)
+    --description TEXT     Pull request description
+    FROM_BRANCH           Source branch for the PR
+    TO_BRANCH             Target branch (default: tracking branch)
+
+LIST OPTIONS:
+    -a                    Show all users' PRs (not just yours)
+    -u USER               Show PRs for specific user
+    -o                    Show only open PRs
+    -n NUMBER             Limit number of results (default: 5)
+
+EXAMPLES:
+    # Submit current HEAD to auto-merge PR
+    git-pullrequest HEAD
+
+    # Submit specific commits to named PR
+    git-pullrequest --name my-feature abc123 def456
+
+    # Submit without auto-merge
+    git-pullrequest --manual HEAD
+
+    # Pass options to git-submit (e.g., change tracking branch)
+    git-pullrequest --tracking origin/develop HEAD
+
+    # Submit all commits on current branch
+    git-pullrequest -a
+
+    # Manually create PR between branches
+    git-pullrequest create feature-branch main
+
+    # List your open PRs
+    git-pullrequest list -o
+
+    # Show PRs containing a commit
+    git-pullrequest show abc123
+
+    # Delete a PR branch
+    git-pullrequest branch delete my-feature
+
+CONFIGURATION:
+    pullrequest.prefix      Branch prefix (default: pr/<username>)
+    pullrequest.repo        Repository name
+    pullrequest.scm         SCM type: github or stash
+    pullrequest.automergeMethod  Auto-merge method: MERGE (default), REBASE, SQUASH
+
+HOW IT WORKS:
+    1. git-pullrequest calls git-submit to push commits to a PR branch
+    2. git-submit triggers the post-submit hook after pushing
+    3. post-submit hook calls git-pullrequest create to make the actual PR
+    4. PR is created via GitHub/Stash API
+    5. If branch has 'auto/' prefix, auto-merge is enabled
+
+NOTES:
+    - Requires post-submit hook to be installed (script will check)
+    - PR branches are under pr/<user>/auto/<tracking>/<name>
+    - Named PRs (--name) create persistent branches
+    - Unnamed PRs use temporary branch that gets cleaned up
+    - Auto-merge is enabled by default for auto/ branches
+
+EOF
+    exit 0
+}
+
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]} )"
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+fi
 
 MODE="submit"
 if [ "$1" = "create" ]; then
@@ -27,6 +146,15 @@ elif [ "$1" = "fetch" ]; then
 elif [ "$1" = "prefix" ]; then
     MODE="prefix"
     shift
+fi
+
+# Check for help flag in submit mode before checking hooks
+if [ "$MODE" = "submit" ]; then
+    for arg in "$@"; do
+        if [ "$arg" = "-h" ] || [ "$arg" = "--help" ]; then
+            show_help
+        fi
+    done
 fi
 
 if [ $MODE == "submit" ] && [ ! -f $(git rev-parse --git-path hooks)/post-submit ]; then
@@ -270,7 +398,9 @@ elif [ "$MODE" = "submit" ]; then
     SUBMIT_ARGS=
     PR_NAME=
     while [ "$#" -ge 1 ]; do
-        if [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
+        if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+            show_help
+        elif [ "$1" = "-f" ] || [ "$1" = "--force" ]; then
             FORCE=1
         elif [ "$1" = "-n" ] || [ "$1" = "--name" ]; then
             shift
