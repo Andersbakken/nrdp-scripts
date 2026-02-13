@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+REFLOGCOUNT=10
+LOGCOUNT=10
+
+while [ -n "$1" ]; do
+    case "$1" in
+        -r|--reflog)
+            shift
+            REFLOGCOUNT=$1
+            if [[ ! $REFLOGCOUNT =~ ^[1-9][0-9]+$ ]]; then
+                echo "Error: Reflog count must be a positive integer."
+                exit 1
+            fi
+            ;;
+        -l|--log)
+            shift
+            LOGCOUNT=$1
+            if [[ ! $LOGCOUNT =~ ^[1-9][0-9]+$ ]]; then
+                echo "Error: Log count must be a positive integer."
+                exit 1
+            fi
+            ;;
+        *)
+            echo "Usage: $0 [-r|--reflog <count>] [-l|--log <count>]"
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+git reflog -n $REFLOGCOUNT --pretty=format:"%h %s" | while read -r line; do
+    echo $line
+    commit=$(echo "$line" | awk '{print $1}')
+    git --no-pager log -n $LOGCOUNT --pretty=format:"  %h %s" $commit
+
+    echo ""
+    echo ""
+done
