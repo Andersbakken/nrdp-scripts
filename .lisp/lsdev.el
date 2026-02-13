@@ -618,4 +618,25 @@
       (when dir
         (project-switch-project dir)))))
 
+;;; projectile integration
+(when (require 'projectile nil t)
+  (defun lsdev-projectile-project-root (&optional dir)
+    "Return the lsdev root for DIR, or nil."
+    (lsdev-root-dir (or dir default-directory)))
+
+  (defun lsdev-projectile-switch-project ()
+    "Switch to a project from the lsdev list using projectile."
+    (interactive)
+    (let* ((projects (lsdev-dirs-all))
+           (name (completing-read "Switch to project: "
+                                  (mapcar #'car projects)
+                                  nil t))
+           (dir (nth 1 (assoc name projects))))
+      (when dir
+        (projectile-switch-project-by-name dir))))
+
+  (projectile-register-project-type 'lsdev '(".lsdev_config"))
+
+  (add-to-list 'projectile-project-root-functions #'lsdev-projectile-project-root))
+
 (provide 'lsdev)
