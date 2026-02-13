@@ -46,6 +46,13 @@ SUBMIT OPTIONS (default mode):
     -n, --name NAME        Name for the pull request (creates a named branch)
     -m, --manual, --no-auto
                            Disable auto-merge for this pull request
+    --no-reset             Don't reset back to original state after push;
+                           leaves PR commits at the beginning of the branch
+                           with remaining commits reordered after them
+    --reset                Reset back to original state after push (default)
+                           Useful to override submit.reset=false config
+    --abort-on-failure     Abort rebase on conflict (restores original state)
+    --no-abort-on-failure  Leave rebase in progress on conflict for manual resolution
 
     Additional options are passed through to git-submit (see git-submit --help)
     Note: Do NOT override --src-branch or --dst-branch as these are managed
@@ -407,6 +414,14 @@ elif [ "$MODE" = "submit" ]; then
             PR_NAME="$1"
         elif [ "$1" = "-m" ] || [ "$1" = "--manual" ] || [ "$1" == "--no-auto" ]; then
             AUTO=""
+        elif [ "$1" = "--no-reset" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --no-reset"
+        elif [ "$1" = "--reset" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --reset"
+        elif [ "$1" = "--abort-on-failure" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --abort-on-failure"
+        elif [ "$1" = "--no-abort-on-failure" ]; then
+            SUBMIT_ARGS="$SUBMIT_ARGS --no-abort-on-failure"
         else
             SUBMIT_ARGS="$SUBMIT_ARGS $1"
         fi
