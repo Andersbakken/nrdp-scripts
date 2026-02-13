@@ -138,6 +138,12 @@
 
       (transient-append-suffix 'magit-push "-n" '("-a" "All commits" "-a"))
       (transient-append-suffix 'magit-push "-a" '("-m" "Manual" "--manual"))
+      (if (string= (or (magit-get "submit" "reset") "true") "false")
+          (transient-append-suffix 'magit-push "-m" '("-r" "Reset" "--reset"))
+        (transient-append-suffix 'magit-push "-m" '("-r" "No reset" "--no-reset")))
+      (if (string= (or (magit-get "submit" "abortOnFailure") "false") "true")
+          (transient-append-suffix 'magit-push "-r" '("-A" "No abort on failure" "--no-abort-on-failure"))
+        (transient-append-suffix 'magit-push "-r" '("-A" "Abort on failure" "--abort-on-failure")))
 
       (transient-append-suffix 'magit-push "e" '("S" "Submit" magit-submit))
       (transient-append-suffix 'magit-push "S" '("P" "Push to upstream" magit-push-current-to-upstream))
@@ -157,6 +163,12 @@
   (magit-define-popup-switch 'magit-push-popup ?m "Manual" "--manual")
   (magit-define-popup-switch 'magit-push-popup ?D "Delete" "-d")
   (magit-define-popup-switch 'magit-push-popup ?a "All commits" "-a")
+  (if (string= (or (magit-get "submit" "reset") "true") "false")
+      (magit-define-popup-switch 'magit-push-popup ?r "Reset" "--reset")
+    (magit-define-popup-switch 'magit-push-popup ?r "No reset" "--no-reset"))
+  (if (string= (or (magit-get "submit" "abortOnFailure") "false") "true")
+      (magit-define-popup-switch 'magit-push-popup ?A "No abort on failure" "--no-abort-on-failure")
+    (magit-define-popup-switch 'magit-push-popup ?A "Abort on failure" "--abort-on-failure"))
   (magit-define-popup-action 'magit-log-popup ?b "Blame" 'magit-blame-for-current-revision)
 
   (when (string< "20151209.731" (magit-version))

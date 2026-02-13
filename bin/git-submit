@@ -40,6 +40,13 @@ SUBMIT OPTIONS:
                            Submit to a pull request
 
     --autostash            Auto-stash uncommitted changes
+    --no-reset             Don't reset back to original state after push;
+                           leaves submit commits at the beginning of the branch
+                           with remaining commits reordered after them
+    --reset                Reset back to original state after push (default)
+                           Useful to override submit.reset=false config
+    --abort-on-failure     Abort rebase on conflict (restores original state)
+    --no-abort-on-failure  Leave rebase in progress on conflict for manual resolution
     --no-sync-check        Skip sync check with source branch
     --no-ignore-check      Don't skip commits marked as ignored
     --no-hooks             Skip git hooks (pre-submit, post-submit)
@@ -74,6 +81,12 @@ EXAMPLES:
     # Submit commit range
     git-submit abc123..def456
 
+CONFIGURATION:
+    submit.reset           Default reset behavior (default: true)
+                           Set to false to default to --no-reset mode
+    submit.abortOnFailure  Abort rebase on conflict (default: false)
+                           Set to true to auto-abort failed rebases
+
 NOTES:
     - If no commits are specified, an interactive chooser is launched
     - Commits marked as ignored are skipped unless --no-ignore-check is used
@@ -92,6 +105,22 @@ if test "x$GIT_SEQUENCE_EDITOR" = "x$0" ; then
     if [ "$SUBMIT_CHANGES_MODE" = "keep" ]; then
         for change in $SUBMIT_CHANGES; do
             echo "pick $change" >> /tmp/commits$$
+        done
+    elif [ "$SUBMIT_CHANGES_MODE" = "reorder" ]; then
+        for change in $SUBMIT_CHANGES; do
+            echo "pick $change" >> /tmp/commits$$
+        done
+        grep "^pick " "$1" | while read line; do
+            found=
+            for change in $SUBMIT_CHANGES; do
+                if echo $line | grep --quiet "^pick $change"; then
+                    found=1
+                    break
+                fi
+            done
+            if [ -z "$found" ]; then
+                echo $line >> /tmp/commits$$
+            fi
         done
     elif [ "$SUBMIT_CHANGES_MODE" = "delete" ]; then
         grep "^pick " "$1" | while read line; do
@@ -178,6 +207,14 @@ else
         OPERATION=
     fi
     [ "`git config submit.autostash`" != "false" ] && AUTOSTASH="yes"
+    RESET_DEFAULT=`git config submit.reset`
+    if [ "$RESET_DEFAULT" = "false" ] || [ "$RESET_DEFAULT" = "0" ]; then
+        NO_RESET=yes
+    fi
+    ABORT_ON_FAILURE_DEFAULT=`git config submit.abortOnFailure`
+    if [ "$ABORT_ON_FAILURE_DEFAULT" = "true" ] || [ "$ABORT_ON_FAILURE_DEFAULT" = "1" ]; then
+        ABORT_ON_FAILURE=yes
+    fi
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
             show_help
@@ -211,6 +248,14 @@ else
             IGNORE_CHECK="no"
         elif [ "$1" = "--no-hooks" ]; then
             GITHOOKSDIR=""
+        elif [ "$1" = "--no-reset" ]; then
+            NO_RESET=yes
+        elif [ "$1" = "--reset" ]; then
+            NO_RESET=
+        elif [ "$1" = "--abort-on-failure" ]; then
+            ABORT_ON_FAILURE=yes
+        elif [ "$1" = "--no-abort-on-failure" ]; then
+            ABORT_ON_FAILURE=
         elif [ "$1" = "-a" ]; then
             ALL=yes
         elif [ "$1" = "--" ]; then
@@ -331,17 +376,34 @@ else
             export SUBMIT_CHANGES="$h $SUBMIT_CHANGES"
         done
     fi
-    export SUBMIT_CHANGES_MODE="keep"
+    if [ "$NO_RESET" = "yes" ]; then
+        export SUBMIT_CHANGES_MODE="reorder"
+    else
+        export SUBMIT_CHANGES_MODE="keep"
+    fi
     export GIT_SEQUENCE_EDITOR="$0"
-    echo "Keep ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
+    echo "${SUBMIT_CHANGES_MODE^} ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
     [ -n "$OPERATION" ] && git operation save
     if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
         echo "Git failed"
+        if [ "$ABORT_ON_FAILURE" = "yes" ]; then
+            echo "Aborting rebase..."
+            git rebase --abort
+            git reset --hard "${RESET_HEAD}"
+            [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
+        fi
         [ -n "$OPERATION" ] && git operation pop
         exit 1
     fi
-    NEW_SHA1=`git rev-parse HEAD`
+    if [ "$NO_RESET" = "yes" ]; then
+        SUBMIT_COUNT=$(echo $SUBMIT_CHANGES | wc -w)
+        TOTAL_COUNT=$(git rev-list --count "${COMMON_SHA1}..HEAD")
+        SKIP_COUNT=$((TOTAL_COUNT - SUBMIT_COUNT))
+        NEW_SHA1=`git rev-parse "HEAD~${SKIP_COUNT}"`
+    else
+        NEW_SHA1=`git rev-parse HEAD`
+    fi
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push"
         DELETE="no"
@@ -365,12 +427,14 @@ else
             fi
         fi
     fi
-    git reset --hard "${RESET_HEAD}"
-    if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
-        export SUBMIT_CHANGES="$CHANGES"
-        export SUBMIT_CHANGES_MODE="delete"
-        echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
-        git rebase -i "${COMMON_SHA1}" >/dev/null
+    if [ "$NO_RESET" != "yes" ]; then
+        git reset --hard "${RESET_HEAD}"
+        if [ "$DELETE" = "yes" ] && [ "$PUSH" = "yes" ]; then
+            export SUBMIT_CHANGES="$CHANGES"
+            export SUBMIT_CHANGES_MODE="delete"
+            echo "Delete ${SUBMIT_CHANGES} from ${COMMON_SHA1}"
+            git rebase -i "${COMMON_SHA1}" >/dev/null
+        fi
     fi
     [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
     [ -n "$OPERATION" ] && git operation pop
