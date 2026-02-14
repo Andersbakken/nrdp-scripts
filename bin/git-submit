@@ -382,7 +382,7 @@ else
         export SUBMIT_CHANGES_MODE="keep"
     fi
     export GIT_SEQUENCE_EDITOR="$0"
-    echo "${SUBMIT_CHANGES_MODE^} ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
+    echo "$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c1 | tr '[:lower:]' '[:upper:]')$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c2-) ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
     #exit 0
     [ -n "$OPERATION" ] && git operation save
     if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
