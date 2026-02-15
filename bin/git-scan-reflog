@@ -29,11 +29,24 @@ while [ -n "$1" ]; do
     shift
 done
 
-git reflog -n $REFLOGCOUNT --pretty=format:"%h %s" | while read -r line; do
-    echo $line
+declare -A seen
+count=0
+
+while read -r line; do
     commit=$(echo "$line" | awk '{print $1}')
+    if [[ -n "${seen[$commit]}" ]]; then
+        continue
+    fi
+    seen[$commit]=1
+    count=$((count + 1))
+
+    echo $line
     git --no-pager log -n $LOGCOUNT --pretty=format:"  %h %s" $commit
 
     echo ""
     echo ""
-done
+
+    if [[ $count -ge $REFLOGCOUNT ]]; then
+        break
+    fi
+done < <(git reflog --pretty=format:"%h %s")
