@@ -2,8 +2,8 @@
 
 GIT_TRACKING=
 which git-tracking >/dev/null 2>&1 && GIT_TRACKING=`git-tracking`
-
-[ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager --no-ignores "
+MAX=`git config sync.summary-max 2>/dev/null`
+[ -z "$GIT_SYNC_SUMMARY" ] && which git-changes >/dev/null 2>&1 && GIT_SYNC_SUMMARY="git changes --no-pager --no-ignores --max=$MAX "
 function syncdir
 {
     cd "$1"

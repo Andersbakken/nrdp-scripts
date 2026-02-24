@@ -1,18 +1,19 @@
 #!/bin/bash
 
 AUTHOR="$GIT_CHANGES_AUTHOR"
-[ -z "$AUTHOR" ] && AUTHOR=`git config user.email`
-[ -z "$AUTHOR" ] && AUTHOR=`whoami`
+[ -z "$AUTHOR" ] && AUTHOR=$(git config user.email)
+[ -z "$AUTHOR" ] && AUTHOR=$(whoami)
 
 OPTS=""
 IGNORES="1"
-PAGER=less
+PAGER="less -R"
 MERGES="0"
 BRANCHES="0"
 COUNT_MERGES="0"
 NO_COLOR="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
+MAX=
 while [ "$#" -gt 0 ]; do
     OPT="$1"
     shift
@@ -21,66 +22,115 @@ while [ "$#" -gt 0 ]; do
         -c) SUBCOMMAND="cherry" ;;
         -a) MERGES="1" ;;
         -b) BRANCHES="1" ;;
+        -n) MAX="$1"; shift ;;
         -) COUNT_MERGES="1" ;;
         --no-ignores) IGNORES="0" ;;
         --no-pager) PAGER=cat ;;
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
         --no-color) NO_COLOR="1" ;;
-        -s) OPTS="$OPTS --author=$AUTHOR" ;; #self changes
+        -s) OPTS="$OPTS --author=$AUTHOR" ;;
         -t)
-            tracking_branch=`git tracking 2>/dev/null`
+            tracking_branch=$(git tracking 2>/dev/null)
             if [ "$?" ]; then
-                local_branch=`git rev-parse --abbrev-ref HEAD`
+                local_branch=$(git rev-parse --abbrev-ref HEAD)
                 OPTS="$OPTS '${tracking_branch}..${local_branch}'"
             fi ;;
-        -[0-9]*[Dd]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` days ago'" ;;
-        -[0-9]*[Ww]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` weeks ago'" ;;
-        -[0-9]*m) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` months ago'" ;;
-        -[0-9]*[Yy]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` years ago'" ;;
-        -[0-9]*[hH]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` hours ago'" ;;
-        -[0-9]*M) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` minutes ago'" ;;
-        -[0-9]*[sS]) OPTS="$OPTS --since='`echo $OPT | sed 's,-\([0-9]*\).*,\1,'` seconds ago'" ;;
-        -[0-9]*) OPTS="$OPTS -n`echo $OPT | sed 's,-\([0-9]*\).*,\1,'`" ;;
+        -[0-9]*[Dd]) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') days ago'" ;;
+        -[0-9]*[Ww]) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') weeks ago'" ;;
+        -[0-9]*m) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') months ago'" ;;
+        -[0-9]*[Yy]) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') years ago'" ;;
+        -[0-9]*[hH]) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') hours ago'" ;;
+        -[0-9]*M) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') minutes ago'" ;;
+        -[0-9]*[sS]) OPTS="$OPTS --since='$(echo $OPT | sed 's,-\([0-9]*\).*,\1,') seconds ago'" ;;
+        -[0-9]*) OPTS="$OPTS -n$(echo $OPT | sed 's,-\([0-9]*\).*,\1,')" ;;
+        -n[0-9]*) MAX=$(echo $OPT | sed 's,-n\([0-9]*\).*,\1,') ;;
+        --max=*) MAX=$(echo $OPT | sed 's,^[^=]*=,,') ;;
         *) UNKNOWN_OPTS="$UNKNOWN_OPTS $OPT";;
     esac
 done
+
 OPTS="$OPTS $UNKNOWN_OPTS"
-PRETTY_OPTS="--oneline --abbrev-commit"
+
+if [ "$COUNT_MERGES" = "1" ]; then
+    OPTS="$OPTS --merges"
+elif [ "$MERGES" = "0" ]; then
+    OPTS="$OPTS --no-merges"
+fi
+
+# Determine if we need per-commit processing (requires hash extraction)
+DELIM=$'\x1f'
+NEED_PER_COMMIT="0"
+[ "$COUNT_MERGES" = "1" ] && NEED_PER_COMMIT="1"
+[ "$BRANCHES" = "1" ] && NEED_PER_COMMIT="1"
+[ "$IGNORES" = "1" ] && NEED_PER_COMMIT="1"
+
 if [ "$NO_COLOR" = "1" ]; then
-    PRETTY_OPTS="$PRETTY_OPTS '--pretty=%h %s %an %ar %gs'"
+    COLOR_OPT="--no-color"
+    BASE_FORMAT="%h %s %an %ar %gs"
 else
-    PRETTY_OPTS="$PRETTY_OPTS '--pretty=%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs'"
+    COLOR_OPT="--color=always"
+    BASE_FORMAT="%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs"
 fi
 
-if false; then
-    eval git $SUBCOMMAND $PRETTY_OPTS $OPTS
+if [ "$NEED_PER_COMMIT" = "1" ]; then
+    PRETTY_ARG="'%x1f%h%x1f${BASE_FORMAT}'"
 else
+    PRETTY_ARG="'${BASE_FORMAT}'"
+fi
+
+{
     if [ "$SUBCOMMAND" = "cherry" ]; then
-        CHANGES=`eval git $SUBCOMMAND $(echo $OPTS | sed 's,\.\., ,g') | sed 's,^[\+-] ,,g'`
+        eval git cherry $(echo $OPTS | sed 's,\.\., ,g') | sed 's,^[\+-] ,,g' | while IFS= read -r change; do
+            line=$(git show --no-patch $COLOR_OPT --pretty="$BASE_FORMAT" "$change")
+            if [ "$COUNT_MERGES" = "1" ]; then
+                merged=$(git log --stat "$change^..$change" | grep ^commit | wc -l)
+                [ -n "$merged" ] && line="$line ($merged)"
+            fi
+            if [ "$BRANCHES" = "1" ]; then
+                branches=$(git branch -l --contains "$change" | awk '{print $NF}')
+                [ -z "$branches" ] && branches=$(git branch -r --contains "$change" | grep 'origin/' | awk '{print $NF}')
+                [ -n "$branches" ] && line="$line ($branches)"
+            fi
+            if [ "$IGNORES" = "1" ]; then
+                git ignore-commit check "$change" >/dev/null 2>&1 && line="$line (IGNORED)"
+            fi
+            echo "$line"
+        done
+    elif [ "$NEED_PER_COMMIT" = "1" ]; then
+        eval git $SUBCOMMAND $COLOR_OPT --pretty=$PRETTY_ARG $OPTS | while IFS= read -r line; do
+            change="${line#*$DELIM}"
+            change="${change%%$DELIM*}"
+            display="${line#*$DELIM*$DELIM}"
+            [ -z "$change" ] && continue
+            if [ "$COUNT_MERGES" = "1" ]; then
+                merged=$(git log --stat "$change^..$change" | grep ^commit | wc -l)
+                [ -n "$merged" ] && display="$display ($merged)"
+            fi
+            if [ "$BRANCHES" = "1" ]; then
+                branches=$(git branch -l --contains "$change" | awk '{print $NF}')
+                [ -z "$branches" ] && branches=$(git branch -r --contains "$change" | grep 'origin/' | awk '{print $NF}')
+                [ -n "$branches" ] && display="$display ($branches)"
+            fi
+            if [ "$IGNORES" = "1" ]; then
+                git ignore-commit check "$change" >/dev/null 2>&1 && display="$display (IGNORED)"
+            fi
+            echo "$display"
+        done
     else
-        if [ "$COUNT_MERGES" = "1" ]; then
-            OPTS="$OPTS --merges"
-        elif [ "$MERGES" = "0" ]; then
-            OPTS="$OPTS --no-merges"
-        fi
-        CHANGES=`eval git $SUBCOMMAND --no-color --pretty='%h' $OPTS`
+        eval git $SUBCOMMAND $COLOR_OPT --pretty=$PRETTY_ARG $OPTS
     fi
-    for change in $CHANGES; do
-        line=`eval git show --no-patch ${PRETTY_OPTS} ${change}`
-        if [ "$COUNT_MERGES" = "1" ]; then
-            merged=`git log --stat "$change^..$change" | grep ^commit | wc -l;`
-            [ -n "$merged" ] && line="$line ($merged)";
-        fi
-        if [ "$BRANCHES" = "1" ]; then
-            branches=`git branch -l --contains $change | awk '{print $NF}'`
-            [ -z "$branches" ] && branches=`git branch -r --contains $change | grep 'origin/' | awk '{print $NF}'`
-            [ -n "$branches" ] && line="$line ($branches)";
-        fi
-        if [ "$IGNORES" = "1" ]; then
-            git ignore-commit check "$change" >/dev/null && line="$line (IGNORED)"
-        fi
-        echo $line
-    done | $PAGER
-fi
-
+} | {
+    if [ -n "$MAX" ]; then
+        awk -v max="$MAX" '
+            NR <= max { print }
+            END {
+                remaining = NR - max
+                if (remaining > 0)
+                    print "... " remaining " additional commits"
+            }
+        '
+    else
+        cat
+    fi
+} | $PAGER
