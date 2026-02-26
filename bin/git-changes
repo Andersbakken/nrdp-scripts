@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SELF="$GIT_CHANGES_SELF"
+SELF="$GIT_CHANGES_AUTHOR"
 [ -z "$SELF" ] && SELF=$(git config user.email)
 [ -z "$SELF" ] && SELF=$(whoami)
 
