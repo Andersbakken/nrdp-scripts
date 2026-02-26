@@ -1,10 +1,11 @@
 #!/bin/bash
 
-AUTHOR="$GIT_CHANGES_AUTHOR"
-[ -z "$AUTHOR" ] && AUTHOR=$(git config user.email)
-[ -z "$AUTHOR" ] && AUTHOR=$(whoami)
+SELF="$GIT_CHANGES_SELF"
+[ -z "$SELF" ] && SELF=$(git config user.email)
+[ -z "$SELF" ] && SELF=$(whoami)
 
 OPTS=""
+AUTHOR=""
 IGNORES="1"
 PAGER="less -R"
 MERGES="0"
@@ -29,7 +30,8 @@ while [ "$#" -gt 0 ]; do
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
         --no-color) NO_COLOR="1" ;;
-        -s) OPTS="$OPTS --author=$AUTHOR" ;;
+        -s) AUTHOR="$SELF" ;;
+        -u|--author) AUTHOR="$1"; shift ;;
         -t)
             tracking_branch=$(git tracking 2>/dev/null)
             if [ "$?" ]; then
@@ -52,7 +54,8 @@ done
 
 OPTS="$OPTS $UNKNOWN_OPTS"
 
-if [ "$SUBCOMAMND" = "cherry" ]; then
+if [ "$SUBCOMMAND" != "cherry" ]; then
+    [ -n "$AUTHOR" ] && OPTS="$OPTS --author='$AUTHOR'"
     if [ "$COUNT_MERGES" = "1" ]; then
         OPTS="$OPTS --merges"
     elif [ "$MERGES" = "0" ]; then
@@ -84,6 +87,12 @@ fi
 {
     if [ "$SUBCOMMAND" = "cherry" ]; then
         eval git cherry $(echo $OPTS | sed 's,\.\., ,g') | sed 's,^[\+-] ,,g' | while IFS= read -r change; do
+            if [ -n "$AUTHOR" ]; then
+                commit_author=$(git show --no-patch --pretty="%an %ae" "$change")
+              if ! echo "$commit_author" | grep -q "$AUTHOR"; then
+                  continue
+                fi
+            fi
             line=$(git show --no-patch $COLOR_OPT --pretty="$BASE_FORMAT" "$change")
             if [ "$COUNT_MERGES" = "1" ]; then
                 merged=$(git log --stat "$change^..$change" | grep ^commit | wc -l)
