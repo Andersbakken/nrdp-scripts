@@ -12,6 +12,7 @@ MERGES="0"
 BRANCHES="0"
 COUNT_MERGES="0"
 NO_COLOR="0"
+PATCH="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
 MAX=
@@ -21,6 +22,7 @@ while [ "$#" -gt 0 ]; do
     case $OPT in
         -r) SUBCOMMAND="reflog" ;;
         -c) SUBCOMMAND="cherry" ;;
+        -p) PATCH="1" ;;
         -a) MERGES="1" ;;
         -b) BRANCHES="1" ;;
         -n) MAX="$1"; shift ;;
@@ -54,6 +56,13 @@ done
 
 OPTS="$OPTS $UNKNOWN_OPTS"
 
+if [ "$PATCH" = "1" ]; then
+    SHOW_PATCH_OPT=""
+    [ "$SUBCOMMAND" = "log" ] && OPTS="$OPTS -p"
+else
+    SHOW_PATCH_OPT="--no-patch"
+fi
+
 if [ "$SUBCOMMAND" != "cherry" ]; then
     [ -n "$AUTHOR" ] && OPTS="$OPTS --author='$AUTHOR'"
     if [ "$COUNT_MERGES" = "1" ]; then
@@ -69,6 +78,7 @@ NEED_PER_COMMIT="0"
 [ "$COUNT_MERGES" = "1" ] && NEED_PER_COMMIT="1"
 [ "$BRANCHES" = "1" ] && NEED_PER_COMMIT="1"
 [ "$IGNORES" = "1" ] && NEED_PER_COMMIT="1"
+[ "$PATCH" = "1" ] && [ "$SUBCOMMAND" != "log" ] && NEED_PER_COMMIT="1"
 
 if [ "$NO_COLOR" = "1" ]; then
     COLOR_OPT="--no-color"
@@ -93,7 +103,7 @@ fi
                   continue
                 fi
             fi
-            line=$(git show --no-patch $COLOR_OPT --pretty="$BASE_FORMAT" "$change")
+            line=$(git show $SHOW_PATCH_OPT $COLOR_OPT --pretty="$BASE_FORMAT" "$change")
             if [ "$COUNT_MERGES" = "1" ]; then
                 merged=$(git log --stat "$change^..$change" | grep ^commit | wc -l)
                 [ -n "$merged" ] && line="$line ($merged)"
@@ -127,6 +137,9 @@ fi
                 git ignore-commit check "$change" >/dev/null 2>&1 && display="$display (IGNORED)"
             fi
             echo "$display"
+            if [ "$PATCH" = "1" ]; then
+                git show --patch --format="" $COLOR_OPT "$change"
+            fi
         done
     else
         eval git $SUBCOMMAND $COLOR_OPT --pretty=$PRETTY_ARG $OPTS
