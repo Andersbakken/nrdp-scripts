@@ -52,10 +52,12 @@ done
 
 OPTS="$OPTS $UNKNOWN_OPTS"
 
-if [ "$COUNT_MERGES" = "1" ]; then
-    OPTS="$OPTS --merges"
-elif [ "$MERGES" = "0" ]; then
-    OPTS="$OPTS --no-merges"
+if [ "$SUBCOMAMND" = "cherry" ]; then
+    if [ "$COUNT_MERGES" = "1" ]; then
+        OPTS="$OPTS --merges"
+    elif [ "$MERGES" = "0" ]; then
+        OPTS="$OPTS --no-merges"
+    fi
 fi
 
 # Determine if we need per-commit processing (requires hash extraction)
