@@ -15,6 +15,7 @@ NO_COLOR="0"
 PATCH="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
+PREFIX="Change "
 MAX=
 while [ "$#" -gt 0 ]; do
     OPT="$1"
@@ -57,6 +58,7 @@ done
 OPTS="$OPTS $UNKNOWN_OPTS"
 
 if [ "$PATCH" = "1" ]; then
+    PREFIX="%n%n==============================================================%n${PREFIX}"
     SHOW_PATCH_OPT=""
     [ "$SUBCOMMAND" = "log" ] && OPTS="$OPTS -p"
 else
@@ -82,10 +84,10 @@ NEED_PER_COMMIT="0"
 
 if [ "$NO_COLOR" = "1" ]; then
     COLOR_OPT="--no-color"
-    BASE_FORMAT="%h %s %an %ar %gs"
+    BASE_FORMAT="${PREFIX}%h %s %an %ar %gs"
 else
     COLOR_OPT="--color=always"
-    BASE_FORMAT="%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs"
+    BASE_FORMAT="${PREFIX}%C(red)%h%Creset %C(yellow)%s%Creset %C(green)%an%Creset %C(magenta)%ar%Creset %gs"
 fi
 
 if [ "$NEED_PER_COMMIT" = "1" ]; then
