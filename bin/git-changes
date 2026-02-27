@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export LESS='--quit-if-one-screen' # done here if using less and not more than a page of output
+
 SELF="$GIT_CHANGES_AUTHOR"
 [ -z "$SELF" ] && SELF=$(git config user.email)
 [ -z "$SELF" ] && SELF=$(whoami)
@@ -15,6 +17,7 @@ NO_COLOR="0"
 PATCH="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
+DEDUPLICATE="0"
 PREFIX=""
 MAX=
 while [ "$#" -gt 0 ]; do
@@ -33,6 +36,7 @@ while [ "$#" -gt 0 ]; do
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
         --no-color) NO_COLOR="1" ;;
+        --deduplicate) DEDUPLICATE="1" ;;
         --prefix) PREFIX="$1"; shift ;;
         -s) AUTHOR="$SELF" ;;
         -u|--author) AUTHOR="$1"; shift ;;
@@ -99,12 +103,81 @@ fi
 
 {
     if [ "$SUBCOMMAND" = "cherry" ]; then
-        eval git cherry $(echo $OPTS | sed 's,\.\., ,g') | sed 's,^[\+-] ,,g' | while IFS= read -r change; do
-            if [ -n "$AUTHOR" ]; then
-                commit_author=$(git show --no-patch --pretty="%an %ae" "$change")
-              if ! echo "$commit_author" | grep -q "$AUTHOR"; then
-                  continue
+        CHERRY_UPSTREAM=$(echo $UNKNOWN_OPTS | awk '{print $1}')
+        CHERRY_ARGS=$(echo $OPTS | sed 's,\.\., ,g')
+        CHERRY_PLUS=$(mktemp)
+
+        # Collect + commits, filtered by author if specified (single git process)
+        if [ -n "$AUTHOR" ]; then
+            eval git cherry $CHERRY_ARGS | grep '^+' | sed 's,^+ ,,g' | \
+                git log --stdin --no-walk --format="%H" --author="$AUTHOR" > "$CHERRY_PLUS"
+        else
+            eval git cherry $CHERRY_ARGS | grep '^+' | sed 's,^+ ,,g' > "$CHERRY_PLUS"
+        fi
+
+        if [ -s "$CHERRY_PLUS" ] && [ "$DEDUPLICATE" = "1" ]; then
+            # git cherry only checks the symmetric difference, so it misses
+            # equivalent commits that are common ancestors of both branches.
+            # Build a map of commit->subject and a set of subjects found in upstream.
+            CHERRY_MAP=$(mktemp)
+            CHERRY_FOUND=$(mktemp)
+            while IFS= read -r c; do
+                subj=$(git log -1 --format='%B' "$c" | head -1)
+                printf '%s\t%s\n' "$c" "$subj"
+            done < "$CHERRY_PLUS" > "$CHERRY_MAP"
+
+            cut -f2 "$CHERRY_MAP" | sort -u | while IFS= read -r subj; do
+                [ -n "$subj" ] && [ -n "$(git log -1 --format='%H' --fixed-strings --grep="$subj" "$CHERRY_UPSTREAM")" ] && printf '%s\n' "$subj"
+            done > "$CHERRY_FOUND"
+
+            # For squash merges with different messages, check PR ancestry.
+            # Find "Merge pull request #N" commits on upstream, fetch their
+            # PR head refs, so we can check if + commits are part of merged PRs.
+            CHERRY_PR_MAP=$(mktemp)
+            pr_nums=$(git log --format="%s" "$CHERRY_UPSTREAM" --grep="^Merge pull request #" | \
+                sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p' | sort -un)
+            if [ -n "$pr_nums" ]; then
+                ls_args=$(echo "$pr_nums" | while read n; do echo "refs/pull/$n/head"; done)
+                pr_refs=$(git ls-remote origin $ls_args 2>/dev/null)
+                if [ -n "$pr_refs" ]; then
+                    # Fetch any PR head objects not already local
+                    fetch_refs=""
+                    while IFS=$'\t' read -r hash ref; do
+                        git cat-file -t "$hash" >/dev/null 2>&1 || fetch_refs="$fetch_refs $ref"
+                    done <<< "$pr_refs"
+                    [ -n "$fetch_refs" ] && git fetch --quiet origin $fetch_refs 2>/dev/null
+                    # Build PR number -> head hash map
+                    while IFS=$'\t' read -r hash ref; do
+                        pr_num=$(echo "$ref" | sed 's,.*/pull/\([0-9]*\)/.*,\1,')
+                        echo "$pr_num $hash"
+                    done <<< "$pr_refs" > "$CHERRY_PR_MAP"
                 fi
+            fi
+        fi
+
+        # Display commits not already in upstream
+        while IFS= read -r change; do
+            if [ "$DEDUPLICATE" = "1" ] && [ -s "$CHERRY_FOUND" ]; then
+                subj=$(awk -F'\t' -v h="$change" '$1 == h {print $2}' "$CHERRY_MAP")
+                if [ -n "$subj" ] && grep -qxF "$subj" "$CHERRY_FOUND"; then
+                    continue
+                fi
+            fi
+            if [ "$DEDUPLICATE" = "1" ] && [ -s "$CHERRY_PR_MAP" ]; then
+                # Find PR merge commits on upstream touching the same files
+                files=$(git diff-tree --no-commit-id --name-only -r "$change")
+                skip=0
+                while IFS= read -r pr_msg; do
+                    pr_num=$(echo "$pr_msg" | sed -n 's/^Merge pull request #\([0-9]*\).*/\1/p')
+                    [ -z "$pr_num" ] && continue
+                    pr_head=$(awk -v n="$pr_num" '$1 == n {print $2}' "$CHERRY_PR_MAP")
+                    [ -z "$pr_head" ] && continue
+                    if git merge-base --is-ancestor "$change" "$pr_head" 2>/dev/null; then
+                        skip=1
+                        break
+                    fi
+                done < <(git log --format="%s" "$CHERRY_UPSTREAM" --grep="^Merge pull request #" -- $files)
+                [ "$skip" = "1" ] && continue
             fi
             line=$(git show $SHOW_PATCH_OPT $COLOR_OPT --pretty="$BASE_FORMAT" "$change")
             if [ "$COUNT_MERGES" = "1" ]; then
@@ -120,7 +193,8 @@ fi
                 git ignore-commit check "$change" >/dev/null 2>&1 && line="$line (IGNORED)"
             fi
             echo "$line"
-        done
+        done < "$CHERRY_PLUS"
+        rm -f "$CHERRY_PLUS" "$CHERRY_MAP" "$CHERRY_FOUND" "$CHERRY_PR_MAP"
     elif [ "$NEED_PER_COMMIT" = "1" ]; then
         eval git $SUBCOMMAND $COLOR_OPT --pretty=$PRETTY_ARG $OPTS | while IFS= read -r line; do
             change="${line#*$DELIM}"
