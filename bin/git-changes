@@ -15,7 +15,7 @@ NO_COLOR="0"
 PATCH="0"
 UNKNOWN_OPTS=""
 SUBCOMMAND="log"
-PREFIX="Change "
+PREFIX=""
 MAX=
 while [ "$#" -gt 0 ]; do
     OPT="$1"
@@ -33,6 +33,7 @@ while [ "$#" -gt 0 ]; do
         --no-merges) MERGES="0" ;;
         -m|--merges) COUNT_MERGES="1" ;;
         --no-color) NO_COLOR="1" ;;
+        --prefix) PREFIX="$1"; shift ;;
         -s) AUTHOR="$SELF" ;;
         -u|--author) AUTHOR="$1"; shift ;;
         -t)
