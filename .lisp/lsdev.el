@@ -635,7 +635,13 @@
       (when dir
         (projectile-switch-project-by-name dir))))
 
+  (defun lsdev-projectile-project-name (project-root)
+    "Return the lsdev name for PROJECT-ROOT, or fall back to default."
+    (or (lsdev-name project-root)
+        (projectile-default-project-name project-root)))
+
   (projectile-register-project-type 'lsdev '(".lsdev_config"))
+  (setq projectile-project-name-function #'lsdev-projectile-project-name)
 
   (add-to-list 'projectile-project-root-functions #'lsdev-projectile-project-root))
 
