@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export LESS='--quit-if-one-screen' # done here if using less and not more than a page of output
-
 SELF="$GIT_CHANGES_AUTHOR"
 [ -z "$SELF" ] && SELF=$(git config user.email)
 [ -z "$SELF" ] && SELF=$(whoami)
@@ -9,7 +7,7 @@ SELF="$GIT_CHANGES_AUTHOR"
 OPTS=""
 AUTHOR=""
 IGNORES="1"
-PAGER="less -R"
+PAGER="less -R --quit-if-one-screen"
 MERGES="0"
 BRANCHES="0"
 COUNT_MERGES="0"
