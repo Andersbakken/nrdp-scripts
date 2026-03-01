@@ -73,7 +73,7 @@ When PICK-SHELL is non-nil, prompt for which shell buffer to use."
          (_ (unless transcripts
               (user-error "No transcripts found")))
          (labels (mapcar #'car transcripts))
-         (selection (completing-read "Send transcript: " labels nil t))
+         (selection (completing-read "Send transcript: " labels nil t nil nil (car labels)))
          (file-path (cdr (seq-find (lambda (entry)
                                      (string= (car entry) selection))
                                    transcripts)))
