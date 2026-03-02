@@ -52,6 +52,19 @@ With prefix arg QUERY, prompt for package name."
     (message "Unaccounted packages: %s"
              (cl-remove-if (lambda (x) (memq x packages)) installed))))
 
+(defun misc-package-update (package)
+  "Pull and check a PACKAGE, or all packages if PACKAGE is \"all\".
+Interactively, prompt for the package name."
+  (interactive
+   (list (completing-read "Package (or \"all\"): "
+                          (cons "all" (hash-table-keys straight--recipe-cache)))))
+  (if (string= package "all")
+      (progn
+        (straight-pull-all)
+        (straight-check-all))
+    (straight-pull-package-and-deps package)
+    (straight-check-package package)))
+
 (straight-use-package 'use-package)
 (straight-use-package 'el-patch)
 
