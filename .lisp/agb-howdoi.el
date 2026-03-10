@@ -1,3 +1,4 @@
+;;; agb-howdoi.el --- Howdoi interface  -*- lexical-binding: t; -*-
 (defvar agb-howdoi-mode-map nil)
 ;; assign command to keys
 (setq agb-howdoi-mode-map (make-sparse-keymap))

@@ -1,3 +1,4 @@
+;;; nrdp-git.el --- Git integration for NRDP  -*- lexical-binding: t; -*-
 ;;===================
 ;; Magit stuff
 ;;===================
@@ -6,9 +7,24 @@
 (require 'magit)
 (require 's)
 
+(defvar magit-file-mode-map)
+(defvar magit-gptcommit-llm-provider)
+(defvar magit-gptcommit-process-commit-message-function)
+(declare-function lsdev-dirs-internal "lsdev")
+(declare-function agb-git-blame "agb-git-blame")
+(declare-function magit-current-section-string "nrdp-git")
+(declare-function magit-define-popup-action "magit-popup" (popup key description function))
+(declare-function magit-define-popup-switch "magit-popup" (popup key description switch))
+(declare-function make-llm-claude "llm-claude")
+(declare-function nrdp-llm-claude-url-proxy "nrdp-git")
+(declare-function magit-gptcommit-mode "magit-gptcommit")
+(declare-function magit-gptcommit-status-buffer-setup "magit-gptcommit")
+(declare-function nrdp-gptcommit--resolve-worktree-dir "nrdp-git")
+(declare-function nrdp-gptcommit-fix-worktree-dir "nrdp-git")
+
 (defvar nrdp-git-grep-max-column-length 1024)
 
-(defun buffer-local-set-key (key func)
+(defun buffer-local-set-key (key _func)
   (interactive "KSet key on this buffer: \naCommand: ")
   (let ((name (format "%s-magic" (buffer-name))))
     (eval
@@ -125,7 +141,7 @@
   (magit-log-other (list (magit-get-current-branch)) (nrdp-git-magit-log-args prefix)))
 
 (fset 'magit-toggle-whitespace
-      (lambda (&optional arg) "Keyboard macro." (interactive "p") (kmacro-exec-ring-item (quote ("D-ws" 0 "%d")) arg)))
+      (lambda (&optional arg) "Keyboard macro." (interactive "p") (funcall (kmacro "D-ws") arg)))
 
 
 (if (string> (magit-version) "20200407.")
@@ -178,10 +194,10 @@
 (unless (fboundp 'magit-current-section-string)
   (defun magit-current-section-string ()))
 
-(defun nrdp-magit-visit-thing-advice (orig-fun &rest args)
+(defun nrdp-magit-visit-thing-advice (orig-fun &rest _args)
   (interactive)
   (save-excursion
-    (goto-char (point-at-bol))
+    (goto-char (line-beginning-position))
     (if (looking-at "^\\([A-Fa-f0-9]+\\) .*ago$")
         (magit-show-commit (match-string 1) t)
       (call-interactively orig-fun))))
@@ -321,7 +337,7 @@
       (setq search (concat "\"" search "\"")))
 
     (let* ((hasdashdash)
-           (quote)
+           (_quote)
            (hasarg)
            (default-directory (magit-toplevel dir))
            (args (mapcar (lambda (arg)
@@ -458,11 +474,11 @@
       (unless no-keymap
         (buffer-local-set-key (kbd "q") 'bury-buffer)))))
 
-(defun nrdp-git-diff-revert-buffer (ignore-auto noconfirm)
+(defun nrdp-git-diff-revert-buffer (_ignore-auto _noconfirm)
   (save-excursion
     (goto-char (point-min))
     (when (looking-at "\$ git diff ")
-      (let ((args (split-string (buffer-substring-no-properties (+ (point-at-bol) 11) (point-at-eol)) " "))
+      (let ((args (split-string (buffer-substring-no-properties (+ (line-beginning-position) 11) (line-end-position)) " "))
             (buffer-read-only nil))
         (erase-buffer)
         (unless (= (apply #'call-process "git" nil t t "diff" args) 0)
@@ -474,7 +490,7 @@
           (goto-char (point-min))
           (insert "$ git diff " (combine-and-quote-strings args) "\n")
           (search-forward-regexp "^@@" nil t)
-          (goto-char (point-at-bol)))))))
+          (goto-char (line-beginning-position)))))))
 
 (defvar nrdp-git-diff-reuse-diff-buffer nil)
 (defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against word)
@@ -521,7 +537,7 @@
               (ansi-color-apply-on-region (point-min) (point-max)))
             (insert "$ git diff " (combine-and-quote-strings args) "\n")
             (search-forward-regexp "^@@" nil t)
-            (goto-char (point-at-bol))
+            (goto-char (line-beginning-position))
             (diff-mode)
             (setq buffer-read-only t)
             (use-local-map (copy-keymap diff-mode-map))
@@ -651,9 +667,9 @@
   (interactive)
   (let ((file (magit-log-mode-current-file))
         (sha (save-excursion
-               (goto-char (point-at-bol))
+               (goto-char (line-beginning-position))
                (skip-chars-forward "[A-Fa-f0-9]")
-               (buffer-substring-no-properties (point-at-bol) (point)))))
+               (buffer-substring-no-properties (line-beginning-position) (point)))))
     (nrdp-git-show-revision file sha)))
 
 (defun nrdp-magit-sync ()
@@ -714,7 +730,7 @@
               'magit-status-setup-buffer)
             :around #'nrdp-magit-status-fixdir)
 
-(define-key magit-status-mode-map (kbd "-") (lambda (arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
+(define-key magit-status-mode-map (kbd "-") (lambda (_arg) (interactive "p") (nrdp-git-ediff-file (find-file-noselect (magit-current-section-file)))))
 (define-key magit-status-mode-map (kbd "U") 'magit-discard-item)
 (define-key magit-status-mode-map (kbd "_") 'magit-diff-less-context)
 (define-key magit-status-mode-map (kbd "=") 'magit-diff-current-section)
@@ -730,9 +746,9 @@
   (interactive)
   (let ((file (magit-log-mode-current-file))
         (sha (save-excursion
-               (goto-char (point-at-bol))
+               (goto-char (line-beginning-position))
                (skip-chars-forward "[A-Fa-f0-9]")
-               (buffer-substring-no-properties (point-at-bol) (point)))))
+               (buffer-substring-no-properties (line-beginning-position) (point)))))
     (when (and file sha)
       (agb-git-blame sha (file-name-nondirectory file)))))
 
@@ -905,7 +921,7 @@
   (defvar nrdp-claude-proxy-url "http://localhost:9123/mtlsproxy:claudecode"
     "Netflix proxy URL for Claude API requests.")
 
-  (defun nrdp-llm-claude-url-proxy (orig-fun method &rest args)
+  (defun nrdp-llm-claude-url-proxy (_orig-fun method &rest _args)
     "Redirect Claude API calls to Netflix proxy."
     (format "%s/v1/%s" nrdp-claude-proxy-url method))
   (advice-add 'llm-claude--url :around #'nrdp-llm-claude-url-proxy)

@@ -1,3 +1,4 @@
+;;; desktop-aids.el --- Desktop buffer management  -*- lexical-binding: t; -*-
 ;; ;; To enable:
 ;; (require 'desktop-aids)
 

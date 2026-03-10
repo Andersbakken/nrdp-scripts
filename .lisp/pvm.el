@@ -1,3 +1,4 @@
+;;; pvm.el --- PVM navigation  -*- lexical-binding: t; -*-
 (defun pvm-cd (&optional prefix func)
   (interactive "p")
   (let ((opts nil)

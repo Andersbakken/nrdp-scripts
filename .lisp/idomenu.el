@@ -1,4 +1,4 @@
-;;; idomenu.el --- imenu tag selection a la ido
+;;; idomenu.el --- imenu tag selection a la ido  -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2010 Georg Brandl
 ;;

@@ -1,4 +1,4 @@
-;;; Configuration;
+;;; buffer-pop.el --- Pop up buffers  -*- lexical-binding: t; -*-
 ;;
 ;; A configuration sample for your .emacs is as follows.
 ;;

@@ -1,8 +1,20 @@
+;;; lsdev.el --- Development directory management  -*- lexical-binding: t; -*-
 (require 'bs)
 (require 'ido)
 (require 'nrdp-git)
 (require 'buffer-pop)
 (eval-when-compile (require 'cl-lib))
+
+(defvar projectile-project-name-function)
+(defvar projectile-project-root-functions)
+(declare-function find-ancestor-file "misc")
+(declare-function recompile "compile")
+(declare-function projectile-default-project-name "projectile")
+(declare-function projectile-switch-project-by-name "projectile")
+(declare-function projectile-register-project-type "projectile")
+(declare-function lsdev-projectile-project-root "lsdev")
+(declare-function lsdev-projectile-project-name "lsdev")
+(declare-function lsdev-project-find "lsdev")
 
 (defgroup lsdev nil
   "Group for lsdev."
@@ -29,7 +41,7 @@
       (goto-char (point-min))
       (while (not (eobp))
         (if (looking-at "^\\([^ ]*\\) \\[\\([^]]*\\)\\]")
-            (add-to-list 'result (list (match-string 1) (match-string 2))))
+            (cl-pushnew (list (match-string 1) (match-string 2)) result :test #'equal))
         (forward-line)))
     result))
 
@@ -153,7 +165,7 @@
   (save-excursion
     (when point (goto-char point))
     (beginning-of-line)
-    ;; (message (buffer-substring (point-at-bol) (point-at-eol)))
+    ;; (message (buffer-substring (line-beginning-position) (line-end-position)))
     (if (looking-at "^[^[]* \\[\\([^]]*\\)\\]")
         (let ((dir (match-string 1)))
           (if (string-match "/$" dir) dir (concat dir "/"))
@@ -207,7 +219,7 @@
 
 (defvar lsdev-mode-custom-bindings nil)
 (defvar lsdev-cd-history nil)
-(defun lsdev-cd-mode (args from-eshell listfunc)
+(defun lsdev-cd-mode (args _from-eshell listfunc)
   (unless listfunc (setq listfunc 'find-file))
   (let ((previous (current-buffer)))
     (push "-l" args)
@@ -308,7 +320,7 @@
 
 
 ;;bs integration
-(defun lsdev-bs-get-name(&rest ignored)
+(defun lsdev-bs-get-name(&rest _ignored)
   (let ((name (lsdev-name (current-buffer))))
     (if name name "")))
 (defun lsdev-bs-sort(b1 b2)
@@ -466,7 +478,7 @@
 (defun lsdev-open-equivalent (&optional ediff)
   (interactive "P")
   (when (buffer-file-name)
-    (let ((ctx (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+    (let ((ctx (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
           (file (lsdev-equivalent-file)))
       (cond ((not file) (message "No file found"))
             (ediff
@@ -498,7 +510,7 @@
               (setq path (concat "~/" (substring path (length home)))))
           (set-buffer (find-file-noselect dev-directories))
           (goto-char (point-max))
-          (unless (= (point-at-bol) (point))
+          (unless (= (line-beginning-position) (point))
             (insert "\n"))
           (insert name "=" path "\n")
           (basic-save-buffer)
@@ -516,7 +528,7 @@
           (save-excursion
             (goto-char (point-min))
             (while (not (eobp))
-              (find-file-noselect (buffer-substring-no-properties (point) (point-at-eol)))
+              (find-file-noselect (buffer-substring-no-properties (point) (line-end-position)))
               (forward-line 1))
             (erase-buffer)
             (basic-save-buffer)))
@@ -545,7 +557,7 @@
           (when name
             (let ((cur (gethash name buffers)))
               (if cur
-                  (add-to-list 'cur (car all-buffers))
+                  (cl-pushnew (car all-buffers) cur)
                 (setq cur (list (car all-buffers))))
               (puthash name cur buffers))))
         (setq all-buffers (cdr all-buffers)))
@@ -579,7 +591,7 @@
 ;; (message "Got project [%s]" project))))
 
 (defvar lsdev-git-sync-src nil)
-(defun lsdev-git-sync-sentinel (process event)
+(defun lsdev-git-sync-sentinel (process _event)
   (when (eq (process-status process) 'exit)
     (with-current-buffer (process-buffer process)
       (if (= (process-exit-status process) 0)
