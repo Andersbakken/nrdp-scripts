@@ -1,4 +1,4 @@
-;;; display-buffer-for-wide-screen.el --- Set `display-buffer-function' for wide-screen display
+;;; display-buffer-for-wide-screen.el --- Set `display-buffer-function' for wide-screen display  -*- lexical-binding: t; -*-
 ;; $Id: display-buffer-for-wide-screen.el,v 1.4 2010/11/02 00:25:35 rubikitch Exp $
 
 ;; Copyright (C) 2009  rubikitch
@@ -102,7 +102,12 @@
 ;;; Code:
 
 (defvar display-buffer-for-wide-screen-version "$Id: display-buffer-for-wide-screen.el,v 1.4 2010/11/02 00:25:35 rubikitch Exp $")
-(eval-when-compile (require 'cl-lib))
+(require 'cl-lib)
+(defvar split-window-horizontally-threshold-width)
+(defvar display-buffer-function)
+(defvar special-display-function)
+(defvar special-display-buffer-names)
+(defvar special-display-regexps)
 (defgroup display-buffer-for-wide-screen nil
   "display-buffer-for-wide-screen"
   :group 'emacs)
@@ -116,12 +121,12 @@
 
 
 (defcustom split-window-horizontally-threshold-lines 20
-  "*If the new buffer is less than this-value lines big, split horizontally, else split vertically."
+  "*Threshold line count for horizontal vs vertical split."
   :type 'integer
   :group 'display-buffer-for-wide-screen)
 
 (defcustom split-window-horizontally-exclude nil
-  "*If the new buffer is less than this-value lines big, split horizontally, else split vertically."
+  "*Regexp matching buffer names to exclude from horizontal split."
   :type 'string
   :group 'display-buffer-for-wide-screen)
 
@@ -129,7 +134,7 @@
 ;;; This function is originally written by Tassilo Horn.
 ;;; Rubikitch modified slightly.
 ;;; http://www.mail-archive.com/emacs-pretest-bug@gnu.org/msg11469.html
-(defun display-buffer-function-according-to-window-width (buffer force-other-window &rest ignored)
+(defun display-buffer-function-according-to-window-width (buffer _force-other-window &rest _ignored)
   "If BUFFER is visible, select it.
 
 If it's not visible and there's only one window, split the
@@ -145,10 +150,6 @@ This function returns the window which holds BUFFER.
 
 FORCE-OTHER-WINDOW is ignored."
   (or (get-buffer-window buffer)
-      (and special-display-function
-           (or (member (buffer-name buffer) special-display-buffer-names)
-               (cl-some (lambda (re) (string-match re (buffer-name buffer))) special-display-regexps))
-           (funcall special-display-function buffer))
       (if (one-window-p)
           (let* ((shrink nil) (new-win
                  (cond

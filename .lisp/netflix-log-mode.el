@@ -1,3 +1,5 @@
+;;; netflix-log-mode.el --- Netflix log file mode  -*- lexical-binding: t; -*-
+(defvar global-auto-revert-ignore-buffer)
 (defgroup netflix-log nil "Mode for netflix log files." :group 'tools :prefix "netflix-log")
 
 (defface netflix-log-time-face
@@ -178,7 +180,7 @@
                   (setq current-name (match-string subexp))))))
     (substring-no-properties current-name)))
 
-(defun netflix-log-limit-to-thread (&optional arg)
+(defun netflix-log-limit-to-thread (&optional _arg)
   (interactive "P")
   (if current-prefix-arg
       (progn
@@ -189,7 +191,7 @@
       (if thread-name
           (netflix-log-limit regexp 4 thread-name 'thread)))))
 
-(defun netflix-log-remove-traces (&optional arg)
+(defun netflix-log-remove-traces (&optional _arg)
   (interactive "P")
   (if current-prefix-arg
       (progn
@@ -203,7 +205,7 @@
    (concat netflix-log-time-regexp " " netflix-log-thread-regexp " " netflix-log-area-regexp)
    6))
 
-(defun netflix-log-limit-to-area (&optional arg)
+(defun netflix-log-limit-to-area (&optional _arg)
   (interactive "P")
   (let ((area-name (netflix-log-current-area)))
     (if area-name

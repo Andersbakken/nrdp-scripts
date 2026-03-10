@@ -1,10 +1,20 @@
-(eval-when-compile
-  (require 'cl-lib))
+;;; hack-mode.el --- Hack mode for different coding styles  -*- lexical-binding: t; -*-
+(require 'cl-lib)
 (require 'ido)
 (require 'nrdp-misc "misc")
 (require 'typescript-mode nil t)
 (require 'typescript-ts-mode nil t)
 (require 'c++-ts-mode nil t)
+
+(defvar hack-mode-default)
+(defvar hack-mode-troll)
+(defvar hack-mode-webkit)
+(defvar cmake-tab-width)
+(defvar hack-mode-netflix)
+(defvar hack-mode-insert-debug-serial-value)
+(defvar hack-mode)
+(defvar hack-modes)
+(defvar sam-buffer-license-type)
 
 (defconst hack-mode-templatize-nth 1)
 (defconst hack-mode-c-mode-nth 2)
@@ -35,6 +45,8 @@
     (cons (concat "[" name ":%d]") ", __LINE__")))
 
 (defvar hack-mode-templatize-header-format "%s_H_")
+(defvar hack-mode-templatize-header-pragma-once nil
+  "When non-nil, use #pragma once instead of traditional header guards.")
 ;;====================
 ;; Licensing fu
 ;;====================
@@ -53,7 +65,7 @@
 (defvar hack-mode-buffer-license-type nil)
 (make-variable-buffer-local 'hack-mode-buffer-license-type)
 (defun hack-mode-license-remove()
-  "This will remove licences below and stick the license type in the modeline, hidecopyleft wasn't good enough"
+  "Remove licences and stick the license type in the modeline."
   (interactive)
   (if (not hack-mode-buffer-license-type)
       (let ((found nil) (regexp-list hack-mode-license-rege-list) (lic nil))
@@ -62,7 +74,7 @@
         (push-mark)
         (while (and (not found) regexp-list)
           (if (setq found (re-search-forward (car (car regexp-list)) nil t))
-              (let ((eoc (search-forward "*/")) (boc (search-backward "/*")))
+              (let ((eoc (search-forward "*/")) (_boc (search-backward "/*")))
                 (setq lic (nth 1 (car regexp-list)))
                 (narrow-to-region eoc (point-max))
                 ;;(setq mode-line-buffer-identification (list "(" lic ") " mode-line-buffer-identification))
@@ -219,7 +231,7 @@
                  (if (and (not nopercent) (string-match "%" msg))
                      (progn (insert ", ") (setq msg-pos (point))))
                  (insert "); fflush(stdout);")))))
-    (unless (= (point) (point-at-eol)) (insert "\n"))
+    (unless (= (point) (line-end-position)) (insert "\n"))
     (beginning-of-line)
     (indent-for-tab-command)
     (if msg-pos (goto-char msg-pos))))
@@ -239,7 +251,7 @@
                    (buffer-substring-no-properties b (point)))))
       (if arg
           (progn
-            (goto-char (1- (point-at-bol)))
+            (goto-char (1- (line-beginning-position)))
             (insert "\n")
             (hack-mode-insert-debug-printf prefix text t))
         (forward-line 1)
@@ -262,12 +274,16 @@
            (let ((name (file-name-nondirectory (buffer-file-name))) (empty-file (not (/= (point-min) (point-max)))))
              (if (nth hack-mode-templatize-nth hack-mode) (funcall (nth hack-mode-templatize-nth hack-mode)))
              (if (and empty-file name (string-match "\\.h$" name))
-                 (let ((define (upcase (format hack-mode-templatize-header-format (file-name-sans-extension name)))))
+                 (progn
                    (goto-char (point-max))
-                   (insert "#ifndef " define "\n"
-                           "#define " define "\n"
-                           "\n\n\n"
-                           "#endif /* " define " */\n")))
+                   (if hack-mode-templatize-header-pragma-once
+                       (insert "#pragma once\n"
+                               "\n\n\n")
+                     (let ((define (upcase (format hack-mode-templatize-header-format (file-name-sans-extension name)))))
+                       (insert "#ifndef " define "\n"
+                               "#define " define "\n"
+                               "\n\n\n"
+                               "#endif /* " define " */\n")))))
              (set-buffer-modified-p nil))))
 
 ;;generic stuff, this will allow me to toggle between my "known" styles.
@@ -277,14 +293,14 @@
 (put 'hack-mode 'permanent-local t)
 (defun hack-mode-register (match mode) "Register mode as a new hack-mode"
        (setq hack-modes (append hack-modes (list (list match mode)))))
-(defun hack-mode-set (&optional mode-name) "Sets up C hack mode"
+(defun hack-mode-set (&optional target-mode-name) "Sets up C hack mode"
        (interactive)
-       (unless mode-name
-         (setq mode-name (ido-completing-read "Mode: "
+       (unless target-mode-name
+         (setq target-mode-name (ido-completing-read "Mode: "
                                               (cl-remove-duplicates (let (result) (dolist (mode hack-modes result) (setq result (append result (list (car (nth 1 mode)))))))))))
-       (if mode-name
+       (if target-mode-name
            (dolist (mode hack-modes)
-             (if (string= (car (nth 1 mode)) mode-name) (setq hack-mode (nth 1 mode))))))
+             (if (string= (car (nth 1 mode)) target-mode-name) (setq hack-mode (nth 1 mode))))))
 (defun hack-mode-guess()
   (if hack-mode-buffer-license-type
       (hack-mode-set (downcase sam-buffer-license-type))
@@ -298,7 +314,7 @@
       (unless hack-mode (hack-mode-set "Default")))))
 (hack-mode-set "Default")
 
-(add-hook 'find-file-hooks (lambda()
+(add-hook 'find-file-hook (lambda()
                              (hack-mode-guess)
                              (if (nth hack-mode-find-file-mode-nth hack-mode) (funcall (nth hack-mode-find-file-mode-nth hack-mode)))))
 (add-hook 'c-mode-common-hook (lambda()

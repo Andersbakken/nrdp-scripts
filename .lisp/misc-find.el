@@ -1,3 +1,5 @@
+;;; misc-find.el --- Find file and symbol utilities  -*- lexical-binding: t; -*-
+
 (require 'thingatpt)
 (require 'find-file-in-repository)
 (require 'tide)
@@ -6,6 +8,11 @@
 (require 'simple)
 (require 'typescript-mode nil t)
 (require 'typescript-ts-mode nil t)
+
+(declare-function rtags-executable-find "rtags")
+(declare-function rtags-has-filemanager "rtags")
+(declare-function rtags-is-indexed "rtags")
+
 (defvar misc-find-symbol-has-slime nil)
 (defvar misc-find-symbol-has-rtags nil)
 (setq misc-find-symbol-has-slime (require 'elisp-slime-nav nil t))
@@ -51,7 +58,7 @@
                             (t default-directory))))
         (grep-find (concat "find " ancestor " -type f -print0 | xargs -0 grep -nH " command))))))
 
-(defun misc-find-file (&optional prefix)
+(defun misc-find-file (&optional _prefix)
   (interactive "P")
   (call-interactively
    (if (and misc-find-symbol-has-rtags
@@ -59,7 +66,7 @@
        'rtags-find-file
      'find-file-in-repository)))
 
-(defun misc-find-symbol-at-point (&optional prefix)
+(defun misc-find-symbol-at-point (&optional _prefix)
   (interactive "P")
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-find-symbol-at-point))
@@ -73,7 +80,7 @@
                (--misc-grep-find-symbol cur)
              (call-interactively '--misc-grep-find-symbol))))))
 
-(defun misc-find-symbol (&optional prefix)
+(defun misc-find-symbol (&optional _prefix)
   (interactive "P")
   (cond ((eq major-mode 'emacs-lisp-mode)
          (call-interactively 'find-function))
@@ -84,7 +91,7 @@
         (t
          (call-interactively '--misc-grep-find-symbol))))
 
-(defun misc-find-references-at-point (&optional prefix)
+(defun misc-find-references-at-point (&optional _prefix)
   (interactive "P")
   (cond ((and misc-find-symbol-has-rtags (rtags-is-indexed))
          (call-interactively 'rtags-find-references-at-point))

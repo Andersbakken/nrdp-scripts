@@ -1,3 +1,4 @@
+;;; nrdp-automerge.el --- NRDP automerge support  -*- lexical-binding: t; -*-
 (defgroup nrdp-automerge nil "Minor mode for nrdp-automerge" :prefix "nrdp-automerge-" :group 'tools)
 
 (defvar nrdp-automerge-pending-shell-commands nil)
@@ -97,7 +98,7 @@
 (defun nrdp-automerge-buffer ()
   (get-buffer nrdp-automerge-buffer-name))
 
-(defun nrdp-automerge-process-sentinel (process state)
+(defun nrdp-automerge-process-sentinel (process _state)
   (when (eq process nrdp-automerge-current-shell-process)
     (let ((status (process-status process)))
       (when (memq status '(exit signal closed failed))

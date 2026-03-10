@@ -1,4 +1,5 @@
-(eval-when-compile (require 'cl-lib))
+;;; location-stack.el --- Navigation location stack  -*- lexical-binding: t; -*-
+(require 'cl-lib)
 (defvar location-stack-max-count 1024)
 (defvar location-stack-index 0)
 (defvar location-stack nil)

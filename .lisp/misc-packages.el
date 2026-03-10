@@ -1,3 +1,5 @@
+;;; misc-packages.el --- Package management with straight.el  -*- lexical-binding: t; -*-
+(require 'cl-lib)
 ;;===================
 ;; package stuff (straight.el)
 ;;===================
@@ -21,6 +23,14 @@
       (goto-char (point-max))
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
+
+(defvar straight--recipe-cache)
+(declare-function straight-use-package "straight")
+(declare-function straight-pull-all "straight")
+(declare-function straight-check-all "straight")
+(declare-function straight-pull-package-and-deps "straight")
+(declare-function straight-check-package "straight")
+(declare-function hash-table-keys "subr-x")
 
 (defun misc-package-install (&optional query)
   "Install a package using straight.el.
