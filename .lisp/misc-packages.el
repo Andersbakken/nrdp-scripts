@@ -28,8 +28,10 @@
 (declare-function straight-use-package "straight")
 (declare-function straight-pull-all "straight")
 (declare-function straight-check-all "straight")
+(declare-function straight-rebuild-all "straight")
 (declare-function straight-pull-package-and-deps "straight")
 (declare-function straight-check-package "straight")
+(declare-function straight-rebuild-package "straight")
 (declare-function hash-table-keys "subr-x")
 
 (defun misc-package-install (&optional query)
@@ -71,9 +73,10 @@ Interactively, prompt for the package name."
   (if (string= package "all")
       (progn
         (straight-pull-all)
-        (straight-check-all))
-    (straight-pull-package-and-deps package)
-    (straight-check-package package)))
+        (straight-rebuild-all))
+    (progn
+      (straight-pull-package-and-deps package)
+      (straight-rebuild-package package))))
 
 (straight-use-package 'use-package)
 (straight-use-package 'el-patch)
