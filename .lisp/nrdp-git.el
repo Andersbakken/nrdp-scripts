@@ -752,29 +752,6 @@
     (when (and file sha)
       (agb-git-blame sha (file-name-nondirectory file)))))
 
-(defun buffer-is-visible (buffer)
-  (let ((windows (window-list)) (ret))
-    (while windows
-      (when (eq buffer (window-buffer (car windows)))
-        (setq windows nil)
-        (setq ret t))
-      (setq windows (cdr windows)))
-    ret))
-
-(defun magit-find-current-status-buffer ()
-  (let ((topdir (magit-toplevel default-directory)))
-    (when topdir
-      (get-buffer (concat "*magit: " (file-name-nondirectory (directory-file-name topdir)) "*")))))
-
-(defun magit-refresh-status-buffer()
-  (interactive)
-  (let ((buf (magit-find-current-status-buffer)))
-    (when (and buf (buffer-is-visible buf))
-      (with-current-buffer buf
-        (magit-refresh)))))
-
-(add-hook 'after-save-hook 'magit-refresh-status-buffer)
-
 (defun magit-current-section-file ()
   (if (fboundp 'magit-file-at-point)
       (let ((res (magit-file-at-point)))
