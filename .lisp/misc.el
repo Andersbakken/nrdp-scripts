@@ -1991,7 +1991,14 @@ Closes all windows on that side."
                            (mapcar #'window-buffer visible-side-windows)))
              (dolist (item visible-side-windows)
                (delete-window item)))
-           (auto-side-windows-toggle-side-window)
+           ;; Detach: mark buffer as detached, delete the side window,
+           ;; then display in a regular window bypassing auto-side-windows.
+           (with-current-buffer buffer
+             (setq-local detached-side-window t))
+           (delete-window window)
+           (let ((display-buffer-overriding-action
+                  '(display-buffer-use-some-window . ((inhibit-same-window . nil)))))
+             (select-window (display-buffer buffer)))
            (delete-other-windows))
 
           (t (window-toggle-side-windows)))))
