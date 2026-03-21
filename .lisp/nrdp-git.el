@@ -22,7 +22,17 @@
 (declare-function nrdp-gptcommit--resolve-worktree-dir "nrdp-git")
 (declare-function nrdp-gptcommit-fix-worktree-dir "nrdp-git")
 
-(defvar nrdp-git-grep-max-column-length 1024)
+(defgroup nrdp-git nil
+  "Git integration for NRDP."
+  :group 'tools
+  :prefix "nrdp-git-")
+
+(defcustom nrdp-git-grep-max-column-length 1024
+  "Maximum column length for git grep output lines.
+Lines longer than this are truncated."
+  :type 'integer
+  :initialize #'custom-initialize-default
+  :group 'nrdp-git)
 
 (defun buffer-local-set-key (key _func)
   (interactive "KSet key on this buffer: \naCommand: ")
@@ -492,7 +502,11 @@
           (search-forward-regexp "^@@" nil t)
           (goto-char (line-beginning-position)))))))
 
-(defvar nrdp-git-diff-reuse-diff-buffer nil)
+(defcustom nrdp-git-diff-reuse-diff-buffer nil
+  "Whether to reuse a single diff buffer instead of creating per-file buffers."
+  :type 'boolean
+  :initialize #'custom-initialize-default
+  :group 'nrdp-git)
 (defun nrdp-git-diff (&optional -w target no-split-window norestorefocus against word)
   (interactive "P")
   (let* ((file (cond ((null target)
@@ -895,12 +909,26 @@
   (require 'llm-claude)
 
   ;; Redirect llm-claude to use Netflix proxy instead of api.anthropic.com
-  (defvar nrdp-claude-proxy-url "http://localhost:9123/mtlsproxy:claudecode"
-    "Netflix proxy URL for Claude API requests.")
+  (defcustom nrdp-git-ngp-project nil
+    "NGP project ID for the Claude API proxy.
+When non-nil, use the NGP proxy at localhost:9123/proxy/<project>/v1.
+When nil, use the legacy mTLS proxy at localhost:9123/mtlsproxy:claudecode/v1.
+Create a project at https://genai.netflix.net/projects."
+    :type '(choice (const :tag "Legacy mTLS proxy" nil)
+                   (string :tag "NGP project ID"))
+    :initialize #'custom-initialize-default
+    :group 'nrdp-git)
 
   (defun nrdp-llm-claude-url-proxy (_orig-fun method &rest _args)
     "Redirect Claude API calls to Netflix proxy."
-    (format "%s/v1/%s" nrdp-claude-proxy-url method))
+    (let ((url (if nrdp-git-ngp-project
+                   (format "http://localhost:9123/proxy/%s/v1/%s"
+                           nrdp-git-ngp-project method)
+                 (format "http://localhost:9123/mtlsproxy:claudecode/v1/%s"
+                         method))))
+      (message "nrdp-git: Claude API URL: %s" url)
+      url))
+
   (advice-add 'llm-claude--url :around #'nrdp-llm-claude-url-proxy)
 
   (setq magit-gptcommit-llm-provider
