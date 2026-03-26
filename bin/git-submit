@@ -163,6 +163,7 @@ run_hook() {
 
 TRACKING=`git config --local submit.tracking`
 [ -z "$TRACKING" ] && TRACKING=`git tracking`
+echo "Tracking branch: $TRACKING"
 
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     show_help
