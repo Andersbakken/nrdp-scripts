@@ -151,10 +151,9 @@
 
 ;;netflix stuff
 (defun netflix-templatize-file () "Insert a standard Netflix template comment into the current buffer."
-       (let ((f (expand-file-name "~/.netflix.license")))
-         (if (and (not (/= (point-min) (point-max))) (file-exists-p f))
-             (insert-file-contents f) ;;insert the license
-           )))
+       (when (= (point-min) (point-max))
+         (insert (format "/* (c) %s Netflix, Inc. Do not copy or use without prior written permission from Netflix, Inc. */\n"
+                         (format-time-string "%Y")))))
 (defun netflix-log-message (msg nopercent)
   "Insert Netflix logging message."
   (let ((result))
@@ -318,9 +317,22 @@
                              (hack-mode-guess)
                              (if (nth hack-mode-find-file-mode-nth hack-mode) (funcall (nth hack-mode-find-file-mode-nth hack-mode)))))
 (add-hook 'c-mode-common-hook (lambda()
-                                (hack-mode-guess)
-                                (hack-mode-templatize-file)
-                                ;;(hack-mode-license-remove) ;;find any license & remove it
-                                (if (nth hack-mode-c-mode-nth hack-mode) (funcall (nth hack-mode-c-mode-nth hack-mode)))))
+                                 (hack-mode-guess)
+                                 (hack-mode-templatize-file)
+                                 ;;(hack-mode-license-remove) ;;find any license & remove it
+                                 (if (nth hack-mode-c-mode-nth hack-mode) (funcall (nth hack-mode-c-mode-nth hack-mode)))))
+
+(defun hack-mode-ts-js-hook ()
+  "Templatize TypeScript and JavaScript files using hack-mode."
+  (hack-mode-guess)
+  (hack-mode-templatize-file))
+
+(dolist (hook '(typescript-ts-mode-hook
+                typescript-mode-hook
+                js-ts-mode-hook
+                js-mode-hook
+                js2-mode-hook
+                js3-mode-hook))
+  (add-hook hook #'hack-mode-ts-js-hook))
 
 (provide 'hack-mode)
