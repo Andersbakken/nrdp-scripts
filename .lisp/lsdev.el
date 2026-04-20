@@ -52,6 +52,8 @@
       (if (buffer-file-name buffer-or-dir)
           (setq dir (file-name-directory (buffer-file-name buffer-or-dir)))
         (with-current-buffer buffer-or-dir (setq dir default-directory))))
+    (when dir
+      (setq dir (expand-file-name dir)))
     dir))
 
 (defvar lsdev/_name nil)
