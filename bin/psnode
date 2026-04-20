@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+printf "%-10s %s\n" "PID" "COMMAND"
+ps aux | grep "\<node\>" | grep -v grep | awk '{print $2}' | while read pid; do
+    CWD=$(readlink -f /proc/$pid/cwd)
+    CMD=$(cat /proc/$pid/cmdline | tr '\0' ' ')
+    printf "%-10s %s (%s)\n" "$pid" "$CMD" "$CWD"
+done
