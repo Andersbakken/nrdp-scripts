@@ -320,13 +320,21 @@ async function save(writeToDisk = true) {
     const files = await Promise.all(
         (await runCommand("git ls-files --others --cached --exclude-standard", srcRoot))
             .split("\n")
-            .map((x) => {
+            .map((x, index, array) => {
+                if (!index) {
+                    verbose(`Processing ${array.length} entries for save...`);
+                }
                 if (!x) {
                     return undefined;
                 }
 
                 const abs = path.join(srcRoot, x);
                 if (isDirectory(abs)) {
+                    return undefined;
+                }
+
+                if (x === "core") {
+                    verbose(`Skipping core dump ${abs}`);
                     return undefined;
                 }
 
