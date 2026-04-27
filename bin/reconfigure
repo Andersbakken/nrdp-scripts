@@ -91,10 +91,11 @@ if [ -n "$CONFIGURE" ]; then
             read REALLY
             case "$REALLY" in
                 y|yes)
-                    rm -f "/tmp/config.status.reconfigure"
-                    cp "config.status" "/tmp/config.status.reconfigure"
-                    rm -rf * .ninja_* .configure.* .conan*
-                    cp "/tmp/config.status.reconfigure" "config.status"
+                    filename="/tmp/config.status.reconfigure.$$"
+                    rm -f "${filename}"
+                    cp "config.status" "${filename}"
+                    rm -rf * .*
+                    cp "${filename}" "config.status"
                     break
                     ;;
                 n|no)
