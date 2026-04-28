@@ -1903,14 +1903,21 @@ there's a region, all lines that region covers will be duplicated."
     (select-window win))
   (set-transient-map misc-other-window-transient-map))
 
-(defun misc-delete-other-non-sidewindows(&optional window)
-  "Delete other windows except side windows."
+(defun misc-delete-sidewindow-aware (&optional window)
+  "Delete other windows in the same context as WINDOW (or selected).
+If WINDOW is in a side window, delete the other slots on the same
+side (leaving WINDOW's buffer up). Otherwise, delete other non-side
+windows (leaving every side window alone)."
   (interactive)
-  (let ((win (or window (selected-window))))
+  (let* ((win (or window (selected-window)))
+         (side (window-parameter win 'window-side)))
     (dolist (w (window-list nil 'nomini))
-      (unless (or (eq w win)
-                  (window-parameter w 'window-side))
-        (delete-window w)))))
+      (unless (eq w win)
+        (if side
+            (when (eq (window-parameter w 'window-side) side)
+              (delete-window w))
+          (unless (window-parameter w 'window-side)
+            (delete-window w)))))))
 
 (defvar misc-side-window-state-alist nil "Alist of (SIDE . STATE) for saved side window states.")
 (defun misc-toggle-side-window (side)
