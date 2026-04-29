@@ -899,7 +899,7 @@ foreach(keys %roots) {
         closedir(BUILDS);
     }
     if(cexists("$root_dir/.lsdev_shadows")) {
-        my %shadows = parseRoots("$root_dir/.lsdev_shadows");
+        my %shadows = parseFileMap("$root_dir/.lsdev_shadows");
         foreach(keys(%shadows)) {
             my $shadow_root_name = $_;
             my $shadow_root = $shadows{$_};
