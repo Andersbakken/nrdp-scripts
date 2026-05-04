@@ -313,6 +313,39 @@ Lines longer than this are truncated."
     (mapcar (lambda (x) (cl-coerce (reverse x) 'string))
             (reverse result))))
 
+(defun nrdp-git-grep-find-pipe (string)
+  "Return the index of the first shell pipe `|' in STRING that is
+not backslash-escaped and not inside single or double quotes, or
+nil if there is none."
+  (let ((i 0)
+        (len (length string))
+        (quotep nil)
+        (escapedp nil)
+        (result nil)
+        current)
+    (while (and (< i len) (not result))
+      (setq current (aref string i))
+      (cond
+       (escapedp
+        (setq escapedp nil))
+       ((char-equal current ?\\)
+        ;; Inside single quotes a backslash is literal in shells, but
+        ;; for our purposes (matching the splitter's behavior) we
+        ;; treat it as an escape character regardless of quote state.
+        (setq escapedp t))
+       ((and quotep (char-equal current quotep))
+        (setq quotep nil))
+       (quotep
+        ;; still inside a quoted region, ignore
+        nil)
+       ((or (char-equal current ?\')
+            (char-equal current ?\"))
+        (setq quotep current))
+       ((char-equal current ?|)
+        (setq result i)))
+      (cl-incf i))
+    result))
+
 (defvar nrdp-git-grep-last-search nil)
 (defun nrdp-git-grep-impl (&optional dir default)
   (unless dir
@@ -320,7 +353,9 @@ Lines longer than this are truncated."
   (unless dir
     (error "No git dir"))
   (unless default
-    (setq default (concat "\\<" (symbol-at-point) "\\>")))
+    (let ((sym (symbol-at-point)))
+      (when sym
+        (setq default (concat "\\<" (symbol-name sym) "\\>")))))
   (let* ((pipe)
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
@@ -336,7 +371,7 @@ Lines longer than this are truncated."
 
     (unless search
       (error "Nothing to search for"))
-    (let ((pipeidx (string-match "|" search)))
+    (let ((pipeidx (nrdp-git-grep-find-pipe search)))
       (when pipeidx
         (setq pipe (substring search pipeidx))
         (setq search (s-trim (substring search 0 pipeidx)))))
