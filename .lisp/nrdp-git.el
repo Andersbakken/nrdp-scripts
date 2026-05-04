@@ -320,7 +320,7 @@ Lines longer than this are truncated."
   (unless dir
     (error "No git dir"))
   (unless default
-    (setq default (concat "\\<" (current-word) "\\>")))
+    (setq default (concat "\\<" (symbol-at-point) "\\>")))
   (let* ((pipe)
          (prompt (if default
                      (format "git grep: (default %s) pwd: " default)
