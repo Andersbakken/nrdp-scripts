@@ -2006,17 +2006,23 @@ Closes all windows on that side."
 (defun misc-window-switch-to-other-buffer ()
   "Switch to other-buffer, respecting side window context.
 In a side window: switch to another buffer that belongs on the same side.
-In a regular window: switch to a buffer that won't become a side window."
+In a regular window: switch to a buffer that won't become a side window.
+If `auto-side-windows' is not loaded, fall back to switching to any
+non-visible, non-minibuffer buffer."
   (interactive)
   (let* ((window (selected-window))
          (current-buf (current-buffer))
-         (side (window-parameter window 'window-side)))
+         (side (window-parameter window 'window-side))
+         (get-side (and (fboundp 'auto-side-windows--get-buffer-side)
+                        (symbol-function 'auto-side-windows--get-buffer-side))))
     (cl-loop for buf in (buffer-list)
-             for buf-side = (auto-side-windows--get-buffer-side buf)
+             for buf-side = (and get-side (funcall get-side buf))
              when (and (not (eq buf current-buf))
                        (not (minibufferp buf))
                        (not (get-buffer-window buf 'visible))
                        (cond
+                        ;; auto-side-windows not available: any buffer is fine
+                        ((not get-side) t)
                         ;; In side window: find buffer for same side
                         (side (eq buf-side side))
                         ;; In regular window: find non-side buffer
