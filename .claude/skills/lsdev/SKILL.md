@@ -1,0 +1,1 @@
+/home/smagnuson/netflix/private/public/./.claude/skills/lsdev/SKILL.md
