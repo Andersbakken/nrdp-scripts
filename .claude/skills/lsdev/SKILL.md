@@ -1,12 +1,12 @@
 ---
 name: lsdev
 description: |
-  Use when navigating between C/C++ source and build trees with lsdev.pl.
+  Use when navigating between source trees and their build / shadow trees with lsdev.pl. Project-language agnostic — works for any project that uses CMake, autoconf, qmake, plain Makefiles, git, or has `.lsdev_config` / `.lsdev_shadows` markers.
   Activates whenever the user asks about, or you need to discover, the source tree corresponding to a build tree (or vice versa), list the shadow / out-of-tree build trees of a project, or identify the project name of the current directory.
   Keywords:
   - lsdev, lsdev.pl
   - build tree, source tree, shadow build, out-of-tree build
-  - CMakeCache.txt, config.status, configure, .lsdev_config, .lsdev_shadows, .lsdev_default
+  - CMakeCache.txt, config.status, configure, Makefile, *.pro, CMakeLists.txt, .lsdev_config, .lsdev_shadows, .lsdev_default
   - ~/.dev_directories
   - "where is the source for this build", "which builds exist for this source"
 user-invocable: true
