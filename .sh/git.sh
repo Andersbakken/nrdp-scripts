@@ -87,6 +87,15 @@ git_is_worktree()
     return 1
 }
 
+# Disable submodule recursion: git config git-wrapper.recursive false
+git_wrapper_recursive()
+{
+    if [ "$(run_git config --get git-wrapper.recursive 2>/dev/null)" = "false" ]; then
+        return 1
+    fi
+    return 0
+}
+
 git()
 {
     if [ "$1" = "--version" ] || [ "$1" = "--help" ] || [ "$1" = "init" ]; then
@@ -100,30 +109,30 @@ git()
     elif [ "$1" = "clone" ]; then
         run_git "$@" --recursive
     elif [ "$1" = "clean" ]; then
-        run_git "$@" && git_is_worktree && run_git submodule foreach --recursive git "$@"
+        run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule foreach --recursive git "$@"
     elif [ "$1" = "status" ]; then
-        git_is_worktree && run_git submodule foreach --quiet --recursive git "$@" --porcelain
+        git_is_worktree && git_wrapper_recursive && run_git submodule foreach --quiet --recursive git "$@" --porcelain
         run_git "$@"
     elif [ "$1" = "describe" ]; then
-        git_is_worktree && run_git submodule status
+        git_is_worktree && git_wrapper_recursive && run_git submodule status
         run_git "$@"
     elif [ "$1" = "pull" ]; then
-        run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
+        run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive
     elif [ "$1" = "merge" ]; then
-        run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
+        run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive
     elif [ "$1" = "fetch" ]; then
-        run_git "$@" && git_is_worktree && run_git submodule foreach git fetch --tags
+        run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule foreach git fetch --tags
     elif [ "$1" = "checkout" ]; then
         if echo "$@" | grep -e "--force" >/dev/null || echo "$@" | grep -e "-f" >/dev/null; then
-            run_git "$@" && git_is_worktree && run_git submodule update --init --recursive --force
+            run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive --force
         else
-            run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
+            run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive
         fi
     elif [ "$1" = "reset" ]; then
         if echo "$@" | grep -e "--hard" >/dev/null; then
-            run_git "$@" && git_is_worktree && run_git submodule update --init --recursive --force
+            run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive --force
         else
-            run_git "$@" && git_is_worktree && run_git submodule update --init --recursive
+            run_git "$@" && git_is_worktree && git_wrapper_recursive && run_git submodule update --init --recursive
         fi
     else
         run_git "$@"
