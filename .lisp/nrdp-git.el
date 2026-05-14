@@ -943,24 +943,26 @@ nil if there is none."
 (when (require 'magit-gptcommit nil t)
   (require 'llm-claude)
 
-  ;; Redirect llm-claude to use Netflix proxy instead of api.anthropic.com
+  ;; Redirect llm-claude to use Netflix NGP proxy instead of api.anthropic.com.
+  ;; Requires `ngp proxy' running locally on port 9123 (see https://genai.netflix.net).
   (defcustom nrdp-git-ngp-project nil
     "NGP project ID for the Claude API proxy.
-When non-nil, use the NGP proxy at localhost:9123/proxy/<project>/v1.
-When nil, use the legacy mTLS proxy at localhost:9123/mtlsproxy:claudecode/v1.
-Create a project at https://genai.netflix.net/projects."
-    :type '(choice (const :tag "Legacy mTLS proxy" nil)
+Required.  Routes Claude API calls through `http://localhost:9123/proxy/<project>/v1'.
+Create a project at https://genai.netflix.net/projects and set this
+variable to the project ID."
+    :type '(choice (const :tag "Not set (must be configured)" nil)
                    (string :tag "NGP project ID"))
     :initialize #'custom-initialize-default
     :group 'nrdp-git)
 
   (defun nrdp-llm-claude-url-proxy (_orig-fun method &rest _args)
-    "Redirect Claude API calls to Netflix proxy."
-    (let ((url (if nrdp-git-ngp-project
-                   (format "http://localhost:9123/proxy/%s/v1/%s"
-                           nrdp-git-ngp-project method)
-                 (format "http://localhost:9123/mtlsproxy:claudecode/v1/%s"
-                         method))))
+    "Redirect Claude API calls (METHOD) to the Netflix NGP proxy."
+    (unless nrdp-git-ngp-project
+      (user-error "`nrdp-git-ngp-project' is not set.  \
+Create a project at https://genai.netflix.net/projects, then \
+(setq nrdp-git-ngp-project \"your-project-id\")"))
+    (let ((url (format "http://localhost:9123/proxy/%s/v1/%s"
+                       nrdp-git-ngp-project method)))
       (message "nrdp-git: Claude API URL: %s" url)
       url))
 
