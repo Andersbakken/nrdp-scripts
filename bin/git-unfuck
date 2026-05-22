@@ -1,0 +1,524 @@
+#!/usr/bin/env python3
+import subprocess
+import sys
+import re
+import time
+from pathlib import Path
+
+G = "\033[32m"
+R = "\033[31m"
+Y = "\033[33m"
+B = "\033[34m"
+D = "\033[2m"
+W = "\033[1m"
+X = "\033[0m"
+
+
+def sh(cmd, check=False):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if check and r.returncode != 0:
+        print(f"{R}command failed: {' '.join(cmd)}{X}", file=sys.stderr)
+        print(r.stderr, file=sys.stderr)
+        sys.exit(1)
+    return r.stdout.strip(), r.returncode
+
+
+def out(cmd):
+    return sh(cmd)[0]
+
+
+def ok(cmd):
+    return sh(cmd)[1] == 0
+
+
+def confirm(prompt):
+    return input(f"{Y}{prompt} [y/N] {X}").strip().lower() in ("y", "yes")
+
+
+def in_repo():
+    return ok(["git", "rev-parse", "--git-dir"])
+
+
+def git_dir():
+    return Path(out(["git", "rev-parse", "--git-dir"]))
+
+
+def current_branch():
+    return out(["git", "symbolic-ref", "--short", "-q", "HEAD"])
+
+
+def detached():
+    return current_branch() == ""
+
+
+def in_progress():
+    g = git_dir()
+    s = []
+    if (g / "MERGE_HEAD").exists():
+        s.append("merge")
+    if (g / "REBASE_HEAD").exists() or (g / "rebase-merge").exists() or (g / "rebase-apply").exists():
+        s.append("rebase")
+    if (g / "CHERRY_PICK_HEAD").exists():
+        s.append("cherry-pick")
+    if (g / "REVERT_HEAD").exists():
+        s.append("revert")
+    return s
+
+
+def reflog():
+    raw = out(["git", "reflog", "--format=%H|%gs"])
+    entries = []
+    for line in raw.splitlines():
+        if "|" in line:
+            sha, action = line.split("|", 1)
+            entries.append((sha, action))
+    return entries
+
+
+def dangling():
+    raw, _ = sh(["git", "fsck", "--no-reflogs", "--lost-found"])
+    items = []
+    for line in raw.splitlines():
+        if "dangling commit" in line:
+            sha = line.split()[-1]
+            msg = out(["git", "log", "-1", "--format=%s", sha])
+            items.append((sha, msg))
+    return items
+
+
+def backup():
+    name = f"unfuck-backup/{int(time.time())}"
+    sh(["git", "branch", name, "HEAD"], check=True)
+    return name
+
+
+def scan():
+    f = set()
+    if detached():
+        f.add("detached")
+    if in_progress():
+        f.add("in_progress")
+    for _, action in reflog()[:25]:
+        if "reset:" in action or "rebase" in action:
+            f.add("possible_lost")
+            break
+    raw_fsck, _ = sh(["git", "fsck", "--no-reflogs", "--lost-found"])
+    for line in raw_fsck.splitlines():
+        if "dangling commit" in line:
+            sha = line.split()[-1]
+            msg = out(["git", "log", "-1", "--format=%s", sha])
+            if msg.startswith("WIP on") or msg.startswith("On "):
+                f.add("lost_stash")
+        elif "dangling blob" in line:
+            f.add("lost_staged")
+    parents = out(["git", "log", "-1", "--format=%P"]).split()
+    if len(parents) > 1:
+        f.add("recent_merge")
+    return f
+
+
+def humanize(action):
+    if action.startswith("commit:"):
+        return f"made a commit ({action[7:].strip()})"
+    if action.startswith("commit (initial):"):
+        return "made the first commit"
+    if action.startswith("commit (amend):"):
+        return f"amended a commit ({action.split(':', 1)[1].strip()})"
+    if "checkout: moving from" in action:
+        m = re.search(r"moving from (\S+) to (\S+)", action)
+        if m:
+            return f"switched from {m.group(1)} to {m.group(2)}"
+    if "reset:" in action:
+        return f"ran a reset → {action.split('reset:', 1)[1].strip()}"
+    if "rebase" in action and "start" in action:
+        return "started a rebase"
+    if "rebase" in action and ("finish" in action or "(finish)" in action):
+        return "finished a rebase"
+    if "rebase" in action:
+        return f"rebase step: {action}"
+    if "merge" in action:
+        return f"merged → {action}"
+    if "pull" in action:
+        return "pulled from a remote"
+    if "clone:" in action:
+        return "cloned the repo"
+    if action.startswith("branch:") or "Created" in action:
+        return f"created a branch ({action})"
+    return action
+
+
+def recent_history():
+    log = reflog()[:15]
+    if not log:
+        print("nothing in the reflog")
+        return
+    print(f"\n{W}what's happened in this repo recently (newest first):{X}\n")
+    for sha, action in log:
+        print(f"  {D}{sha[:8]}{X}  {humanize(action)}")
+    print()
+
+
+def fix_detached():
+    head = out(["git", "rev-parse", "HEAD"])
+    subject = out(["git", "log", "-1", "--format=%s", head])
+    print(f"\nyou're at {head[:8]} ({subject}), not on any branch.")
+    print(f"  {G}1.{X} save this as a new branch")
+    print(f"  {G}2.{X} go back to an existing branch (current changes will be lost)")
+    print(f"  {G}3.{X} cancel")
+    c = input(f"{B}pick: {X}").strip()
+    if c == "1":
+        name = input("branch name: ").strip()
+        if name:
+            sh(["git", "checkout", "-b", name], check=True)
+            print(f"{G}now on {name}{X}")
+    elif c == "2":
+        branches = [b.strip().lstrip("* ").strip() for b in out(["git", "branch"]).splitlines()]
+        branches = [b for b in branches if b and not b.startswith("(") and not b.startswith("unfuck-backup/")]
+        if not branches:
+            print("no branches to switch to")
+            return
+        for i, b in enumerate(branches, 1):
+            print(f"  {G}{i}.{X} {b}")
+        s = input(f"{B}which: {X}").strip()
+        if s.isdigit() and 1 <= int(s) <= len(branches):
+            sh(["git", "checkout", branches[int(s) - 1]], check=True)
+            print(f"{G}switched.{X}")
+
+
+def abort_in_progress():
+    s = in_progress()
+    if not s:
+        print("nothing to abort")
+        return
+    print(f"you're in the middle of: {', '.join(s)}")
+    if not confirm("abort it?"):
+        return
+    if "merge" in s:
+        sh(["git", "merge", "--abort"], check=True)
+    if "rebase" in s:
+        sh(["git", "rebase", "--abort"], check=True)
+    if "cherry-pick" in s:
+        sh(["git", "cherry-pick", "--abort"], check=True)
+    if "revert" in s:
+        sh(["git", "revert", "--abort"], check=True)
+    print(f"{G}aborted.{X}")
+
+
+def recover_lost_commits():
+    seen = set()
+    options = []
+    for sha, action in reflog():
+        if sha in seen:
+            continue
+        seen.add(sha)
+        subject = out(["git", "log", "-1", "--format=%s", sha])
+        options.append((sha, action, subject))
+        if len(options) >= 15:
+            break
+
+    if not options:
+        print("nothing obviously recoverable in the reflog")
+        return
+
+    print(f"\n{W}recent states HEAD has been at — pick the one before things went wrong:{X}\n")
+    for i, (sha, action, subject) in enumerate(options, 1):
+        print(f"  {G}{i:>2}.{X} {sha[:8]}  {humanize(action)}")
+        print(f"       {D}↳ {subject}{X}")
+
+    c = input(f"\n{B}which one to restore? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(options)):
+        print("cancelled")
+        return
+
+    target = options[int(c) - 1][0]
+    print(f"\nthis will run: git reset --hard {target[:8]}")
+    print("your current state will be saved to a backup branch first")
+    if not confirm("proceed?"):
+        return
+
+    b = backup()
+    sh(["git", "reset", "--hard", target], check=True)
+    print(f"\n{G}done.{X}")
+    print(f"previous state saved as {W}{b}{X}")
+    print(f"to undo: {D}git reset --hard {b}{X}")
+
+
+def recover_stash():
+    items = [(s, m) for s, m in dangling() if m.startswith("WIP on") or m.startswith("On ")]
+    if not items:
+        print("no dangling stashes found")
+        return
+    print(f"\n{W}possible lost stashes:{X}\n")
+    for i, (sha, msg) in enumerate(items, 1):
+        print(f"  {G}{i}.{X} {sha[:8]} — {msg}")
+    c = input(f"\n{B}restore which? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(items)):
+        return
+    sha = items[int(c) - 1][0]
+    code, _ = sh(["git", "stash", "apply", sha])
+    if _ == 0:
+        print(f"{G}stash applied.{X}")
+    else:
+        print(f"{R}stash apply failed. try manually: git stash apply {sha[:8]}{X}")
+
+
+def recover_deleted_branch():
+    log = reflog()
+    seen = set()
+    cands = []
+    for i, (sha, action) in enumerate(log):
+        m = re.search(r"checkout: moving from (\S+) to", action)
+        if m:
+            name = m.group(1)
+            if name in seen or re.fullmatch(r"[0-9a-f]{7,40}", name):
+                continue
+            seen.add(name)
+            if not ok(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{name}"]):
+                # the deleted branch's actual tip is the HEAD position right before this checkout,
+                # which is the next entry chronologically older
+                tip_sha = log[i + 1][0] if i + 1 < len(log) else sha
+                cands.append((name, tip_sha))
+
+    if not cands:
+        print("no recently-deleted branches found")
+        return
+
+    print(f"\n{W}branches you've been on that no longer exist:{X}\n")
+    for i, (name, sha) in enumerate(cands, 1):
+        subject = out(["git", "log", "-1", "--format=%s", sha])
+        print(f"  {G}{i}.{X} {name}  (last at {sha[:8]} — {subject})")
+
+    c = input(f"\n{B}recreate which? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(cands)):
+        return
+    name, sha = cands[int(c) - 1]
+    sh(["git", "branch", name, sha], check=True)
+    print(f"{G}branch {name} recreated.{X}")
+    print(f"switch to it: {D}git checkout {name}{X}")
+
+
+def move_commits():
+    br = current_branch()
+    if not br:
+        print("not on a branch — fix detached HEAD first")
+        return
+    log = out(["git", "log", "--oneline", "-20"]).splitlines()
+    if not log:
+        print("no commits to move")
+        return
+    upstream, uc = sh(["git", "rev-parse", "--abbrev-ref", f"{br}@{{upstream}}"])
+    ahead = ""
+    if uc == 0 and upstream:
+        cnt = out(["git", "rev-list", "--count", f"{upstream}..HEAD"])
+        ahead = f"  {D}({cnt} ahead of {upstream}){X}"
+    print(f"\nrecent commits on {W}{br}{X}:{ahead}\n")
+    for i, line in enumerate(log, 1):
+        print(f"  {G}{i:>2}.{X} {line}")
+    n = input(f"\n{B}move how many of the most recent commits to a new branch? {X}").strip()
+    if not n.isdigit() or int(n) <= 0:
+        return
+    n = int(n)
+    name = input("new branch name: ").strip()
+    if not name:
+        return
+    reset_to = upstream if (uc == 0 and upstream and confirm(f"reset {br} back to {upstream} after moving?")) else f"HEAD~{n}"
+    if not confirm(f"create {name} with the last {n} commit(s) and reset {br} to {reset_to}?"):
+        return
+    b = backup()
+    sh(["git", "branch", name, "HEAD"], check=True)
+    sh(["git", "reset", "--hard", reset_to], check=True)
+    print(f"{G}done.{X}")
+    print(f"new branch {W}{name}{X} has those commits")
+    print(f"backup: {D}{b}{X}")
+    print(f"to undo: {D}git reset --hard {b}{X}")
+
+
+def soft_undo():
+    entry = out(["git", "log", "-1", "--format=%H %s"])
+    if not entry:
+        print("no commits")
+        return
+    parts = entry.split(" ", 1)
+    sha, subject = parts[0], parts[1] if len(parts) > 1 else ""
+    print(f"\nlast commit: {sha[:8]} — {subject}")
+    print("this will undo it and leave all the changes staged")
+    if not confirm("proceed?"):
+        return
+    b = backup()
+    sh(["git", "reset", "--soft", "HEAD~1"], check=True)
+    print(f"{G}done. changes are staged and ready to re-commit.{X}")
+    print(f"backup: {D}{b}{X}")
+    print(f"to undo: {D}git reset --hard {b}{X}")
+
+
+def scrub_file():
+    files = out(["git", "diff-tree", "--root", "--no-commit-id", "-r", "--name-only", "HEAD"]).splitlines()
+    if not files:
+        print("no files in the last commit")
+        return
+    print(f"\nfiles in the last commit:\n")
+    for i, f in enumerate(files, 1):
+        print(f"  {G}{i}.{X} {f}")
+    c = input(f"\n{B}which file to remove from the commit? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(files)):
+        return
+    fname = files[int(c) - 1]
+    print(f"\nthis will amend the last commit to remove {fname}")
+    print("the file stays on disk but is removed from history")
+    if not confirm("proceed?"):
+        return
+    b = backup()
+    sh(["git", "rm", "--cached", fname], check=True)
+    if len(files) == 1:
+        sh(["git", "reset", "--soft", "HEAD~1"], check=True)
+    else:
+        sh(["git", "commit", "--amend", "--no-edit"], check=True)
+    print(f"{G}done.{X}")
+    print(f"backup: {D}{b}{X}")
+    print(f"to undo: {D}git reset --hard {b}{X}")
+    if confirm(f"add {fname} to .gitignore?"):
+        with open(".gitignore", "a") as fh:
+            fh.write(f"\n{fname}\n")
+        sh(["git", "add", ".gitignore"], check=True)
+        sh(["git", "commit", "--amend", "--no-edit"], check=True)
+        print(f"{G}{fname} added to .gitignore.{X}")
+
+
+def restore_file():
+    fname = input("file path to restore: ").strip()
+    if not fname:
+        return
+    log = out(["git", "log", "--all", "--oneline", "--", fname]).splitlines()
+    if not log:
+        print(f"no history found for {fname}")
+        return
+    cands = [l for l in log if out(["git", "ls-tree", l.split()[0], "--", fname])]
+    if not cands:
+        print(f"found history for {fname} but it was deleted in every commit that touched it")
+        return
+    print(f"\ncommits where {fname} exists:\n")
+    for i, line in enumerate(cands, 1):
+        print(f"  {G}{i}.{X} {line}")
+    c = input(f"\n{B}restore from which? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(cands)):
+        return
+    sha = cands[int(c) - 1].split()[0]
+    sh(["git", "checkout", sha, "--", fname], check=True)
+    print(f"{G}{fname} restored and staged.{X}")
+    print(f"to discard: {D}git restore --staged {fname} && git restore {fname}{X}")
+
+
+def undo_merge():
+    log = out(["git", "log", "--oneline", "--merges", "-10"]).splitlines()
+    if not log:
+        print("no merge commits found")
+        return
+    print(f"\nrecent merge commits:\n")
+    for i, line in enumerate(log, 1):
+        print(f"  {G}{i}.{X} {line}")
+    c = input(f"\n{B}which merge to undo? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(log)):
+        return
+    sha = log[int(c) - 1].split()[0]
+    head = out(["git", "rev-parse", "HEAD"])
+    msha = out(["git", "rev-parse", sha])
+    b = backup()
+    if head == msha:
+        print(f"\nthis is HEAD — resetting to first parent (before the merge)")
+        if not confirm("proceed?"):
+            return
+        sh(["git", "reset", "--hard", f"{sha}^1"], check=True)
+        print(f"{G}done.{X}")
+    else:
+        print(f"\nthis merge is in history — will create a revert commit to undo it")
+        if not confirm("proceed?"):
+            return
+        sh(["git", "revert", "-m", "1", "--no-edit", sha], check=True)
+        print(f"{G}done. revert commit created.{X}")
+    print(f"backup: {D}{b}{X}")
+    print(f"to undo: {D}git reset --hard {b}{X}")
+
+
+def recover_staged():
+    raw, _ = sh(["git", "fsck", "--no-reflogs", "--lost-found"])
+    blobs = []
+    for line in raw.splitlines():
+        if "dangling blob" in line:
+            bsha = line.split()[-1]
+            content = out(["git", "cat-file", "-p", bsha])
+            preview = content[:80].replace("\n", "↵")
+            blobs.append((bsha, preview))
+    if not blobs:
+        print("no dangling blobs found")
+        return
+    print(f"\n{W}dangling blobs (staged content that was never committed):{X}\n")
+    for i, (sha, preview) in enumerate(blobs, 1):
+        print(f"  {G}{i}.{X} {sha[:8]} — {preview}")
+    c = input(f"\n{B}save which to disk? (n to cancel): {X}").strip()
+    if not c.isdigit() or not (1 <= int(c) <= len(blobs)):
+        return
+    bsha = blobs[int(c) - 1][0]
+    dest = input("save as (file path): ").strip()
+    if not dest:
+        return
+    content = out(["git", "cat-file", "-p", bsha])
+    Path(dest).write_text(content)
+    print(f"{G}written to {dest}{X}")
+
+
+def menu(findings):
+    items = []
+    if "possible_lost" in findings:
+        items.append(("recover commits lost after a rebase or reset", recover_lost_commits))
+    else:
+        items.append(("look for commits I lost (rebase, reset, etc)", recover_lost_commits))
+    if "detached" in findings:
+        items.append(("fix detached HEAD (I'm not on a branch)", fix_detached))
+    if "in_progress" in findings:
+        items.append(("abort the merge/rebase/cherry-pick I'm stuck in", abort_in_progress))
+    if "lost_stash" in findings:
+        items.append(("recover a lost stash", recover_stash))
+    if "lost_staged" in findings:
+        items.append(("recover staged changes that were lost", recover_staged))
+    if "recent_merge" in findings:
+        items.append(("undo a bad merge", undo_merge))
+    items.append(("find a deleted branch", recover_deleted_branch))
+    items.append(("I committed to the wrong branch — move commits elsewhere", move_commits))
+    items.append(("undo my last commit but keep the changes", soft_undo))
+    items.append(("remove a file I accidentally committed", scrub_file))
+    items.append(("restore a file I deleted in an earlier commit", restore_file))
+    if "recent_merge" not in findings:
+        items.append(("undo a bad merge", undo_merge))
+    if "lost_staged" not in findings:
+        items.append(("recover staged changes that were lost", recover_staged))
+    items.append(("show me what happened recently (plain English)", recent_history))
+    items.append(("quit", lambda: sys.exit(0)))
+
+    print(f"\n{W}git unfuck{X} — what do you want to do?\n")
+    for i, (label, _) in enumerate(items, 1):
+        print(f"  {G}{i:>2}.{X} {label}")
+    print()
+
+    while True:
+        c = input(f"{B}pick a number: {X}").strip()
+        if c.isdigit() and 1 <= int(c) <= len(items):
+            items[int(c) - 1][1]()
+            return
+        print("not a valid choice")
+
+
+def main():
+    if not in_repo():
+        print(f"{R}not a git repository{X}", file=sys.stderr)
+        sys.exit(1)
+    print(f"{D}scanning your repo...{X}")
+    findings = scan()
+    menu(findings)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\ncancelled")
+        sys.exit(0)
