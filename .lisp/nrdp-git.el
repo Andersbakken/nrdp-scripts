@@ -945,6 +945,10 @@ nil if there is none."
 
   ;; Redirect llm-claude to use Netflix NGP proxy instead of api.anthropic.com.
   ;; Requires `ngp proxy' running locally on port 9123 (see https://genai.netflix.net).
+  (defcustom nrdp-git-ngp-port 9123
+    "Port for the Netflix NGP proxy."
+    :type 'integer
+    :group 'nrdp-git)
   (defcustom nrdp-git-ngp-project nil
     "NGP project ID for the Claude API proxy.
 Required.  Routes Claude API calls through `http://localhost:9123/proxy/<project>/v1'.
