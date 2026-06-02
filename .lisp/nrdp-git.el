@@ -965,8 +965,8 @@ variable to the project ID."
       (user-error "`nrdp-git-ngp-project' is not set.  \
 Create a project at https://genai.netflix.net/projects, then \
 (setq nrdp-git-ngp-project \"your-project-id\")"))
-    (let ((url (format "http://localhost:9123/proxy/%s/v1/%s"
-                       nrdp-git-ngp-project method)))
+    (let ((url (format "http://localhost:%d/proxy/%s/v1/%s"
+                       nrdp-git-ngp-port nrdp-git-ngp-project method)))
       (message "nrdp-git: Claude API URL: %s" url)
       url))
 
