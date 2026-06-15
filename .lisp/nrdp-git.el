@@ -407,7 +407,7 @@ nil if there is none."
       ;;                  " ':!*/error.js' ':!*/xboxupsellpage.js' ':!*/boot.js' ':!*min.js'"
       ;;                  pipe)))))
 
-      (grep-find (concat "git --no-pager grep --recurse-submodules -I -n "
+      (grep-find (concat "git --no-pager grep --recurse-submodules -I -n --column "
                          (mapconcat 'identity args " ")
                          (if hasdashdash
                              " "
