@@ -1,0 +1,170 @@
+#!/bin/bash
+#
+# git-speedup-repo - run safe & fast maintenance on a git repo.
+#
+# Default (safe, usually under a minute):
+#   1. git pack-refs --all                       # consolidate loose refs
+#   2. git commit-graph write --reachable ...    # history-walk accelerator
+#   3. git multi-pack-index write [--bitmap]     # object-lookup accelerator
+#   4. git worktree prune                        # drop stale worktrees
+#   5. rm old tmp_pack_*                         # interrupted-pack garbage
+#   6. rmdir empty per-worktree refs/ stubs
+#
+# With --repack (SLOW: 10-30+ min on big repos):
+#   Also runs a full 'git repack -adf' before the cache writes above, which
+#   collapses many small packs into one and lets bitmaps work again.
+#
+# Works on worktrees: operates on the shared/common git directory.
+
+set -u
+
+PROG=${0##*/}
+
+usage() {
+    cat <<EOF
+$PROG - safe & fast maintenance for a git repo.
+
+usage: $PROG [-r|--repack] [-h|--help] [repo_path]
+
+  -r, --repack    Also run a full 'git repack -adf' (SLOW: 10-30+ min on big
+                  repos).  Without this, only fast/safe operations run.
+  -h, --help      Show this help and exit.
+
+If repo_path is omitted, the current directory is used.  It's safe to run
+from inside a worktree -- this script maintains the shared object store.
+EOF
+}
+
+REPACK=0
+REPO_PATH=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -r|--repack)   REPACK=1 ;;
+        -h|--help)     usage; exit 0 ;;
+        --)            shift; break ;;
+        -*)            echo "$PROG: unknown option: $1" >&2; usage >&2; exit 2 ;;
+        *)             if [ -n "$REPO_PATH" ]; then
+                           echo "$PROG: too many arguments" >&2; usage >&2; exit 2
+                       fi
+                       REPO_PATH="$1" ;;
+    esac
+    shift
+done
+
+[ -z "$REPO_PATH" ] && REPO_PATH="$PWD"
+
+if ! cd "$REPO_PATH" 2>/dev/null; then
+    echo "$PROG: not a directory: $REPO_PATH" >&2
+    exit 1
+fi
+
+if ! git rev-parse --git-common-dir >/dev/null 2>&1; then
+    echo "$PROG: not a git repository: $REPO_PATH" >&2
+    exit 1
+fi
+
+COMMONDIR=$(git rev-parse --git-common-dir)
+COMMONDIR=$(cd "$COMMONDIR" && pwd -P)
+
+echo "$PROG: maintaining $COMMONDIR"
+[ "$REPACK" = 1 ] && echo "$PROG: --repack enabled (this will take a while)"
+echo
+
+# step "label" cmd args...   -> prints label, runs cmd, prints elapsed time
+step() {
+    local label="$1"; shift
+    local start end rc
+    echo "==> $label"
+    start=$(date +%s)
+    "$@"
+    rc=$?
+    end=$(date +%s)
+    echo "    (done in $((end-start))s)"
+    echo
+    return $rc
+}
+
+# --- 1. pack loose refs ---
+step "Packing refs (git pack-refs --all)" \
+    git pack-refs --all
+
+# --- 2. optional full repack (the slow one) ---
+if [ "$REPACK" = 1 ]; then
+    if command -v nproc >/dev/null 2>&1; then
+        THREADS=$(nproc)
+    elif command -v sysctl >/dev/null 2>&1; then
+        THREADS=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+    else
+        THREADS=4
+    fi
+    step "Full repack -adf  (window=250 depth=50 threads=$THREADS) -- SLOW" \
+        git repack -adf --window=250 --depth=50 --threads="$THREADS"
+fi
+
+# --- 3. commit-graph ---
+step "Writing commit-graph" \
+    git commit-graph write --reachable --changed-paths
+
+# --- 4. multi-pack-index (try --bitmap, fall back if any pack lacks closure) ---
+echo "==> Writing multi-pack-index"
+start=$(date +%s)
+mpidx_err=$(mktemp -t git-speedup-repo.XXXXXX)
+if git multi-pack-index write --bitmap 2>"$mpidx_err"; then
+    echo "    (with bitmap)"
+else
+    if grep -qi "bitmap" "$mpidx_err"; then
+        echo "    bitmap failed (a pack lacks full closure); retrying without --bitmap"
+        git multi-pack-index write
+    else
+        cat "$mpidx_err" >&2
+        rm -f "$mpidx_err"
+        exit 1
+    fi
+fi
+rm -f "$mpidx_err"
+end=$(date +%s)
+echo "    (done in $((end-start))s)"
+echo
+
+# --- 5. worktree prune ---
+step "Pruning stale worktrees" \
+    git worktree prune --verbose
+
+# --- 6. remove tmp_pack_* leftovers (only files >1 day old, to never race an
+#       in-flight pack operation) ---
+echo "==> Removing tmp_pack_* leftovers (>1 day old)"
+start=$(date +%s)
+removed=0
+while IFS= read -r f; do
+    if rm -f "$f"; then
+        echo "    removed: $f"
+        removed=$((removed+1))
+    fi
+done < <(find "$COMMONDIR/objects/pack" -maxdepth 1 -type f -name 'tmp_pack_*' -mtime +1 2>/dev/null)
+[ "$removed" -eq 0 ] && echo "    (none)"
+end=$(date +%s)
+echo "    (done in $((end-start))s)"
+echo
+
+# --- 7. remove empty per-worktree refs/ stubs (count-objects flags them) ---
+echo "==> Removing empty per-worktree refs/ stubs"
+start=$(date +%s)
+removed=0
+if [ -d "$COMMONDIR/worktrees" ]; then
+    while IFS= read -r d; do
+        if rmdir "$d" 2>/dev/null; then
+            echo "    removed: $d"
+            removed=$((removed+1))
+        fi
+    done < <(find "$COMMONDIR/worktrees" -mindepth 2 -maxdepth 2 -type d -name refs -empty 2>/dev/null)
+fi
+[ "$removed" -eq 0 ] && echo "    (none)"
+end=$(date +%s)
+echo "    (done in $((end-start))s)"
+echo
+
+echo "$PROG: done."
+echo
+echo "Summary:"
+git count-objects -v
