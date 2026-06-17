@@ -1,0 +1,225 @@
+#!/bin/bash
+
+# Recursively search the given path(s) for git repositories and, for any
+# repository whose origin (or any remote) points at a Netflix git host, set
+# [user] email in the repo's config if it is not already set.
+#
+# Matching remote URL prefixes:
+#   ssh://git@stash.corp.netflix.com:7999
+#   https://git.netflix.net
+#
+# Supports both bare repos (a directory that IS a git dir, with a "config"
+# file at its root and bare=true) and non-bare repos (has .git/config, or a
+# .git file pointing at a gitdir, e.g. worktrees/submodules).
+
+usage()
+{
+    echo "git-set-netflix-email [--email=<email>|--email <email>] <path> [<path>...]"
+    echo
+    echo "  --email <email>   Email to set. Defaults to \$NETFLIX_GITHUB_USER."
+    echo "  -n|--dry-run      Print what would be done, don't modify anything."
+    echo "  -v|--verbose      Print repos that are skipped and why."
+    echo "  -h|--help         Show this help."
+}
+
+EMAIL="$NETFLIX_GITHUB_USER"
+DRYRUN=
+VERBOSE=
+PATHS=()
+
+while [ -n "$1" ]; do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --email)
+            shift
+            EMAIL="$1"
+            ;;
+        --email=*)
+            EMAIL=`echo "$1" | sed -e 's,^[^=]*=,,'`
+            ;;
+        -n|--dry-run)
+            DRYRUN=1
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            ;;
+        *)
+            if [ -d "$1" ]; then
+                PATHS+=("$1")
+            else
+                echo "Not a directory: $1" >&2
+                exit 1
+            fi
+            ;;
+    esac
+    shift
+done
+
+if [ -z "$EMAIL" ]; then
+    echo "No email specified and \$NETFLIX_GITHUB_USER is empty." >&2
+    usage >&2
+    exit 1
+fi
+
+if [ ${#PATHS[@]} -eq 0 ]; then
+    usage >&2
+    exit 1
+fi
+
+# Determine whether a config file belongs to a repo with a Netflix remote.
+# Arg 1: path to the git config file.
+has_netflix_remote()
+{
+    local cfg="$1"
+    local url
+    # git config --file <cfg> --get-regexp '^remote\..*\.url$'
+    # prints lines like: remote.origin.url ssh://...
+    git config --file "$cfg" --get-regexp '^remote\..*\.url$' 2>/dev/null | while read -r _ url; do
+        case "$url" in
+            ssh://git@stash.corp.netflix.com:7999/*|\
+            ssh://git@stash.corp.netflix.com:7999)
+                echo match
+                return
+                ;;
+            https://git.netflix.net/*|https://git.netflix.net)
+                echo match
+                return
+                ;;
+        esac
+    done
+}
+
+# Process one git config file (bare or non-bare). Arg 1: absolute path to config.
+process_config()
+{
+    local cfg="$1"
+    local repo_desc="$2"
+
+    if [ ! -f "$cfg" ]; then
+        [ -n "$VERBOSE" ] && echo "skip: $repo_desc (no config file at $cfg)"
+        return
+    fi
+
+    if [ -L "$cfg" ]; then
+        # git-gceverywhere also skips these (linked worktrees share config with
+        # the main repo). Avoid double-processing and avoid writing into an
+        # unexpected location via the symlink.
+        [ -n "$VERBOSE" ] && echo "skip: $repo_desc (config is a symlink)"
+        return
+    fi
+
+    local existing
+    existing=`git config --file "$cfg" --get user.email 2>/dev/null`
+    if [ -n "$existing" ]; then
+        [ -n "$VERBOSE" ] && echo "skip: $repo_desc (user.email already set to $existing)"
+        return
+    fi
+
+    if [ -z "`has_netflix_remote \"$cfg\"`" ]; then
+        [ -n "$VERBOSE" ] && echo "skip: $repo_desc (no Netflix remote)"
+        return
+    fi
+
+    if [ -n "$DRYRUN" ]; then
+        echo "would set user.email=$EMAIL in $cfg ($repo_desc)"
+    else
+        if git config --file "$cfg" user.email "$EMAIL"; then
+            echo "set user.email=$EMAIL in $cfg ($repo_desc)"
+        else
+            echo "failed to set user.email in $cfg" >&2
+        fi
+    fi
+}
+
+# Resolve a .git file (e.g. worktree/submodule pointer) to its gitdir.
+# Prints the absolute gitdir, or nothing if it can't be resolved.
+resolve_gitfile()
+{
+    local gitfile="$1"
+    local line
+    line=`head -n1 "$gitfile" 2>/dev/null`
+    case "$line" in
+        "gitdir: "*)
+            local target=${line#gitdir: }
+            case "$target" in
+                /*) echo "$target" ;;
+                *)  echo "`dirname \"$gitfile\"`/$target" ;;
+            esac
+            ;;
+    esac
+}
+
+RC=0
+
+# Probe a single directory to see if it's a bare repo (has HEAD + config with
+# core.bare=true). Prints "bare" if so.
+is_bare_repo()
+{
+    local d="$1"
+    if [ -f "$d/HEAD" ] && [ -f "$d/config" ]; then
+        local b
+        b=`git config --file "$d/config" --get core.bare 2>/dev/null`
+        if [ "$b" = "true" ]; then
+            echo bare
+        fi
+    fi
+}
+
+for root in "${PATHS[@]}"; do
+    # If the caller pointed us directly at a bare repo, handle it before
+    # recursing. find -prune on the root itself does not emit the root, so
+    # we'd otherwise miss it.
+    if [ -n "`is_bare_repo \"$root\"`" ]; then
+        process_config "$root/config" "$root (bare)"
+        continue
+    fi
+
+    # Collect candidate git locations by walking the tree:
+    #   - directories named .git (standard non-bare layout) -> print, prune
+    #   - files named .git (worktree/submodule pointer)     -> print
+    #   - directories that look like bare repos             -> print, prune
+    # Pruning on hit keeps us from descending into repo internals.
+    find "$root" \( \
+              -type d -name .git -prune -print \
+           -o -type f -name .git        -print \
+           -o -type d -exec test -f {}/HEAD -a -f {}/config \; -print -prune \
+        \) 2>/dev/null | while read -r entry; do
+        if [ -d "$entry" ] && [ "`basename \"$entry\"`" = ".git" ]; then
+            # Standard non-bare repo: $entry is the gitdir
+            cfg="$entry/config"
+            process_config "$cfg" "`dirname \"$entry\"`"
+        elif [ -f "$entry" ] && [ "`basename \"$entry\"`" = ".git" ]; then
+            # Worktree or submodule pointer
+            gitdir=`resolve_gitfile "$entry"`
+            if [ -n "$gitdir" ] && [ -d "$gitdir" ]; then
+                # For linked worktrees the config lives in the "main" gitdir,
+                # which is referenced by commondir if present.
+                real_gitdir="$gitdir"
+                if [ -f "$gitdir/commondir" ]; then
+                    commondir=`head -n1 "$gitdir/commondir"`
+                    case "$commondir" in
+                        /*) real_gitdir="$commondir" ;;
+                        *)  real_gitdir="$gitdir/$commondir" ;;
+                    esac
+                fi
+                process_config "$real_gitdir/config" "`dirname \"$entry\"`"
+            else
+                [ -n "$VERBOSE" ] && echo "skip: $entry (unresolvable gitdir)"
+            fi
+        elif [ -d "$entry" ]; then
+            # Candidate bare repo: must have HEAD, config, and bare=true.
+            # (find already filtered for HEAD+config; recheck bare=true here
+            # so a stray directory that only looks like a gitdir is skipped.)
+            if [ -n "`is_bare_repo \"$entry\"`" ]; then
+                process_config "$entry/config" "$entry (bare)"
+            else
+                [ -n "$VERBOSE" ] && echo "skip: $entry (has HEAD+config but core.bare!=true)"
+            fi
+        fi
+    done || RC=1
+done
+
+exit $RC
