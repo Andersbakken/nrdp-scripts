@@ -42,11 +42,14 @@ cmd_dump() {
   trap 'rm -f "${raw:-}"' EXIT
 
   echo "# host=$HOST_PROFILE build=$BUILD_PROFILE  requires: $*" >&2
+  # Use --out-file so the JSON payload goes to a clean file; conan otherwise
+  # prints the profile block to stdout before the JSON with --format=json.
   conan graph info \
     "${requires[@]}" \
     -pr:h "$NRDP_PROFILES/$HOST_PROFILE" \
     -pr:b "$NRDP_PROFILES/$BUILD_PROFILE" \
-    --format=json > "$raw"
+    --format=json \
+    --out-file="$raw" >/dev/null
 
   # Slim to just the hash-relevant fields, sorted by ref for stable diff.
   jq -S '
@@ -72,11 +75,52 @@ cmd_dump() {
   ' "$raw"
 }
 
+slim_graph() {
+  # Accept either a raw `conan install/graph info --format=json` graph JSON
+  # (has .graph.nodes) OR a slim dump produced by cmd_dump (top-level array).
+  local f=$1
+  jq -S '
+    def as_slim(nodes):
+      nodes
+      | to_entries
+      | map(.value | select(.ref != null and .ref != "conanfile"))
+      | map({
+          ref: .ref,
+          package_id: .package_id,
+          prev: .prev,
+          rrev: .rrev,
+          settings: (.settings // {}),
+          options: (.options // {}),
+          conf_info: (.conf_info // {}),
+          dependencies: (
+            (.dependencies // {})
+            | to_entries
+            | map({ref: .value.ref, package_id: .value.package_id})
+            | sort_by(.ref)
+          )
+        })
+      | sort_by(.ref);
+
+    if type == "array" then .
+    elif (.graph.nodes // null) != null then as_slim(.graph.nodes)
+    else error("unrecognized JSON shape: expected slim array or {graph:{nodes:...}}")
+    end
+  ' "$f"
+}
+
 cmd_diff() {
   [[ $# -eq 2 ]] || die "diff requires exactly two dump files"
   local a=$1 b=$2
   [[ -f "$a" ]] || die "missing: $a"
   [[ -f "$b" ]] || die "missing: $b"
+
+  local sa sb
+  sa=$(mktemp -t conan-slim-a.XXXXXX.json)
+  sb=$(mktemp -t conan-slim-b.XXXXXX.json)
+  trap 'rm -f "${sa:-}" "${sb:-}"' EXIT
+  slim_graph "$a" > "$sa"
+  slim_graph "$b" > "$sb"
+  a=$sa; b=$sb
 
   # Full structural diff, per-ref.
   echo "=== full diff (per-ref settings/options/conf/deps) ==="
