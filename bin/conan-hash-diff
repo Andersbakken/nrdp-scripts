@@ -39,7 +39,7 @@ cmd_dump() {
 
   local raw
   raw=$(mktemp -t conan-hash-raw.XXXXXX.json)
-  trap 'rm -f "$raw"' EXIT
+  trap 'rm -f "${raw:-}"' EXIT
 
   echo "# host=$HOST_PROFILE build=$BUILD_PROFILE  requires: $*" >&2
   conan graph info \
