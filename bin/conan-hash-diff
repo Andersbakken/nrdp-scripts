@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# conan-hash-diff - Compare Conan package_id inputs between two hosts
+#
+# Usage:
+#   conan-hash-diff dump <pkg> [<pkg> ...]          # emit slim JSON for current host
+#   conan-hash-diff diff <mac.json> <linux.json>    # diff two dumps
+#
+# The dump captures everything that feeds package_id:
+#   ref (with rrev), package_id, settings, options, conf_info, dependency prevs.
+#
+# Requires: conan 2.x, jq. Uses nrdp profile layout by default; override via
+#   NRDP_PROFILES=/path/to/profiles
+#   HOST_PROFILE=nrdp-macosx-arm64      # host profile name (in $NRDP_PROFILES)
+#   BUILD_PROFILE=auto                  # auto -> nrdp-macosx-build on darwin,
+#                                       #         nrdp-linux-build on linux
+
+set -euo pipefail
+
+: "${NRDP_PROFILES:=$HOME/dev/nrdp/main-pristine/conan/profiles}"
+: "${HOST_PROFILE:=nrdp-macosx-arm64}"
+
+if [[ "${BUILD_PROFILE:-auto}" == "auto" ]]; then
+  case "$(uname -s)" in
+    Darwin) BUILD_PROFILE=nrdp-macosx-build ;;
+    Linux)  BUILD_PROFILE=nrdp-linux-build  ;;
+    *) echo "unknown OS $(uname -s)" >&2; exit 2 ;;
+  esac
+fi
+
+die() { echo "error: $*" >&2; exit 1; }
+
+cmd_dump() {
+  [[ $# -ge 1 ]] || die "dump requires at least one package ref (e.g. spirv-tools-netflix/2024.4)"
+  [[ -f "$NRDP_PROFILES/$HOST_PROFILE"  ]] || die "no host profile:  $NRDP_PROFILES/$HOST_PROFILE"
+  [[ -f "$NRDP_PROFILES/$BUILD_PROFILE" ]] || die "no build profile: $NRDP_PROFILES/$BUILD_PROFILE"
+
+  local requires=()
+  for p in "$@"; do requires+=(--requires="$p"); done
+
+  local raw
+  raw=$(mktemp -t conan-hash-raw.XXXXXX.json)
+  trap 'rm -f "$raw"' EXIT
+
+  echo "# host=$HOST_PROFILE build=$BUILD_PROFILE  requires: $*" >&2
+  conan graph info \
+    "${requires[@]}" \
+    -pr:h "$NRDP_PROFILES/$HOST_PROFILE" \
+    -pr:b "$NRDP_PROFILES/$BUILD_PROFILE" \
+    --format=json > "$raw"
+
+  # Slim to just the hash-relevant fields, sorted by ref for stable diff.
+  jq -S '
+    (.graph.nodes // {})
+    | to_entries
+    | map(.value | select(.ref != null and .ref != "conanfile"))
+    | map({
+        ref: .ref,
+        package_id: .package_id,
+        prev: .prev,
+        rrev: .rrev,
+        settings: (.settings // {}),
+        options: (.options // {}),
+        conf_info: (.conf_info // {}),
+        dependencies: (
+          (.dependencies // {})
+          | to_entries
+          | map({ref: .value.ref, package_id: .value.package_id})
+          | sort_by(.ref)
+        )
+      })
+    | sort_by(.ref)
+  ' "$raw"
+}
+
+cmd_diff() {
+  [[ $# -eq 2 ]] || die "diff requires exactly two dump files"
+  local a=$1 b=$2
+  [[ -f "$a" ]] || die "missing: $a"
+  [[ -f "$b" ]] || die "missing: $b"
+
+  # Full structural diff, per-ref.
+  echo "=== full diff (per-ref settings/options/conf/deps) ==="
+  diff -u <(jq -S . "$a") <(jq -S . "$b") || true
+
+  echo
+  echo "=== package_id table ==="
+  printf '%-60s %-40s %-40s\n' "ref" "A: package_id" "B: package_id"
+  join -t $'\t' -a1 -a2 -e '(missing)' -o '0,1.2,2.2' \
+    <(jq -r '.[] | [.ref, .package_id] | @tsv' "$a" | sort) \
+    <(jq -r '.[] | [.ref, .package_id] | @tsv' "$b" | sort) \
+    | while IFS=$'\t' read -r ref pa pb; do
+        marker=" "; [[ "$pa" != "$pb" ]] && marker="*"
+        printf '%s %-58s %-40s %-40s\n' "$marker" "$ref" "$pa" "$pb"
+      done
+}
+
+case "${1:-}" in
+  dump) shift; cmd_dump "$@" ;;
+  diff) shift; cmd_diff "$@" ;;
+  ""|-h|--help)
+    sed -n '2,20p' "$0"
+    ;;
+  *) die "unknown subcommand: $1  (use: dump | diff)" ;;
+esac
