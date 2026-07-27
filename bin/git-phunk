@@ -1,0 +1,690 @@
+#!/usr/bin/env node
+
+// git phunk - "patch hunk": git add -p, git checkout -p and git stash -p folded
+// into a single pass over the unstaged hunks of the working tree.
+//
+// For every hunk you pick one action: stage it (a), restore it (c/r), stash it
+// (z) or leave it alone (n). The "all" variants (aa/ca/ra/za) apply the same
+// action to the remaining hunks of the current file.
+
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const readline = require("readline");
+const { spawnSync } = require("child_process");
+
+const usage = `Usage: git phunk [options] [--] [<pathspec>...]
+
+Walks every unstaged hunk and asks what to do with it:
+
+  a       add (stage) this hunk
+  aa      add this hunk and the rest of the hunks in this file
+  c, r    restore (checkout) this hunk, discarding it
+  ca, ra  restore this hunk and the rest of the hunks in this file
+  z       stash this hunk
+  za      stash this hunk and the rest of the hunks in this file
+  s       split this hunk into smaller hunks
+  n       do nothing with this hunk
+  d       do nothing with this hunk or any remaining hunk in this file
+  q       quit, leaving the remaining hunks of every file alone
+  ?       show help
+
+Options:
+  -m, --message <msg>   message to use for the created stash
+  -U, --unified <n>     lines of context in the generated diff (default 3)
+  --color, --no-color   force colorized output on or off
+  -n, --dry-run         show what would happen, change nothing
+  -h, --help            show this help`;
+
+const HELP = `a  - stage this hunk
+aa - stage this hunk and all remaining hunks in this file
+c  - restore this hunk, discarding the change from the working tree
+r  - same as c
+ca - restore this hunk and all remaining hunks in this file
+ra - same as ca
+z  - stash this hunk
+za - stash this hunk and all remaining hunks in this file
+s  - split this hunk into smaller hunks
+n  - do nothing with this hunk
+d  - do nothing with this hunk or any remaining hunk in this file
+q  - quit, leaving the remaining hunks of every file alone`;
+
+const ADD = "add";
+const RESTORE = "restore";
+const STASH = "stash";
+
+const CONTEXT = 3;
+
+function die(message) {
+    console.error(`git phunk: ${message}`);
+    process.exit(1);
+}
+
+function git(args, options = {}) {
+    const result = spawnSync("git", args, {
+        encoding: "utf8",
+        maxBuffer: 1024 * 1024 * 1024,
+        input: options.input,
+        env: options.env || process.env
+    });
+    if (result.error) {
+        die(`failed to run git ${args.join(" ")}: ${result.error.message}`);
+    }
+    return result;
+}
+
+function gitOrDie(args, options = {}) {
+    const result = git(args, options);
+    if (result.status !== 0) {
+        die(`git ${args.join(" ")} failed:\n${(result.stderr || "").trim()}`);
+    }
+    return (result.stdout || "").trim();
+}
+
+// ---------------------------------------------------------------- diff parsing
+
+// Every body line remembers its absolute old/new line number so that splitting
+// a hunk can recompute a correct @@ header without re-diffing anything.
+function parseDiff(text) {
+    const files = [];
+    const lines = text.length ? text.split("\n") : [];
+    if (lines.length && lines[lines.length - 1] === "") {
+        lines.pop();
+    }
+
+    let file;
+    let hunk;
+    let oldLine = 0;
+    let newLine = 0;
+
+    const finishHunk = () => {
+        if (hunk && hunk.lines.length) {
+            file.hunks.push(hunk);
+        }
+        hunk = undefined;
+    };
+
+    for (const line of lines) {
+        if (line.startsWith("diff --git ")) {
+            finishHunk();
+            file = { header: [line], hunks: [], binary: false };
+            files.push(file);
+            continue;
+        }
+        if (!file) {
+            continue; // output before the first file header, nothing usable
+        }
+
+        const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$/.exec(line);
+        if (match) {
+            finishHunk();
+            oldLine = parseInt(match[1], 10);
+            newLine = parseInt(match[3], 10);
+            hunk = { section: match[5], lines: [] };
+            continue;
+        }
+
+        if (!hunk) {
+            if (line.startsWith("Binary files ") || line.startsWith("GIT binary patch")) {
+                file.binary = true;
+            } else if (line.startsWith("--- ")) {
+                file.oldName = pathFromDiffHeader(line.substring(4));
+            } else if (line.startsWith("+++ ")) {
+                file.newName = pathFromDiffHeader(line.substring(4));
+            }
+            file.header.push(line);
+            continue;
+        }
+
+        const kind = line[0];
+        if (kind === "\\") {
+            // "\ No newline at end of file" belongs to the previous line and
+            // consumes no line number on either side.
+            hunk.lines.push({ kind, text: line });
+            continue;
+        }
+        if (kind !== " " && kind !== "+" && kind !== "-") {
+            finishHunk();
+            continue;
+        }
+        const entry = { kind, text: line };
+        if (kind !== "+") {
+            entry.oldLine = oldLine++;
+        }
+        if (kind !== "-") {
+            entry.newLine = newLine++;
+        }
+        hunk.lines.push(entry);
+    }
+    finishHunk();
+
+    for (const f of files) {
+        if (f.newName && f.newName !== "/dev/null") {
+            f.name = f.newName;
+        } else if (f.oldName && f.oldName !== "/dev/null") {
+            f.name = f.oldName;
+        } else {
+            const m = /^diff --git a\/(.*) b\/(.*)$/.exec(f.header[0]);
+            f.name = m ? m[2] : f.header[0];
+        }
+    }
+    return files.filter((f) => f.hunks.length || f.binary);
+}
+
+function pathFromDiffHeader(value) {
+    const stripped = value.replace(/\t.*$/, "");
+    return stripped === "/dev/null" ? stripped : stripped.replace(/^[ab]\//, "");
+}
+
+function firstLineNumber(hunk, key) {
+    for (const line of hunk.lines) {
+        if (line[key] !== undefined) {
+            return line[key];
+        }
+    }
+    return 0;
+}
+
+function hunkHeaderText(hunk) {
+    let oldStart = 0;
+    let oldCount = 0;
+    let newStart = 0;
+    let newCount = 0;
+    for (const line of hunk.lines) {
+        if (line.oldLine !== undefined) {
+            if (!oldCount) {
+                oldStart = line.oldLine;
+            }
+            ++oldCount;
+        }
+        if (line.newLine !== undefined) {
+            if (!newCount) {
+                newStart = line.newLine;
+            }
+            ++newCount;
+        }
+    }
+    if (!oldCount) {
+        oldStart = Math.max(0, firstLineNumber(hunk, "newLine") - 1);
+    }
+    if (!newCount) {
+        newStart = Math.max(0, firstLineNumber(hunk, "oldLine") - 1);
+    }
+    return `@@ -${oldStart},${oldCount} +${newStart},${newCount} @@${hunk.section || ""}`;
+}
+
+function hunkText(hunk) {
+    return `${hunkHeaderText(hunk)}\n${hunk.lines.map((l) => l.text).join("\n")}\n`;
+}
+
+function isChange(line) {
+    return line.kind === "+" || line.kind === "-";
+}
+
+// Split a hunk into one sub-hunk per contiguous run of changed lines, keeping up
+// to CONTEXT lines of context around each. Context lines between two runs are
+// divided between the neighbours and never duplicated, so the resulting hunks
+// do not overlap and can be handed to git apply together.
+function splitHunk(hunk) {
+    const runs = [];
+    for (let i = 0; i < hunk.lines.length; ++i) {
+        if (!isChange(hunk.lines[i])) {
+            continue;
+        }
+        let end = i;
+        while (end + 1 < hunk.lines.length &&
+               (isChange(hunk.lines[end + 1]) || hunk.lines[end + 1].kind === "\\")) {
+            ++end;
+        }
+        runs.push({ start: i, end });
+        i = end;
+    }
+
+    if (runs.length < 2) {
+        return [hunk];
+    }
+
+    const pieces = [];
+    for (let i = 0; i < runs.length; ++i) {
+        const run = runs[i];
+        const prev = runs[i - 1];
+        const next = runs[i + 1];
+
+        const gapBefore = prev ? run.start - prev.end - 1 : run.start;
+        const gapAfter = next ? next.start - run.end - 1 : hunk.lines.length - run.end - 1;
+
+        // The gap before us was already halved when the previous run was built.
+        const takenByPrev = prev ? Math.min(CONTEXT, Math.ceil(gapBefore / 2)) : 0;
+        const leading = Math.min(CONTEXT, gapBefore - takenByPrev);
+        const trailing = Math.min(CONTEXT, next ? Math.ceil(gapAfter / 2) : gapAfter);
+
+        pieces.push({
+            section: hunk.section,
+            lines: hunk.lines.slice(run.start - leading, run.end + trailing + 1)
+        });
+    }
+    return pieces;
+}
+
+// ---------------------------------------------------------------------- output
+
+function makeColorizer(enabled) {
+    if (!enabled) {
+        return (line) => line;
+    }
+    return (line) => {
+        if (line.startsWith("@@")) {
+            return `\u001b[36m${line}\u001b[m`;
+        }
+        if (line.startsWith("+")) {
+            return `\u001b[32m${line}\u001b[m`;
+        }
+        if (line.startsWith("-")) {
+            return `\u001b[31m${line}\u001b[m`;
+        }
+        if (line.startsWith("\\")) {
+            return `\u001b[90m${line}\u001b[m`;
+        }
+        return `\u001b[1m${line}\u001b[m`;
+    };
+}
+
+class Prompter {
+    constructor() {
+        this.rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+            terminal: Boolean(process.stdin.isTTY)
+        });
+        // Lines have to be buffered: when input is a pipe readline hands us
+        // every line it read, not just the one the current question asked for.
+        this.pending = [];
+        this.waiting = [];
+        this.done = false;
+        this.rl.on("line", (line) => this.push(line));
+        this.rl.on("close", () => {
+            this.done = true;
+            while (this.waiting.length) {
+                this.waiting.shift()("q");
+            }
+        });
+    }
+
+    push(line) {
+        const answer = line.trim().toLowerCase();
+        if (this.waiting.length) {
+            this.waiting.shift()(answer);
+        } else {
+            this.pending.push(answer);
+        }
+    }
+
+    ask(question) {
+        process.stdout.write(question);
+        // A terminal echoes the answer itself, a pipe does not.
+        const echo = (answer) => {
+            if (!process.stdin.isTTY) {
+                process.stdout.write(`${answer}\n`);
+            }
+            return answer;
+        };
+        if (this.pending.length) {
+            return Promise.resolve(echo(this.pending.shift()));
+        }
+        if (this.done) {
+            return Promise.resolve(echo("q"));
+        }
+        return new Promise((resolve) => this.waiting.push((answer) => resolve(echo(answer))));
+    }
+
+    close() {
+        this.rl.close();
+    }
+}
+
+// ------------------------------------------------------------------------ main
+
+function parseArgs(argv) {
+    const options = {
+        pathspec: [],
+        unified: 3,
+        dryRun: false,
+        color: Boolean(process.stdout.isTTY) && !process.env.NO_COLOR,
+        message: undefined,
+        help: false
+    };
+    let onlyPaths = false;
+
+    const number = (value, what) => {
+        const parsed = parseInt(value, 10);
+        if (isNaN(parsed) || parsed < 0) {
+            die(`${what} needs a non-negative integer`);
+        }
+        return parsed;
+    };
+
+    for (let i = 2; i < argv.length; ++i) {
+        const arg = argv[i];
+        if (onlyPaths) {
+            options.pathspec.push(arg);
+            continue;
+        }
+        switch (arg) {
+            case "-h":
+            case "--help":
+                options.help = true;
+                break;
+            case "--":
+                onlyPaths = true;
+                break;
+            case "-m":
+            case "--message":
+                options.message = argv[++i];
+                if (options.message === undefined) {
+                    die("--message needs an argument");
+                }
+                break;
+            case "-U":
+            case "--unified":
+                options.unified = number(argv[++i], "--unified");
+                break;
+            case "--color":
+                options.color = true;
+                break;
+            case "--no-color":
+                options.color = false;
+                break;
+            case "-n":
+            case "--dry-run":
+                options.dryRun = true;
+                break;
+            default:
+                if (arg.startsWith("-m") && arg.length > 2) {
+                    options.message = arg.substring(2);
+                } else if (arg.startsWith("-U") && arg.length > 2) {
+                    options.unified = number(arg.substring(2), "--unified");
+                } else if (arg.startsWith("-")) {
+                    die(`unknown option ${arg}\n${usage}`);
+                } else {
+                    options.pathspec.push(arg);
+                }
+                break;
+        }
+    }
+    return options;
+}
+
+async function main() {
+    const options = parseArgs(process.argv);
+    if (options.help) {
+        console.log(usage);
+        return 0;
+    }
+
+    if (git(["rev-parse", "--git-dir"]).status !== 0) {
+        die("not a git repository");
+    }
+
+    const diffArgs = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", `-U${options.unified}`];
+    if (options.pathspec.length) {
+        diffArgs.push("--", ...options.pathspec);
+    }
+    const diff = git(diffArgs);
+    if (diff.status !== 0) {
+        die(`git diff failed:\n${(diff.stderr || "").trim()}`);
+    }
+
+    const files = parseDiff(diff.stdout);
+    if (!files.length) {
+        console.log("No unstaged changes.");
+        return 0;
+    }
+
+    const selections = await pickHunks(files, options);
+    return applySelections(selections, options);
+}
+
+async function pickHunks(files, options) {
+    const colorize = makeColorizer(options.color);
+    const prompter = new Prompter();
+    const selections = { [ADD]: [], [RESTORE]: [], [STASH]: [] };
+    let quit = false;
+
+    try {
+        for (const file of files) {
+            if (quit) {
+                break;
+            }
+            if (file.binary) {
+                console.log(`Skipping binary file ${file.name}`);
+                continue;
+            }
+
+            const queue = file.hunks.slice();
+            let total = queue.length;
+            let sticky;
+            let index = 0;
+
+            while (queue.length) {
+                const hunk = queue.shift();
+                ++index;
+
+                if (sticky) {
+                    selections[sticky].push({ file, hunk });
+                    continue;
+                }
+
+                for (const line of file.header) {
+                    process.stdout.write(`${colorize(line)}\n`);
+                }
+                process.stdout.write(`${colorize(hunkHeaderText(hunk))}\n`);
+                for (const line of hunk.lines) {
+                    process.stdout.write(`${colorize(line.text)}\n`);
+                }
+
+                let answered = false;
+                while (!answered) {
+                    const answer = await prompter.ask(
+                        `(${index}/${total}) Process this hunk [a,aa,c,ca,r,ra,z,za,s,q,d,n] `
+                    );
+                    answered = true;
+                    switch (answer) {
+                        case "a":
+                            selections[ADD].push({ file, hunk });
+                            break;
+                        case "aa":
+                            sticky = ADD;
+                            selections[ADD].push({ file, hunk });
+                            break;
+                        case "c":
+                        case "r":
+                            selections[RESTORE].push({ file, hunk });
+                            break;
+                        case "ca":
+                        case "ra":
+                            sticky = RESTORE;
+                            selections[RESTORE].push({ file, hunk });
+                            break;
+                        case "z":
+                            selections[STASH].push({ file, hunk });
+                            break;
+                        case "za":
+                            sticky = STASH;
+                            selections[STASH].push({ file, hunk });
+                            break;
+                        case "s": {
+                            const pieces = splitHunk(hunk);
+                            if (pieces.length < 2) {
+                                console.log("Sorry, cannot split this hunk.");
+                                answered = false;
+                                break;
+                            }
+                            console.log(`Split into ${pieces.length} hunks.`);
+                            queue.unshift(...pieces);
+                            total += pieces.length - 1;
+                            --index;
+                            break;
+                        }
+                        case "n":
+                            break;
+                        case "d":
+                            queue.length = 0;
+                            break;
+                        case "q":
+                            queue.length = 0;
+                            quit = true;
+                            break;
+                        default:
+                            if (answer !== "?") {
+                                console.log(`Unknown command '${answer}'.`);
+                            }
+                            console.log(HELP);
+                            answered = false;
+                            break;
+                    }
+                }
+            }
+        }
+    } finally {
+        prompter.close();
+    }
+    return selections;
+}
+
+// ----------------------------------------------------------------- applying it
+
+function buildPatch(entries) {
+    const byFile = new Map();
+    for (const entry of entries) {
+        if (!byFile.has(entry.file)) {
+            byFile.set(entry.file, []);
+        }
+        byFile.get(entry.file).push(entry.hunk);
+    }
+    let patch = "";
+    for (const [file, hunks] of byFile) {
+        hunks.sort((a, b) => firstLineNumber(a, "oldLine") - firstLineNumber(b, "oldLine"));
+        patch += `${file.header.join("\n")}\n`;
+        for (const hunk of hunks) {
+            patch += hunkText(hunk);
+        }
+    }
+    return patch;
+}
+
+function applyPatch(args, what, options = {}) {
+    const result = git(args, options);
+    if (result.status !== 0) {
+        die(`failed to ${what}:\n${(result.stderr || "").trim()}`);
+    }
+}
+
+function applySelections(selections, options) {
+    const add = selections[ADD];
+    const restore = selections[RESTORE];
+    const stash = selections[STASH];
+
+    if (!add.length && !restore.length && !stash.length) {
+        console.log("Nothing selected, nothing done.");
+        return 0;
+    }
+
+    const addPatch = add.length ? buildPatch(add) : undefined;
+    const stashPatch = stash.length ? buildPatch(stash) : undefined;
+    // Restored and stashed hunks both leave the working tree, so they are
+    // reverse applied in a single patch to keep line numbers consistent.
+    const reversePatch = restore.length || stash.length
+        ? buildPatch(restore.concat(stash))
+        : undefined;
+
+    if (options.dryRun) {
+        report(add, restore, stash, true);
+        if (addPatch) {
+            process.stdout.write(`\n--- patch to stage ---\n${addPatch}`);
+        }
+        if (reversePatch) {
+            process.stdout.write(`\n--- patch to remove from the working tree ---\n${reversePatch}`);
+        }
+        return 0;
+    }
+
+    if (stashPatch) {
+        createStash(stashPatch, options.message);
+    }
+    if (addPatch) {
+        applyPatch(["apply", "--cached", "--whitespace=nowarn", "-"], "stage hunks", { input: addPatch });
+    }
+    if (reversePatch) {
+        applyPatch(["apply", "-R", "--whitespace=nowarn", "-"], "update the working tree", {
+            input: reversePatch
+        });
+    }
+
+    report(add, restore, stash, false);
+    return 0;
+}
+
+// The stash commit is built by hand rather than with "git stash push --staged"
+// so that anything the user had already staged is left untouched.
+function createStash(patch, message) {
+    const head = git(["rev-parse", "--verify", "HEAD"]);
+    if (head.status !== 0) {
+        die("cannot stash hunks before the first commit");
+    }
+    const headSha = head.stdout.trim();
+    const branch = gitOrDie(["rev-parse", "--abbrev-ref", "HEAD"]);
+    const subject = gitOrDie(["log", "-1", "--pretty=%h %s", headSha]);
+    const indexTree = gitOrDie(["write-tree"]);
+
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "git-phunk-"));
+    let workTree;
+    try {
+        const env = Object.assign({}, process.env, { GIT_INDEX_FILE: path.join(tmpDir, "index") });
+        applyPatch(["read-tree", indexTree], "prepare the stash index", { env });
+        applyPatch(["apply", "--cached", "--whitespace=nowarn", "-"], "build the stash tree", {
+            env,
+            input: patch
+        });
+        workTree = gitOrDie(["write-tree"], { env });
+    } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+
+    // The stash must contain the selected hunks and nothing else, so when the
+    // index differs from HEAD it is parented on a synthetic base commit holding
+    // the current index. That keeps "git stash show" and "git stash pop"
+    // limited to the hunks that were picked.
+    const headTree = gitOrDie(["rev-parse", `${headSha}^{tree}`]);
+    const base = headTree === indexTree
+        ? headSha
+        : gitOrDie(["commit-tree", indexTree, "-p", headSha, "-m", `git-phunk base on ${branch}: ${subject}`]);
+
+    const stashMessage = message || `git-phunk hunks on ${branch}`;
+    const indexCommit = gitOrDie([
+        "commit-tree", indexTree, "-p", base, "-m", `index on ${branch}: ${subject}`
+    ]);
+    const stashCommit = gitOrDie([
+        "commit-tree", workTree, "-p", base, "-p", indexCommit,
+        "-m", `On ${branch}: ${stashMessage}`
+    ]);
+    gitOrDie(["stash", "store", "-m", stashMessage, stashCommit]);
+}
+
+function report(add, restore, stash, dryRun) {
+    const say = (count, done, would) => {
+        if (count) {
+            const noun = count === 1 ? "hunk" : "hunks";
+            console.log(dryRun ? `Would ${would} ${count} ${noun}` : `${done} ${count} ${noun}`);
+        }
+    };
+    say(add.length, "Staged", "stage");
+    say(restore.length, "Restored", "restore");
+    say(stash.length, "Stashed", "stash");
+}
+
+main()
+    .then((code) => process.exit(code))
+    .catch((error) => {
+        console.error(`git phunk: ${error && error.stack ? error.stack : error}`);
+        process.exit(1);
+    });
