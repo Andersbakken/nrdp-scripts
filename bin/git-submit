@@ -53,6 +53,13 @@ SUBMIT OPTIONS:
 
     --                     Treat remaining arguments as commit hashes
 
+COMMIT ARGUMENTS:
+    Commits may be given as hashes, revisions, ranges (HASH1..HASH2), or as
+    negative indices into the list of pending commits (those shown by
+    'git-submit changes'): -1 is the last (newest) pending commit, -2 the one
+    before it, and so on. Indices are resolved at run time, so they keep
+    working after amending a commit changes its sha.
+
 EXAMPLES:
     # Set tracking branch
     git-submit tracking origin/master
@@ -80,6 +87,9 @@ EXAMPLES:
 
     # Submit commit range
     git-submit abc123..def456
+
+    # Submit the second to last and last pending commits, in that order
+    git-submit -2 -1
 
 CONFIGURATION:
     submit.reset           Default reset behavior (default: true)
@@ -263,6 +273,8 @@ else
             shift
             IN_CHANGES="$IN_CHANGES $@"
             break
+        elif [[ "$1" =~ ^-[0-9]+$ ]]; then
+            IN_CHANGES="$IN_CHANGES $1"
         elif `echo $1 | grep --quiet -- "^-"`; then
             echo "git-submit: Unknown option $1" >&2
             exit 1
@@ -324,8 +336,24 @@ else
         exit 0
     else
         RESOLVED_CHANGES=""
+        PENDING_CHANGES=()
+        pending_change() {
+            # -1 is the last (newest) pending commit, -2 the one before it, etc.
+            local index="${1#-}"
+            if [ "${#PENDING_CHANGES[@]}" = "0" ]; then
+                PENDING_CHANGES=(`git cherry "$TRACKING" | grep '^+ ' | awk '{print $2}'`)
+            fi
+            if [ "$index" = "0" ] || [ "$index" -gt "${#PENDING_CHANGES[@]}" ]; then
+                echo "git-submit: No such pending commit '$1' (${#PENDING_CHANGES[@]} pending vs ${TRACKING})" >&2
+                return 1
+            fi
+            echo "${PENDING_CHANGES[$((${#PENDING_CHANGES[@]} - index))]}"
+        }
         for change in $IN_CHANGES; do
-            if echo "$change" | grep -q '\.\.'; then
+            if [[ "$change" =~ ^-[0-9]+$ ]]; then
+                SHA1=$(pending_change "$change") || exit 1
+                RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+            elif echo "$change" | grep -q '\.\.'; then
                 # Range notation (e.g., HASH1..HASH2) - expand using git log
                 RANGE_COMMITS=$(git log --reverse --pretty='%H' "$change" 2>/dev/null)
                 if [ $? -ne 0 ] || [ -z "$RANGE_COMMITS" ]; then

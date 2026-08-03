@@ -54,6 +54,10 @@ SUBMIT OPTIONS (default mode):
     --abort-on-failure     Abort rebase on conflict (restores original state)
     --no-abort-on-failure  Leave rebase in progress on conflict for manual resolution
 
+    COMMIT arguments are passed to git-submit and may be hashes, revisions,
+    ranges, or negative indices into the pending commit list: -1 is the last
+    (newest) pending commit, -2 the one before it, etc.
+
     Additional options are passed through to git-submit (see git-submit --help)
     Note: Do NOT override --src-branch or --dst-branch as these are managed
     by git-pullrequest. Use --tracking to change the base branch.
@@ -79,6 +83,9 @@ EXAMPLES:
 
     # Submit without auto-merge
     git-pullrequest --manual HEAD
+
+    # Submit the second to last and last pending commits, in that order
+    git-pullrequest -m -2 -1
 
     # Pass options to git-submit (e.g., change tracking branch)
     git-pullrequest --tracking origin/develop HEAD
