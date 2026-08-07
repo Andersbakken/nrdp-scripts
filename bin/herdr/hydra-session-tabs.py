@@ -94,8 +94,12 @@ def notify(title: str, body: str = "") -> None:
 
 
 def hydra_sessions() -> list[dict]:
+    # --all lifts the 20-most-recent cap on cold sessions. Without it a tab
+    # whose session has aged out simply would not appear, and "not in the
+    # list" is indistinguishable from "cold" -- which would make closing
+    # decisions on missing evidence.
     out = subprocess.run(
-        ["hydra", "session", "list", "--json"], capture_output=True, text=True, timeout=20
+        ["hydra", "session", "list", "--all", "--json"], capture_output=True, text=True, timeout=20
     )
     if out.returncode != 0:
         raise RuntimeError(f"hydra session list failed: {out.stderr.strip()}")
@@ -122,22 +126,28 @@ def active_workspace() -> str | None:
 class Plan:
     def __init__(self) -> None:
         self.create: list[dict] = []
+        self.close: list[dict] = []
+        self.kept: list[str] = []           # cold, but a guard declined it
         self.picker: str | None = None      # tab id to pin at position 1
         self.make_picker = False
         self.skipped: list[str] = []
+        self.sessions: dict[str, dict] = {}
 
 
 def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
     plan = Plan()
 
+    sessions = hydra_sessions()
+    by_id = {s["sessionId"]: s for s in sessions}
     warm = {
-        s["sessionId"]: s
-        for s in hydra_sessions()
+        sid: s
+        for sid, s in by_id.items()
         if s.get("status") == "warm" and s.get("interactive")
     }
 
     panes = call("pane.list")["panes"]
     tabs = {t["tab_id"]: t for t in call("tab.list")["tabs"]}
+    plan.sessions = by_id
 
     # On-screen detection is deliberately GLOBAL rather than scoped to the
     # target workspace: a session already open elsewhere should not get a
@@ -161,6 +171,9 @@ def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
     if plan.picker is None and args.ensure_picker:
         plan.make_picker = True
 
+    if args.close_cold:
+        plan_closes(plan, workspace, args, panes, tabs)
+
     missing = [(sid, s) for sid, s in warm.items() if sid not in onscreen]
     missing.sort(key=lambda kv: kv[1].get("updatedAt") or "")
 
@@ -175,6 +188,84 @@ def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
 
     _ = tabs, workspace
     return plan
+
+
+def plan_closes(
+    plan: Plan, workspace: str, args: argparse.Namespace, panes: list[dict], tabs: dict
+) -> None:
+    """Decide which tabs are safe to close.
+
+    Closing destroys work if it is wrong, so every guard here fails CLOSED:
+    anything unproven is kept. The reasons are recorded so --dry-run shows
+    not just what would go but why the rest stayed.
+    """
+    ws_tabs = [t for t in tabs.values() if t["workspace_id"] == workspace]
+    panes_by_tab: dict[str, list[dict]] = {}
+    for p in panes:
+        panes_by_tab.setdefault(p["tab_id"], []).append(p)
+
+    now = time.time()
+
+    for tab in ws_tabs:
+        tab_id = tab["tab_id"]
+        members = panes_by_tab.get(tab_id, [])
+        label = (tab.get("label") or tab_id)[:32]
+
+        # Identify the tab's session first, so that everything below can
+        # report WHY a cold tab was spared. Structural guards checked before
+        # this point would reject silently, and a dry run that prints
+        # "converged" while quietly keeping a cold tab teaches the operator
+        # nothing.
+        session_panes = [p for p in members if (p.get("tokens") or {}).get("session")]
+        if not session_panes:
+            # A shell, the picker, or a TUI still starting: not ours to judge.
+            continue
+        pane = session_panes[0]
+        sid = (pane.get("tokens") or {}).get("session")
+
+        session = plan.sessions.get(sid)
+        if session is None:
+            # Should not happen with --all, but an unknown session is not
+            # evidence of a cold one.
+            plan.kept.append(f"{label} (session unknown)")
+            continue
+        if session.get("status") == "warm":
+            continue
+
+        # One pane only. A split tab may hold a shell or a second session
+        # beside the cold one, and closing the tab takes those with it.
+        if len(members) != 1:
+            plan.kept.append(f"{label} ({len(members)} panes)")
+            continue
+        if pane.get("focused"):
+            plan.kept.append(f"{label} (focused)")
+            continue
+        if len(ws_tabs) - len(plan.close) <= 1:
+            # Closing a workspace's last tab closes the workspace.
+            plan.kept.append(f"{label} (last tab)")
+            continue
+
+        # Grace period, derived from the session's own updatedAt rather than
+        # state we would have to persist. A session that flips cold and warm
+        # again would otherwise have its tab closed and reopened, losing
+        # scroll position for nothing.
+        age = now - iso_to_epoch(session.get("updatedAt"))
+        if age < args.cold_grace:
+            plan.kept.append(f"{label} (cold {int(age)}s < {int(args.cold_grace)}s)")
+            continue
+
+        plan.close.append({"tab_id": tab_id, "label": label, "sessionId": sid})
+
+
+def iso_to_epoch(value: str | None) -> float:
+    if not value:
+        return 0.0
+    try:
+        from datetime import datetime
+
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return 0.0
 
 
 def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
@@ -230,6 +321,17 @@ def reconcile(args: argparse.Namespace) -> None:
         if not args.dry_run:
             open_session_tab(workspace, item["sessionId"], item["cwd"])
 
+    for item in plan.close:
+        print(f"{tag}close {item['sessionId'][-16:]}  {item['label']}")
+        if not args.dry_run:
+            try:
+                call("tab.close", {"tab_id": item["tab_id"]})
+            except Exception as err:
+                print(f"  close failed: {err}", file=sys.stderr)
+
+    for k in plan.kept:
+        print(f"keep  {k}")
+
     if plan.picker:
         if args.dry_run:
             tabs = [t["tab_id"] for t in call("tab.list")["tabs"] if t["workspace_id"] == workspace]
@@ -241,7 +343,7 @@ def reconcile(args: argparse.Namespace) -> None:
     for s in plan.skipped:
         print(f"skip {s}")
 
-    if not (plan.create or plan.make_picker or plan.skipped):
+    if not (plan.create or plan.close or plan.make_picker or plan.skipped):
         print("converged")
 
     if args.dry_run or args.quiet:
@@ -249,11 +351,16 @@ def reconcile(args: argparse.Namespace) -> None:
     # Only on change: a loop that toasted every quiet pass would be
     # unusable, and a keypress that changed nothing is self-evident from
     # the tabs not moving.
-    if plan.create or plan.make_picker:
+    if plan.create or plan.close or plan.make_picker:
         opened = len(plan.create) + (1 if plan.make_picker else 0)
+        bits = []
+        if opened:
+            bits.append(f"opened {opened}")
+        if plan.close:
+            bits.append(f"closed {len(plan.close)}")
         titles = ", ".join(i["title"][:24] or i["sessionId"][-8:] for i in plan.create[:3])
         notify(
-            f"Opened {opened} session tab{'s' if opened != 1 else ''}",
+            "Session tabs: " + ", ".join(bits),
             titles + (f" (+{len(plan.skipped)} skipped)" if plan.skipped else ""),
         )
 
@@ -267,6 +374,17 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=8, help="max tabs to open per pass")
     ap.add_argument("--cwd", help="only sessions whose cwd starts with this path")
     ap.add_argument("--quiet", action="store_true", help="no toast on change")
+    ap.add_argument(
+        "--close-cold",
+        action="store_true",
+        help="also close tabs whose session has gone cold (see the guards in plan_closes)",
+    )
+    ap.add_argument(
+        "--cold-grace",
+        type=float,
+        default=60.0,
+        help="seconds a session must have been quiet before its tab may be closed",
+    )
     args = ap.parse_args()
 
     if args.interval <= 0:
