@@ -106,13 +106,33 @@ def hydra_sessions() -> list[dict]:
     return json.loads(out.stdout)
 
 
-def foreground_name(pane_id: str) -> str:
+def foreground_process(pane_id: str) -> tuple[str, str]:
+    """(name, cmdline) of the pane's foreground process, or ("", "")."""
     try:
         info = call("pane.process_info", {"pane_id": pane_id})
         procs = info["process_info"]["foreground_processes"]
-        return procs[0]["name"] if procs else ""
+        if not procs:
+            return "", ""
+        return procs[0].get("name") or "", procs[0].get("cmdline") or ""
     except Exception:
-        return ""
+        return "", ""
+
+
+def launching_session(cmdline: str) -> str | None:
+    """The session id a pane was LAUNCHED for, from its argv.
+
+    Deliberately argv, which is the wrong source for "which session is this
+    pane showing" -- the TUI switches sessions in place and argv never
+    changes -- but the right source for "have we already spawned a viewer
+    for this session". hydra needs a second or two to attach and report its
+    `session` token; without this a second pass inside that window sees the
+    session as absent and opens a duplicate tab.
+    """
+    parts = cmdline.split()
+    for i, part in enumerate(parts):
+        if part == "--session" and i + 1 < len(parts):
+            return parts[i + 1]
+    return None
 
 
 def active_workspace() -> str | None:
@@ -145,9 +165,27 @@ def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
         if s.get("status") == "warm" and s.get("interactive")
     }
 
-    panes = call("pane.list")["panes"]
+    all_panes = call("pane.list")["panes"]
     tabs = {t["tab_id"]: t for t in call("tab.list")["tabs"]}
     plan.sessions = by_id
+
+    # WHICH PANES COUNT AS "already showing this session".
+    #
+    # With a managed workspace, only that workspace counts. The workspace
+    # exists to be a complete index of warm sessions, so a session you
+    # happen to be viewing in your own workspace must still get a tab here
+    # -- otherwise the index silently omits exactly the sessions you are
+    # working on. hydra supports several viewers on one session, so the
+    # second one is cheap.
+    #
+    # Without a managed workspace the opposite is right: tabs land in
+    # whatever workspace you are in, so a session visible ANYWHERE is
+    # already handled and a second tab would just be clutter.
+    panes = (
+        [p for p in all_panes if p["workspace_id"] == workspace]
+        if args.managed_workspace
+        else all_panes
+    )
 
     # On-screen detection is deliberately GLOBAL rather than scoped to the
     # target workspace: a session already open elsewhere should not get a
@@ -161,13 +199,29 @@ def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
         else:
             tokenless.append(p)
 
-    # A hydra pane with no session token is a picker. Check the process
-    # rather than the agent field: a suspended pane has released its agent,
-    # so `agent` is null for exactly the panes we care about here.
+    # The picker is always looked for in the TARGET workspace only. It is a
+    # tab we may pin to position 1 there, so a picker sitting in someone
+    # else's workspace is not a candidate -- without this the plan proposes
+    # pinning a tab that pin_first will correctly refuse to move, which reads
+    # as a bug in the dry run.
+    picker_ws = {p["pane_id"] for p in all_panes if p["workspace_id"] == workspace}
+
+    # One process-info pass over the tokenless panes answers two questions:
+    # which pane is the picker, and which sessions have a viewer still
+    # starting up.
+    #
+    # A hydra pane with no session token is either a picker or a launch in
+    # flight. Check the process rather than the agent field: a suspended pane
+    # has released its agent, so `agent` is null for exactly these panes.
     for p in tokenless:
-        if foreground_name(p["pane_id"]) == "hydra":
+        name, cmdline = foreground_process(p["pane_id"])
+        if name != "hydra":
+            continue
+        pending = launching_session(cmdline)
+        if pending:
+            onscreen.add(pending)
+        elif plan.picker is None and p["pane_id"] in picker_ws:
             plan.picker = p["tab_id"]
-            break
     if plan.picker is None and args.ensure_picker:
         plan.make_picker = True
 
@@ -268,6 +322,66 @@ def iso_to_epoch(value: str | None) -> float:
         return 0.0
 
 
+def resolve_managed_workspace(label: str, dry_run: bool) -> tuple[str | None, bool]:
+    """Find, or create, the workspace this script is allowed to manage.
+
+    Identification is by LABEL, not by a metadata marker: workspace tokens
+    are not written to herdr's session snapshot, so a token would vanish on
+    the next server restart and we would build a second workspace beside the
+    first. The tradeoff is that renaming the workspace orphans it -- this
+    script would then create a fresh one and leave the old tabs alone.
+
+    Creating a workspace also creates its first tab and root pane, so the
+    picker goes straight into that pane. Leaving it as a shell instead would
+    make the picker check below miss it and add a second tab.
+    """
+    for w in call("workspace.list")["workspaces"]:
+        if (w.get("label") or "") == label:
+            return w["workspace_id"], False
+    if dry_run:
+        return None, True
+    result = call(
+        "workspace.create",
+        {"label": label, "focus": False, "cwd": os.path.expanduser("~")},
+    )
+    workspace = result["workspace"]["workspace_id"]
+    pane = result["root_pane"]["pane_id"]
+    call("pane.send_input", {"pane_id": pane, "text": "exec hydra", "keys": ["Enter"]})
+    return workspace, True
+
+
+def await_session_tokens(pending: dict[str, str], timeout: float) -> list[str]:
+    """Block until each freshly launched pane reports its session token.
+
+    Without this the pass finishes while its panes are still starting, and
+    the NEXT pass -- a second keypress, or the next tick of a loop -- sees
+    those sessions as absent and opens duplicates.
+
+    An argv check is not enough on its own. A launched pane goes through two
+    blind windows, not one:
+
+      1. the shell has not yet exec'd hydra   -> argv is "/bin/sh", nothing to read
+      2. hydra is starting, before it reports -> argv has "--session X"
+
+    The argv guard closes (2). Only waiting closes (1), and waiting also
+    subsumes (2), so this is the load-bearing half. Returns the session ids
+    that never showed up, which are worth surfacing rather than hiding: a
+    launch that failed leaves a shell sitting in a tab.
+    """
+    deadline = time.time() + timeout
+    outstanding = dict(pending)
+    while outstanding and time.time() < deadline:
+        time.sleep(0.2)
+        for sid, pane_id in list(outstanding.items()):
+            try:
+                pane = call("pane.get", {"pane_id": pane_id})["pane"]
+            except Exception:
+                continue
+            if (pane.get("tokens") or {}).get("session"):
+                outstanding.pop(sid, None)
+    return list(outstanding)
+
+
 def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
     # No label: hydra renames the tab to the session title, but only while
     # it still owns the label. See the header.
@@ -282,7 +396,7 @@ def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
         "pane.send_input",
         {"pane_id": pane_id, "text": f"exec hydra tui --session {session_id}", "keys": ["Enter"]},
     )
-    return result["tab"]["tab_id"]
+    return pane_id
 
 
 def open_picker_tab(workspace: str) -> str:
@@ -303,12 +417,29 @@ def pin_first(workspace: str, tab_id: str) -> bool:
 
 
 def reconcile(args: argparse.Namespace) -> None:
-    workspace = args.workspace or os.environ.get("HERDR_ACTIVE_WORKSPACE_ID") or active_workspace()
+    fresh = False
+    if args.managed_workspace:
+        # Confine every tab we create to one workspace, so pressing the key
+        # from your own project workspace cannot fill it with sessions.
+        workspace, fresh = resolve_managed_workspace(args.managed_workspace, args.dry_run)
+        if workspace is None:
+            print(f"would create workspace {args.managed_workspace!r} with a picker tab")
+            return
+        if fresh:
+            print(f"created workspace {args.managed_workspace!r} with a picker tab")
+    else:
+        workspace = (
+            args.workspace or os.environ.get("HERDR_ACTIVE_WORKSPACE_ID") or active_workspace()
+        )
     if not workspace:
         print("no workspace", file=sys.stderr)
         return
 
     plan = build_plan(workspace, args)
+    if fresh:
+        # The root pane is becoming the picker, but its `hydra` process has
+        # not started yet, so the detection in build_plan cannot see it.
+        plan.make_picker = False
     tag = "would " if args.dry_run else ""
 
     if plan.make_picker:
@@ -316,10 +447,20 @@ def reconcile(args: argparse.Namespace) -> None:
         if not args.dry_run:
             plan.picker = open_picker_tab(workspace)
 
+    launched: dict[str, str] = {}
     for item in plan.create:
         print(f"{tag}open {item['sessionId'][-16:]}  {item['title'][:44]}")
         if not args.dry_run:
-            open_session_tab(workspace, item["sessionId"], item["cwd"])
+            launched[item["sessionId"]] = open_session_tab(
+                workspace, item["sessionId"], item["cwd"]
+            )
+
+    if launched:
+        # Polled together rather than one at a time, so opening five tabs
+        # costs one startup wait and not five.
+        stalled = await_session_tokens(launched, args.launch_timeout)
+        for sid in stalled:
+            print(f"  {sid[-16:]} did not report a session within {args.launch_timeout}s")
 
     for item in plan.close:
         print(f"{tag}close {item['sessionId'][-16:]}  {item['label']}")
@@ -368,12 +509,23 @@ def reconcile(args: argparse.Namespace) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mirror hydra warm sessions into herdr tabs.")
     ap.add_argument("--workspace", help="target workspace id (default: focused)")
+    ap.add_argument(
+        "--managed-workspace",
+        metavar="LABEL",
+        help="confine session tabs to the workspace with this label, creating it if absent",
+    )
     ap.add_argument("--interval", type=float, default=0, help="seconds between passes; 0 = run once")
     ap.add_argument("--dry-run", action="store_true", help="print decisions, change nothing")
     ap.add_argument("--ensure-picker", action="store_true", help="create a picker tab when none exists")
     ap.add_argument("--limit", type=int, default=8, help="max tabs to open per pass")
     ap.add_argument("--cwd", help="only sessions whose cwd starts with this path")
     ap.add_argument("--quiet", action="store_true", help="no toast on change")
+    ap.add_argument(
+        "--launch-timeout",
+        type=float,
+        default=10.0,
+        help="seconds to wait for a launched pane to report its session",
+    )
     ap.add_argument(
         "--close-cold",
         action="store_true",
