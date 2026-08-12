@@ -55,6 +55,30 @@ import time
 
 SOCKET_ENV = "HERDR_SOCKET_PATH"
 DEFAULT_SOCKET = "~/.config/herdr/herdr.sock"
+# herdr runs `type = "shell"` keybindings detached with stdin, stdout AND
+# stderr pointed at /dev/null, so a pass triggered by a keypress is
+# otherwise undiagnosable: it either worked or it did not, with no output
+# and no exit status anywhere. Everything printed also lands here.
+LOG_PATH = os.path.expanduser("~/.cache/hydra-session-tabs.log")
+LOG_MAX_BYTES = 256 * 1024
+
+
+def log(line: str) -> None:
+    try:
+        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+        if os.path.exists(LOG_PATH) and os.path.getsize(LOG_PATH) > LOG_MAX_BYTES:
+            os.replace(LOG_PATH, LOG_PATH + ".1")
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write(f"{stamp} [{os.getpid()}] {line}\n")
+    except Exception:
+        pass
+
+
+def say(line: str) -> None:
+    """Print for a human at a terminal, and log for a keypress."""
+    print(line)
+    log(line)
 
 
 def socket_path() -> str:
@@ -322,7 +346,9 @@ def iso_to_epoch(value: str | None) -> float:
         return 0.0
 
 
-def resolve_managed_workspace(label: str, dry_run: bool) -> tuple[str | None, bool]:
+def resolve_managed_workspace(
+    label: str, dry_run: bool
+) -> tuple[str | None, bool, str | None]:
     """Find, or create, the workspace this script is allowed to manage.
 
     Identification is by LABEL, not by a metadata marker: workspace tokens
@@ -337,9 +363,9 @@ def resolve_managed_workspace(label: str, dry_run: bool) -> tuple[str | None, bo
     """
     for w in call("workspace.list")["workspaces"]:
         if (w.get("label") or "") == label:
-            return w["workspace_id"], False
+            return w["workspace_id"], False, None
     if dry_run:
-        return None, True
+        return None, True, None
     result = call(
         "workspace.create",
         {"label": label, "focus": False, "cwd": os.path.expanduser("~")},
@@ -347,7 +373,10 @@ def resolve_managed_workspace(label: str, dry_run: bool) -> tuple[str | None, bo
     workspace = result["workspace"]["workspace_id"]
     pane = result["root_pane"]["pane_id"]
     call("pane.send_input", {"pane_id": pane, "text": "exec hydra", "keys": ["Enter"]})
-    return workspace, True
+    # Hand the tab id back. The picker detection in build_plan cannot find
+    # this pane yet -- its shell has not exec'd hydra -- so without this the
+    # pin and the focus have nothing to act on and quietly do nothing.
+    return workspace, True, result["tab"]["tab_id"]
 
 
 def await_session_tokens(pending: dict[str, str], timeout: float) -> list[str]:
@@ -418,21 +447,24 @@ def pin_first(workspace: str, tab_id: str) -> bool:
 
 def reconcile(args: argparse.Namespace) -> None:
     fresh = False
+    fresh_picker_tab: str | None = None
     if args.managed_workspace:
         # Confine every tab we create to one workspace, so pressing the key
         # from your own project workspace cannot fill it with sessions.
-        workspace, fresh = resolve_managed_workspace(args.managed_workspace, args.dry_run)
+        workspace, fresh, fresh_picker_tab = resolve_managed_workspace(
+            args.managed_workspace, args.dry_run
+        )
         if workspace is None:
-            print(f"would create workspace {args.managed_workspace!r} with a picker tab")
+            say(f"would create workspace {args.managed_workspace!r} with a picker tab")
             return
         if fresh:
-            print(f"created workspace {args.managed_workspace!r} with a picker tab")
+            say(f"created workspace {args.managed_workspace!r} with a picker tab")
     else:
         workspace = (
             args.workspace or os.environ.get("HERDR_ACTIVE_WORKSPACE_ID") or active_workspace()
         )
     if not workspace:
-        print("no workspace", file=sys.stderr)
+        say("no workspace", file=sys.stderr)
         return
 
     plan = build_plan(workspace, args)
@@ -440,16 +472,17 @@ def reconcile(args: argparse.Namespace) -> None:
         # The root pane is becoming the picker, but its `hydra` process has
         # not started yet, so the detection in build_plan cannot see it.
         plan.make_picker = False
+        plan.picker = fresh_picker_tab
     tag = "would " if args.dry_run else ""
 
     if plan.make_picker:
-        print(f"{tag}create picker tab")
+        say(f"{tag}create picker tab")
         if not args.dry_run:
             plan.picker = open_picker_tab(workspace)
 
     launched: dict[str, str] = {}
     for item in plan.create:
-        print(f"{tag}open {item['sessionId'][-16:]}  {item['title'][:44]}")
+        say(f"{tag}open {item['sessionId'][-16:]}  {item['title'][:44]}")
         if not args.dry_run:
             launched[item["sessionId"]] = open_session_tab(
                 workspace, item["sessionId"], item["cwd"]
@@ -460,32 +493,43 @@ def reconcile(args: argparse.Namespace) -> None:
         # costs one startup wait and not five.
         stalled = await_session_tokens(launched, args.launch_timeout)
         for sid in stalled:
-            print(f"  {sid[-16:]} did not report a session within {args.launch_timeout}s")
+            say(f"  {sid[-16:]} did not report a session within {args.launch_timeout}s")
 
     for item in plan.close:
-        print(f"{tag}close {item['sessionId'][-16:]}  {item['label']}")
+        say(f"{tag}close {item['sessionId'][-16:]}  {item['label']}")
         if not args.dry_run:
             try:
                 call("tab.close", {"tab_id": item["tab_id"]})
             except Exception as err:
-                print(f"  close failed: {err}", file=sys.stderr)
+                say(f"  close failed: {err}", file=sys.stderr)
 
     for k in plan.kept:
-        print(f"keep  {k}")
+        say(f"keep  {k}")
+
+    if args.focus_picker and plan.picker and not args.dry_run:
+        # tab.focus crosses workspaces (switch_workspace_tab), so this is the
+        # whole jump. Deliberately opt-in: a background loop stealing focus
+        # mid-keystroke would be hostile.
+        try:
+            call("tab.focus", {"tab_id": plan.picker})
+        except Exception as err:
+            say(f"  focus failed: {err}", file=sys.stderr)
+    elif args.focus_picker and args.dry_run and plan.picker:
+        say(f"would focus picker tab {plan.picker}")
 
     if plan.picker:
         if args.dry_run:
             tabs = [t["tab_id"] for t in call("tab.list")["tabs"] if t["workspace_id"] == workspace]
             if tabs and tabs[0] != plan.picker:
-                print(f"would pin picker tab {plan.picker} to position 1")
+                say(f"would pin picker tab {plan.picker} to position 1")
         elif pin_first(workspace, plan.picker):
-            print(f"pinned picker tab {plan.picker} to position 1")
+            say(f"pinned picker tab {plan.picker} to position 1")
 
     for s in plan.skipped:
-        print(f"skip {s}")
+        say(f"skip {s}")
 
     if not (plan.create or plan.close or plan.make_picker or plan.skipped):
-        print("converged")
+        say("converged")
 
     if args.dry_run or args.quiet:
         return
@@ -506,6 +550,53 @@ def reconcile(args: argparse.Namespace) -> None:
         )
 
 
+def focus_only(args: argparse.Namespace) -> int:
+    """Jump to the picker without reconciling anything.
+
+    Same detection as a full pass, minus every write: no workspace is
+    created, no tab opened or closed. Bound to its own key so "show me the
+    picker" costs nothing and cannot be surprising.
+    """
+    if args.managed_workspace:
+        workspace, fresh, fresh_tab = resolve_managed_workspace(args.managed_workspace, True)
+        if workspace is None:
+            say(f"no {args.managed_workspace!r} workspace yet -- press the sync key first")
+            return 1
+        _ = fresh, fresh_tab
+    else:
+        workspace = (
+            args.workspace or os.environ.get("HERDR_ACTIVE_WORKSPACE_ID") or active_workspace()
+        )
+    if not workspace:
+        say("no workspace")
+        return 1
+
+    for p in call("pane.list")["panes"]:
+        if p["workspace_id"] != workspace:
+            continue
+        if (p.get("tokens") or {}).get("session"):
+            continue
+        name, cmdline = foreground_process(p["pane_id"])
+        if name == "hydra" and not launching_session(cmdline):
+            call("tab.focus", {"tab_id": p["tab_id"]})
+            say(f"focused picker {p['tab_id']}")
+            return 0
+    # No picker: the usual reason is that the last one consumed itself.
+    # Picking a session attaches it IN the picker pane, so that tab becomes
+    # the session's tab and the picker is gone. "Jump to the picker" should
+    # still land you on one, so make it -- this is the only write here, and
+    # it adds nothing you did not ask for.
+    tab_id = open_picker_tab(workspace)
+    # Pin it exactly as a full sync pass would. A picker that lands wherever
+    # tab.create happened to put it means "the picker" is at position 1 some
+    # days and position 4 on others, which defeats the muscle memory the
+    # pinning exists to create.
+    pin_first(workspace, tab_id)
+    call("tab.focus", {"tab_id": tab_id})
+    say(f"no picker existed; created at position 1 and focused {tab_id}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Mirror hydra warm sessions into herdr tabs.")
     ap.add_argument("--workspace", help="target workspace id (default: focused)")
@@ -520,6 +611,16 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=8, help="max tabs to open per pass")
     ap.add_argument("--cwd", help="only sessions whose cwd starts with this path")
     ap.add_argument("--quiet", action="store_true", help="no toast on change")
+    ap.add_argument(
+        "--focus-picker",
+        action="store_true",
+        help="jump to the picker tab when the pass finishes",
+    )
+    ap.add_argument(
+        "--focus-only",
+        action="store_true",
+        help="just jump to the picker; reconcile nothing",
+    )
     ap.add_argument(
         "--launch-timeout",
         type=float,
@@ -538,9 +639,21 @@ def main() -> int:
         help="seconds a session must have been quiet before its tab may be closed",
     )
     args = ap.parse_args()
+    log(f"invoked: {' '.join(sys.argv[1:])}")
+
+    if args.focus_only:
+        try:
+            return focus_only(args)
+        except Exception as err:
+            log(f"focus-only failed: {err!r}")
+            raise
 
     if args.interval <= 0:
-        reconcile(args)
+        try:
+            reconcile(args)
+        except Exception as err:
+            log(f"pass failed: {err!r}")
+            raise
         return 0
 
     while True:
