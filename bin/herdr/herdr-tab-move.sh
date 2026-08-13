@@ -18,6 +18,20 @@
 # (move_tab returns false when source == target) while the API still
 # answers with a success payload.
 #
+# BOTH INDICES ARE WORKSPACE-RELATIVE, and `tab.list` is not: it returns
+# every tab on the server, across all workspaces, in one flat array. So the
+# position of a tab within that array is NOT the index tab.move wants, and
+# using it is wrong by however many tabs sit in the workspaces listed
+# before ours.
+#
+# This was the original bug here. With a tab at global index 3 but
+# workspace index 2, "left" computed insert_index = 2, which move_tab reads
+# as source == target and refuses; "right" computed 5, out of bounds for a
+# 4-tab workspace. Both failed invisibly -- one as a success payload that
+# did nothing, one as an error printed to a stdout the keybinding discards.
+# It only worked at all while the hydra workspace happened to be the first
+# one listed. Filter by workspace_id before computing anything.
+#
 # Neither direction wraps, matching tmux: at an end, this does nothing.
 
 set -u
@@ -67,15 +81,17 @@ except Exception as err:
 
 # HERDR_ACTIVE_TAB_ID is authoritative when present; the focused flag is
 # the fallback for invocations outside a keybinding.
-order = [t["tab_id"] for t in tabs]
-if tab_id in order:
-    idx = order.index(tab_id)
-else:
-    idx = next((i for i, t in enumerate(tabs) if t.get("focused")), -1)
-    if idx < 0:
-        print("herdr-tab-move: no active tab", file=sys.stderr)
-        sys.exit(1)
-    tab_id = order[idx]
+by_id = {t["tab_id"]: t for t in tabs}
+active = by_id.get(tab_id) or next((t for t in tabs if t.get("focused")), None)
+if active is None:
+    print("herdr-tab-move: no active tab", file=sys.stderr)
+    sys.exit(1)
+tab_id = active["tab_id"]
+
+# Only the tabs sharing this tab's workspace, in order. See the header:
+# tab.move indexes within a workspace, tab.list does not.
+order = [t["tab_id"] for t in tabs if t["workspace_id"] == active["workspace_id"]]
+idx = order.index(tab_id)
 
 if direction == "left":
     if idx == 0:
