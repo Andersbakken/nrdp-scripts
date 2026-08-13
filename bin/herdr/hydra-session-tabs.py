@@ -19,6 +19,12 @@ has no session token" means "this is the picker". That is also why the
 reconciler does not mistake a picker for a session tab and open a
 duplicate.
 
+Since hydra grew --terminal-host-launcher (see LAUNCHER below) the picker
+pane also STAYS a picker: choosing a session sends it to its own tab
+rather than attaching it in place. Before that, the picker was one Enter
+away from becoming a session tab, which is why --ensure-picker exists and
+why prefix+0 has to be able to build one.
+
 THREE THINGS THAT LOOK LIKE IMPROVEMENTS AND ARE NOT
 
 1. Do NOT pass --label to `tab create`. hydra renames the tab to the
@@ -61,6 +67,20 @@ DEFAULT_SOCKET = "~/.config/herdr/herdr.sock"
 # and no exit status anywhere. Everything printed also lands here.
 LOG_PATH = os.path.expanduser("~/.cache/hydra-session-tabs.log")
 LOG_MAX_BYTES = 256 * 1024
+
+# Every hydra this script launches runs in launcher mode.
+#
+# It is what makes the layout hold together from INSIDE hydra rather than
+# only from out here. Without it, ^p in a session tab re-points that tab at
+# a different session and the tab is then lying about its contents until the
+# next pass; and Enter in the picker attaches the picker pane, so position 1
+# stops being a picker. With it, picking a session anywhere reveals the tab
+# already showing it (or opens one) and leaves the current pane alone.
+#
+# hydra propagates the flag to any tab it opens itself, so this only has to
+# be set on the panes the script creates -- a tab opened with hydra's own ^t
+# inherits it.
+LAUNCHER = "--terminal-host-launcher"
 
 
 def log(line: str) -> None:
@@ -372,7 +392,10 @@ def resolve_managed_workspace(
     )
     workspace = result["workspace"]["workspace_id"]
     pane = result["root_pane"]["pane_id"]
-    call("pane.send_input", {"pane_id": pane, "text": "exec hydra", "keys": ["Enter"]})
+    call(
+        "pane.send_input",
+        {"pane_id": pane, "text": f"exec hydra {LAUNCHER}", "keys": ["Enter"]},
+    )
     # Hand the tab id back. The picker detection in build_plan cannot find
     # this pane yet -- its shell has not exec'd hydra -- so without this the
     # pin and the focus have nothing to act on and quietly do nothing.
@@ -411,6 +434,7 @@ def await_session_tokens(pending: dict[str, str], timeout: float) -> list[str]:
     return list(outstanding)
 
 
+
 def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
     # No label: hydra renames the tab to the session title, but only while
     # it still owns the label. See the header.
@@ -423,7 +447,11 @@ def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
     # shell that the next pass would read as "session not open".
     call(
         "pane.send_input",
-        {"pane_id": pane_id, "text": f"exec hydra tui --session {session_id}", "keys": ["Enter"]},
+        {
+            "pane_id": pane_id,
+            "text": f"exec hydra tui --session {session_id} {LAUNCHER}",
+            "keys": ["Enter"],
+        },
     )
     return pane_id
 
@@ -431,7 +459,10 @@ def open_session_tab(workspace: str, session_id: str, cwd: str | None) -> str:
 def open_picker_tab(workspace: str) -> str:
     result = call("tab.create", {"workspace_id": workspace, "focus": False})
     pane_id = result["root_pane"]["pane_id"]
-    call("pane.send_input", {"pane_id": pane_id, "text": "exec hydra", "keys": ["Enter"]})
+    call(
+        "pane.send_input",
+        {"pane_id": pane_id, "text": f"exec hydra {LAUNCHER}", "keys": ["Enter"]},
+    )
     return result["tab"]["tab_id"]
 
 
