@@ -1,0 +1,263 @@
+onboarding = false
+
+# ---------------------------------------------------------------------------
+# tmux parity layer
+#
+# Translated from ~/.tmux.conf. Two deliberate departures from tmux:
+#   - prefix is ctrl+h (tmux used ctrl+j)
+#   - tab bar sits along the top (tmux status line was at the bottom)
+# Everything else aims at the same keys and the same green/blue look.
+# ---------------------------------------------------------------------------
+
+[terminal]
+# tmux: bind c/-/\ all used -c "#{pane_current_path}"
+new_cwd = "follow"
+
+[advanced]
+# tmux: set -g history-limit 300000 (herdr counts bytes, not lines)
+scrollback_limit_bytes = 60000000
+
+[keys]
+prefix = "ctrl+h"
+
+# --- tabs (tmux windows) ---------------------------------------------------
+new_tab      = "prefix+c"
+close_tab    = "prefix+shift+x"                       # tmux: bind X
+rename_tab   = ["prefix+shift+a", "prefix+shift+t"]   # tmux: bind A
+# alt+arrows are the ONLY arrow family that reaches herdr here. ctrl+arrows
+# and ctrl+shift+arrows and shift+arrows are all bound in tmux's root table
+# (from .tmux.conf), and ctrl+alt+left/right belong to GNOME's
+# switch-to-workspace. The ctrl+arrow entries below are kept because they
+# work outside tmux, where they mirror tmux's own C-Left/C-Right.
+#
+# The horizontal/vertical split matches what your tmux did: left/right moves
+# between windows (tabs), up/down between panes.
+next_tab     = ["prefix+n", "prefix+space", "ctrl+right", "alt+right"]
+previous_tab = ["prefix+p", "ctrl+left", "alt+left"]
+# alt+1..9 is listed but currently DEAD: gnome-terminal binds <Alt>N to
+# switch-to-tab-N and consumes it before herdr sees anything, prefix mode
+# included. Kept because it costs nothing and goes live the moment those
+# accels are freed:
+#   for i in $(seq 1 9); do gsettings set \
+#     org.gnome.Terminal.Legacy.Keybindings:/org/gnome/terminal/legacy/keybindings/ \
+#     switch-to-tab-$i "'disabled'"; done
+# (Your tmux `bind -n M-1 select-window` was dead for the same reason.)
+switch_tab   = ["prefix+1..9", "alt+1..9"]
+# The numbers herdr draws beside agents are LIST POSITIONS, not tab
+# numbers -- the agent list spans workspaces, where tab numbers repeat and
+# agent-less tabs (the picker) have no row. They address focus_agent, which
+# is unset by default, so without this the panel shows shortcut numbers for
+# a shortcut that does not exist.
+#
+# shift rather than alt: alt+digit belongs to gnome-terminal, and shift+digit
+# is unclaimed by the terminal, GNOME, and herdr's own defaults.
+focus_agent  = "prefix+shift+1..9"
+# tmux: bind C-\ choose-window, bind ` display-panes
+goto         = ["prefix+g", "prefix+ctrl+backslash", "prefix+backtick", "alt+backtick"]
+
+# --- panes -----------------------------------------------------------------
+split_vertical   = "prefix+backslash"   # tmux: bind \  (side by side)
+split_horizontal = "prefix+minus"       # tmux: bind -  (stacked)
+close_pane       = "prefix+x"
+zoom             = ["prefix+z", "prefix+plus"]   # tmux: bind + (tmux-zoom.sh)
+
+# Pane movement is arrow chords, which is what your tmux actually used.
+# The prefix-space h/j/k/l that herdr defaults to are NOT free here: tmux
+# spent all four on other things (h logging, j send-prefix, k
+# clear-history, l nextl), so where a tmux habit wants one of those keys
+# it takes it. h -> last_pane, k -> clear-history, below.
+# prefix+arrows give all four directions a chord that actually arrives: the
+# prefix passes through tmux untouched, and tmux binds no bare arrows.
+focus_pane_left  = ["prefix+left", "ctrl+alt+left"]
+focus_pane_right = ["prefix+l", "prefix+right", "ctrl+alt+right"]
+focus_pane_up    = ["prefix+up", "alt+up", "ctrl+alt+up", "ctrl+up"]
+focus_pane_down  = ["prefix+j", "prefix+down", "alt+down", "ctrl+alt+down", "ctrl+down"]
+
+# tmux: bind -n S-<arrow> move-pane -t '.{<dir>-of}'
+swap_pane_left  = "shift+left"
+swap_pane_right = "shift+right"
+swap_pane_up    = "shift+up"
+swap_pane_down  = "shift+down"
+
+# tmux: bind-key C-j last-window. last_pane is MRU across tabs AND
+# workspaces, so for tab-hopping it behaves exactly like last-window
+# (upstream test: last_pane_tracks_tab_and_workspace_switches). The
+# difference is granularity: moving between panes inside one tab also
+# updates the target, so a pane hop costs you the tab-level toggle.
+# (prefix twice is reserved: it sends a literal ^H, i.e. tmux's send-prefix,
+# so ^h^h cannot be bound -- keybinds.rs rejects prefix+<the prefix combo>
+# whatever the prefix is. ^h h is the nearest reachable shape.)
+last_pane = ["prefix+h", "prefix+semicolon"]
+
+# tmux: all the -r resize binds — ( ) { } and C-S-<arrow>. herdr replaces
+# repeat-time with a sticky mode, so one key covers all eight.
+resize_mode = "prefix+r"
+
+copy_mode  = "prefix+["
+detach     = ["prefix+q", "prefix+d"]
+edit_scrollback = "prefix+e"             # tmux: bind e (emacsedit.sh)
+reload_config   = "prefix+shift+r"       # tmux: bind R
+
+# --- custom commands: things with no native action -------------------------
+
+# tmux: bind H run "~/bin/tmux/tmux-hardcopy.sh $HOME/.tmux.hardcopy"
+# The herdr port keeps the hydra-transcript branch; see the script header
+# for why it reads ~/.hydra-acp/tty/<pty> instead of @hydra_session.
+[[keys.command]]
+key = "prefix+shift+h"
+type = "shell"
+command = "$HOME/bin/herdr/herdr-hardcopy.sh $HOME/.tmux.hardcopy"
+description = "hardcopy pane to ~/.tmux.hardcopy"
+
+# tmux: bind E run-shell "~/bin/tmux/tmux-hardcopy.sh -e $HOME/.tmux.hardcopy"
+[[keys.command]]
+key = "prefix+shift+e"
+type = "shell"
+command = "$HOME/bin/herdr/herdr-hardcopy.sh -e $HOME/.tmux.hardcopy"
+description = "hardcopy pane and open in emacs"
+
+# No tmux ancestor: mirror hydra's warm sessions into tabs, picker first.
+# One pass per press rather than starting the loop -- a keybinding that
+# spawned a daemon would stack a new one on every press.
+[[keys.command]]
+key = "prefix+shift+s"
+type = "shell"
+command = "$HOME/bin/herdr/hydra-session-tabs.py --ensure-picker --managed-workspace hydra --focus-picker"
+description = "sync warm hydra sessions into tabs"
+
+# Jump to the picker, reconciling nothing. Still creates a picker if none
+# exists -- rarer than it used to be. The panes this script launches now run
+# hydra with --terminal-host-launcher, so choosing a session sends it to its
+# own tab instead of attaching it in the picker pane, and position 1 survives
+# being used. A missing picker now means the tab was closed, not consumed.
+#
+# prefix+0 rather than prefix+shift+p: shift+p is herdr's rename_pane, and a
+# user binding displaces a default SILENTLY -- config check says nothing.
+# 0 sits next to the 1..9 tab switches and the picker is tab 1 of this
+# workspace, so it reads as "back to the index".
+[[keys.command]]
+key = "prefix+0"
+type = "shell"
+command = "$HOME/bin/herdr/hydra-session-tabs.py --focus-only --managed-workspace hydra"
+description = "jump to the hydra picker"
+
+# tmux: bind -r < swap-window -d -t -1 / bind -r > ... +1
+# No native action and no CLI verb, but the socket API has tab.move.
+# Not repeatable the way tmux's -r was: press the prefix again each time.
+[[keys.command]]
+key = "prefix+<"
+type = "shell"
+command = "$HOME/bin/herdr/herdr-tab-move.sh left"
+description = "move tab left"
+
+[[keys.command]]
+key = "prefix+>"
+type = "shell"
+command = "$HOME/bin/herdr/herdr-tab-move.sh right"
+description = "move tab right"
+
+# tmux: bind k send-keys -R \; clear-history \; display-message "Cleared"
+# No native action, but the emulator honors CSI 3 J — the script drives it
+# through the pane's shell, and refuses when an agent TUI owns the pane.
+[[keys.command]]
+key = "prefix+k"
+type = "shell"
+command = "$HOME/bin/herdr/herdr-clear.sh"
+description = "clear screen and scrollback"
+
+# tmux: bind _ / bind | prompted split running a command. herdr has no
+# command-prompt, so this is a scratch shell in a popup instead.
+[[keys.command]]
+key = "prefix+_"
+type = "popup"
+command = "exec \"${SHELL:-sh}\""
+description = "scratch terminal"
+width = "80%"
+height = "80%"
+
+[ui]
+# "priority" re-sorts the Agent panel by attention, tie-broken by
+# last_agent_state_change_seq -- so any agent that changes state jumps to
+# the top of its group and the list reshuffles under you. "spaces" applies
+# no sort at all, leaving collection order: workspace, then tab, then pane.
+agent_panel_sort = "spaces"
+tab_bar_position = "top"
+# tmux never prompted on new-window. Unnamed herdr tabs show their index
+# rather than the foreground process -- there is no automatic-rename
+# equivalent -- but the prompt itself is gone.
+prompt_new_tab_name = false
+# tmux: set-option -g mouse on, and tmux-yank with @yank_selection primary
+mouse_capture = true
+copy_on_select = true
+# tmux: setw -g monitor-activity on
+[ui.toast]
+delivery = "herdr"
+
+# ---------------------------------------------------------------------------
+# Look: tmux status-style fg=black,bg=green with the current window on blue.
+#
+# "terminal" follows the host ANSI palette, which is what tmux's named
+# colors did. The overrides below map onto herdr's surfaces:
+#   panel_bg  -> the tab bar strip            (tmux status-style bg)
+#   surface0  -> inactive tabs, sidebar sel.  (tmux window-status)
+#   overlay0/1-> text on those                (tmux status-style fg=black)
+#   accent    -> active tab, focused border   (tmux window-status-current bg)
+# ---------------------------------------------------------------------------
+[theme]
+name = "terminal"
+auto_switch = false
+
+[theme.custom]
+panel_bg    = "green"
+surface0    = "green"
+# MUST differ from the terminal background. surface_dim is the background
+# herdr paints on the row you are currently looking at -- the focused agent
+# in the Agent panel, the active workspace in Spaces -- while every other
+# row draws with no background at all. Setting it to "reset" made those two
+# indistinguishable, which silently removed the "you are here" marker.
+surface_dim = "darkgray"
+# overlay1 is only ever drawn on a green surface (inactive tab labels on
+# the bar, the selected sidebar row), so black is safe and gives the tmux
+# status-line look.
+overlay1    = "black"
+# overlay0 is NOT safe as black: it doubles as the sidebar's dim secondary
+# text, which sits on surface_dim (terminal background), so black there is
+# invisible. Left light. The cost is low contrast for the two places it
+# lands on green -- auto-named tab labels and disabled scroll arrows --
+# both of which are DIM decoration anyway.
+overlay0    = "gray"
+accent      = "blue"
+green       = "green"
+blue        = "blue"
+red         = "red"
+yellow      = "yellow"
+
+# Agent sidebar rows.
+#
+# $-prefixed entries are metadata tokens reported over the socket API.
+# hydra reports kind / cwd / model / cost / queue for the session the pane is
+# currently viewing. Tokens that aren't present resolve to nothing and
+# their row is dropped, so non-hydra panes (real claude, codex, ...) just
+# show the built-in tokens — none of herdr's own integrations report
+# metadata tokens.
+#
+# `agent` reads "hydra" on a hydra pane — that's the runtime occupying
+# the pane. The backing agent (claude, codex, ...) is a property of the
+# session, so it rides along as $kind next to $model. hydra deliberately
+# does not set display_agent, which means `herdr agent rename` still works
+# on these panes.
+#
+# $cwd is the session's directory. hydra also reports it over OSC 7, so
+# herdr's own pane `cwd` tracks session switches too — but there is no
+# built-in `cwd` row token, so $cwd is the only way to render it here.
+#
+# Built-ins available here: state_icon, state_text, workspace, tab,
+# pane, agent, terminal_title, terminal_title_stripped. Note there is no
+# `title` token: hydra's session title reaches the row only via
+# terminal_title_stripped (hydra sets it as the OSC 2 window title).
+[ui.sidebar.agents]
+rows = [
+  ["state_icon", "$cwd", "terminal_title_stripped"],
+  ["agent", "$kind", "$model"],
+  ["$cost", "$queue"],
+]
