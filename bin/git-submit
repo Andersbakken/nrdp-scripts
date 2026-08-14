@@ -55,10 +55,13 @@ SUBMIT OPTIONS:
 
 COMMIT ARGUMENTS:
     Commits may be given as hashes, revisions, ranges (HASH1..HASH2), or as
-    negative indices into the list of pending commits (those shown by
-    'git-submit changes'): -1 is the last (newest) pending commit, -2 the one
-    before it, and so on. Indices are resolved at run time, so they keep
-    working after amending a commit changes its sha.
+    indices into the list of pending commits (those shown by
+    'git-submit changes'):
+      1, 2, 3 ...    count from the first (oldest) pending commit
+      -1, -2, -3 ... count back from the last (newest) pending commit
+    Indices are resolved at run time, so they keep working after amending a
+    commit changes its sha. A plain number that resolves to a real commit or
+    ref is treated as that commit rather than as an index.
 
 EXAMPLES:
     # Set tracking branch
@@ -90,6 +93,9 @@ EXAMPLES:
 
     # Submit the second to last and last pending commits, in that order
     git-submit -2 -1
+
+    # Submit the first three pending commits, in that order
+    git-submit 1 2 3
 
 CONFIGURATION:
     submit.reset           Default reset behavior (default: true)
@@ -338,19 +344,29 @@ else
         RESOLVED_CHANGES=""
         PENDING_CHANGES=()
         pending_change() {
+            # 1 is the first (oldest) pending commit, 2 the next one, etc.
             # -1 is the last (newest) pending commit, -2 the one before it, etc.
             local index="${1#-}"
+            local count
             if [ "${#PENDING_CHANGES[@]}" = "0" ]; then
                 PENDING_CHANGES=(`git cherry "$TRACKING" | grep '^+ ' | awk '{print $2}'`)
             fi
-            if [ "$index" = "0" ] || [ "$index" -gt "${#PENDING_CHANGES[@]}" ]; then
-                echo "git-submit: No such pending commit '$1' (${#PENDING_CHANGES[@]} pending vs ${TRACKING})" >&2
+            count="${#PENDING_CHANGES[@]}"
+            if [ "$index" = "0" ] || [ "$index" -gt "$count" ]; then
+                echo "git-submit: No such pending commit '$1' ($count pending vs ${TRACKING})" >&2
                 return 1
             fi
-            echo "${PENDING_CHANGES[$((${#PENDING_CHANGES[@]} - index))]}"
+            if [ "$1" = "$index" ]; then
+                echo "${PENDING_CHANGES[$((index - 1))]}"
+            else
+                echo "${PENDING_CHANGES[$((count - index))]}"
+            fi
         }
         for change in $IN_CHANGES; do
             if [[ "$change" =~ ^-[0-9]+$ ]]; then
+                SHA1=$(pending_change "$change") || exit 1
+                RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+            elif [[ "$change" =~ ^[0-9]+$ ]] && ! git rev-parse --verify --quiet "${change}^{commit}" >/dev/null 2>&1; then
                 SHA1=$(pending_change "$change") || exit 1
                 RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
             elif echo "$change" | grep -q '\.\.'; then
