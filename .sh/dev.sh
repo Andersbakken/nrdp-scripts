@@ -213,3 +213,17 @@ clean-platform-cpp ()
 {
     find . -name "*Platform*Class.cpp" -exec rm "{}" \;
 }
+
+gh ()
+{
+    remote=$(git remote get-url origin 2>/dev/null)
+    case "$remote" in
+        *git.netflix.net*)
+            repo=$(echo "$remote" | sed -E 's,\.git$,,' | grep -oE '[^/]+/[^/]+$')
+            GH_HOST=github.netflix.net command gh -R "$repo" "$@"
+            ;;
+        *)
+            command gh "$@"
+            ;;
+    esac
+}
