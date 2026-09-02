@@ -5,6 +5,7 @@ EMACSWAIT=yes
 EMACSOPTS=""
 CONFIRM=no
 MODE=edit
+QUIET=yes
 FILE="$EMACSCLIENT_DEFAULT"
 LINE=0
 COL=
@@ -29,6 +30,7 @@ while [ "$#" -gt 0 ]; do
         --no-create-file) NO_CREATE_FILE=1 ;;
         -n) EMACSWAIT=no ;;
         -q) TEST=exists ;;
+        --no-quiet) QUIET= ;;
         --daemon|-d) EMACSDAEMON="yes" ;;
         -w) EMACSWINDOW=yes ;;
         -nw) unset DISPLAY; EMACSWINDOW=no ;;
@@ -39,12 +41,24 @@ while [ "$#" -gt 0 ]; do
                          echo "  -e    Treat file as elisp and evaluate it"
                          exit 0
                          ;;
-        +*) LINE=$(expr `echo $1 | sed 's,^+,,'` - 5)  ;;
+
+        +*)
+            if echo $1 | grep -q '^[+][0-9]\+$'; then
+                LINE=$(expr `echo $1 | sed 's,^+,,'` + 0)
+            elif echo $1 | grep -q '^[+][0-9]\+:[0-9]\+$'; then
+                LINE=$(expr `echo $1 | sed 's,^+,,' | cut -d: -f1` + 0)
+                COL=$(expr `echo $1 | sed 's,^+,,' | cut -d: -f2` + 0)
+            else
+                echo "Unknown option: $1"
+                exit 1
+            fi
+            ;;
         -*) EMACSOPTS="$EMACSOPTS $1" ;;
         *)  FILE="$1" ;;
     esac
     shift
 done
+
 [ -z "$FILE" ] && [ "$MODE" = "make" ] && FILE="$PWD"
 
 if [ -z "$EMACS" ]; then
@@ -56,6 +70,9 @@ if [ -z "$EMACS" ]; then
         EMACS="emacsclient"
         [ -z "$EMACSWINDOW" ] && [ "$EMACSWAIT" = "yes" ] && EMACSWINDOW=no
     fi
+
+    [ -n "$QUIET" ] && EMACS="$EMACS --quiet"
+
     if [ -n "$EMACS" ]; then
         if [ "$EMACSDAEMON" = "yes" ]; then
             EMACS="$EMACS -a \"\""
@@ -69,9 +86,9 @@ if [ -z "$EMACS" ]; then
         echo "No emacs client available!"
         return
     fi
-else
-    EMACS="$EMACS $EMACSOPTS"
 fi
+
+EMACS="$EMACS $EMACSOPTS"
 
 runemacs() {
     local MODE="$1"
@@ -128,7 +145,7 @@ runemacs() {
 }
 
 if [ "$MODE" != "eval" ]; then
-    [ "$EMACSWAIT" = "no" ] && runemacs eval "(raise-frame)"
+    [ "$EMACSWAIT" = "no" ] && runemacs eval "(raise-frame)" &>/dev/null
     [ -n "$RAISE_EMACS" ] && eval "$RAISE_EMACS"
 fi
 if [ "$EMACSWAIT" = "yes" ] || [ -n "$FILE" ]; then
