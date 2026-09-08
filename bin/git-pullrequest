@@ -112,14 +112,20 @@ EXAMPLES:
 CONFIGURATION:
     pullrequest.prefix      Branch prefix (default: pr/<username>)
     pullrequest.repo        Repository name
-    pullrequest.scm         SCM type: github or stash
+    pullrequest.scm         SCM type: gh, github, or stash
     pullrequest.automergeMethod  Auto-merge method: MERGE (default), REBASE, SQUASH
+
+GITHUB BACKENDS:
+    gh                     Public GitHub via the authenticated GitHub CLI
+                           (run: gh auth login --hostname github.com)
+    github                 Netflix corp GitHub via Metatron certificates
+    stash                  Netflix Stash
 
 HOW IT WORKS:
     1. git-pullrequest calls git-submit to push commits to a PR branch
     2. git-submit triggers the post-submit hook after pushing
     3. post-submit hook calls git-pullrequest create to make the actual PR
-    4. PR is created via GitHub/Stash API
+    4. PR is created by the selected SCM backend
     5. If branch has 'auto/' prefix, auto-merge is enabled
 
 NOTES:
@@ -193,8 +199,8 @@ PULL_REQUEST_REPO=`git config pullrequest.repo`
 PULL_SCM=`git config pullrequest.scm | cut -d@ -f1`
 PULL_ORIGIN=`git remote get-url origin 2>/dev/null`
 if [ -z "$PULL_SCM" ]; then
-    if echo "${PULL_ORIGIN}" | grep -q github; then
-        PULL_SCM="github"
+    if echo "${PULL_ORIGIN}" | grep -q 'github\.com'; then
+        PULL_SCM="gh"
     elif echo "${PULL_ORIGIN}" | grep -q stash; then
         PULL_SCM="stash"
     else
@@ -217,19 +223,18 @@ if [ "$PULL_SCM" = "stash" ]; then
 else
     PULL_REQUEST_GITHUB_OWNER=`echo $PULL_REQUEST_REPO | cut -d/ -f1`
     PULL_REQUEST_REPO=`echo $PULL_REQUEST_REPO | cut -d/ -f2`
-    if [ "${PULL_REQUEST_GITHUB_OWNER}" = "corp" ]; then
+    PULL_REQUEST_GITHUB_REPO="${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}"
+    if [ "$PULL_SCM" = "gh" ]; then
+        if ! command -v gh >/dev/null 2>&1; then
+            echo "git-pullrequest: gh is required; install it and run 'gh auth login --hostname github.com'" >&2
+            exit 1
+        fi
+    else
         runcurl() {
             REQ="$1"
             shift
             #echo curl -k --key ~/.metatron/certificates/client.key --cert ~/.metatron/certificates/client.crt "$@" "https://git.netflix.net/api${REQ}" >&2
             curl --silent -k --key ~/.metatron/certificates/client.key --cert ~/.metatron/certificates/client.crt "$@" "https://git.netflix.net/api${REQ}"
-        }
-    else
-        runcurl() {
-            REQ="$1"
-            shift
-            #echo curl "$@" "https://github.com/api/${REQ}" >&2
-            curl --silent "$@" "https://github.com/api/${REQ}"
         }
     fi
 fi
@@ -266,6 +271,50 @@ if [ "$MODE" = "create" ]; then
     fi
     if [ "$PULL_SCM" = "stash" ]; then
         $SCRIPT_DIR/nrdp-service/cli.js --mode stash.pr.create --username "${PULL_REQUEST_USER}" --description "${PR_DESCRIPTION}" --reviewers "${PR_REVIEWERS}" --from "${PR_FROM_BRANCH}" --to "${PR_TO_BRANCH}" --repo "${PULL_REQUEST_REPO}" --project "${PULL_REQUEST_STASH_PROJECT}"
+    elif [ "$PULL_SCM" = "gh" ]; then
+        GH_PR_ARGS=(
+            --repo "$PULL_REQUEST_GITHUB_REPO"
+            --head "$PR_FROM_BRANCH"
+            --base "$PR_TO_BRANCH"
+            --title "${PULL_REQUEST_REPO}: ${PR_FROM_BRANCH}->${PR_TO_BRANCH}"
+            --body "$PR_DESCRIPTION"
+        )
+        for REVIEWER in $PR_REVIEWERS; do
+            GH_PR_ARGS+=(--reviewer "$REVIEWER")
+        done
+
+        # Reuse an existing open PR when this branch has already been submitted.
+        GH_PR_URL=$(gh pr list \
+            --repo "$PULL_REQUEST_GITHUB_REPO" \
+            --head "$PR_FROM_BRANCH" \
+            --base "$PR_TO_BRANCH" \
+            --state open \
+            --json url \
+            --jq '.[0].url' 2>/dev/null)
+        if [ -z "$GH_PR_URL" ]; then
+            if ! GH_CREATE_OUTPUT=$(gh pr create "${GH_PR_ARGS[@]}"); then
+                exit 1
+            fi
+            GH_PR_URL=$(printf '%s\n' "$GH_CREATE_OUTPUT" | tail -1)
+        fi
+
+        echo "PullRequest: ${GH_PR_URL}"
+        if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
+            MERGE_METHOD=`git config pullrequest.automergeMethod`
+            [ -z "$MERGE_METHOD" ] && MERGE_METHOD="MERGE"
+            case "$MERGE_METHOD" in
+                MERGE|merge) GH_MERGE_FLAG="--merge" ;;
+                REBASE|rebase) GH_MERGE_FLAG="--rebase" ;;
+                SQUASH|squash) GH_MERGE_FLAG="--squash" ;;
+                *)
+                    echo "AutoMergeError: unknown merge method '${MERGE_METHOD}'" >&2
+                    GH_MERGE_FLAG=""
+                    ;;
+            esac
+            if [ -n "$GH_MERGE_FLAG" ] && ! GH_MERGE_ERROR=$(gh pr merge "$GH_PR_URL" --repo "$PULL_REQUEST_GITHUB_REPO" --auto "$GH_MERGE_FLAG" 2>&1); then
+                echo "AutoMergeError: ${GH_MERGE_ERROR}" >&2
+            fi
+        fi
     else
         PR_DIR=`mktemp -d /tmp/pr-XXXXXX`
         cat >>"${PR_DIR}/in.json" <<EOF
@@ -328,6 +377,13 @@ elif [ "$MODE" = "show" ]; then
     if [ "$PULL_SCM" = "stash" ]; then
         echo "Need to implement ${PULL_SCM}" >&2
         exit 1
+    elif [ "$PULL_SCM" = "gh" ]; then
+        GH_SHOW_OUTPUT=$(gh api --hostname github.com "repos/${PULL_REQUEST_GITHUB_REPO}/commits/${1}/pulls" --jq '.[] | "\(.number)[\(.state)] \(.html_url)"') || exit 1
+        if [ -z "$GH_SHOW_OUTPUT" ]; then
+            echo "No pull requests found for commit $1"
+        else
+            echo "$GH_SHOW_OUTPUT"
+        fi
     else
         runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/commits/${1}/pulls" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
         PRS=$(jq -r '. | length' "${PR_DIR}/pr.json" 2>/dev/null)
@@ -354,6 +410,9 @@ elif [ "$MODE" = "issues" ]; then
             ISSUE_URL=$(jq -r ".[$i].url" "$ISSUES_FILE")
             echo "${ISSUE} ($ISSUE_URL)"
         done
+    elif [ "$PULL_SCM" = "gh" ]; then
+        echo "git-pullrequest: linked issues are only supported by the stash backend" >&2
+        exit 1
     else
         runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pulls/${PR}" -H "Accept: application/vnd.github+json" -X GET >"${PR_DIR}/pr.json"
     fi
@@ -362,6 +421,7 @@ elif [ "$MODE" = "list" ]; then
     PR_MAX=5
     PR_STATE=
     PR_AUTHOR=`whoami`
+    [ "$PULL_SCM" = "gh" ] && PR_AUTHOR="@me"
     while [ "$#" -ge 1 ]; do
         if [ "$1" = "-a" ]; then
             PR_AUTHOR=""
@@ -405,6 +465,11 @@ elif [ "$MODE" = "list" ]; then
                 echo
             fi
         done
+    elif [ "$PULL_SCM" = "gh" ]; then
+        GH_LIST_ARGS=(--repo "$PULL_REQUEST_GITHUB_REPO" --limit "$PR_MAX")
+        [ -n "$PR_STATE" ] && GH_LIST_ARGS+=(--state "$(echo "$PR_STATE" | tr '[:upper:]' '[:lower:]')")
+        [ -n "$PR_AUTHOR" ] && GH_LIST_ARGS+=(--author "$PR_AUTHOR")
+        gh pr list "${GH_LIST_ARGS[@]}"
     else
         echo "Need to implement ${PULL_SCM}" >&2
         exit 1
