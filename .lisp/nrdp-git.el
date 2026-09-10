@@ -976,7 +976,7 @@ Create a project at https://genai.netflix.net/projects, then \
         (make-llm-claude
          :key (or (auth-source-pick-first-password :host "api.anthropic.com")
                   "sk-placeholder")
-         :chat-model "claude-opus-4-5-20251101"))
+         :chat-model "claude-opus-5"))
 
   (magit-gptcommit-mode 1)
   (magit-gptcommit-status-buffer-setup)
