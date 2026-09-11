@@ -15,7 +15,7 @@ if echo "$2" | grep -q "/"; then
             PR_NAME=""
             PR_REVIEWER=""
             PR_DESCRIPTION=""
-            if [ `git config pullrequest.describe` != "false" ]; then
+            if [ "$(git config pullrequest.describe)" != "false" ]; then
                 PR_DESCRIPTION=$(git log --pretty=format:%s --no-merges --reverse "$1..$BRANCH")
             fi
             COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
