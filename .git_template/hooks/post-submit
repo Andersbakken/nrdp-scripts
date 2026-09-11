@@ -5,7 +5,6 @@ if [ -n "$GIT_POST_SUBMIT_FLAGS" ]; then
     SUBMIT_FLAGS="$GIT_POST_SUBMIT_FLAGS"
 fi
 if echo "$2" | grep -q "/"; then
-    JIRA="yes"
     ORIGIN=`echo $2 | cut -d/ -f1`
     BRANCH=$(echo $2 | cut -d/ -f2-)
 
@@ -16,7 +15,9 @@ if echo "$2" | grep -q "/"; then
             PR_NAME=""
             PR_REVIEWER=""
             PR_DESCRIPTION=""
-            PR_DESCRIPTION=$(git log --pretty=format:%s --no-merges --reverse "$1..$BRANCH")
+            if [ `git config pullrequest.describe` != "false" ]; then
+                PR_DESCRIPTION=$(git log --pretty=format:%s --no-merges --reverse "$1..$BRANCH")
+            fi
             COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
             for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
@@ -40,7 +41,6 @@ if echo "$2" | grep -q "/"; then
             PR_DEST=$(echo $3 | cut -d/ -f2-)
             git push -f ${TRACKING_ORIGIN} "${BRANCH}:${PR_SOURCE}"
             git pullrequest create --description "$PR_DESCRIPTION" --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
-            JIRA="no"
         elif [ "$ORIGIN" = "$TRACKING_ORIGIN" ]; then
             PR_SOURCE="$BRANCH"
             PR_DEST=$(echo $3 | cut -d/ -f2-)
@@ -51,12 +51,6 @@ if echo "$2" | grep -q "/"; then
             done
 
             git pullrequest create --reviewer "$PR_REVIEWER" "${PR_SOURCE}" "${PR_DEST}"
-            JIRA="no"
         fi
-    fi
-
-    if [ "$JIRA" = "yes" ]; then #jira
-        REMOTE=`git remote -v show $ORIGIN | grep '^ *Push *URL: \(.*\)$' | awk '{print $3}'`
-        echo "$REMOTE" | grep -q "ssh://git@stash.corp.netflix.com:7999/" && git jira --comment $SUBMIT_FLAGS "$1..$2"
     fi
 fi
