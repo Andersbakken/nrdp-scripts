@@ -110,10 +110,12 @@ EXAMPLES:
     git-pullrequest branch delete my-feature
 
 CONFIGURATION:
-    pullrequest.prefix      Branch prefix (default: pr/<username>)
-    pullrequest.repo        Repository name
-    pullrequest.scm         SCM type: gh, github, or stash
-    pullrequest.automergeMethod  Auto-merge method: MERGE (default), REBASE, SQUASH
+    pullrequest.prefix           Branch prefix (default: pr/<username>)
+    pullrequest.repo             Repository name
+    pullrequest.scm              SCM type: gh, github, or stash
+    pullrequest.automergeMethod  Auto-merge method: MERGE, REBASE, or SQUASH.
+                                 If unset, selects the first enabled repository method
+                                 in MERGE, REBASE, SQUASH order.
 
 GITHUB BACKENDS:
     gh                     Public GitHub via the authenticated GitHub CLI
@@ -239,6 +241,34 @@ else
     fi
 fi
 
+automerge_method() {
+    MERGE_METHOD=$(git config pullrequest.automergeMethod)
+    if [ -n "$MERGE_METHOD" ]; then
+        printf '%s\n' "$MERGE_METHOD"
+        return
+    fi
+
+    if [ "$PULL_SCM" = "gh" ]; then
+        if ! REPOSITORY_SETTINGS=$(gh api --repo "$PULL_REQUEST_GITHUB_REPO" "repos/$PULL_REQUEST_GITHUB_REPO"); then
+            echo "AutoMergeError: could not determine repository merge methods" >&2
+            return 1
+        fi
+    else
+        REPOSITORY_SETTINGS=$(runcurl "/v3/repos/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}")
+    fi
+
+    if echo "$REPOSITORY_SETTINGS" | jq -e '.allow_merge_commit == true' >/dev/null; then
+        printf '%s\n' "MERGE"
+    elif echo "$REPOSITORY_SETTINGS" | jq -e '.allow_rebase_merge == true' >/dev/null; then
+        printf '%s\n' "REBASE"
+    elif echo "$REPOSITORY_SETTINGS" | jq -e '.allow_squash_merge == true' >/dev/null; then
+        printf '%s\n' "SQUASH"
+    else
+        echo "AutoMergeError: repository has no enabled merge method" >&2
+        return 1
+    fi
+}
+
 if [ "$MODE" = "create" ]; then
     PR_FROM_BRANCH=
     PR_TO_BRANCH=
@@ -300,19 +330,19 @@ if [ "$MODE" = "create" ]; then
 
         echo "PullRequest: ${GH_PR_URL}"
         if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
-            MERGE_METHOD=`git config pullrequest.automergeMethod`
-            [ -z "$MERGE_METHOD" ] && MERGE_METHOD="MERGE"
-            case "$MERGE_METHOD" in
-                MERGE|merge) GH_MERGE_FLAG="--merge" ;;
-                REBASE|rebase) GH_MERGE_FLAG="--rebase" ;;
-                SQUASH|squash) GH_MERGE_FLAG="--squash" ;;
-                *)
-                    echo "AutoMergeError: unknown merge method '${MERGE_METHOD}'" >&2
-                    GH_MERGE_FLAG=""
-                    ;;
-            esac
-            if [ -n "$GH_MERGE_FLAG" ] && ! GH_MERGE_ERROR=$(gh pr merge "$GH_PR_URL" --repo "$PULL_REQUEST_GITHUB_REPO" --auto "$GH_MERGE_FLAG" 2>&1); then
-                echo "AutoMergeError: ${GH_MERGE_ERROR}" >&2
+            if MERGE_METHOD=$(automerge_method); then
+                case "$MERGE_METHOD" in
+                    MERGE|merge) GH_MERGE_FLAG="--merge" ;;
+                    REBASE|rebase) GH_MERGE_FLAG="--rebase" ;;
+                    SQUASH|squash) GH_MERGE_FLAG="--squash" ;;
+                    *)
+                        echo "AutoMergeError: unknown merge method '${MERGE_METHOD}'" >&2
+                        GH_MERGE_FLAG=""
+                        ;;
+                esac
+                if [ -n "$GH_MERGE_FLAG" ] && ! GH_MERGE_ERROR=$(gh pr merge "$GH_PR_URL" --repo "$PULL_REQUEST_GITHUB_REPO" --auto "$GH_MERGE_FLAG" 2>&1); then
+                    echo "AutoMergeError: ${GH_MERGE_ERROR}" >&2
+                fi
             fi
         fi
     else
@@ -345,12 +375,12 @@ EOF
         if [ -n "$PR_NODE" ]; then
             echo "PullRequest: https://github.netflix.net/${PULL_REQUEST_GITHUB_OWNER}/${PULL_REQUEST_REPO}/pull/${PR} (${PR_NODE})"
             if echo "${PR_FROM_BRANCH}" | grep -q "${PULL_REQUEST_PREFIX}/${PULL_REQUEST_AUTO_PREFIX}"; then
-                MERGE_METHOD=`git config pullrequest.automergeMethod`
-                [ -z "$MERGE_METHOD" ] && MERGE_METHOD="MERGE"
-                AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: ${MERGE_METHOD}}) {clientMutationId}}\" }"
-                runcurl "/graphql" -d "${AUTO_QUERY}" -H "Content-Type: application/json" -X POST >"${PR_DIR}/automerge.json"
-                ERROR=$(jq -r '.errors[0].message' "${PR_DIR}/automerge.json")
-                [ "$ERROR" != "null" ] && echo "AutoMergeError: ${ERROR}"
+                if MERGE_METHOD=$(automerge_method); then
+                    AUTO_QUERY="{ \"query\": \"mutation {enablePullRequestAutoMerge(input: {pullRequestId: \\\"${PR_NODE}\\\", mergeMethod: ${MERGE_METHOD}}) {clientMutationId}}\" }"
+                    runcurl "/graphql" -d "${AUTO_QUERY}" -H "Content-Type: application/json" -X POST >"${PR_DIR}/automerge.json"
+                    ERROR=$(jq -r '.errors[0].message' "${PR_DIR}/automerge.json")
+                    [ "$ERROR" != "null" ] && echo "AutoMergeError: ${ERROR}"
+                fi
             fi
         fi
         rm -rf "${PR_DIR}"
