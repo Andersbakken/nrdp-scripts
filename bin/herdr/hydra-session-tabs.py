@@ -151,19 +151,48 @@ def hydra_sessions() -> list[dict]:
 
 
 def foreground_process(pane_id: str) -> tuple[str, str]:
-    """(name, cmdline) of the pane's foreground process, or ("", "")."""
+    """(name, arg) of the pane's foreground process, or ("", "").
+
+    herdr reads the process table, and macOS and Linux do not give it the
+    same fields. On Linux /proc/<pid>/cmdline is world-readable, so a pipe
+    to `hydra-acp` shows up as name "hydra" with its full cmdline. On macOS
+    that argv is withheld from other users' read (and a node shebang's comm
+    name is "node", never the script), so `name` is "node" and `cmdline` is
+    absent. The one field both platforms fill is `argv0`, herdr's
+    reconstruction of the launch string — for a hydra pane it reads
+    `hydra --terminal-host-launcher` (picker) or `hydra tui ...` (a session
+    viewer). Prefer it, fall back to the Linux cmdline.
+    """
     try:
         info = call("pane.process_info", {"pane_id": pane_id})
         procs = info["process_info"]["foreground_processes"]
         if not procs:
             return "", ""
-        return procs[0].get("name") or "", procs[0].get("cmdline") or ""
+        first = procs[0]
+        name = first.get("name") or ""
+        arg = first.get("argv0") or first.get("cmdline") or ""
+        return name, arg
     except Exception:
         return "", ""
 
 
-def launching_session(cmdline: str) -> str | None:
-    """The session id a pane was LAUNCHED for, from its argv.
+def is_hydra_process(name: str, arg: str) -> bool:
+    """Whether a tokenless pane is running hydra at all."""
+    return bool(name == "hydra" or "hydra" in arg)
+
+
+def is_picker_process(name: str, arg: str) -> bool:
+    """A hydra pane that is not launching a session viewer is the picker.
+
+    Every viewer the script opens runs as `hydra tui ...` (with or without
+    --session / --new), so the `tui` verb is the whole distinction: a pane
+    with no session token yet is an in-flight viewer, not a picker.
+    """
+    return is_hydra_process(name, arg) and "tui" not in arg
+
+
+def launching_session(arg: str) -> str | None:
+    """The session id a pane was LAUNCHED for, from its launch string.
 
     Deliberately argv, which is the wrong source for "which session is this
     pane showing" -- the TUI switches sessions in place and argv never
@@ -172,7 +201,7 @@ def launching_session(cmdline: str) -> str | None:
     `session` token; without this a second pass inside that window sees the
     session as absent and opens a duplicate tab.
     """
-    parts = cmdline.split()
+    parts = arg.split()
     for i, part in enumerate(parts):
         if part == "--session" and i + 1 < len(parts):
             return parts[i + 1]
@@ -257,14 +286,20 @@ def build_plan(workspace: str, args: argparse.Namespace) -> Plan:
     # A hydra pane with no session token is either a picker or a launch in
     # flight. Check the process rather than the agent field: a suspended pane
     # has released its agent, so `agent` is null for exactly these panes.
+    #
+    # Detection has to survive macOS, where herdr's process_info cannot read
+    # a pane's argv: `name` is "node" and `cmdline` is missing for every
+    # hydra TUI. argv0 carries the launch string, which is enough to tell a
+    # picker (`hydra --terminal-host-launcher`) from a viewer mid-startup
+    # (`hydra tui --session ...`).
     for p in tokenless:
-        name, cmdline = foreground_process(p["pane_id"])
-        if name != "hydra":
+        name, arg = foreground_process(p["pane_id"])
+        if not is_hydra_process(name, arg):
             continue
-        pending = launching_session(cmdline)
+        pending = launching_session(arg)
         if pending:
             onscreen.add(pending)
-        elif plan.picker is None and p["pane_id"] in picker_ws:
+        elif is_picker_process(name, arg) and plan.picker is None and p["pane_id"] in picker_ws:
             plan.picker = p["tab_id"]
     if plan.picker is None and args.ensure_picker:
         plan.make_picker = True
@@ -607,8 +642,8 @@ def focus_only(args: argparse.Namespace) -> int:
             continue
         if (p.get("tokens") or {}).get("session"):
             continue
-        name, cmdline = foreground_process(p["pane_id"])
-        if name == "hydra" and not launching_session(cmdline):
+        name, arg = foreground_process(p["pane_id"])
+        if is_picker_process(name, arg):
             call("tab.focus", {"tab_id": p["tab_id"]})
             say(f"focused picker {p['tab_id']}")
             return 0
