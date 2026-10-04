@@ -19,9 +19,9 @@ remote=$(git remote get-url origin 2>/dev/null)
 case "$remote" in
   *git.netflix.net*)
     repo=$(echo "$remote" | sed -E 's#\.git$##' | grep -oE '[^/]+/[^/]+$')
-    GH_HOST=github.netflix.net gh pr list -R "$repo" --author "@me" --json number,title,url 2>/dev/null | jq -r --arg me "$me" "$jq_filter"
+    GH_HOST=github.netflix.net GH_PROMPT_DISABLED=1 NFLX_GIT_DISABLE_GHCREDS_GCM=1 gh pr list -R "$repo" --author "@me" --json number,title,url 2>/dev/null | jq -r --arg me "$me" "$jq_filter"
     ;;
   *)
-    gh pr list --author "@me" --json number,title,url 2>/dev/null | jq -r --arg me "$me" "$jq_filter"
+    GH_PROMPT_DISABLED=1 NFLX_GIT_DISABLE_GHCREDS_GCM=1 gh pr list --author "@me" --json number,title,url 2>/dev/null | jq -r --arg me "$me" "$jq_filter"
     ;;
 esac
