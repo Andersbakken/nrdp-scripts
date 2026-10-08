@@ -4,6 +4,31 @@
 
 (require 'desktop)
 
+(defvar desktop-aids-max-buffers nil
+  "Maximum number of most-recently-used buffers to save, or nil for no limit.")
+(defvar desktop-aids--saved-buffer-count 0)
+(defvar desktop-aids--original-save-buffer-filter nil)
+
+(defun desktop-aids-save-buffer-p (filename buffer-name mode rest)
+  (when (or (null desktop-aids-max-buffers)
+            (and (integerp desktop-aids-max-buffers)
+                 (< desktop-aids--saved-buffer-count desktop-aids-max-buffers)))
+    (when (or (null desktop-aids--original-save-buffer-filter)
+              (funcall desktop-aids--original-save-buffer-filter
+                       filename buffer-name mode rest))
+      (setq desktop-aids--saved-buffer-count
+            (1+ desktop-aids--saved-buffer-count))
+      t)))
+
+(defun desktop-aids-prepare-save ()
+  (unless (eq desktop-buffers-not-to-save-function #'desktop-aids-save-buffer-p)
+    (setq desktop-aids--original-save-buffer-filter
+          desktop-buffers-not-to-save-function
+          desktop-buffers-not-to-save-function
+          #'desktop-aids-save-buffer-p))
+  (setq desktop-aids--saved-buffer-count 0))
+(add-hook 'desktop-save-hook #'desktop-aids-prepare-save)
+
 ;; Frame size save/restore (in characters to avoid WM decoration shrinkage)
 (defvar desktop-aids-frame-size nil "Saved frame size as (width . height) in characters.")
 (setq desktop-restore-frames nil)
