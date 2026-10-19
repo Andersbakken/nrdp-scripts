@@ -99,7 +99,7 @@
          (call-interactively 'find-function)) ;; not sure what else to do here
         ((and (member 'tide-mode minor-mode-list) (or (eq major-mode 'typescript-mode) (eq major-mode 'typescript-ts-mode)))
          (call-interactively 'tide-references)
-         (call-interactively '--misc-grep-tide-next-prev-error t nil))
+         (--misc-grep-tide-next-prev-error t nil))
         (t
          (let ((cur (thing-at-point 'symbol)))
            (if cur
