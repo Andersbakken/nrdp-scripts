@@ -58,6 +58,7 @@ SUBMIT OPTIONS (default mode):
     ranges, or indices into the pending commit list: 1, 2, 3 count from the
     first (oldest) pending commit, -1, -2, -3 count back from the last
     (newest) one.
+    Inclusive ascending index ranges are also supported: 1-4 selects 1 2 3 4.
 
     Additional options are passed through to git-submit (see git-submit --help)
     Note: Do NOT override --src-branch or --dst-branch as these are managed
@@ -90,6 +91,9 @@ EXAMPLES:
 
     # Submit the first two pending commits, in that order
     git-pullrequest -m 1 2
+
+    # Submit the first four pending commits using an inclusive index range
+    git-pullrequest -m 1-4
 
     # Pass options to git-submit (e.g., change tracking branch)
     git-pullrequest --tracking origin/develop HEAD

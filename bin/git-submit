@@ -59,6 +59,7 @@ COMMIT ARGUMENTS:
     'git-submit changes'):
       1, 2, 3 ...    count from the first (oldest) pending commit
       -1, -2, -3 ... count back from the last (newest) pending commit
+      1-4           select indices 1 through 4, inclusive (ascending only)
     Indices are resolved at run time, so they keep working after amending a
     commit changes its sha. A plain number that resolves to a real commit or
     ref is treated as that commit rather than as an index.
@@ -96,6 +97,9 @@ EXAMPLES:
 
     # Submit the first three pending commits, in that order
     git-submit 1 2 3
+
+    # Submit the first four pending commits using an inclusive index range
+    git-submit 1-4
 
 CONFIGURATION:
     submit.reset           Default reset behavior (default: true)
@@ -363,7 +367,18 @@ else
             fi
         }
         for change in $IN_CHANGES; do
-            if [[ "$change" =~ ^-[0-9]+$ ]]; then
+            if [[ "$change" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                FIRST_INDEX=$((10#${BASH_REMATCH[1]}))
+                LAST_INDEX=$((10#${BASH_REMATCH[2]}))
+                if [ "$FIRST_INDEX" -gt "$LAST_INDEX" ]; then
+                    echo "git-submit: Index range '$change' must be ascending" >&2
+                    exit 1
+                fi
+                for ((INDEX=FIRST_INDEX; INDEX<=LAST_INDEX; INDEX++)); do
+                    SHA1=$(pending_change "$INDEX") || exit 1
+                    RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
+                done
+            elif [[ "$change" =~ ^-[0-9]+$ ]]; then
                 SHA1=$(pending_change "$change") || exit 1
                 RESOLVED_CHANGES="$RESOLVED_CHANGES $SHA1"
             elif [[ "$change" =~ ^[0-9]+$ ]] && ! git rev-parse --verify --quiet "${change}^{commit}" >/dev/null 2>&1; then
