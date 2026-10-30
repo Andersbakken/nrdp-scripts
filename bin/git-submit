@@ -17,7 +17,7 @@ DESCRIPTION:
 
 COMMANDS:
     tracking [BRANCH]      Get or set the tracking branch
-    changes, list          List commits that differ from tracking branch
+    changes, list          List commits with [1], [2], ... indices (oldest first)
                            Options: --branch BRANCH
 
 SUBMIT OPTIONS:
@@ -68,8 +68,9 @@ EXAMPLES:
     # Set tracking branch
     git-submit tracking origin/master
 
-    # List commits that would be submitted
-    git-submit changes
+    # List pending commits with indices, then submit selected entries
+    git-submit list
+    git-submit 1 5
 
     # Submit specific commits
     git-submit abc123 def456
@@ -204,11 +205,13 @@ elif [ "$1" = "changes" ] || [ "$1" = "list" ]; then
     done
     [ -z "$BRANCH" ] && BRANCH="$TRACKING"
 
+    INDEX=0
     for change in `git cherry $BRANCH | grep '^+ ' | sed 's,^+,,g'`; do
         [ "$change" = "+" ] && continue
         NOTES=
         git ignore-commit check "$change" >/dev/null && NOTES="$NOTES [IGNORED]"
-        echo "$(git changes --no-ignores --max-count=1 $change)$NOTES"
+        INDEX=$((INDEX + 1))
+        printf '[%d] %s\n' "$INDEX" "$(git changes --no-ignores --max-count=1 $change)$NOTES"
     done
 else
     PR=""
