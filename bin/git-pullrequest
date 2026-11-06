@@ -53,6 +53,10 @@ SUBMIT OPTIONS (default mode):
                            Useful to override submit.reset=false config
     --abort-on-failure     Abort rebase on conflict (restores original state)
     --no-abort-on-failure  Leave rebase in progress on conflict for manual resolution
+    -a                     Submit all commits on the branch; pushed as-is (merge
+                           commits preserved) when based on the tracking branch
+    --flatten-merges       Allow rebasing merge commits (they are dropped and
+                           the merged history linearized); refused by default
 
     COMMIT arguments are passed to git-submit and may be hashes, revisions,
     ranges, or indices into the pending commit list: 1, 2, 3 count from the
@@ -553,7 +557,12 @@ elif [ "$MODE" = "submit" ]; then
         PUSH_ORIGIN="."
         PUSH_BRANCH="${PULL_REQUEST_PREFIX}/${AUTO}git-pullrequest-submit"
         git push $PUSH_ORIGIN :$PUSH_BRANCH 2>/dev/null
-        trap "git push ${PUSH_ORIGIN} :${PUSH_BRANCH}" QUIT EXIT
+        cleanup_submit_branch() {
+            if git show-ref --verify --quiet "refs/heads/${PUSH_BRANCH}"; then
+                git push "$PUSH_ORIGIN" ":$PUSH_BRANCH" 2>/dev/null
+            fi
+        }
+        trap cleanup_submit_branch QUIT EXIT
     fi
     git submit --no-sync-check --src-branch "$PUSH_ORIGIN/$PUSH_BRANCH" --dst-branch "$PUSH_ORIGIN/$PUSH_BRANCH" $SUBMIT_ARGS
 else

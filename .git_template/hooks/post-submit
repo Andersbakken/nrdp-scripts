@@ -15,10 +15,22 @@ if echo "$2" | grep -q "/"; then
             PR_NAME=""
             PR_REVIEWER=""
             PR_DESCRIPTION=""
-            if [ "$(git config pullrequest.describe)" != "false" ]; then
-                PR_DESCRIPTION=$(git log --pretty=format:%s --no-merges --reverse "$1..$BRANCH")
+            # When merges are being submitted (e.g. master merged into release)
+            # only look at our own first-parent history, not every merged commit.
+            DESCRIPTION_ARGS=(--no-merges)
+            COMMITS_ARGS=()
+            TITLE_COMMIT=
+            MERGE_COMMIT=$(git rev-list --first-parent --merges -1 "$1..$BRANCH")
+            if [ -n "$MERGE_COMMIT" ]; then
+                DESCRIPTION_ARGS=(--first-parent)
+                COMMITS_ARGS=(--first-parent)
+                TITLE_COMMIT="$MERGE_COMMIT"
             fi
-            COMMITS=$(git log --pretty=format:%h --reverse "$1..$BRANCH")
+            if [ "$(git config pullrequest.describe)" != "false" ]; then
+                PR_DESCRIPTION=$(git log --pretty=format:%s "${DESCRIPTION_ARGS[@]}" --reverse "$1..$BRANCH")
+            fi
+            COMMITS=$(git log --pretty=format:%h "${COMMITS_ARGS[@]}" --reverse "$1..$BRANCH")
+            [ -z "$TITLE_COMMIT" ] && TITLE_COMMIT=$(echo $COMMITS | awk '{print $1}')
             for COMMIT in ${COMMITS}; do
                 DESCRIPTION=`git log -1 --pretty=format':%s' "$COMMIT"`
                 if [ -n "$DESCRIPTION" ]; then
@@ -29,11 +41,11 @@ if echo "$2" | grep -q "/"; then
                     fi
                 fi
 
-                BODY=$(git log --pretty=format:%B --reverse "$1..$BRANCH")
+                BODY=$(git log -1 --pretty=format:%B "$COMMIT")
                 PR_REVIEWER="$PR_REVIEWER $(echo "$BODY" | grep r= | sed 's,.*r=\(.*\)$,\1,')"
             done
             PR_NAME=$(echo $PR_NAME | sed -e 's,^ *,,' -e 's, *$,,')
-            [ -z "$PR_NAME" ] && PR_NAME=$(git show --pretty="%f" --no-patch ${COMMITS} | head -1 | head -c 64)
+            [ -z "$PR_NAME" ] && [ -n "$TITLE_COMMIT" ] && PR_NAME=$(git show --pretty="%f" --no-patch "$TITLE_COMMIT" | head -1 | head -c 64)
             PR_NAME=$(echo $PR_NAME | sed -e "s,/ ,," -e "s,\.$,,")
             PR_NAME="${TRACKING_BRANCH}/${PR_NAME}"
 

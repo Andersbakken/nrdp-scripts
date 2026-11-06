@@ -26,7 +26,17 @@ SUBMIT OPTIONS:
     -f, --force            Force push
     --force-with-lease     Force push with lease
     -d                     Delete submitted commits from local branch after push
-    -a                     Submit all commits that differ from tracking branch
+    -a                     Submit all commits that differ from tracking branch.
+                           When HEAD is already based on the target branch the
+                           commits are pushed as-is, with no rebase, so merge
+                           commits are preserved. Otherwise (e.g. when
+                           retargeting at another branch) they are rebased onto
+                           it as usual. Cannot be combined with -d.
+    --flatten-merges       Allow rebasing when merge commits are involved.
+                           By default git-submit refuses, since the rebase
+                           drops the merge commits and linearizes the merged
+                           history (both in what is pushed and, with
+                           --no-reset or -d, in the local branch).
     -r, --replace          Replace existing pull request (requires --pr)
 
     --branch, --src-branch BRANCH
@@ -226,6 +236,7 @@ else
     IGNORE_CHECK=yes
     SYNC_CHECK=yes
     AUTOSTASH=
+    FLATTEN_MERGES=
     OPERATION=`git config submit.operation`
     if [ "$OPERATION" = "0" ] || [ "$OPERATION" = "false" ]; then
         OPERATION=
@@ -282,6 +293,8 @@ else
             ABORT_ON_FAILURE=
         elif [ "$1" = "-a" ]; then
             ALL=yes
+        elif [ "$1" = "--flatten-merges" ]; then
+            FLATTEN_MERGES=yes
         elif [ "$1" = "--" ]; then
             shift
             IN_CHANGES="$IN_CHANGES $@"
@@ -296,7 +309,39 @@ else
         fi
         shift
     done
-    if [ "$ALL" = "yes" ]; then
+    SUBMIT_ALL=no
+    if [ "$ALL" = "yes" ] && [ -n "$TRACKING" ]; then
+        # -a means "submit the whole branch", so there is nothing to select or
+        # reorder. When HEAD is already based on the destination we push HEAD
+        # as-is instead of rebasing: it is faster, and it preserves merge
+        # commits, which `git cherry` (--no-merges) and `git rebase -i` would
+        # otherwise silently drop.
+        # If HEAD is not a descendant of the destination the branch is being
+        # retargeted at a different tracking branch, and we still need to
+        # rebase the commits onto it.
+        if git merge-base --is-ancestor "$TRACKING" HEAD 2>/dev/null; then
+            SUBMIT_ALL=yes
+        else
+            echo "HEAD is not based on $TRACKING, changes need to be rebased onto it"
+        fi
+    fi
+    if [ "$SUBMIT_ALL" = "yes" ]; then
+        if [ "$DELETE" = "yes" ]; then
+            echo "git-submit: -d is not supported together with -a" >&2
+            exit 1
+        fi
+        if [ "$IGNORE_CHECK" = "yes" ]; then
+            IGNORED_CHANGES=
+            for change in `git rev-list --no-merges "${TRACKING}..HEAD"`; do
+                git ignore-commit check "$change" >/dev/null && IGNORED_CHANGES="$IGNORED_CHANGES `git rev-parse --short $change`"
+            done
+            if [ -n "$IGNORED_CHANGES" ]; then
+                echo "git-submit: -a would submit ignored commit(s):$IGNORED_CHANGES" >&2
+                echo "Pass --no-ignore-check to submit them anyway, or list the commits explicitly." >&2
+                exit 1
+            fi
+        fi
+    elif [ "$ALL" = "yes" ]; then
         for change in `git cherry "$TRACKING" | grep '^+ ' | sed 's,^+,,g'`; do
             IN_CHANGES="$IN_CHANGES `echo $change | awk '{print $1}'`"
         done
@@ -305,6 +350,8 @@ else
         PR_ARGS=""
         [ -n "$PR" ] && PR_ARGS="$PR_ARGS --name $PR"
         [ "$REPLACE" = "yes" ] && PR_ARGS="$PR_ARGS --force"
+        [ "$SUBMIT_ALL" = "yes" ] && PR_ARGS="$PR_ARGS -a"
+        [ "$FLATTEN_MERGES" = "yes" ] && PR_ARGS="$PR_ARGS --flatten-merges"
         git pullrequest submit ${PR_ARGS} ${IN_CHANGES}
         exit 0
     elif [ "$REPLACE" = "yes" ]; then
@@ -336,7 +383,7 @@ else
     git rev-parse "$COMMON_SHA1_BRANCH" >/dev/null 2>&1 || COMMON_SHA1_BRANCH="$TRACKING"
     COMMON_SHA1=`git merge-base HEAD $COMMON_SHA1_BRANCH`
 
-    if [ -z "$IN_CHANGES" ]; then
+    if [ -z "$IN_CHANGES" ] && [ "$SUBMIT_ALL" != "yes" ]; then
         SUBMIT_ARGS="--tracking ${TRACKING}"
         #SUBMIT_ARGS="${SUBMIT_ARGS} --no-hooks"
         [ -n "$FORCE" ] && SUBMIT_ARGS="$SUBMIT_ARGS $FORCE"
@@ -410,62 +457,124 @@ else
     fi
 
     AUTOSTASHED=0
-    autostash && AUTOSTASHED=$((AUTOSTASHED+1))
     RESET_HEAD=`git rev-parse HEAD`
-
-    CHANGES=""
-    for change in $IN_CHANGES; do
-        SHA1=`git rev-parse --short "$change"`
-        if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
-            echo "$SHA1 does not appear to be in the current branch"
-            continue
-        elif [ "$IGNORE_CHECK" = "yes" ] && git ignore-commit check "$SHA1" >/dev/null; then
-            echo "$SHA1 is marked to ignore!"
-            continue
-        fi
-        if git rev-parse "$SRC_BRANCH" >/dev/null 2>&1; then
-            FILTER_CHERRY=$(git cherry "$SRC_BRANCH" "${SHA1}" "${SHA1}~" 2>/dev/null)
-            if [ -z "${FILTER_CHERRY}" ] || echo "$FILTER_CHERRY" | grep -q '^-'; then
-                echo "Filtered: ${SHA1}" >&2
+    if [ "$SUBMIT_ALL" = "yes" ]; then
+        # The whole branch, already based on the destination: push HEAD as-is.
+        # No rebase means merge commits survive, and there is nothing to stash
+        # or reset afterwards since HEAD never moves.
+        NEW_SHA1="$RESET_HEAD"
+        NO_RESET=yes
+        CHANGES=`git log --reverse --pretty='%h' "${COMMON_SHA1}..HEAD" | tr '\n' ' '`
+        export SUBMIT_CHANGES="$CHANGES"
+        echo "Submit ${CHANGES}on top of ${COMMON_SHA1} (no rebase)"
+    else
+        CHANGES=""
+        SELECTED_MERGES=""
+        for change in $IN_CHANGES; do
+            SHA1=`git rev-parse --short "$change"`
+            if ! git merge-base "$SHA1" HEAD >/dev/null 2>/dev/null ; then
+                echo "$SHA1 does not appear to be in the current branch"
+                continue
+            elif [ "$IGNORE_CHECK" = "yes" ] && git ignore-commit check "$SHA1" >/dev/null; then
+                echo "$SHA1 is marked to ignore!"
+                continue
+            elif git rev-parse --verify --quiet "${SHA1}^2" >/dev/null; then
+                # A merge commit can't be picked by a (non --rebase-merges) rebase.
+                SELECTED_MERGES="$SELECTED_MERGES $SHA1"
                 continue
             fi
-        fi
-        CHANGES="$CHANGES $SHA1"
-    done
-
-    export SUBMIT_CHANGES="$CHANGES"
-    if [ -z "$FORCE" ] && git rev-parse "$SRC_BRANCH" >/dev/null 2>&1; then
-        for h in $(git log --reverse --pretty='%h' "${COMMON_SHA1}..${SRC_BRANCH}"); do
-            export SUBMIT_CHANGES="$h $SUBMIT_CHANGES"
+            FILTERED=
+            for FILTER_BRANCH in "$SRC_BRANCH" "$TRACKING"; do
+                if ! git rev-parse "$FILTER_BRANCH" >/dev/null 2>&1; then
+                    continue
+                fi
+                FILTER_CHERRY=$(git cherry "$FILTER_BRANCH" "${SHA1}" "${SHA1}~" 2>/dev/null)
+                if [ -z "${FILTER_CHERRY}" ] || echo "$FILTER_CHERRY" | grep -q '^-'; then
+                    echo "Filtered: ${SHA1} (already present in ${FILTER_BRANCH})" >&2
+                    FILTERED=yes
+                    break
+                fi
+            done
+            [ "$FILTERED" = "yes" ] && continue
+            CHANGES="$CHANGES $SHA1"
         done
-    fi
-    if [ "$NO_RESET" = "yes" ]; then
-        export SUBMIT_CHANGES_MODE="reorder"
-    else
-        export SUBMIT_CHANGES_MODE="keep"
-    fi
-    export GIT_SEQUENCE_EDITOR="$0"
-    echo "$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c1 | tr '[:lower:]' '[:upper:]')$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c2-) ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
-    #exit 0
-    [ -n "$OPERATION" ] && git operation save
-    if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
-        echo "Git failed"
-        if [ "$ABORT_ON_FAILURE" = "yes" ]; then
-            echo "Aborting rebase..."
-            git rebase --abort
-            git reset --hard "${RESET_HEAD}"
-            [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
+
+        # Refuse to silently flatten merge commits. That happens when a merge
+        # is selected (directly or via a range), when the whole branch is
+        # being rebased (-a retargeting), when the local branch is rewritten
+        # (--no-reset / -d), or when the existing destination branch already
+        # contains merges that would be re-picked.
+        EXTRA_PICKS=
+        [ -z "$FORCE" ] && git rev-parse "$SRC_BRANCH" >/dev/null 2>&1 && EXTRA_PICKS=yes
+        if [ "$FLATTEN_MERGES" != "yes" ]; then
+            BRANCH_MERGES=
+            if [ "$ALL" = "yes" ] || [ "$NO_RESET" = "yes" ] || [ "$DELETE" = "yes" ]; then
+                BRANCH_MERGES=`git rev-list --merges --abbrev-commit "${COMMON_SHA1}..HEAD" | xargs`
+            fi
+            DST_MERGES=
+            [ -n "$EXTRA_PICKS" ] && DST_MERGES=`git rev-list --merges --abbrev-commit "${COMMON_SHA1}..${SRC_BRANCH}" | xargs`
+            if [ -n "$SELECTED_MERGES" ] || [ -n "$BRANCH_MERGES" ] || [ -n "$DST_MERGES" ]; then
+                echo "git-submit: refusing to rebase merge commits, this would flatten them:" >&2
+                [ -n "$SELECTED_MERGES" ] && echo "    selected:${SELECTED_MERGES}" >&2
+                if [ -n "$BRANCH_MERGES" ]; then
+                    if [ "$ALL" = "yes" ]; then
+                        echo "    in branch (-a, HEAD is not based on ${TRACKING}): ${BRANCH_MERGES}" >&2
+                    else
+                        echo "    in local branch (rewritten by --no-reset/-d): ${BRANCH_MERGES}" >&2
+                    fi
+                fi
+                [ -n "$DST_MERGES" ] && echo "    already in ${SRC_BRANCH}: ${DST_MERGES}" >&2
+                [ "$ALL" = "yes" ] && echo "Sync with ${TRACKING} first so -a can push the branch as-is." >&2
+                [ "$ALL" != "yes" ] && [ -n "$BRANCH_MERGES" ] && echo "Use --reset to leave the local branch untouched." >&2
+                echo "Pass --flatten-merges to rebase anyway (merge commits are dropped, merged commits are linearized)." >&2
+                exit 1
+            fi
+        elif [ -n "$SELECTED_MERGES" ]; then
+            echo "Flattening: skipping merge commit(s)${SELECTED_MERGES}" >&2
         fi
-        [ -n "$OPERATION" ] && git operation pop
-        exit 1
-    fi
-    if [ "$NO_RESET" = "yes" ]; then
-        SUBMIT_COUNT=$(echo $SUBMIT_CHANGES | wc -w)
-        TOTAL_COUNT=$(git rev-list --count "${COMMON_SHA1}..HEAD")
-        SKIP_COUNT=$((TOTAL_COUNT - SUBMIT_COUNT))
-        NEW_SHA1=`git rev-parse "HEAD~${SKIP_COUNT}"`
-    else
-        NEW_SHA1=`git rev-parse HEAD`
+
+        if [ -z "$CHANGES" ]; then
+            echo "Nothing to submit (no selected commits remain)."
+            exit 0
+        fi
+
+        autostash && AUTOSTASHED=$((AUTOSTASHED+1))
+        RESET_HEAD=`git rev-parse HEAD`
+
+        export SUBMIT_CHANGES="$CHANGES"
+        if [ -n "$EXTRA_PICKS" ]; then
+            for h in $(git log --no-merges --reverse --pretty='%h' "${COMMON_SHA1}..${SRC_BRANCH}"); do
+                export SUBMIT_CHANGES="$h $SUBMIT_CHANGES"
+            done
+        fi
+        if [ "$NO_RESET" = "yes" ]; then
+            export SUBMIT_CHANGES_MODE="reorder"
+        else
+            export SUBMIT_CHANGES_MODE="keep"
+        fi
+        export GIT_SEQUENCE_EDITOR="$0"
+        echo "$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c1 | tr '[:lower:]' '[:upper:]')$(printf "%s" "$SUBMIT_CHANGES_MODE" | cut -c2-) ${SUBMIT_CHANGES} onto ${COMMON_SHA1}"
+        #exit 0
+        [ -n "$OPERATION" ] && git operation save
+        if ! git rebase --keep-empty -i "${COMMON_SHA1}"; then
+            echo "Git failed"
+            if [ "$ABORT_ON_FAILURE" = "yes" ]; then
+                echo "Aborting rebase..."
+                git rebase --abort
+                git reset --hard "${RESET_HEAD}"
+                [ "$AUTOSTASHED" -gt 0 ] && git reset "HEAD~${AUTOSTASHED}"
+            fi
+            [ -n "$OPERATION" ] && git operation pop
+            exit 1
+        fi
+        if [ "$NO_RESET" = "yes" ]; then
+            SUBMIT_COUNT=$(echo $SUBMIT_CHANGES | wc -w)
+            TOTAL_COUNT=$(git rev-list --count "${COMMON_SHA1}..HEAD")
+            SKIP_COUNT=$((TOTAL_COUNT - SUBMIT_COUNT))
+            NEW_SHA1=`git rev-parse "HEAD~${SKIP_COUNT}"`
+        else
+            NEW_SHA1=`git rev-parse HEAD`
+        fi
     fi
     if [ -z "$NEW_SHA1" ]; then
         echo "Nothing to push"
